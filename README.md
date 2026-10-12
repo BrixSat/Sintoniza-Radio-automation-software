@@ -1,0 +1,152 @@
+# Radio Playout
+
+A broadcast radio automation / playout app for **Linux, macOS and Windows**, with the same look on all three.
+It is built in C# with [Avalonia](https://avaloniaui.net/) and uses the [BASS](https://www.un4seen.com/) audio
+engine for decoding, mixing and streaming.
+
+![Main window](docs/screenshot.png)
+
+> **Status:** proof of concept. It plays a playlist on air with crossfades, fires jingles from a cartwall and
+> streams to Icecast/Shoutcast. Scheduling, a music library and logging are not built yet (see [Roadmap](#roadmap)).
+
+## Features
+
+- **On-air deck**: title and artist, a scrolling waveform with a playhead, a full-track overview with the
+  crossfade zone marked, elapsed/remaining time (turns red in the last 10 s), and the next item.
+- **Transport**: Play, Pause, Next (crossfades straight away) and Stop. The button for the current state lights up,
+  and Next flashes on every track change. The mode button switches between **AUTO**
+  (runs through the playlist) and **ASSISTED** (stops after each item until you start the next).
+- **Playlist**: drag and drop from the built-in music browser or your file manager, drag rows to reorder,
+  estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial), and an
+  on-air row that fills from left to right as the track plays. M3U open/save.
+- **Music browser**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
+- **Cartwall**: 12 instant buttons that play over the music, with a countdown while playing.
+- **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
+  tracks played today, stream time, and stereo peak meters.
+- **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
+  One click on the **STREAM** badge next to ON AIR starts or stops it.
+- **Settings** (Ctrl/Cmd+,): station name, logo, genre and website, crossfade length, output device, and the
+  streaming server.
+- Remembers the playlist, carts and settings between runs.
+
+### Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| F5 / F6 / F7 / F8 | Play / Pause / Next / Stop |
+| Ctrl/Cmd + O | Add files |
+| Ctrl/Cmd + S | Save playlist |
+| Ctrl/Cmd + ↑ / ↓ | Move selected playlist items |
+| Ctrl/Cmd + , | Settings |
+| Delete | Remove selected items |
+| Enter | Put the selected item on air |
+
+### Item types
+
+The type icon in the playlist comes from the folders a file is in:
+
+| Folder name contains | Type |
+| --- | --- |
+| `jingles`, `ids`, `sweepers`, `stingers`, `vinhetas` | Jingle |
+| `ads`, `spots`, `commercials`, `comerciais`, `publicidade` | Commercial |
+| anything else | Music |
+
+So `Music/Jingles/Station ID.mp3` is a jingle. This is a first version, and category rules in the music library
+will replace it later.
+
+## Building
+
+### 1. Install the .NET 10 SDK
+
+| OS | How |
+| --- | --- |
+| Windows | `winget install Microsoft.DotNet.SDK.10`, or the installer from <https://dotnet.microsoft.com/download> |
+| macOS | `brew install --cask dotnet-sdk`, or the installer from <https://dotnet.microsoft.com/download> |
+| Linux | Your distribution's `dotnet-sdk-10.0` package, or the install script:<br>`curl -sSL https://dot.net/v1/dotnet-install.sh \| bash -s -- --channel 10.0`<br>then `export PATH=$HOME/.dotnet:$PATH DOTNET_ROOT=$HOME/.dotnet` |
+
+Check it with `dotnet --version` (it should print 10.x).
+
+### 2. Download the BASS libraries
+
+BASS isn't committed to the repository. Fetch it from un4seen.com with the script for your OS:
+
+```bash
+# macOS / Linux (fetches the libraries for the OS you're on)
+./scripts/fetch-bass.sh
+
+# Windows (PowerShell)
+.\scripts\fetch-bass.ps1
+```
+
+They are saved to `native/linux-x64`, `native/osx` or `native/win-x64`. To build for another OS as well,
+pass the platform: `./scripts/fetch-bass.sh win`, or `all` for all three. PowerShell uses
+`-Platform win|osx|linux|all`.
+
+### 3. Run it
+
+```bash
+dotnet run --project src/Playout.App
+```
+
+To try it without sound (BASS's "no sound" device), run `dotnet run --project src/Playout.App -- --device=0`.
+
+### 4. Make a release build
+
+Publish a self-contained build, which needs no .NET installed on the target machine:
+
+```bash
+# Windows (64-bit)
+dotnet publish src/Playout.App -c Release -r win-x64 --self-contained -o dist/win-x64
+
+# macOS: Apple Silicon and Intel
+dotnet publish src/Playout.App -c Release -r osx-arm64 --self-contained -o dist/osx-arm64
+dotnet publish src/Playout.App -c Release -r osx-x64   --self-contained -o dist/osx-x64
+
+# Linux (64-bit)
+dotnet publish src/Playout.App -c Release -r linux-x64 --self-contained -o dist/linux-x64
+```
+
+You can publish for any OS from any OS, provided you have fetched that platform's BASS libraries (step 2).
+The build copies the matching libraries into the output folder automatically.
+
+Then start the app:
+
+- **Windows:** `dist\win-x64\RadioPlayout.exe`
+- **macOS:** `dist/osx-arm64/RadioPlayout`. The build is unsigned, so if macOS blocks it, run
+  `xattr -dr com.apple.quarantine dist/osx-arm64` once. A proper `.app` bundle isn't produced yet.
+- **Linux:** `dist/linux-x64/RadioPlayout`. Audio goes through ALSA, which works with PulseAudio and PipeWire.
+
+## Project layout
+
+```
+src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
+                     Runs on its own thread; the UI only calls its public API.
+src/Playout.App      Avalonia desktop UI (deck, playlist, music browser, cartwall, settings).
+scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
+native/<platform>/   BASS libraries (downloaded, not committed).
+```
+
+The engine never depends on the UI. Automation (auto-advance, crossfades) runs from BASS sync callbacks on the
+engine thread, so a frozen window can't cause dead air.
+
+Settings are stored in `settings.json` in the per-user app data folder:
+`%APPDATA%\RadioPlayout` on Windows, `~/.config/RadioPlayout` on Linux, and `~/Library/Application Support/RadioPlayout` on macOS.
+
+## Roadmap
+
+- Pre-listen (cue) on a second sound card
+- Automatic stream reconnect
+- Music library with tags, categories and cue points (intro/outro/mix points)
+- Clocks / hour templates, rotation rules, jingles and IDs on a schedule
+- Live assist with mic ducking
+- Played-tracks log and reports
+- Silence detection with fallback audio
+- Loudness normalisation
+- REST API for remote control
+
+## Licensing
+
+- **BASS** is free for non-commercial use. Commercial use, including running it at a commercial station or
+  selling the software, needs a licence from [un4seen](https://www.un4seen.com/).
+- **Avalonia** and **ManagedBass** are MIT licensed.
+- The licence for this project's own code hasn't been chosen yet.
