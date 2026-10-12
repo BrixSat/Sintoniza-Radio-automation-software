@@ -1,0 +1,147 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.SettingsWindow"
+        Title="Settings"
+        Width="620" Height="560" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="18">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
+            <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+            <Button x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" IsDefault="True"
+                    Classes="accent" />
+        </StackPanel>
+
+        <TabControl>
+            <!-- ───────── Station ───────── -->
+            <TabItem Header="Station">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Station name" />
+                        <TextBox x:Name="StationNameBox" PlaceholderText="e.g. Rádio Exemplo 99.9 FM" />
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Logo" />
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="96" Height="96" CornerRadius="10" Background="#13161C" ClipToBounds="True"
+                                    BorderBrush="{StaticResource PanelBorder}" BorderThickness="1">
+                                <Panel>
+                                    <Image x:Name="LogoPreview" Stretch="Uniform" />
+                                    <TextBlock x:Name="NoLogoText" Text="No logo" Classes="note" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Panel>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="ChooseLogoButton" Content="Choose image…" />
+                                    <Button x:Name="RemoveLogoButton" Content="Remove" />
+                                </StackPanel>
+                                <TextBlock Classes="note" Text="PNG, JPG, BMP or WebP. A square image looks best; it is shown next to the clock." />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,12,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Genre" />
+                            <TextBox x:Name="GenreBox" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Website" />
+                            <TextBox x:Name="UrlBox" PlaceholderText="https://" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="note" Text="Name, genre and website are also sent to the streaming server and shown in directory listings." />
+                </StackPanel>
+            </TabItem>
+
+            <!-- ───────── Playout ───────── -->
+            <TabItem Header="Playout">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Crossfade between tracks (seconds)" />
+                        <NumericUpDown x:Name="CrossfadeBox" Minimum="0" Maximum="15" Increment="0.5" FormatString="0.0"
+                                       Width="160" HorizontalAlignment="Left" />
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="The outgoing track fades out over this time while the next one starts. 0 = back-to-back. Applies from the next track." />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Output device (on-air)" />
+                        <ComboBox x:Name="DeviceBox" MinWidth="360" />
+                        <TextBlock Classes="note" Margin="0,4,0,0" Text="Takes effect the next time the app starts." />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ───────── Streaming ───────── -->
+            <TabItem Header="Streaming">
+                <StackPanel Spacing="12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Server type" />
+                        <ComboBox x:Name="ServerTypeBox" MinWidth="220" SelectedIndex="0">
+                            <ComboBoxItem Content="Icecast 2" />
+                            <ComboBoxItem Content="Shoutcast v1" />
+                        </ComboBox>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,12,120">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Server host" />
+                            <TextBox x:Name="HostBox" PlaceholderText="stream.example.com" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Port" />
+                            <TextBox x:Name="PortBox" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,12,*">
+                        <StackPanel x:Name="MountPanel">
+                            <TextBlock Classes="label" Text="Mount point" />
+                            <TextBox x:Name="MountBox" PlaceholderText="/live" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Source password" />
+                            <TextBox x:Name="PasswordBox" PasswordChar="•" RevealPassword="False" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,12,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Format" />
+                            <ComboBox x:Name="FormatBox" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="MP3" />
+                                <ComboBoxItem Content="OGG Vorbis" />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Bitrate (kbps)" />
+                            <ComboBox x:Name="BitrateBox" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="64" />
+                                <ComboBoxItem Content="96" />
+                                <ComboBoxItem Content="128" />
+                                <ComboBoxItem Content="192" />
+                                <ComboBoxItem Content="256" />
+                                <ComboBoxItem Content="320" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. Changes here apply the next time the stream starts." />
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

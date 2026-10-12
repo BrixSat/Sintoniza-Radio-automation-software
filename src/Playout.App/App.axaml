@@ -1,0 +1,283 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Playout.App.App"
+             xmlns:c="using:Playout.App.Controls"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <SolidColorBrush x:Key="WindowBg" Color="#111318" />
+        <SolidColorBrush x:Key="PanelBg" Color="#1A1D24" />
+        <SolidColorBrush x:Key="PanelBorder" Color="#2A2F3A" />
+        <SolidColorBrush x:Key="RowAlt" Color="#1E222A" />
+        <SolidColorBrush x:Key="TextMain" Color="#E7E9EE" />
+        <SolidColorBrush x:Key="TextMuted" Color="#8B93A3" />
+        <SolidColorBrush x:Key="OnAir" Color="#E5484D" />
+        <SolidColorBrush x:Key="NextUp" Color="#F5A524" />
+        <SolidColorBrush x:Key="Ok" Color="#3ECF8E" />
+        <SolidColorBrush x:Key="Accent" Color="#4C8DFF" />
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme>
+            <FluentTheme.Palettes>
+                <ColorPaletteResources x:Key="Dark" Accent="#4C8DFF" RegionColor="#111318" />
+            </FluentTheme.Palettes>
+        </FluentTheme>
+
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{StaticResource WindowBg}" />
+            <Setter Property="Foreground" Value="{StaticResource TextMain}" />
+        </Style>
+
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="{StaticResource PanelBg}" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14" />
+        </Style>
+
+        <Style Selector="TextBlock.caption">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+        <Style Selector="TextBlock.digits">
+            <Setter Property="FontFeatures" Value="+tnum" />
+        </Style>
+
+        <!-- Status badges (ON AIR, stream toggle) -->
+        <Style Selector="Border.badge">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="9,3" />
+        </Style>
+        <Style Selector="Border.badge > TextBlock, Button.badge TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.5" />
+        </Style>
+        <Style Selector="Button.badge">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="9,3" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.stream /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2A2F3A" />
+            <Setter Property="BorderBrush" Value="#3A4150" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.stream.onair /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1F6F4A" />
+            <Setter Property="BorderBrush" Value="#3ECF8E" />
+        </Style>
+        <Style Selector="Button.stream.connecting /template/ ContentPresenter">
+            <Setter Property="Background" Value="#6B4C10" />
+            <Setter Property="BorderBrush" Value="#F5A524" />
+        </Style>
+        <Style Selector="Button.stream.failed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#6E2427" />
+            <Setter Property="BorderBrush" Value="#E5484D" />
+        </Style>
+
+        <!-- Automation mode button: AUTO (green) / ASSISTED (amber) -->
+        <Style Selector="ToggleButton.mode">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="ToggleButton.mode TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="ToggleButton.mode PathIcon">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+        </Style>
+        <Style Selector="ToggleButton.mode /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4A3510" />
+            <Setter Property="BorderBrush" Value="#F5A524" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="#FFD48A" />
+        </Style>
+        <Style Selector="ToggleButton.mode:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#5C4214" />
+            <Setter Property="Foreground" Value="#FFD48A" />
+        </Style>
+        <Style Selector="ToggleButton.mode:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="#174A33" />
+            <Setter Property="BorderBrush" Value="#3ECF8E" />
+            <Setter Property="Foreground" Value="#9CF0C8" />
+        </Style>
+        <Style Selector="ToggleButton.mode:checked:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1D5C40" />
+            <Setter Property="Foreground" Value="#9CF0C8" />
+        </Style>
+
+        <!-- Station info cells -->
+        <Style Selector="StackPanel.info TextBlock.value">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,1,0,0" />
+        </Style>
+
+        <!-- Transport buttons -->
+        <Style Selector="Button.transport">
+            <Setter Property="Width" Value="64" />
+            <Setter Property="Height" Value="50" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.transport > PathIcon">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+        </Style>
+        <!-- Transport state: the button for the current state is lit; Next flashes on every track change. -->
+        <Style Selector="Button.transport /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.play.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1F8A55" />
+            <Setter Property="BorderBrush" Value="#3ECF8E" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.play.active:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#26A064" />
+        </Style>
+        <Style Selector="Button.pause.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#A8700F" />
+            <Setter Property="BorderBrush" Value="#F5A524" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.pause.active:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#BF8114" />
+        </Style>
+        <Style Selector="Button.stop.active /template/ ContentPresenter">
+            <Setter Property="Background" Value="#7A2427" />
+            <Setter Property="BorderBrush" Value="#E5484D" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.stop:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#8A2A2D" />
+        </Style>
+        <Style Selector="Button.next.flash /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2F5FB8" />
+            <Setter Property="BorderBrush" Value="#4C8DFF" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style Selector="Button.tool">
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+
+        <!-- Playlist rows -->
+        <Style Selector="ListBox#Playlist">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox#Playlist ListBoxItem">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Border.row-marker">
+            <Setter Property="Width" Value="4" />
+            <Setter Property="CornerRadius" Value="2" />
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Grid.playing Border.row-marker">
+            <Setter Property="Background" Value="{StaticResource OnAir}" />
+        </Style>
+        <Style Selector="Grid.next Border.row-marker">
+            <Setter Property="Background" Value="{StaticResource NextUp}" />
+        </Style>
+        <Style Selector="Grid.playing TextBlock.title">
+            <Setter Property="Foreground" Value="#FF8A8D" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Grid.played TextBlock, Grid.played PathIcon">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+
+        <!-- On-air row: bigger, with a left-to-right progress fill behind it -->
+        <Style Selector="c|ProgressFill.row-progress">
+            <Setter Property="Fill" Value="#3A1E22" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
+        <Style Selector="Grid.playing">
+            <Setter Property="MinHeight" Value="52" />
+        </Style>
+        <Style Selector="Grid.playing TextBlock.title">
+            <Setter Property="FontSize" Value="18" />
+        </Style>
+        <Style Selector="Grid.playing TextBlock.muted">
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Grid.playing Border.row-marker">
+            <Setter Property="Margin" Value="0,-2" />
+        </Style>
+        <Style Selector="Border.row-bg">
+            <Setter Property="Background" Value="#211619" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
+
+        <!-- Item type icons -->
+        <Style Selector="PathIcon.kind">
+            <Setter Property="Width" Value="15" />
+            <Setter Property="Height" Value="15" />
+        </Style>
+        <Style Selector="PathIcon.music">
+            <Setter Property="Foreground" Value="#78A2F5" />
+        </Style>
+        <Style Selector="PathIcon.jingle">
+            <Setter Property="Foreground" Value="#F5A524" />
+        </Style>
+        <Style Selector="PathIcon.commercial">
+            <Setter Property="Foreground" Value="#3ECF8E" />
+        </Style>
+        <Style Selector="Grid.playing PathIcon.kind">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+        </Style>
+
+        <!-- Cartwall -->
+        <Style Selector="Button.cart">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="MinHeight" Value="58" />
+        </Style>
+        <Style Selector="Button.cart /template/ ContentPresenter">
+            <Setter Property="Background" Value="#252A34" />
+            <Setter Property="BorderBrush" Value="#323846" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.cart.empty /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1C1F26" />
+        </Style>
+        <Style Selector="Button.cart.playing /template/ ContentPresenter">
+            <Setter Property="Background" Value="#B8353A" />
+            <Setter Property="BorderBrush" Value="#E5484D" />
+        </Style>
+    </Application.Styles>
+</Application>

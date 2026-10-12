@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Playout.App/Playout.App.csproj" />
+    <Project Path="src/Playout.Engine/Playout.Engine.csproj" />
+  </Folder>
+</Solution>
