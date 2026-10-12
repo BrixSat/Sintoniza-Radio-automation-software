@@ -44,9 +44,13 @@ sealed class AudioGraph
     volatile int _musicDeviceMixer, _cartDeviceMixer;
     volatile int _musicDeviceChannels = 2, _cartDeviceChannels = 2;
 
+    readonly HashSet<int> _initialised = new();
+    readonly object _initLock = new();
+
     public AudioGraph(int? forcedDevice)
     {
         _forcedDevice = forcedDevice;
+        EnsureInit(0); // the "no sound" device: lets decode channels exist before any card is opened
         Bass.Configure(Configuration.SplitBufferLength, SplitBufferMs);
 
         // PositionEx lets us ask "where was this source N bytes of output ago", i.e. what is audible right now.
@@ -133,13 +137,31 @@ sealed class AudioGraph
         return fallback < 0 ? 1 : fallback;
     }
 
-    public static void EnsureInit(int device)
+    void EnsureInit(int device)
     {
-        if (!Bass.Init(device, SampleRate) && Bass.LastError != Errors.Already)
-            throw new InvalidOperationException($"Cannot open audio device {device}: {Bass.LastError}");
+        lock (_initLock)
+        {
+            if (!Bass.Init(device, SampleRate) && Bass.LastError != Errors.Already)
+                throw new InvalidOperationException($"Cannot open audio device {device}: {Bass.LastError}");
+            _initialised.Add(device);
+        }
     }
 
-    static int ChannelCount(int device)
+    /// <summary>Frees every device this graph opened.</summary>
+    public void Free()
+    {
+        lock (_initLock)
+        {
+            foreach (int device in _initialised)
+            {
+                Bass.CurrentDevice = device;
+                Bass.Free();
+            }
+            _initialised.Clear();
+        }
+    }
+
+    int ChannelCount(int device)
     {
         EnsureInit(device);
         Bass.CurrentDevice = device;

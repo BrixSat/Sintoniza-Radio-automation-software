@@ -25,7 +25,10 @@ engine for decoding, mixing and streaming.
   tracks played today, stream time, and stereo peak meters.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
   One click on the **STREAM** badge next to ON AIR starts or stops it.
-- **Settings** (Ctrl/Cmd+,): station name, logo, genre and website, crossfade length, output device, and the
+- **Separate outputs for the mixing desk**: music and cartwall can each go to their own sound card or output pair
+  (Out 1–2, 3–4, …), so they come up on separate desk faders. A test tone helps you find which fader is which.
+  The stream always carries music and cartwall together.
+- **Settings** (Ctrl/Cmd+,): station name, logo, genre and website, crossfade length, audio outputs, and the
   streaming server.
 - Remembers the playlist, carts and settings between runs.
 
@@ -89,6 +92,7 @@ dotnet run --project src/Playout.App
 ```
 
 To try it without sound (BASS's "no sound" device), run `dotnet run --project src/Playout.App -- --device=0`.
+This sends every output to that device and ignores the routing in Settings.
 
 ### 4. Make a release build
 

@@ -43,7 +43,7 @@ public partial class MainWindow : Window
 
         try
         {
-            _engine = new PlayoutEngine(OutputDevice());
+            _engine = new PlayoutEngine(_settings.Routing, ForcedDeviceFromArgs());
             _engine.Log += msg => Dispatcher.UIThread.Post(() => LastLog.Text = msg);
             _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
         }
@@ -70,17 +70,11 @@ public partial class MainWindow : Window
         Tick();
     }
 
-    /// <summary>
-    /// BASS output device: <c>--device=N</c> on the command line wins (0 is "no sound", handy for testing),
-    /// then the device chosen in Settings, else the system default (-1).
-    /// </summary>
-    int OutputDevice()
+    /// <summary><c>--device=N</c> sends every output to BASS device N, ignoring the routing in Settings (0 = "no sound", for testing).</summary>
+    static int? ForcedDeviceFromArgs()
     {
         var arg = Environment.GetCommandLineArgs().FirstOrDefault(a => a.StartsWith("--device="));
-        if (arg != null && int.TryParse(arg["--device=".Length..], out int d)) return d;
-        if (string.IsNullOrEmpty(_settings.OutputDevice)) return -1;
-        int index = PlayoutEngine.GetOutputDevices().ToList().IndexOf(_settings.OutputDevice);
-        return index >= 0 ? index + 1 : -1; // BASS device numbers start at 1
+        return arg != null && int.TryParse(arg["--device=".Length..], out int d) ? d : null;
     }
 
     // ───────────────────────── Wiring ─────────────────────────
@@ -653,9 +647,14 @@ public partial class MainWindow : Window
         _settingsOpen = true;
         try
         {
-            bool saved = await new SettingsWindow(_settings).ShowDialog<bool>(this);
+            var routingBefore = _settings.Routing;
+            bool saved = await new SettingsWindow(_settings, _engine).ShowDialog<bool>(this);
             if (!saved) return;
-            if (_engine != null) _engine.CrossfadeSeconds = _settings.Crossfade;
+            if (_engine != null)
+            {
+                _engine.CrossfadeSeconds = _settings.Crossfade;
+                if (_settings.Routing != routingBefore) _engine.ApplyRouting(_settings.Routing);
+            }
             ApplyStationBranding();
             LastLog.Text = "Settings saved";
         }

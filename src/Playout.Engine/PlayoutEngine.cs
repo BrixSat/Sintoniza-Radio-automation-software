@@ -14,7 +14,6 @@ namespace Playout.Engine;
 /// </summary>
 public sealed class PlayoutEngine : IDisposable
 {
-    const int SampleRate = 44100;
     const double StopFadeSeconds = 0.4;
     const double CartStopFadeSeconds = 0.25;
 
@@ -26,7 +25,7 @@ public sealed class PlayoutEngine : IDisposable
     readonly SyncProcedure _crossfadeSync;
     readonly SyncProcedure _endSync;
 
-    readonly int _mixer;
+    readonly AudioGraph _graph;
     readonly WaveformLoader _waveforms = new();
 
     // Engine-thread state.
@@ -50,17 +49,14 @@ public sealed class PlayoutEngine : IDisposable
     public event Action<PlaylistSnapshot>? PlaylistChanged;
     public event Action<string>? Log;
 
-    public PlayoutEngine(int device = -1)
+    /// <param name="routing">Where the music and cart buses go.</param>
+    /// <param name="forceDevice">Send every bus to this BASS device regardless of routing (0 = "no sound", for testing).</param>
+    public PlayoutEngine(AudioRouting routing, int? forceDevice = null)
     {
         LoadPlugins();
 
-        if (!Bass.Init(device, SampleRate) && Bass.LastError != Errors.Already)
-            throw new InvalidOperationException($"BASS_Init failed: {Bass.LastError}");
-
-        _mixer = BassMix.CreateMixerStream(SampleRate, 2, BassFlags.Float | BassFlags.MixerNonStop);
-        if (_mixer == 0)
-            throw new InvalidOperationException($"Mixer creation failed: {Bass.LastError}");
-        Bass.ChannelPlay(_mixer);
+        _graph = new AudioGraph(forceDevice);
+        _graph.Apply(routing);
 
         _crossfadeSync = (_, channel, _, _) => _commands.Add(() => OnCrossfadePoint(channel));
         _endSync = (_, channel, _, _) => _commands.Add(() => OnTrackEnd(channel));
@@ -69,13 +65,20 @@ public sealed class PlayoutEngine : IDisposable
         _thread.Start();
     }
 
-    public static IReadOnlyList<string> GetOutputDevices()
+    public static IReadOnlyList<string> GetOutputDevices() => AudioGraph.DeviceNames();
+
+    /// <summary>How many output channels a sound card has (2 for plain stereo cards).</summary>
+    public int GetOutputChannelCount(string device) => _graph.ChannelCount(device);
+
+    /// <summary>Re-route the buses. Applies immediately; outputs drop out for a moment.</summary>
+    public void ApplyRouting(AudioRouting routing) => Post(() =>
     {
-        var list = new List<string>();
-        for (int i = 1; Bass.GetDeviceInfo(i, out var info); i++)
-            list.Add(info.Name);
-        return list;
-    }
+        _graph.Apply(routing);
+        Emit("Audio outputs updated");
+    });
+
+    /// <summary>Short 1 kHz tone on a card/channel pair, to find the right desk fader.</summary>
+    public void PlayTestTone(OutputRoute route) => _graph.TestTone(route);
 
     // ───────────────────────── Public API (thread-safe, non-blocking) ─────────────────────────
 
@@ -178,7 +181,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         int h = OpenStream(path, prescan: false);
         if (h == 0) { Emit($"Cart failed: {Path.GetFileName(path)} ({Bass.LastError})"); return 0; }
-        BassMix.MixerAddChannel(_mixer, h, BassFlags.AutoFree);
+        BassMix.MixerAddChannel(_graph.CartBus, h, BassFlags.AutoFree);
         return h;
     }
 
@@ -196,7 +199,7 @@ public sealed class PlayoutEngine : IDisposable
         long len = Bass.ChannelGetLength(handle, PositionFlags.Bytes);
         if (len < 0) return null;
         // Until the mixer has rendered the first block there is no position yet.
-        long pos = Math.Max(0, BassMix.ChannelGetPosition(handle, PositionFlags.Bytes));
+        long pos = Math.Max(0, BassMix.ChannelGetPosition(handle, PositionFlags.Bytes, _graph.CartDelay));
         return Bass.ChannelBytes2Seconds(handle, len - pos);
     }
 
@@ -209,15 +212,15 @@ public sealed class PlayoutEngine : IDisposable
         double pos = 0, len = 0;
         if (deck != null)
         {
-            long p = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes);
+            // Corrected for what is still queued on the card, so the display matches what is audible.
+            long p = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes, _graph.MusicDelay);
             if (p >= 0) pos = Bass.ChannelBytes2Seconds(deck.Handle, p);
             len = deck.Length;
         }
 
-        var levels = new float[2];
-        Bass.ChannelGetLevel(_mixer, levels, 0.05f, LevelRetrievalFlags.Stereo);
+        var (left, right) = _graph.Levels();
 
-        return new PlayerStatus(State, deck?.Track, pos, len, levels[0], levels[1],
+        return new PlayerStatus(State, deck?.Track, pos, len, left, right,
             (StreamState)_streamState, _streamError);
     }
 
@@ -233,8 +236,8 @@ public sealed class PlayoutEngine : IDisposable
         Task.Run(() =>
         {
             int enc = s.Format == StreamFormat.Mp3
-                ? BassEnc_Mp3.Start(_mixer, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero)
-                : BassEnc_Ogg.Start(_mixer, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero);
+                ? BassEnc_Mp3.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero)
+                : BassEnc_Ogg.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero);
             if (enc == 0) { FailStream($"Encoder start failed: {Bass.LastError}"); return; }
 
             string mount = s.Mount.StartsWith('/') ? s.Mount : "/" + s.Mount;
@@ -268,7 +271,7 @@ public sealed class PlayoutEngine : IDisposable
         StopStreaming();
         _commands.CompleteAdding();
         _thread.Join(2000);
-        Bass.Free();
+        _graph.Free();
     }
 
     // ───────────────────────── Engine thread ─────────────────────────
@@ -376,7 +379,7 @@ public sealed class PlayoutEngine : IDisposable
 
         // Mixer syncs can only be set on a channel that is already a mixer source,
         // so add it paused, attach the syncs, then let it go.
-        if (!BassMix.MixerAddChannel(_mixer, handle, BassFlags.AutoFree | BassFlags.MixerChanPause))
+        if (!BassMix.MixerAddChannel(_graph.MusicBus, handle, BassFlags.AutoFree | BassFlags.MixerChanPause))
         {
             Emit($"Mixer rejected {track.Display}: {Bass.LastError}");
             Bass.StreamFree(handle);

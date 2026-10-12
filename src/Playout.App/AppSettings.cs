@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using Playout.Engine;
 
 namespace Playout.App;
 
@@ -11,8 +13,12 @@ public sealed class AppSettings
     public string? LogoPath { get; set; }
     public string StationGenre { get; set; } = "Various";
     public string StationUrl { get; set; } = "";
-    /// <summary>BASS output device name; empty = system default. Applied at startup.</summary>
-    public string OutputDevice { get; set; } = "";
+    /// <summary>Where the playlist (music) and the cartwall come out: sound card name (empty = default) + channel pair.</summary>
+    public OutputRoute MusicOutput { get; set; } = new();
+    public OutputRoute CartOutput { get; set; } = new();
+
+    [JsonIgnore]
+    public AudioRouting Routing => new(MusicOutput ?? new(), CartOutput ?? new());
 
     public string?[] Carts { get; set; } = new string?[CartCount];
     public double Crossfade { get; set; } = 5;

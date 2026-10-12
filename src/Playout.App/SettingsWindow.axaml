@@ -71,8 +71,8 @@
                 </StackPanel>
             </TabItem>
 
-            <!-- ───────── Playout ───────── -->
-            <TabItem Header="Playout">
+            <!-- ───────── Audio ───────── -->
+            <TabItem Header="Audio">
                 <StackPanel Spacing="14" Margin="0,12,0,0">
                     <StackPanel>
                         <TextBlock Classes="label" Text="Crossfade between tracks (seconds)" />
@@ -82,9 +82,20 @@
                                    Text="The outgoing track fades out over this time while the next one starts. 0 = back-to-back. Applies from the next track." />
                     </StackPanel>
                     <StackPanel>
-                        <TextBlock Classes="label" Text="Output device (on-air)" />
-                        <ComboBox x:Name="DeviceBox" MinWidth="360" />
-                        <TextBlock Classes="note" Margin="0,4,0,0" Text="Takes effect the next time the app starts." />
+                        <TextBlock Classes="label" Text="Outputs (one desk channel each)" />
+                        <Grid ColumnDefinitions="90,*,10,110,10,Auto" RowDefinitions="Auto,8,Auto">
+                            <TextBlock Text="Music" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ComboBox Grid.Column="1" x:Name="MusicDeviceBox" HorizontalAlignment="Stretch" />
+                            <ComboBox Grid.Column="3" x:Name="MusicChannelBox" HorizontalAlignment="Stretch" />
+                            <Button Grid.Column="5" x:Name="MusicTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
+
+                            <TextBlock Grid.Row="2" Text="Cartwall" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CartDeviceBox" HorizontalAlignment="Stretch" />
+                            <ComboBox Grid.Row="2" Grid.Column="3" x:Name="CartChannelBox" HorizontalAlignment="Stretch" />
+                            <Button Grid.Row="2" Grid.Column="5" x:Name="CartTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
+                        </Grid>
+                        <TextBlock Classes="note" Margin="0,6,0,0"
+                                   Text="Send music and cartwall to different sound cards or output pairs to get them on separate desk faders. Use Test to find which fader is which. Applies when you click Save. The stream always carries music and cartwall together." />
                     </StackPanel>
                 </StackPanel>
             </TabItem>

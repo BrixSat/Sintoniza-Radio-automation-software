@@ -11,15 +11,17 @@ public partial class SettingsWindow : Window
     const string DefaultDevice = "System default";
 
     readonly AppSettings _settings;
+    readonly PlayoutEngine? _engine;
     string? _logoPath;
 
     // Parameterless constructor for the XAML previewer.
-    public SettingsWindow() : this(new AppSettings()) { }
+    public SettingsWindow() : this(new AppSettings(), null) { }
 
-    public SettingsWindow(AppSettings settings)
+    public SettingsWindow(AppSettings settings, PlayoutEngine? engine)
     {
         InitializeComponent();
         _settings = settings;
+        _engine = engine;
 
         StationNameBox.Text = settings.StationName;
         GenreBox.Text = settings.StationGenre;
@@ -27,9 +29,9 @@ public partial class SettingsWindow : Window
         SetLogo(settings.LogoPath);
 
         CrossfadeBox.Value = (decimal)settings.Crossfade;
-        var devices = PlayoutEngine.GetOutputDevices().ToList();
-        DeviceBox.ItemsSource = devices.Prepend(DefaultDevice).ToList();
-        DeviceBox.SelectedItem = devices.Contains(settings.OutputDevice) ? settings.OutputDevice : DefaultDevice;
+        var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
+        SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
+        SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
 
         ServerTypeBox.SelectedIndex = settings.Shoutcast ? 1 : 0;
         HostBox.Text = settings.StreamHost;
@@ -46,6 +48,40 @@ public partial class SettingsWindow : Window
         CancelButton.Click += (_, _) => Close(false);
         SaveButton.Click += (_, _) => Save();
     }
+
+    // ───────────────────────── Outputs ─────────────────────────
+
+    void SetupOutput(ComboBox deviceBox, ComboBox channelBox, Button test, List<string> devices, OutputRoute route)
+    {
+        deviceBox.ItemsSource = devices;
+        deviceBox.SelectedItem = devices.Contains(route.Device) ? route.Device : DefaultDevice;
+        FillChannels(deviceBox, channelBox, route.FirstChannel);
+        deviceBox.SelectionChanged += (_, _) => FillChannels(deviceBox, channelBox, 0);
+        test.Click += (_, _) =>
+        {
+            try { _engine?.PlayTestTone(RouteFrom(deviceBox, channelBox)); }
+            catch (Exception ex) { ToolTip.SetTip(test, ex.Message); }
+        };
+        test.IsEnabled = _engine != null;
+    }
+
+    /// <summary>Lists the stereo pairs the selected card offers: "Out 1–2", "Out 3–4", …</summary>
+    void FillChannels(ComboBox deviceBox, ComboBox channelBox, int firstChannel)
+    {
+        int channels = 2;
+        try { channels = _engine?.GetOutputChannelCount(DeviceName(deviceBox)) ?? 2; }
+        catch { /* card unavailable: offer the first pair only */ }
+        var pairs = Enumerable.Range(0, Math.Max(1, channels / 2)).Select(p => $"Out {p * 2 + 1}–{p * 2 + 2}").ToList();
+        channelBox.ItemsSource = pairs;
+        channelBox.SelectedIndex = Math.Clamp(firstChannel / 2, 0, pairs.Count - 1);
+        channelBox.IsEnabled = pairs.Count > 1;
+    }
+
+    static string DeviceName(ComboBox deviceBox) =>
+        deviceBox.SelectedItem as string is { } d && d != DefaultDevice ? d : "";
+
+    static OutputRoute RouteFrom(ComboBox deviceBox, ComboBox channelBox) =>
+        new(DeviceName(deviceBox), Math.Max(0, channelBox.SelectedIndex) * 2);
 
     void SetLogo(string? path)
     {
@@ -80,7 +116,8 @@ public partial class SettingsWindow : Window
         _settings.LogoPath = _logoPath;
 
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
-        _settings.OutputDevice = DeviceBox.SelectedItem as string is { } d && d != DefaultDevice ? d : "";
+        _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
+        _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
 
         _settings.Shoutcast = ServerTypeBox.SelectedIndex == 1;
         _settings.StreamHost = HostBox.Text?.Trim() ?? "";
