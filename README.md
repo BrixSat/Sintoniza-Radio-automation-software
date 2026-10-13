@@ -20,14 +20,20 @@ engine for decoding, mixing and streaming.
   estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial), and an
   on-air row that fills from left to right as the track plays. M3U open/save.
 - **Music browser**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
-- **Cartwall**: 12 instant buttons that play over the music, with a countdown while playing.
+- **Cue points**: mark the usual radio markers on any file: **Cue In** (start), **Intro** (talk-over until the
+  vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
+  **Cue Out** (stop). Playback, lengths, start times and the waveforms follow them, and an INTRO / OUTRO countdown
+  appears above the waveform for talking over. See [Cue points](#cue-points).
+- **Cartwall**: 12 instant buttons that play over the music, with a countdown and a progress fill while playing.
+  Drop a file on a cart (from the music browser or the file manager) to assign it.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time, and stereo peak meters.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
   One click on the **STREAM** badge next to ON AIR starts or stops it.
 - **Separate outputs for the mixing desk**: music and cartwall can each go to their own sound card or output pair
   (Out 1–2, 3–4, …), so they come up on separate desk faders. A test tone helps you find which fader is which.
-  The stream always carries music and cartwall together.
+  The stream always carries music and cartwall together. A third output, **Preview**, is for pre-listening in the
+  cue editor and is never streamed.
 - **Settings** (Ctrl/Cmd+,): station name, logo, genre and website, crossfade length, audio outputs, and the
   streaming server.
 - Remembers the playlist, carts and settings between runs.
@@ -39,6 +45,7 @@ engine for decoding, mixing and streaming.
 | F5 / F6 / F7 / F8 | Play / Pause / Next / Stop |
 | Ctrl/Cmd + O | Add files |
 | Ctrl/Cmd + S | Save playlist |
+| Ctrl/Cmd + E | Edit cue points of the selected item |
 | Ctrl/Cmd + ↑ / ↓ | Move selected playlist items |
 | Ctrl/Cmd + , | Settings |
 | Delete | Remove selected items |
@@ -56,6 +63,29 @@ The type icon in the playlist comes from the folders a file is in:
 
 So `Music/Jingles/Station ID.mp3` is a jingle. This is a first version, and category rules in the music library
 will replace it later.
+
+### Cue points
+
+Right-click a playlist item (or a file in the music browser) and choose **Edit cue points…**, or press Ctrl/Cmd+E.
+
+| Marker | What it does |
+| --- | --- |
+| **Cue In** | Playback starts here, which skips silence or a count-in. |
+| **Intro** | End of the intro. While it runs, a green **INTRO** countdown shows how long you can talk. |
+| **Outro** | Start of the ending. From here a purple **OUTRO** countdown runs to Cue Out. |
+| **Mix** | The next item starts here, and this one keeps playing unfaded until its Cue Out. Use it for songs that end on a hit or a long tail. With no Mix marker, the normal crossfade (Settings → Audio) applies. |
+| **Cue Out** | Playback stops here, which cuts silence or a long fade at the end. In ASSISTED mode the deck stops here. |
+
+In the editor, pre-listen on the **Preview** output (Settings → Audio). Click the waveform to jump, and use Space to
+play or pause and ←/→ to move 1 s (hold Shift for 0.1 s). The mouse wheel zooms. **Set** puts a marker at the
+playhead, ▶ plays from 3 s before it, and you can also type times such as `1:23.4`. **Auto-detect** sets Cue In
+and Cue Out at the first and last sound, and Mix where a fade-out has died down.
+
+Cue points are saved per file in `cues.json` next to the settings (your audio files are never modified). They
+apply wherever the file is used, and changes to the item on air take effect straight away.
+
+> Give Preview its own output, such as the desk's PFL/cue input or a headphone card. If it shares an output with
+> Music or Cartwall, the editor warns you that what you play will be heard on air.
 
 ## Building
 
@@ -138,9 +168,9 @@ Settings are stored in `settings.json` in the per-user app data folder:
 
 ## Roadmap
 
-- Pre-listen (cue) on a second sound card
 - Automatic stream reconnect
-- Music library with tags, categories and cue points (intro/outro/mix points)
+- Music library with tags and categories
+- Auto cue (silence trimming) for files without cue points
 - Clocks / hour templates, rotation rules, jingles and IDs on a schedule
 - Live assist with mic ducking
 - Played-tracks log and reports

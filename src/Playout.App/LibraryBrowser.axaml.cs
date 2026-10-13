@@ -20,6 +20,9 @@ public partial class LibraryBrowser : UserControl
     /// <summary>Raised when the user asks to add paths (files or folders); <c>asNext</c> means "play after the current item".</summary>
     public event Action<IReadOnlyList<string>, bool>? AddRequested;
 
+    /// <summary>Raised when the user wants to set the cue points of a file.</summary>
+    public event Action<string>? EditCuesRequested;
+
     /// <summary>Raised when the user picks a different root folder.</summary>
     public event Action<string>? RootChanged;
 
@@ -34,6 +37,7 @@ public partial class LibraryBrowser : UserControl
         };
         FilterBox.TextChanged += (_, _) => ApplyFilter();
         ChooseRootButton.Click += async (_, _) => await ChooseRoot();
+        RefreshButton.Click += (_, _) => Refresh();
 
         FileList.DoubleTapped += (_, e) =>
         {
@@ -48,6 +52,10 @@ public partial class LibraryBrowser : UserControl
         };
 
         FileList.ContextMenu = BuildMenu(SelectedFilePaths);
+        var editCues = new MenuItem { Header = "Edit cue points…" };
+        editCues.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditCuesRequested?.Invoke(p); };
+        FileList.ContextMenu.Items.Add(new Separator());
+        FileList.ContextMenu.Items.Add(editCues);
         FolderTree.ContextMenu = BuildMenu(() =>
             FolderTree.SelectedItem is FolderNode n ? [n.Path] : []);
 
@@ -61,12 +69,48 @@ public partial class LibraryBrowser : UserControl
 
     public void SetRoot(string folder)
     {
+        _rootPath = folder;
         _roots.Clear();
         if (!Directory.Exists(folder)) return;
         var root = new FolderNode(folder, Path.GetFileName(folder.TrimEnd(Path.DirectorySeparatorChar)) is { Length: > 0 } n ? n : folder);
         _roots.Add(root);
         root.IsExpanded = true;
         FolderTree.SelectedItem = root;
+    }
+
+    string? _rootPath;
+
+    /// <summary>Re-reads the tree and the file list from disk, keeping the open folders and the selected one.</summary>
+    void Refresh()
+    {
+        if (_rootPath == null) return;
+        var expanded = new HashSet<string>();
+        foreach (var node in _roots) CollectExpanded(node, expanded);
+        string? selected = (FolderTree.SelectedItem as FolderNode)?.Path;
+
+        SetRoot(_rootPath);
+        if (_roots.FirstOrDefault() is not { } root) { _allFiles = new(); ApplyFilter(); return; }
+
+        // Expanding loads the children, so this walks down only as far as folders were open before.
+        FolderNode best = root;
+        var stack = new Stack<FolderNode>([root]);
+        while (stack.TryPop(out var node))
+        {
+            if (node.Path == selected) best = node;
+            if (!expanded.Contains(node.Path)) continue;
+            node.IsExpanded = true;
+            foreach (var child in node.Children) stack.Push(child);
+        }
+        // A folder that has gone falls back to the root.
+        FolderTree.SelectedItem = best;
+        LoadFiles(best.Path);
+    }
+
+    static void CollectExpanded(FolderNode node, HashSet<string> into)
+    {
+        if (!node.IsExpanded) return;
+        into.Add(node.Path);
+        foreach (var child in node.Children) CollectExpanded(child, into);
     }
 
     async Task ChooseRoot()

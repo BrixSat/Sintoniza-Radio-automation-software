@@ -7,14 +7,29 @@ namespace Playout.App;
 /// <summary>One playlist line in the UI. Rows are reused across engine snapshots so selection and scroll survive.</summary>
 public sealed class PlaylistRow : INotifyPropertyChanged
 {
-    public PlaylistRow(Track track) => Track = track;
+    public PlaylistRow(Track track) => _track = track;
 
-    public Track Track { get; }
+    Track _track;
+    /// <summary>The engine replaces the item when its cue points or exact length change; the row stays.</summary>
+    public Track Track
+    {
+        get => _track;
+        set
+        {
+            if (Equals(_track, value)) return;
+            _track = value;
+            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues) })
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
     public Guid Id => Track.Id;
     public string Title => Track.Title;
     public string Artist => Track.Artist;
     public bool HasArtist => !string.IsNullOrWhiteSpace(Track.Artist);
-    public string Length => Format.Duration(Track.Duration);
+    /// <summary>On-air length, Cue In to Cue Out.</summary>
+    public string Length => Format.Duration(Track.PlayLength);
+    public bool HasCues => Track.Cues != null;
     public bool IsMusic => Track.Kind == TrackKind.Music;
     public bool IsJingle => Track.Kind == TrackKind.Jingle;
     public bool IsCommercial => Track.Kind == TrackKind.Commercial;
@@ -51,5 +66,27 @@ static class Format
         if (seconds < 0 || double.IsNaN(seconds)) seconds = 0;
         var t = TimeSpan.FromSeconds(Math.Floor(seconds));
         return t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"mm\:ss");
+    }
+
+    /// <summary>Cue point time with tenths, e.g. "1:23.4".</summary>
+    public static string CueTime(double seconds)
+    {
+        seconds = Math.Max(0, Math.Round(seconds, 1));
+        int minutes = (int)(seconds / 60);
+        return $"{minutes}:{(seconds - minutes * 60).ToString("00.0", System.Globalization.CultureInfo.InvariantCulture)}";
+    }
+
+    /// <summary>Reads "1:23.4", "83.4" or "0:01:23.4" (a comma works as the decimal point too); null if it isn't a time.</summary>
+    public static double? ParseCueTime(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        double total = 0;
+        foreach (var part in text.Trim().Replace(',', '.').Split(':'))
+        {
+            if (!double.TryParse(part, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v) || v < 0)
+                return null;
+            total = total * 60 + v;
+        }
+        return total;
     }
 }

@@ -6,10 +6,10 @@ namespace Playout.Engine;
 /// <summary>Where a bus goes: a sound card (by name; empty = system default) and the first channel of a stereo pair (0 = outputs 1–2, 2 = 3–4, …).</summary>
 public sealed record OutputRoute(string Device = "", int FirstChannel = 0);
 
-/// <summary>Output routing for every bus. Music and Cartwall can go to different desk channels.</summary>
-public sealed record AudioRouting(OutputRoute Music, OutputRoute Carts)
+/// <summary>Output routing for every bus. Music and Cartwall can go to different desk channels; Preview is for pre-listening (never on air).</summary>
+public sealed record AudioRouting(OutputRoute Music, OutputRoute Carts, OutputRoute Preview)
 {
-    public static AudioRouting Default => new(new OutputRoute(), new OutputRoute());
+    public static AudioRouting Default => new(new OutputRoute(), new OutputRoute(), new OutputRoute());
 }
 
 /// <summary>
@@ -19,6 +19,7 @@ public sealed record AudioRouting(OutputRoute Music, OutputRoute Carts)
 ///                       └─ split ─┐
 ///   carts ──► CartBus ──┬─ split ─► device mixer (card B, channels m..m+1)
 ///                       └─ split ─┴► Program (sum) ─► encoder (stream)
+///   preview ► PreviewBus ───────► device mixer (card C, channels p..p+1)   (pre-listen; not in Program)
 /// </code>
 /// Buses and Program are decode mixers that live for the whole session; only the device mixers are rebuilt when
 /// the routing changes. Program is attached (silently, all-zero matrix) to the music card's mixer, so that card's
@@ -34,6 +35,7 @@ sealed class AudioGraph
     public int MusicBus { get; }
     public int CartBus { get; }
     public int Program { get; }
+    public int PreviewBus { get; }
 
     readonly int _musicOut, _cartOut;   // splits that feed the device mixers
     readonly int _musicProg, _cartProg; // splits that feed Program
@@ -41,8 +43,9 @@ sealed class AudioGraph
 
     // device number -> (mixer handle, channel count). Rebuilt by Apply.
     readonly Dictionary<int, (int Mixer, int Channels)> _outputs = new();
-    volatile int _musicDeviceMixer, _cartDeviceMixer;
-    volatile int _musicDeviceChannels = 2, _cartDeviceChannels = 2;
+    volatile int _musicDeviceMixer, _cartDeviceMixer, _previewDeviceMixer;
+    volatile int _musicDeviceChannels = 2, _cartDeviceChannels = 2, _previewDeviceChannels = 2;
+    volatile bool _previewOnAir;
 
     readonly HashSet<int> _initialised = new();
     readonly object _initLock = new();
@@ -58,6 +61,7 @@ sealed class AudioGraph
         MusicBus = Check(BassMix.CreateMixerStream(SampleRate, 2, busFlags), "music bus");
         CartBus = Check(BassMix.CreateMixerStream(SampleRate, 2, busFlags), "cart bus");
         Program = Check(BassMix.CreateMixerStream(SampleRate, 2, BassFlags.Decode | BassFlags.Float | BassFlags.MixerNonStop), "program mixer");
+        PreviewBus = Check(BassMix.CreateMixerStream(SampleRate, 2, busFlags), "preview bus");
 
         _musicOut = Check(BassMix.CreateSplitStream(MusicBus, BassFlags.Decode, null), "music split");
         _cartOut = Check(BassMix.CreateSplitStream(CartBus, BassFlags.Decode, null), "cart split");
@@ -70,20 +74,23 @@ sealed class AudioGraph
     /// <summary>(Re)builds the device side of the graph. Safe to call while playing; there is a short gap on the outputs.</summary>
     public void Apply(AudioRouting routing)
     {
-        foreach (var split in new[] { _musicOut, _cartOut, Program })
-            BassMix.MixerRemoveChannel(split);
+        foreach (var source in new[] { _musicOut, _cartOut, Program, PreviewBus })
+            BassMix.MixerRemoveChannel(source);
         foreach (var (mixer, _) in _outputs.Values)
             Bass.StreamFree(mixer);
         _outputs.Clear();
 
         int musicDevice = Resolve(routing.Music.Device);
         int cartDevice = Resolve(routing.Carts.Device);
+        int previewDevice = Resolve(routing.Preview.Device);
 
         var (musicMixer, musicChannels) = OutputFor(musicDevice);
         var (cartMixer, cartChannels) = OutputFor(cartDevice);
+        var (previewMixer, previewChannels) = OutputFor(previewDevice);
 
         Attach(musicMixer, musicChannels, _musicOut, routing.Music.FirstChannel);
         Attach(cartMixer, cartChannels, _cartOut, routing.Carts.FirstChannel);
+        Attach(previewMixer, previewChannels, PreviewBus, routing.Preview.FirstChannel);
 
         // Program rides along on the music card's mixer with an all-zero matrix: pulled in real time, never heard.
         BassMix.MixerAddChannel(musicMixer, Program, BassFlags.MixerChanMatrix);
@@ -93,12 +100,24 @@ sealed class AudioGraph
         _musicDeviceChannels = musicChannels;
         _cartDeviceMixer = cartMixer;
         _cartDeviceChannels = cartChannels;
+        _previewDeviceMixer = previewMixer;
+        _previewDeviceChannels = previewChannels;
+        _previewOnAir = SamePair(previewDevice, routing.Preview, musicDevice, routing.Music, musicChannels)
+                     || SamePair(previewDevice, routing.Preview, cartDevice, routing.Carts, cartChannels);
     }
+
+    static bool SamePair(int deviceA, OutputRoute a, int deviceB, OutputRoute b, int channels) =>
+        deviceA == deviceB && Math.Clamp(a.FirstChannel & ~1, 0, channels - 2) == Math.Clamp(b.FirstChannel & ~1, 0, channels - 2);
+
+    /// <summary>True when Preview comes out of the same card and pair as Music or Cartwall, i.e. it would be heard on air.</summary>
+    public bool PreviewOnAir => _previewOnAir;
 
     /// <summary>Bytes (in bus format) still queued on the music card, for latency-corrected positions.</summary>
     public int MusicDelay => Delay(_musicDeviceMixer, _musicDeviceChannels);
 
     public int CartDelay => Delay(_cartDeviceMixer, _cartDeviceChannels);
+
+    public int PreviewDelay => Delay(_previewDeviceMixer, _previewDeviceChannels);
 
     /// <summary>Peak levels of what is going out (music and carts combined).</summary>
     public (float Left, float Right) Levels()

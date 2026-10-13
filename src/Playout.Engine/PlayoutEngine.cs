@@ -16,6 +16,7 @@ public sealed class PlayoutEngine : IDisposable
 {
     const double StopFadeSeconds = 0.4;
     const double CartStopFadeSeconds = 0.25;
+    const double CueOutFadeSeconds = 0.05; // just enough to avoid a click when cutting at Cue Out
 
     readonly BlockingCollection<Action> _commands = new();
     readonly List<(DateTime Due, Action Action)> _timers = new();
@@ -24,15 +25,18 @@ public sealed class PlayoutEngine : IDisposable
     // Strong references: BASS holds raw function pointers to these.
     readonly SyncProcedure _crossfadeSync;
     readonly SyncProcedure _endSync;
+    readonly SyncProcedure _cueOutSync;
 
     readonly AudioGraph _graph;
     readonly WaveformLoader _waveforms = new();
+    readonly CueStore _cues;
 
     // Engine-thread state.
     readonly List<Track> _playlist = new();
     readonly HashSet<Guid> _played = new();
     int _cursorIndex = -1; // index of the last started item; survives removal of that item
     (Guid Id, int Handle)? _preload;
+    readonly List<int> _playingOut = new(); // decks past their Mix marker, finishing under the next item
 
     // Shared with polling readers; written only on the engine thread.
     volatile Deck? _current;
@@ -44,22 +48,26 @@ public sealed class PlayoutEngine : IDisposable
     volatile bool _autoAdvance = true;
     double _crossfadeSeconds = 5;
 
-    sealed record Deck(int Handle, Track Track, double Length);
+    /// <param name="MixFade">How the deck fades once the next item starts at the mix point; null = it plays on to Cue Out (Mix marker).</param>
+    sealed record Deck(int Handle, Track Track, double Length, int MixSync, int CueOutSync, double? MixFade);
 
     public event Action<PlaylistSnapshot>? PlaylistChanged;
     public event Action<string>? Log;
 
-    /// <param name="routing">Where the music and cart buses go.</param>
+    /// <param name="routing">Where the music, cart and preview buses go.</param>
+    /// <param name="cues">Cue points per file; applied when files are added.</param>
     /// <param name="forceDevice">Send every bus to this BASS device regardless of routing (0 = "no sound", for testing).</param>
-    public PlayoutEngine(AudioRouting routing, int? forceDevice = null)
+    public PlayoutEngine(AudioRouting routing, CueStore cues, int? forceDevice = null)
     {
         LoadPlugins();
+        _cues = cues;
 
         _graph = new AudioGraph(forceDevice);
         _graph.Apply(routing);
 
         _crossfadeSync = (_, channel, _, _) => _commands.Add(() => OnCrossfadePoint(channel));
         _endSync = (_, channel, _, _) => _commands.Add(() => OnTrackEnd(channel));
+        _cueOutSync = (_, channel, _, _) => _commands.Add(() => OnCueOut(channel));
 
         _thread = new Thread(Run) { Name = "PlayoutEngine", IsBackground = true, Priority = ThreadPriority.AboveNormal };
         _thread.Start();
@@ -80,6 +88,49 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Short 1 kHz tone on a card/channel pair, to find the right desk fader.</summary>
     public void PlayTestTone(OutputRoute route) => _graph.TestTone(route);
 
+    /// <summary>True when the Preview output is the same card and pair as Music or Cartwall, so pre-listening would be heard on air.</summary>
+    public bool PreviewIsOnAir => _graph.PreviewOnAir;
+
+    /// <summary>Opens a file for pre-listening on the Preview output (paused at the start), or null if it cannot be read.</summary>
+    public PreviewPlayer? OpenPreview(string path)
+    {
+        int h = OpenStream(path, prescan: true);
+        if (h == 0) return null;
+        if (!BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.MixerChanPause))
+        {
+            Bass.StreamFree(h);
+            return null;
+        }
+        return new PreviewPlayer(_graph, h);
+    }
+
+    /// <summary>Saved cue points for a file (empty if none).</summary>
+    public CuePoints GetCues(string path) => _cues.Get(path) ?? CuePoints.None;
+
+    /// <summary>
+    /// Saves cue points for a file and applies them to every playlist item of that file. If the file is on air,
+    /// the new Mix and Cue Out take effect straight away (if they are still ahead).
+    /// </summary>
+    public void SetCues(string path, CuePoints cues)
+    {
+        _cues.Set(path, cues);
+        Post(() =>
+        {
+            var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            for (int i = 0; i < _playlist.Count; i++)
+                if (string.Equals(_playlist[i].Path, path, comparer))
+                    _playlist[i] = _playlist[i] with { Cues = cues.IsEmpty ? null : cues };
+
+            if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer))
+            {
+                if (deck.MixSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.MixSync);
+                if (deck.CueOutSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.CueOutSync);
+                _current = Arm(deck.Handle, deck.Track with { Cues = cues.IsEmpty ? null : cues }, deck.Length);
+            }
+            PlaylistUpdated();
+        });
+    }
+
     // ───────────────────────── Public API (thread-safe, non-blocking) ─────────────────────────
 
     public bool AutoAdvance { get => _autoAdvance; set => _autoAdvance = value; }
@@ -96,7 +147,7 @@ public sealed class PlayoutEngine : IDisposable
         var list = paths.ToList();
         Post(() =>
         {
-            var tracks = list.Select(Probe).OfType<Track>().ToList();
+            var tracks = list.Select(SafeProbe).OfType<Track>().ToList();
             int at = insertAt < 0 || insertAt > _playlist.Count ? _playlist.Count : insertAt;
             _playlist.InsertRange(at, tracks);
             if (at <= _cursorIndex) _cursorIndex += tracks.Count;
@@ -152,20 +203,23 @@ public sealed class PlayoutEngine : IDisposable
         if (id is { } target)
         {
             var t = _playlist.FirstOrDefault(x => x.Id == target);
-            if (t != null) StartTrack(t);
+            if (t == null) return;
+            FadePlayingOut(ManualFade);
+            StartTrack(t, ManualFade);
             return;
         }
         if (_current != null && State == PlayerState.Paused) { SetPaused(false); return; }
         if (_current != null) return;
         // At the end of the list, Play starts again from the top.
-        if ((NextTrack() ?? _playlist.FirstOrDefault()) is { } next) StartTrack(next);
+        if ((NextTrack() ?? _playlist.FirstOrDefault()) is { } next) StartTrack(next, ManualFade);
     });
 
     /// <summary>Crossfade into the next playlist item immediately.</summary>
     public void Next() => Post(() =>
     {
-        if (NextTrack() is { } next) StartTrack(next);
-        else StopInternal();
+        if (NextTrack() is not { } next) { StopInternal(); return; }
+        FadePlayingOut(ManualFade);
+        StartTrack(next, ManualFade);
     });
 
     public void Stop() => Post(StopInternal);
@@ -192,15 +246,15 @@ public sealed class PlayoutEngine : IDisposable
         Post(() => After(CartStopFadeSeconds + 0.2, () => Bass.StreamFree(handle)));
     }
 
-    /// <summary>Seconds left on a cart, or null when it has finished.</summary>
-    public double? CartRemaining(int handle)
+    /// <summary>Seconds left on a cart and how much of it has played (0–1), or null when it has finished.</summary>
+    public (double Left, double Played)? CartProgress(int handle)
     {
         if (handle == 0 || Bass.ChannelIsActive(handle) == PlaybackState.Stopped) return null;
         long len = Bass.ChannelGetLength(handle, PositionFlags.Bytes);
         if (len < 0) return null;
         // Until the mixer has rendered the first block there is no position yet.
-        long pos = Math.Max(0, BassMix.ChannelGetPosition(handle, PositionFlags.Bytes, _graph.CartDelay));
-        return Bass.ChannelBytes2Seconds(handle, len - pos);
+        long pos = Math.Clamp(BassMix.ChannelGetPosition(handle, PositionFlags.Bytes, _graph.CartDelay), 0, len);
+        return (Bass.ChannelBytes2Seconds(handle, len - pos), len > 0 ? (double)pos / len : 0);
     }
 
     /// <summary>Amplitude envelope for drawing; decoded off the on-air path and cached.</summary>
@@ -335,18 +389,22 @@ public sealed class PlayoutEngine : IDisposable
         return i >= 0 && i < _playlist.Count ? _playlist[i] : null;
     }
 
+    /// <summary>Fade for the outgoing deck when the operator changes item by hand.</summary>
+    double ManualFade => Math.Max(CrossfadeSeconds, StopFadeSeconds);
+
     void OnCrossfadePoint(int handle)
     {
-        if (_current?.Handle != handle || !_autoAdvance) return;
-        if (NextTrack() is { } next) StartTrack(next);
+        if (_current is not { } deck || deck.Handle != handle || !_autoAdvance) return;
+        if (NextTrack() is { } next) StartTrack(next, deck.MixFade);
     }
 
     void OnTrackEnd(int handle)
     {
+        _playingOut.Remove(handle);
         if (_current?.Handle != handle) return; // a faded-out deck finishing, nothing to do
         if (_autoAdvance && NextTrack() is { } next)
         {
-            StartTrack(next);
+            StartTrack(next, 0);
             return;
         }
         _current = null;
@@ -354,7 +412,29 @@ public sealed class PlayoutEngine : IDisposable
         PlaylistUpdated();
     }
 
-    void StartTrack(Track track)
+    /// <summary>A deck reached its Cue Out: cut it, and if it is still the one on air, move on (AUTO) or stop.</summary>
+    void OnCueOut(int handle)
+    {
+        if (_current?.Handle != handle)
+        {
+            // Playing out after its Mix point, or still fading: nothing past Cue Out may be heard.
+            _playingOut.Remove(handle);
+            FadeOutAndFree(handle, CueOutFadeSeconds);
+            return;
+        }
+        if (_autoAdvance && NextTrack() is { } next)
+        {
+            StartTrack(next, CueOutFadeSeconds);
+            return;
+        }
+        FadeOutAndFree(handle, CueOutFadeSeconds);
+        _current = null;
+        _state = (int)PlayerState.Stopped;
+        PlaylistUpdated();
+    }
+
+    /// <param name="outgoingFade">How the deck now on air leaves: fade time in seconds (0 = cut), or null to let it play on to its Cue Out.</param>
+    void StartTrack(Track track, double? outgoingFade)
     {
         int handle = TakePreload(track.Id) ?? OpenStream(track.Path, prescan: true);
         if (handle == 0)
@@ -362,19 +442,27 @@ public sealed class PlayoutEngine : IDisposable
             Emit($"Cannot play {track.Display}: {Bass.LastError}; skipping");
             _played.Add(track.Id);
             _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
-            if (_autoAdvance && NextTrack() is { } after && after.Id != track.Id) StartTrack(after);
+            if (_autoAdvance && NextTrack() is { } after && after.Id != track.Id) StartTrack(after, outgoingFade);
             else PlaylistUpdated();
             return;
         }
 
         double length = Bass.ChannelBytes2Seconds(handle, Bass.ChannelGetLength(handle, PositionFlags.Bytes));
-        double xfade = CrossfadeSeconds;
+        // The prescanned length is exact; the one from adding the file may be an estimate.
+        if (Math.Abs(track.Duration - length) > 0.001)
+        {
+            track = track with { Duration = length };
+            int index = _playlist.FindIndex(t => t.Id == track.Id);
+            if (index >= 0) _playlist[index] = track;
+        }
+        if (track.Start > 0) Bass.ChannelSetPosition(handle, Bass.ChannelSeconds2Bytes(handle, track.Start));
 
         if (_current is { } old)
         {
             // Manual changes while paused should not un-pause the old deck into a fade.
             if (State == PlayerState.Paused) FadeOutAndFree(old.Handle, 0);
-            else FadeOutAndFree(old.Handle, Math.Max(xfade, StopFadeSeconds));
+            else if (outgoingFade is { } fade) FadeOutAndFree(old.Handle, fade);
+            else _playingOut.Add(old.Handle); // keeps playing; its Cue Out (or end) sync frees it
         }
 
         // Mixer syncs can only be set on a channel that is already a mixer source,
@@ -386,16 +474,11 @@ public sealed class PlayoutEngine : IDisposable
             return;
         }
 
-        // Very short items (stingers) just play to the end instead of crossfading at once.
-        if (xfade > 0 && length > xfade * 2)
-        {
-            long at = Bass.ChannelSeconds2Bytes(handle, length - xfade);
-            BassMix.ChannelSetSync(handle, SyncFlags.Position | SyncFlags.Mixtime, at, _crossfadeSync);
-        }
         BassMix.ChannelSetSync(handle, SyncFlags.End | SyncFlags.Mixtime, 0, _endSync);
+        var deck = Arm(handle, track, length);
         BassMix.ChannelFlags(handle, BassFlags.Default, BassFlags.MixerChanPause);
 
-        _current = new Deck(handle, track, length);
+        _current = deck;
         _state = (int)PlayerState.Playing;
         _played.Add(track.Id);
         _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
@@ -406,8 +489,34 @@ public sealed class PlayoutEngine : IDisposable
         PlaylistUpdated();
     }
 
+    /// <summary>Sets the Mix and Cue Out syncs on a deck (it must already be a mixer source).</summary>
+    Deck Arm(int handle, Track track, double length)
+    {
+        double end = Math.Min(track.End, length);
+        double mixAt = Math.Min(track.MixPoint(CrossfadeSeconds), end);
+
+        int mixSync = 0, cueOutSync = 0;
+        // With the mix point at the end there is no overlap: Cue Out (or the end of the file) starts the next item.
+        if (mixAt < end - 0.01)
+            mixSync = BassMix.ChannelSetSync(handle, SyncFlags.Position | SyncFlags.Mixtime, Bass.ChannelSeconds2Bytes(handle, mixAt), _crossfadeSync);
+        if (end < length - 0.01)
+            cueOutSync = BassMix.ChannelSetSync(handle, SyncFlags.Position | SyncFlags.Mixtime, Bass.ChannelSeconds2Bytes(handle, end), _cueOutSync);
+
+        // A Mix marker means "start the next one here, let this one finish"; the default crossfade fades it out by Cue Out.
+        double? mixFade = track.Cues?.Mix != null ? null : end - mixAt;
+        return new Deck(handle, track, length, mixSync, cueOutSync, mixFade);
+    }
+
+    /// <summary>Fades decks that are still playing out under the current item (the operator took over).</summary>
+    void FadePlayingOut(double seconds)
+    {
+        foreach (int h in _playingOut) FadeOutAndFree(h, seconds);
+        _playingOut.Clear();
+    }
+
     void StopInternal()
     {
+        FadePlayingOut(StopFadeSeconds);
         if (_current is { } deck) FadeOutAndFree(deck.Handle, State == PlayerState.Paused ? 0 : StopFadeSeconds);
         _current = null;
         _state = (int)PlayerState.Stopped;
@@ -417,6 +526,7 @@ public sealed class PlayoutEngine : IDisposable
     void SetPaused(bool paused)
     {
         if (_current is not { } deck) return;
+        if (paused) FadePlayingOut(StopFadeSeconds);
         BassMix.ChannelFlags(deck.Handle, paused ? BassFlags.MixerChanPause : BassFlags.Default, BassFlags.MixerChanPause);
         _state = (int)(paused ? PlayerState.Paused : PlayerState.Playing);
     }
@@ -464,6 +574,17 @@ public sealed class PlayoutEngine : IDisposable
         return Bass.CreateStream(path, 0, 0, flags);
     }
 
+    /// <summary>Like <see cref="Probe"/>, but a file that fails is reported and skipped instead of failing the whole add.</summary>
+    Track? SafeProbe(string path)
+    {
+        try { return Probe(path); }
+        catch (Exception ex)
+        {
+            Emit($"Skipped {Path.GetFileName(path)}: {ex.Message}");
+            return null;
+        }
+    }
+
     Track? Probe(string path)
     {
         int h = OpenStream(path, prescan: false);
@@ -475,7 +596,13 @@ public sealed class PlayoutEngine : IDisposable
         try
         {
             double len = Bass.ChannelBytes2Seconds(h, Bass.ChannelGetLength(h, PositionFlags.Bytes));
-            var tags = TagReader.Read(h);
+            TagReader? tags = null;
+            try { tags = TagReader.Read(h); }
+            catch (Exception ex)
+            {
+                // Malformed tags (e.g. a corrupt ID3v2 frame) can make the tag parser throw; fall back to the filename.
+                Emit($"Unreadable tags, using the filename: {Path.GetFileName(path)} ({ex.Message})");
+            }
             string title = tags?.Title ?? "";
             string artist = tags?.Artist ?? "";
             if (string.IsNullOrWhiteSpace(title))
@@ -485,7 +612,7 @@ public sealed class PlayoutEngine : IDisposable
                 var parts = name.Split(" - ", 2);
                 (artist, title) = parts.Length == 2 ? (parts[0], parts[1]) : ("", name);
             }
-            return new Track(Guid.NewGuid(), path, artist.Trim(), title.Trim(), len, TrackClassifier.Classify(path));
+            return new Track(Guid.NewGuid(), path, artist.Trim(), title.Trim(), len, TrackClassifier.Classify(path), _cues.Get(path));
         }
         finally
         {

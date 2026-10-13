@@ -83,7 +83,7 @@
                     </StackPanel>
                     <StackPanel>
                         <TextBlock Classes="label" Text="Outputs (one desk channel each)" />
-                        <Grid ColumnDefinitions="90,*,10,110,10,Auto" RowDefinitions="Auto,8,Auto">
+                        <Grid ColumnDefinitions="90,*,10,110,10,Auto" RowDefinitions="Auto,8,Auto,8,Auto">
                             <TextBlock Text="Music" VerticalAlignment="Center" FontWeight="SemiBold" />
                             <ComboBox Grid.Column="1" x:Name="MusicDeviceBox" HorizontalAlignment="Stretch" />
                             <ComboBox Grid.Column="3" x:Name="MusicChannelBox" HorizontalAlignment="Stretch" />
@@ -93,9 +93,15 @@
                             <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CartDeviceBox" HorizontalAlignment="Stretch" />
                             <ComboBox Grid.Row="2" Grid.Column="3" x:Name="CartChannelBox" HorizontalAlignment="Stretch" />
                             <Button Grid.Row="2" Grid.Column="5" x:Name="CartTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
+
+                            <TextBlock Grid.Row="4" Text="Preview" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       ToolTip.Tip="Pre-listen in the cue editor. Use an output that is not on air, e.g. the desk's PFL / cue input or headphones." />
+                            <ComboBox Grid.Row="4" Grid.Column="1" x:Name="PreviewDeviceBox" HorizontalAlignment="Stretch" />
+                            <ComboBox Grid.Row="4" Grid.Column="3" x:Name="PreviewChannelBox" HorizontalAlignment="Stretch" />
+                            <Button Grid.Row="4" Grid.Column="5" x:Name="PreviewTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
                         </Grid>
                         <TextBlock Classes="note" Margin="0,6,0,0"
-                                   Text="Send music and cartwall to different sound cards or output pairs to get them on separate desk faders. Use Test to find which fader is which. Applies when you click Save. The stream always carries music and cartwall together." />
+                                   Text="Send music and cartwall to different sound cards or output pairs to get them on separate desk faders. Use Test to find which fader is which. Applies when you click Save. The stream always carries music and cartwall together. Preview (for the cue editor) is never streamed; give it an output that is not on air." />
                     </StackPanel>
                 </StackPanel>
             </TabItem>

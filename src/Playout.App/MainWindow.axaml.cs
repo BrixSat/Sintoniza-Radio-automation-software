@@ -10,7 +10,9 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Playout.App.Controls;
 using Playout.Engine;
+using Track = Playout.Engine.Track;
 
 namespace Playout.App;
 
@@ -20,7 +22,6 @@ public partial class MainWindow : Window
     readonly AppSettings _settings = AppSettings.Load();
     readonly ObservableCollection<PlaylistRow> _rows = new();
     readonly Dictionary<Guid, PlaylistRow> _rowsById = new();
-    readonly CartSlot[] _carts = new CartSlot[AppSettings.CartCount];
     readonly DispatcherTimer _fastTimer;
     PlaylistSnapshot? _snapshot;
     Guid? _lastOnAirId;
@@ -43,7 +44,8 @@ public partial class MainWindow : Window
 
         try
         {
-            _engine = new PlayoutEngine(_settings.Routing, ForcedDeviceFromArgs());
+            var cues = new CueStore(Path.Combine(AppSettings.DataFolder, "cues.json"));
+            _engine = new PlayoutEngine(_settings.Routing, cues, ForcedDeviceFromArgs());
             _engine.Log += msg => Dispatcher.UIThread.Post(() => LastLog.Text = msg);
             _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
         }
@@ -105,6 +107,12 @@ public partial class MainWindow : Window
         {
             if ((e.Source as Control)?.DataContext is PlaylistRow row) _engine?.Play(row.Id);
         };
+        var editCues = new MenuItem { Header = "Edit cue points…", InputGesture = new KeyGesture(Key.E, CommandModifiers) };
+        editCues.Click += async (_, _) => await EditSelectedCues();
+        var remove = new MenuItem { Header = "Remove", InputGesture = new KeyGesture(Key.Delete) };
+        remove.Click += (_, _) => RemoveSelected();
+        Playlist.ContextMenu = new ContextMenu { Items = { editCues, remove } };
+
         Playlist.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Delete) { RemoveSelected(); e.Handled = true; }
@@ -142,6 +150,7 @@ public partial class MainWindow : Window
 
         Library.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1);
         Library.RootChanged += root => _settings.MusicFolder = root;
+        Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
 
         StreamToggle.Click += (_, _) => ToggleStreaming();
         SettingsButton.Click += async (_, _) => await OpenSettings();
@@ -158,9 +167,12 @@ public partial class MainWindow : Window
         _engine?.Play(stopped && Playlist.SelectedItem is PlaylistRow row ? row.Id : null);
     }
 
+    static KeyModifiers CommandModifiers =>
+        Application.Current?.PlatformSettings?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+
     void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        var cmd = Application.Current?.PlatformSettings?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+        var cmd = CommandModifiers;
         switch (e.Key)
         {
             case Key.F5: PlayPressed(); break;
@@ -169,6 +181,7 @@ public partial class MainWindow : Window
             case Key.F8: _engine?.Stop(); break;
             case Key.O when e.KeyModifiers == cmd: _ = AddFilesFromPicker(); break;
             case Key.S when e.KeyModifiers == cmd: _ = SavePlaylist(); break;
+            case Key.E when e.KeyModifiers == cmd: _ = EditSelectedCues(); break;
             case Key.Up when e.KeyModifiers == cmd: MoveSelected(-1); break;
             case Key.Down when e.KeyModifiers == cmd: MoveSelected(+1); break;
             case Key.OemComma when e.KeyModifiers == cmd: _ = OpenSettings(); break;
@@ -194,10 +207,16 @@ public partial class MainWindow : Window
         NowTitle.Text = st.Current?.Title ?? "Nothing on air";
         NowArtist.Text = string.IsNullOrWhiteSpace(st.Current?.Artist) ? " " : st.Current!.Artist;
         UpdateWaveforms(st);
+        // Times run from Cue In to Cue Out, not over the whole file.
+        double start = st.Current?.Start ?? 0;
+        double end = st.Current != null ? Math.Min(st.Current.End, st.Length) : 0;
+        double elapsed = Math.Max(0, st.Position - start);
         if (st.Current is { } cur && _rowsById.TryGetValue(cur.Id, out var onAirRow))
-            onAirRow.Progress = st.Length > 0 ? st.Position / st.Length : 0;
-        Elapsed.Text = Format.Duration(st.Position);
-        double remaining = Math.Max(0, st.Length - st.Position);
+            onAirRow.Progress = end > start ? elapsed / (end - start) : 0;
+        Elapsed.Text = Format.Duration(elapsed);
+        double remaining = Math.Max(0, end - st.Position);
+        UpdateCueBadge(st, end);
+        UpdateCueTimes(st);
         Remaining.Text = "-" + Format.Duration(Math.Ceiling(remaining));
         Remaining.Foreground = hasTrack && remaining <= 10
             ? (IBrush)this.FindResource("OnAir")!
@@ -258,11 +277,48 @@ public partial class MainWindow : Window
         }
 
         bool playing = st.State == PlayerState.Playing;
-        double xfade = _engine?.CrossfadeSeconds ?? 0;
-        WaveMain.SetCrossfade(xfade);
-        WaveOverview.SetCrossfade(xfade);
+        var markers = st.Current is { } t ? CueMarkers.For(t, _engine?.CrossfadeSeconds ?? 0) : (CueMarkers?)null;
+        WaveMain.SetMarkers(markers);
+        WaveOverview.SetMarkers(markers);
         WaveMain.UpdatePosition(st.Position, playing);
         WaveOverview.UpdatePosition(st.Position, playing);
+    }
+
+    /// <summary>Talk-over countdown: time left in the intro, then (from the Outro marker) time left until Cue Out.</summary>
+    void UpdateCueBadge(PlayerStatus st, double end)
+    {
+        string? label = null;
+        double left = 0;
+        if (st.State != PlayerState.Stopped && st.Current?.Cues is { } cues)
+        {
+            if (cues.Intro is { } intro && st.Position < intro) (label, left) = ("INTRO", intro - st.Position);
+            else if (cues.Outro is { } outro && st.Position >= outro && st.Position < end) (label, left) = ("OUTRO", end - st.Position);
+        }
+        CueBadge.IsVisible = label != null;
+        if (label == null) return;
+        CueLabel.Text = label;
+        CueTime.Text = Math.Ceiling(left).ToString("0");
+        CueBadge.Classes.Set("intro", label == "INTRO");
+        CueBadge.Classes.Set("outro", label == "OUTRO");
+    }
+
+    /// <summary>Time left until each cue point that is set (Intro, Outro, Mix); dimmed at zero once passed.</summary>
+    void UpdateCueTimes(PlayerStatus st)
+    {
+        var cues = st.State != PlayerState.Stopped ? st.Current?.Cues : null;
+        double? mix = cues?.Mix != null ? st.Current!.MixPoint(0) : null;
+        Show(IntroInfo, IntroTime, cues?.Intro);
+        Show(OutroInfo, OutroTime, cues?.Outro);
+        Show(MixInfo, MixTime, mix);
+
+        void Show(StackPanel info, TextBlock time, double? at)
+        {
+            info.IsVisible = at != null;
+            if (at == null) return;
+            double left = Math.Max(0, at.Value - st.Position);
+            time.Text = Format.Duration(Math.Ceiling(left));
+            info.Classes.Set("passed", left <= 0);
+        }
     }
 
     void FlashNext()
@@ -281,12 +337,12 @@ public partial class MainWindow : Window
         int current = _snapshot.CurrentId is { } cid ? items.ToList().FindIndex(t => t.Id == cid) : -1;
         int startFrom = _snapshot.NextId is { } nid ? items.ToList().FindIndex(t => t.Id == nid) : -1;
 
-        // Mirrors the engine: items no longer than two crossfades (jingles, stingers) play out in full.
-        double Overlap(double length) => length > xfade * 2 ? xfade : 0;
-        double lastOverlap = Overlap(st.Length);
+        // Mirrors the engine: each item starts at the previous one's mix point, and that one carries on to its Cue Out.
+        double Tail(Track t) => t.End - t.MixPoint(xfade);
+        double lastTail = st.Current is { } cur ? Tail(cur) : 0;
 
-        DateTime? at = st.State == PlayerState.Playing && current >= 0
-            ? DateTime.Now.AddSeconds(Math.Max(0, st.Length - st.Position - lastOverlap))
+        DateTime? at = st.State == PlayerState.Playing && current >= 0 && st.Current != null
+            ? DateTime.Now.AddSeconds(Math.Max(0, st.Current.MixPoint(xfade) - st.Position))
             : null;
 
         for (int i = 0; i < items.Count; i++)
@@ -295,14 +351,14 @@ public partial class MainWindow : Window
             if (at is { } t && startFrom >= 0 && i >= startFrom)
             {
                 row.StartTime = t.ToString("HH:mm:ss");
-                lastOverlap = Overlap(items[i].Duration);
-                at = t.AddSeconds(items[i].Duration - lastOverlap);
+                lastTail = Tail(items[i]);
+                at = t.AddSeconds(items[i].PlayLength - lastTail);
             }
             else row.StartTime = "";
         }
 
-        // When the last item finishes: the chain above ends one crossfade early; with nothing queued it is the current item.
-        if (at is { } end) _playlistEnds = end.AddSeconds(lastOverlap);
+        // When the last item finishes: the chain above stops at its mix point; with nothing queued it is the current item.
+        if (at is { } end) _playlistEnds = end.AddSeconds(lastTail);
     }
 
     void UpdateStreamStatus(PlayerStatus st)
@@ -367,6 +423,7 @@ public partial class MainWindow : Window
             var t = snap.Items[i];
             alive.Add(t.Id);
             if (!_rowsById.TryGetValue(t.Id, out var row)) _rowsById[t.Id] = row = new PlaylistRow(t);
+            row.Track = t;
             row.Number = i + 1;
             row.IsPlaying = t.Id == snap.CurrentId;
             row.IsNext = t.Id == snap.NextId;
@@ -375,7 +432,10 @@ public partial class MainWindow : Window
         }
         foreach (var dead in _rowsById.Keys.Where(k => !alive.Contains(k)).ToList()) _rowsById.Remove(dead);
 
-        // In-place sync keeps the ListBox scroll position stable.
+        // In-place sync keeps the ListBox scroll position stable. Drop removed rows first: otherwise every row
+        // after them gets moved up one by one, dragging the (selected) removed row to the bottom, and the list scrolls after it.
+        for (int i = _rows.Count - 1; i >= 0; i--)
+            if (!alive.Contains(_rows[i].Id)) _rows.RemoveAt(i);
         for (int i = 0; i < desired.Count; i++)
         {
             if (i < _rows.Count && ReferenceEquals(_rows[i], desired[i])) continue;
@@ -389,7 +449,7 @@ public partial class MainWindow : Window
             if (Playlist.SelectedItems?.Contains(row) == false) Playlist.SelectedItems.Add(row);
 
         EmptyHint.IsVisible = _rows.Count == 0;
-        double total = snap.Items.Sum(t => t.Duration);
+        double total = snap.Items.Sum(t => t.PlayLength);
         PlaylistInfo.Text = _rows.Count == 0 ? "" : $"{_rows.Count} items · {Format.Duration(total)}";
         NextTitle.Text = snap.NextId is { } n && _rowsById.TryGetValue(n, out var next) ? next.Track.Display : "—";
 
@@ -516,97 +576,26 @@ public partial class MainWindow : Window
         return _rowsById.TryGetValue(id, out var row) ? _rows.IndexOf(row) + 1 : -1;
     }
 
-    // ───────────────────────── Cartwall ─────────────────────────
+    // ───────────────────────── Cue points ─────────────────────────
 
-    sealed class CartSlot
+    async Task EditSelectedCues()
     {
-        public required Button Button;
-        public required TextBlock Name;
-        public required TextBlock Time;
-        public string? Path;
-        public int Handle;
+        if (Playlist.SelectedItem is PlaylistRow row) await EditCues(row.Track.Path, row.Track.Display);
     }
 
-    void BuildCartwall()
+    bool _cueEditorOpen;
+
+    async Task EditCues(string path, string title)
     {
-        for (int i = 0; i < _carts.Length; i++)
+        if (_engine == null || _cueEditorOpen) return;
+        _cueEditorOpen = true;
+        try
         {
-            int index = i;
-            var name = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 13, FontWeight = FontWeight.SemiBold, MaxLines = 2, TextTrimming = TextTrimming.CharacterEllipsis };
-            var time = new TextBlock { FontSize = 12, Opacity = 0.75, HorizontalAlignment = HorizontalAlignment.Right };
-            time.Classes.Add("digits");
-            var number = new TextBlock { Text = (i + 1).ToString(), FontSize = 11, Opacity = 0.5 };
-
-            var content = new Grid { RowDefinitions = new RowDefinitions("*,Auto"), ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-            Grid.SetColumnSpan(name, 2);
-            Grid.SetRow(number, 1);
-            Grid.SetRow(time, 1);
-            Grid.SetColumn(time, 1);
-            content.Children.Add(name);
-            content.Children.Add(number);
-            content.Children.Add(time);
-
-            var button = new Button { Content = content };
-            button.Classes.Add("cart");
-            button.Click += (_, _) => ToggleCart(index);
-
-            var assign = new MenuItem { Header = "Assign file…" };
-            assign.Click += async (_, _) => await AssignCart(index);
-            var clear = new MenuItem { Header = "Clear" };
-            clear.Click += (_, _) => SetCart(index, null);
-            button.ContextMenu = new ContextMenu { Items = { assign, clear } };
-
-            _carts[i] = new CartSlot { Button = button, Name = name, Time = time };
-            Cartwall.Children.Add(button);
-            SetCart(i, _settings.Carts[i]);
+            await new CueEditorWindow(_engine, path, title).ShowDialog(this);
         }
-    }
-
-    void SetCart(int index, string? path)
-    {
-        var slot = _carts[index];
-        if (slot.Handle != 0) { _engine?.StopCart(slot.Handle); slot.Handle = 0; }
-        slot.Path = path;
-        _settings.Carts[index] = path;
-        slot.Name.Text = path == null ? "" : Path.GetFileNameWithoutExtension(path);
-        slot.Time.Text = "";
-        slot.Button.Classes.Set("empty", path == null);
-        ToolTip.SetTip(slot.Button, path);
-    }
-
-    async Task AssignCart(int index)
-    {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        finally
         {
-            Title = $"Assign cart {index + 1}",
-            FileTypeFilter = [new FilePickerFileType("Audio") { Patterns = AudioFiles.Patterns }],
-        });
-        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) SetCart(index, path);
-    }
-
-    void ToggleCart(int index)
-    {
-        var slot = _carts[index];
-        if (_engine == null || slot.Path == null) return;
-        if (slot.Handle != 0)
-        {
-            _engine.StopCart(slot.Handle);
-            slot.Handle = 0;
-        }
-        else
-        {
-            slot.Handle = _engine.FireCart(slot.Path);
-        }
-    }
-
-    void UpdateCarts()
-    {
-        foreach (var slot in _carts)
-        {
-            double? left = slot.Handle != 0 ? _engine?.CartRemaining(slot.Handle) : null;
-            if (left == null) slot.Handle = 0;
-            slot.Button.Classes.Set("playing", left != null);
-            slot.Time.Text = left is { } s ? "-" + Format.Duration(Math.Ceiling(s)) : "";
+            _cueEditorOpen = false;
         }
     }
 

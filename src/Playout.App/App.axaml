@@ -61,6 +61,34 @@
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="LetterSpacing" Value="1.5" />
         </Style>
+        <Style Selector="Border.badge.cue > StackPanel > TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.5" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Border.badge.cue">
+            <Setter Property="Padding" Value="10,2" />
+        </Style>
+        <Style Selector="Border.badge.intro">
+            <Setter Property="Background" Value="#1F6F4A" />
+        </Style>
+        <Style Selector="Border.badge.outro">
+            <Setter Property="Background" Value="#5B3F99" />
+        </Style>
+        <!-- Cue point countdowns beside ELAPSED / REMAINING -->
+        <Style Selector="StackPanel.cue-time">
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="StackPanel.cue-time > TextBlock.digits">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="StackPanel.cue-time.passed">
+            <Setter Property="Opacity" Value="0.35" />
+        </Style>
+
         <Style Selector="Button.badge">
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="CornerRadius" Value="4" />
@@ -237,6 +265,21 @@
             <Setter Property="Margin" Value="-8,-5" />
         </Style>
 
+        <!-- "Has cue points" tag next to a playlist title -->
+        <Style Selector="Border.cue-tag">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="4,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="BorderBrush" Value="#4A5263" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.cue-tag > TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+        </Style>
+
         <!-- Item type icons -->
         <Style Selector="PathIcon.kind">
             <Setter Property="Width" Value="15" />
@@ -263,7 +306,7 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Margin" Value="3" />
-            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Padding" Value="0" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="MinHeight" Value="58" />
         </Style>
@@ -278,6 +321,20 @@
         <Style Selector="Button.cart.playing /template/ ContentPresenter">
             <Setter Property="Background" Value="#B8353A" />
             <Setter Property="BorderBrush" Value="#E5484D" />
+        </Style>
+        <!-- A coloured cart on air keeps its colour and gets a white edge -->
+        <Style Selector="Button.cart.colored.playing /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <!-- Played part of a playing cart: lightens whatever colour is under it -->
+        <Style Selector="Border.cart-progress">
+            <Setter Property="Background" Value="#38FFFFFF" />
+        </Style>
+        <!-- A file is being dragged over the cart -->
+        <Style Selector="Button.cart.drop /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+            <Setter Property="BorderThickness" Value="2" />
         </Style>
     </Application.Styles>
 </Application>

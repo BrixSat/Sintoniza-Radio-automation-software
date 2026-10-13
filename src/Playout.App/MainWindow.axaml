@@ -39,6 +39,13 @@
                                 <TextBlock x:Name="StreamText" Text="STREAM OFF" />
                             </StackPanel>
                         </Button>
+                        <!-- Talk-over countdown: time left in the intro, or to the end once the outro starts -->
+                        <Border Grid.Column="2" x:Name="CueBadge" Classes="badge cue" HorizontalAlignment="Center" IsVisible="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock x:Name="CueLabel" />
+                                <TextBlock x:Name="CueTime" Classes="digits" />
+                            </StackPanel>
+                        </Border>
                         <ToggleButton Grid.Column="3" x:Name="AutoSwitch" Classes="mode" IsChecked="True">
                             <Panel>
                                 <StackPanel x:Name="AutoContent" Orientation="Horizontal" Spacing="7">
@@ -64,9 +71,16 @@
 
                     <!-- Transport bar -->
                     <Grid Grid.Row="4" ColumnDefinitions="*,Auto,*" Margin="0,10,0,0">
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Classes="caption" Text="ELAPSED" />
-                            <TextBlock x:Name="Elapsed" Classes="digits" Text="00:00" FontSize="30" FontWeight="SemiBold" />
+                        <!-- Cue points that are set (Intro, Outro, Mix) count down next to the times; dimmed once passed -->
+                        <StackPanel Orientation="Horizontal" Spacing="22" VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock Classes="caption" Text="ELAPSED" />
+                                <TextBlock x:Name="Elapsed" Classes="digits" Text="00:00" FontSize="30" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel x:Name="IntroInfo" Classes="cue-time" IsVisible="False">
+                                <TextBlock Classes="caption" Text="INTRO" Foreground="#3ECF8E" />
+                                <TextBlock x:Name="IntroTime" Classes="digits" />
+                            </StackPanel>
                         </StackPanel>
                         <Border Grid.Column="1" Background="#13161C" CornerRadius="10" Padding="6">
                             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -84,9 +98,19 @@
                                 </Button>
                             </StackPanel>
                         </Border>
-                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <TextBlock Classes="caption" Text="REMAINING" HorizontalAlignment="Right" />
-                            <TextBlock x:Name="Remaining" Classes="digits" Text="-00:00" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="22" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <StackPanel x:Name="OutroInfo" Classes="cue-time" IsVisible="False">
+                                <TextBlock Classes="caption" Text="OUTRO" Foreground="#B392F0" />
+                                <TextBlock x:Name="OutroTime" Classes="digits" />
+                            </StackPanel>
+                            <StackPanel x:Name="MixInfo" Classes="cue-time" IsVisible="False">
+                                <TextBlock Classes="caption" Text="MIX" Foreground="{StaticResource NextUp}" />
+                                <TextBlock x:Name="MixTime" Classes="digits" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="caption" Text="REMAINING" HorizontalAlignment="Right" />
+                                <TextBlock x:Name="Remaining" Classes="digits" Text="-00:00" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
 
@@ -206,7 +230,12 @@
                                             <PathIcon Classes="kind commercial" Data="{StaticResource IconCommercial}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="Commercial" />
                                         </Panel>
                                         <StackPanel Grid.Column="3" VerticalAlignment="Center">
-                                            <TextBlock Classes="title" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Right" Classes="cue-tag" Margin="6,0,0,0" IsVisible="{Binding HasCues}" ToolTip.Tip="Has cue points">
+                                                    <TextBlock Text="CUE" />
+                                                </Border>
+                                                <TextBlock Classes="title" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
                                             <TextBlock Classes="muted" Text="{Binding Artist}" FontSize="12" TextTrimming="CharacterEllipsis"
                                                        IsVisible="{Binding HasArtist}" />
                                         </StackPanel>
@@ -228,10 +257,15 @@
 
             <Border Grid.Column="4" Classes="panel" Padding="10">
                 <DockPanel>
-                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="4,0,0,6">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="4,0,0,6">
                         <TextBlock Classes="caption" Text="CARTWALL" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Classes="muted" FontSize="11" Text="Right-click a cart to assign" VerticalAlignment="Center" />
+                        <ComboBox Grid.Column="1" x:Name="CartwallPicker" HorizontalAlignment="Stretch" Margin="10,0,6,0"
+                                  FontSize="12" MinHeight="0" ToolTip.Tip="Choose a cartwall" />
+                        <Button Grid.Column="2" x:Name="CartwallMenuButton" Classes="tool" Content="⋯"
+                                ToolTip.Tip="New, save as, rename or delete cartwalls" />
                     </Grid>
+                    <TextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="11" Margin="4,6,0,0"
+                               Text="Drop a file on a cart, or right-click it for colour and icon" />
                     <UniformGrid x:Name="Cartwall" Columns="3" />
                 </DockPanel>
             </Border>

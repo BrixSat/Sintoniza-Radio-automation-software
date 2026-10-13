@@ -32,6 +32,7 @@ public partial class SettingsWindow : Window
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
         SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
         SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
+        SetupOutput(PreviewDeviceBox, PreviewChannelBox, PreviewTestButton, devices, settings.PreviewOutput ?? new());
 
         ServerTypeBox.SelectedIndex = settings.Shoutcast ? 1 : 0;
         HostBox.Text = settings.StreamHost;
@@ -118,6 +119,7 @@ public partial class SettingsWindow : Window
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
         _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
+        _settings.PreviewOutput = RouteFrom(PreviewDeviceBox, PreviewChannelBox);
 
         _settings.Shoutcast = ServerTypeBox.SelectedIndex == 1;
         _settings.StreamHost = HostBox.Text?.Trim() ?? "";
