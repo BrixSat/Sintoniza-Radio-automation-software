@@ -130,13 +130,12 @@ This sends every output to that device and ignores the routing in Settings.
 first: a `.zip` and a `-setup.exe` installer for Windows, and a `.tar.gz` and a `.deb` for Linux. The installer needs
 NSIS (`sudo apt install nsis`); without it the script skips that step.
 
-Pushing a version tag publishes a GitHub Release with all four packages, built by
-`.github/workflows/release.yml`:
-
-```bash
-git tag v1.0.0 && git push origin v1.0.0
-``` Use `./build.sh win` or `./build.sh linux` for one platform, and
+Use `./build.sh win` or `./build.sh linux` for one platform, and
 `./build.sh all 1.0.0` to set the version (by default it comes from `git describe`).
+
+To publish a GitHub Release, commit and push your changes, then run `./release.sh 1.0.0`. It builds all four packages,
+tags the commit `v1.0.0` and uploads them to the repository's Releases page. It needs the
+[GitHub CLI](https://cli.github.com/) (`sudo apt install gh`, then `gh auth login`).
 
 To publish by hand instead, build a self-contained release, which needs no .NET installed on the target machine:
 
