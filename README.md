@@ -126,7 +126,19 @@ This sends every output to that device and ignores the routing in Settings.
 
 ### 4. Make a release build
 
-Publish a self-contained build, which needs no .NET installed on the target machine:
+`./build.sh` builds ready-to-ship packages for Windows and Linux in `dist/` and fetches any missing BASS libraries
+first: a `.zip` and a `-setup.exe` installer for Windows, and a `.tar.gz` and a `.deb` for Linux. The installer needs
+NSIS (`sudo apt install nsis`); without it the script skips that step.
+
+Pushing a version tag publishes a GitHub Release with all four packages, built by
+`.github/workflows/release.yml`:
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+``` Use `./build.sh win` or `./build.sh linux` for one platform, and
+`./build.sh all 1.0.0` to set the version (by default it comes from `git describe`).
+
+To publish by hand instead, build a self-contained release, which needs no .NET installed on the target machine:
 
 ```bash
 # Windows (64-bit)

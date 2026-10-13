@@ -5,4 +5,5 @@ obj/
 .idea/
 # BASS binaries are downloaded by scripts/fetch-bass.sh / fetch-bass.ps1
 native/
+# Build output of build.sh. Packages are published as GitHub Releases, not committed.
 dist/

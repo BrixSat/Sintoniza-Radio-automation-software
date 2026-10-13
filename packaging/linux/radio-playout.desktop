@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Radio Playout
+Comment=Radio automation and playout
+Exec=radio-playout
+Icon=radio-playout
+Terminal=false
+Categories=AudioVideo;Audio;
