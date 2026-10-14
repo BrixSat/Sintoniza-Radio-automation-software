@@ -122,7 +122,7 @@ public static class LibraryScanner
                     }
                     else
                     {
-                        Insert(c, tx, r, TrackClassifier.Classify(r.File.Path) switch
+                        Insert(db, c, tx, r, TrackClassifier.Classify(r.File.Path) switch
                         {
                             TrackKind.Jingle => jingles,
                             TrackKind.Commercial => ads,
@@ -178,7 +178,7 @@ public static class LibraryScanner
         using var tx = c.BeginTransaction();
         if (c.ExecuteScalar<long?>($"SELECT id FROM tracks WHERE {db.PathIs("path")} ORDER BY id LIMIT 1", new { path = r.File.Path }, tx) is { } id)
             Update(c, tx, id, r);
-        else Insert(c, tx, r, null);
+        else Insert(db, c, tx, r, null);
         tx.Commit();
     }
 
@@ -239,11 +239,12 @@ public static class LibraryScanner
         return new Read(file, title, artist, album, genre, year, isrc, duration, hasTags);
     }
 
-    static void Insert(DbConnection c, DbTransaction tx, Read r, long? categoryId)
+    /// <summary>Adds a file. If another studio's scan added it a moment ago (a shared library), theirs is kept.</summary>
+    static void Insert(LibraryDb db, DbConnection c, DbTransaction tx, Read r, long? categoryId)
     {
         string now = LibraryDb.Now();
-        c.Execute("""
-            INSERT INTO tracks (path, file_size, file_modified, title, artist, album, genre, year, isrc, duration,
+        c.Execute($"""
+            {(db.IsMySql ? "INSERT IGNORE" : "INSERT OR IGNORE")} INTO tracks (path, file_size, file_modified, title, artist, album, genre, year, isrc, duration,
                                 category_id, added_at, updated_at, search)
             VALUES (@Path, @Size, @Modified, @Title, @Artist, @Album, @Genre, @Year, @Isrc, @Duration,
                     @categoryId, @now, @now, @search)

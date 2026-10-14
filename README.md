@@ -7,8 +7,8 @@ engine for decoding, mixing and streaming.
 ![Main window](docs/screenshot.png)
 
 > **Status:** in development. It plays a playlist on air with crossfades, fires jingles from a cartwall, streams to
-> Icecast/Shoutcast, keeps a music library and play history, and guards against dead air. Scheduling (hour
-> templates and rotation) is next (see [Roadmap](#roadmap)).
+> Icecast/Shoutcast, sends now playing to an RDS encoder, keeps a music library and play history, and guards
+> against dead air. Scheduling (hour templates and rotation) is next (see [Roadmap](#roadmap)).
 
 ## Features
 
@@ -26,11 +26,14 @@ engine for decoding, mixing and streaming.
   and in M3U files (`#EXTINF:-1` means until Stop).
 - **Music library**: a database of the station's music, an SQLite file or a shared MySQL / MariaDB server
   (Settings → Library). The **LIBRARY** panel searches artist, title, album and file name as you type, ignoring
-  case and accents, and filters by category: Current, Recurrent, Gold, Jingles, IDs, Promos, Ads, or your own.
+  case and accents, and filters by category: Current, Recurrent, Gold, Jingles, IDs, Promos, Ads, or your own
+  (the ✎ button next to the filter adds, renames, recolours, orders and deletes categories).
   Right-click sets the category, tempo, voice and language of one or many songs. **Scan** adds new music and
-  follows moved or renamed files, keeping their category. Every item that goes on air is written to the play
-  history. `radio-import` does the scanning from the command line or on a schedule. The tables are documented
-  for other programs in [docs/library-database.md](docs/library-database.md).
+  follows moved or renamed files, keeping their category, cue points and history. The app also scans by itself:
+  a minute after it starts, every hour, and shortly after files in the music folders change (all adjustable in
+  Settings → Library). Every item that goes on air is written to the play history. Studios sharing a MySQL
+  library share categories, cue points and history. `radio-import` does the scanning from the command line. The
+  tables are documented for other programs in [docs/library-database.md](docs/library-database.md).
 - **Folders**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
 - **Cue points**: mark the usual radio markers on any file: **Cue In** (start), **Intro** (talk-over until the
   vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
@@ -68,12 +71,20 @@ engine for decoding, mixing and streaming.
   it. Installed with the Windows setup or the .deb package, it downloads the package, checks its SHA-256 and
   installs it (Windows: the app closes and restarts on the new version; Linux: asks for the admin password, then
   offers a restart). Portable zip/tar copies open the download page instead.
+- **RDS** (Settings → RDS): the radio text shows artist and title of the song on air (your own template, up to 64
+  characters) and the station's text during jingles, adverts and when stopped; the PS is fixed. It is sent when
+  the item changes and again every minute, so a restarted encoder catches up. Encoders are reached by TCP, UDP or
+  a serial port, with **ASCII commands** (`RT=` / `PS=` by default, editable: PIRA32, P232, MRDS, DEVA and most
+  others) or **UECP**; or the text is written to a file. *Send now* tests the connection.
 - Remembers the playlist, carts and settings between runs.
 - **Never off air** (Settings → Safety):
   - **Silence detection**: if nothing is heard for a set time (default 15 s under -45 dB) while an item plays, AUTO
     skips to the next item and a red SILENCE warning shows. After three silent items in a row it stops skipping
     and only warns, because the fault is then the sound card or the output rather than the files.
-  - **Fill music**: when the playlist runs out in AUTO, random songs from a folder (no recent repeats) are added.
+  - **Fill music**: when the playlist runs out in AUTO, songs are added from chosen library categories (not the
+    same song within 3 hours or the same artist within an hour, the longest-rested first, using every studio's
+    play history), or from a folder. With the library, the folder is the backup while the library can't be
+    reached.
   - **Crash-safe**: settings and the playlist are saved every few seconds, written so that a power cut can't corrupt
     them (with a backup copy). After a crash, power cut or restart the app carries on with the item after the one
     that was on air, and turns streaming back on.
@@ -141,8 +152,11 @@ play or pause and ←/→ to move 1 s (hold Shift for 0.1 s). The mouse wheel zo
 playhead, ▶ plays from 3 s before it, and you can also type times such as `1:23.4`. **Auto-detect** sets Cue In
 and Cue Out at the first and last sound, and Mix where a fade-out has died down.
 
-Cue points are saved per file in `cues.json` next to the settings (your audio files are never modified). They
-apply wherever the file is used, and changes to the item on air take effect straight away.
+Cue points are saved per file in the music library (your audio files are never modified), so studios sharing a
+library share them: an edit in one studio reaches the others within half a minute. A file from outside the music
+folders is added to the library for this. Each computer also keeps its own copy in `cues.json` next to the
+settings, which is used while the library can't be reached. Cue points apply wherever the file is used, and
+changes to the item on air take effect straight away.
 
 > Give Preview its own output, such as the desk's PFL/cue input or a headphone card. If it shares an output with
 > Music or Cartwall, the editor warns you that what you play will be heard on air.
@@ -244,7 +258,7 @@ Settings are stored in `settings.json` in the per-user app data folder:
 - Auto cue (silence trimming) for files without cue points
 - Hour templates, rotation rules (artist and title separation), jingles and IDs on a schedule
 - Reports from the play history (royalties, advertisers)
-- RDS output, live input switching and GPIO, voice tracking
+- RT+ (artist and title tags in the radio text), live input switching and GPIO, voice tracking
 - Loudness normalisation
 - REST API for remote control
 
@@ -254,6 +268,6 @@ Settings are stored in `settings.json` in the per-user app data folder:
   selling the software, needs a licence from [un4seen](https://www.un4seen.com/).
 - **Avalonia** and **ManagedBass** are MIT licensed.
 - **TagLib#** (tag editing, library scanning) is LGPL 2.1.
-- **Microsoft.Data.Sqlite** and **MySqlConnector** are MIT licensed, **Dapper** is Apache 2.0, and SQLite itself is
-  public domain.
+- **Microsoft.Data.Sqlite**, **MySqlConnector** and **System.IO.Ports** (RDS on a serial port) are MIT licensed,
+  **Dapper** is Apache 2.0, and SQLite itself is public domain.
 - The licence for this project's own code hasn't been chosen yet.

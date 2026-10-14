@@ -4,10 +4,13 @@ The music library is a SQL database: an SQLite file on the studio computer, or a
 several studios share (Settings → Library). The app reads and edits it, and `radio-import` fills it from the music
 folders. Other programs may read it and write to it too. This page is the contract they rely on.
 
-Schema version **1**. The scripts that create the tables are
+Schema version **2**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
-[`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql). The app creates the tables itself the first time it
-opens an empty database, so only the database and a user with rights to create tables are needed:
+[`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
+[`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
+[`mysql-2.sql`](../src/Playout.Library/Schema/mysql-2.sql) (cue points). The app creates the tables itself the
+first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
+create and alter tables are needed:
 
 ```sql
 CREATE DATABASE sintoniza CHARACTER SET utf8mb4;
@@ -22,7 +25,8 @@ GRANT ALL PRIVILEGES ON sintoniza.* TO 'sintoniza'@'%';
 - **Paths** are full paths to the file as the studio computers see it. With a shared MySQL library, every studio
   must see the music under the same path, e.g. the same mapped drive or mount point. Paths are compared exactly
   (case and accents count) and may be up to 760 characters long.
-- `schema_info` holds `version`. A program that finds a version it doesn't know should not write.
+- `schema_info` holds `version`. A program that finds a version it doesn't know should not write. The app
+  refuses to open a library made by a newer version, so studios sharing one should run the same version.
 
 ## Tables
 
@@ -60,6 +64,13 @@ One row per audio file.
 | `missing` | 0/1 | 1 = the last scan didn't find the file. Rows are kept, so category and history survive if the file comes back |
 | `added_at`, `updated_at` | time | |
 | `search` | text | what search matches against. **Insert `''`**: the app fills it in (lower case, accents removed) when it opens the library |
+| `cue_in`, `intro`, `outro`, `mix`, `cue_out` | real, null | cue points in seconds from the start of the file; null = not set (see the README) |
+| `cues_updated_at` | time, null | when the cue points were last set or cleared, by the **database server's** clock; null = never |
+
+The app reads the cue points of files whose `cues_updated_at` changed every 30 seconds. A program that changes cue
+points must set `cues_updated_at` to the server's current UTC time in the same form
+(`DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ')` in MySQL, `strftime('%Y-%m-%dT%H:%M:%SZ', 'now')` in
+SQLite), or the studios won't see the change until they restart.
 
 ### `plays`
 
@@ -90,5 +101,6 @@ radio-import --stats                  what is in the library
 ```
 
 Only new and changed files are opened, and only their tags and headers are read, so it can run every few minutes
-from cron or Task Scheduler. A folder that can't be reached (for example a network share that is offline) is
+from cron or Task Scheduler (the app also scans by itself; see Settings → Library). Several scans at once, for
+example from studios sharing a MySQL library, are safe. A folder that can't be reached (for example a network share that is offline) is
 skipped, and nothing in it is marked missing.

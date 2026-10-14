@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Threading;
 using Playout.Engine;
 using Playout.Library;
@@ -6,13 +7,27 @@ namespace Playout.App;
 
 /// <summary>
 /// The app's connection to the music library: opens it (in the background: a MySQL server can take a while to
-/// answer), runs scans, and writes the play history in order, off the UI and engine threads.
+/// answer, and is tried again every minute while it can't be reached), runs scans (on request, on a schedule and
+/// when files in the music folders change), keeps the cue points in step with it, and writes the play history in
+/// order, off the UI and engine threads.
 /// </summary>
 sealed class LibraryService
 {
+    static readonly TimeSpan RetryOpen = TimeSpan.FromMinutes(1);
+    static readonly TimeSpan CueSyncInterval = TimeSpan.FromSeconds(30);
+    /// <summary>Files are still being copied while changes keep coming: scan once the folders are quiet this long.</summary>
+    static readonly TimeSpan WatchQuiet = TimeSpan.FromSeconds(20);
+    /// <summary>The first scheduled scan, after the app has started (not while everything is still loading).</summary>
+    static readonly TimeSpan FirstScan = TimeSpan.FromMinutes(1);
+
+    static readonly StringComparer PathComparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
     Task _writes = Task.CompletedTask;
     int _openVersion;
     CancellationTokenSource? _scan;
+    LibrarySettings? _settings;
+    DateTime _nextOpen = DateTime.MaxValue;
+    readonly DispatcherTimer _timer;
 
     /// <summary>The open library, or null (not set up yet, opening, or it failed: see <see cref="Error"/>).</summary>
     public LibraryDb? Db { get; private set; }
@@ -25,11 +40,20 @@ sealed class LibraryService
     /// <summary>Raised on the UI thread with a line for the status bar and the log.</summary>
     public event Action<string>? Message;
 
+    public LibraryService()
+    {
+        _timer = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => Tick());
+        _timer.Start();
+    }
+
     public async Task OpenAsync(LibrarySettings settings)
     {
         int version = ++_openVersion;
+        _settings = settings.Clone();
+        _nextOpen = DateTime.MaxValue;
         Db = null;
         Error = null;
+        _cueSince = null;
         Changed?.Invoke();
         var copy = settings.Clone();
         try
@@ -37,18 +61,32 @@ sealed class LibraryService
             var db = await Task.Run(() => LibraryDb.Open(copy));
             if (version != _openVersion) return; // settings changed again meanwhile
             Db = db;
+            SyncCues();
         }
         catch (Exception ex)
         {
             if (version != _openVersion) return;
+            bool first = Error == null && _lastOpenError != ex.Message;
             Error = $"Library unavailable ({copy.Describe()}): {ex.Message}";
-            Message?.Invoke(Error);
+            _lastOpenError = ex.Message;
+            _nextOpen = DateTime.UtcNow + RetryOpen;
+            if (first) Message?.Invoke($"{Error.TrimEnd('.')}. Trying again every minute.");
+            else AppLog.Write(Error);
         }
         Changed?.Invoke();
     }
 
+    string? _lastOpenError;
+
     /// <summary>Tells the views the contents changed (after an edit).</summary>
     public void NotifyChanged() => Changed?.Invoke();
+
+    /// <summary>Runs <paramref name="write"/> after the writes queued before it, off the UI thread.</summary>
+    void Queue(Action write)
+    {
+        lock (this)
+            _writes = _writes.ContinueWith(_ => write(), TaskScheduler.Default);
+    }
 
     /// <summary>Adds an item that went on air to the history. Safe from any thread; written in order.</summary>
     public void RecordPlay(Track track, string source) => RecordPlay(track.Path, track.Artist, track.Title, source);
@@ -57,12 +95,11 @@ sealed class LibraryService
     {
         if (Db is not { } db) return;
         var at = DateTime.UtcNow;
-        lock (this)
-            _writes = _writes.ContinueWith(_ =>
-            {
-                try { db.RecordPlay(path, artist, title, at, source); }
-                catch (Exception ex) { Post($"Play history not saved: {ex.Message}"); }
-            }, TaskScheduler.Default);
+        Queue(() =>
+        {
+            try { db.RecordPlay(path, artist, title, at, source); }
+            catch (Exception ex) { Post($"Play history not saved: {ex.Message}"); }
+        });
     }
 
     /// <summary>Re-reads a file's tags into the library (after editing them).</summary>
@@ -77,22 +114,123 @@ sealed class LibraryService
         });
     }
 
+    void Tick()
+    {
+        if (Db == null && _settings != null && DateTime.UtcNow >= _nextOpen)
+        {
+            _nextOpen = DateTime.MaxValue; // set again if it fails
+            _ = OpenAsync(_settings);
+            return;
+        }
+        if (Db == null) return;
+        if (DateTime.UtcNow - _cueSynced >= CueSyncInterval) SyncCues();
+        AutoScan();
+    }
+
+    // ───────────────────────── Scanning ─────────────────────────
+
+    IReadOnlyList<string> _autoFolders = [];
+    int _autoMinutes;
+    bool _watch;
+    readonly List<FileSystemWatcher> _watchers = new();
+    readonly HashSet<string> _watched = new(PathComparer);
+    DateTime? _lastScan; // UTC; null = none since the app started
+    readonly DateTime _started = DateTime.UtcNow;
+    DateTime _lastChange; // UTC; set from watcher threads
+    volatile bool _dirty;
+
+    /// <summary>
+    /// Scans the music folders every <paramref name="minutes"/> minutes (0 = not on a schedule) and, with
+    /// <paramref name="watch"/>, shortly after files in them are added, changed, moved or deleted.
+    /// </summary>
+    public void ConfigureAutoScan(IReadOnlyList<string> folders, int minutes, bool watch)
+    {
+        _autoFolders = folders.ToList();
+        _autoMinutes = Math.Max(0, minutes);
+        _watch = watch;
+        StopWatching();
+        if (watch) Watch();
+    }
+
+    void AutoScan()
+    {
+        if (_scan != null || _autoFolders.Count == 0) return;
+        var now = DateTime.UtcNow;
+        if (_watch && _watched.Count < _autoFolders.Count) Watch(); // a folder (network share) that wasn't there before
+        // A first scan a minute after the app starts (catches what changed while it was closed), then on the schedule.
+        bool due = _lastScan is { } last
+            ? _autoMinutes > 0 && now - last >= TimeSpan.FromMinutes(_autoMinutes)
+            : (_autoMinutes > 0 || _watch) && now - _started >= FirstScan;
+        bool changed = _dirty && now - _lastChange >= WatchQuiet;
+        if (due || changed) _ = ScanAsync(_autoFolders, automatic: true);
+    }
+
+    void Watch()
+    {
+        foreach (var folder in _autoFolders)
+        {
+            if (_watched.Contains(folder) || !Directory.Exists(folder)) continue;
+            try
+            {
+                var watcher = new FileSystemWatcher(folder)
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                    InternalBufferSize = 64 * 1024,
+                };
+                watcher.Created += (_, e) => Touched(e.FullPath);
+                watcher.Deleted += (_, e) => Touched(e.FullPath);
+                watcher.Changed += (_, e) => Touched(e.FullPath);
+                watcher.Renamed += (_, e) => { Touched(e.OldFullPath); Touched(e.FullPath); };
+                watcher.Error += (_, _) => Touched(null); // too many changes at once: scan anyway
+                watcher.EnableRaisingEvents = true;
+                _watchers.Add(watcher);
+                _watched.Add(folder);
+            }
+            catch (Exception ex)
+            {
+                // E.g. Linux's limit on watched folders: the schedule still picks changes up.
+                AppLog.Write($"Library: can't watch {folder} for changes ({ex.Message})");
+                _watched.Add(folder);
+            }
+        }
+    }
+
+    /// <summary>A file or folder changed (null: unknown, after the watcher lost track). Called on watcher threads.</summary>
+    void Touched(string? path)
+    {
+        // Audio files, and folders (moved or deleted folders have no extension here); not the many other files.
+        if (path != null && Path.HasExtension(path) && !LibraryScanner.IsAudio(path)) return;
+        _lastChange = DateTime.UtcNow;
+        _dirty = true;
+    }
+
+    void StopWatching()
+    {
+        foreach (var w in _watchers) w.Dispose();
+        _watchers.Clear();
+        _watched.Clear();
+    }
+
     /// <summary>Scans the music folders into the library in the background, reporting in the status bar.</summary>
-    public async Task ScanAsync(IReadOnlyList<string> folders)
+    public async Task ScanAsync(IReadOnlyList<string> folders, bool automatic = false)
     {
         if (Db is not { } db || _scan != null) return;
         if (folders.Count == 0)
         {
-            Message?.Invoke("Choose the music folders to scan in Settings → Library");
+            if (!automatic) Message?.Invoke("Choose the music folders to scan in Settings → Library");
             return;
         }
         _scan = new CancellationTokenSource();
+        _dirty = false;
+        Changed?.Invoke();
         var token = _scan.Token;
-        Message?.Invoke("Library scan: looking for files…");
+        // Scheduled and automatic scans stay quiet unless they find something.
+        if (!automatic) Message?.Invoke("Library scan: looking for files…");
         var last = DateTime.MinValue;
         var progress = new Progress<ScanProgress>(p =>
         {
-            if ((DateTime.UtcNow - last).TotalSeconds < 0.5) return;
+            if ((DateTime.UtcNow - last).TotalSeconds < 0.5 || (automatic && p.Read == 0)) return;
             last = DateTime.UtcNow;
             Message?.Invoke(p.Read == 0
                 ? $"Library scan: {p.Found:N0} files found, {p.ToRead:N0} new or changed"
@@ -105,7 +243,9 @@ sealed class LibraryService
             if (r.Moved > 0) parts.Add($"{r.Moved:N0} moved");
             if (r.Missing > 0) parts.Add($"{r.Missing:N0} missing");
             if (r.SkippedFolders.Count > 0) parts.Add($"skipped {string.Join(", ", r.SkippedFolders)} (not found)");
-            Message?.Invoke($"Library scan {(r.Cancelled ? "stopped" : "done")}: {string.Join(", ", parts)}");
+            bool found = r.Added + r.Updated + r.Moved + r.Missing > 0;
+            if (!automatic || found || r.Cancelled)
+                Message?.Invoke($"Library {(automatic ? "auto scan" : "scan")} {(r.Cancelled ? "stopped" : "done")}: {string.Join(", ", parts)}");
         }
         catch (OperationCanceledException)
         {
@@ -118,11 +258,111 @@ sealed class LibraryService
         finally
         {
             _scan = null;
+            _lastScan = DateTime.UtcNow;
             Changed?.Invoke();
         }
     }
 
     public void CancelScan() => _scan?.Cancel();
+
+    // ───────────────────────── Cue points ─────────────────────────
+
+    CueStore? _cues;
+    Action<IReadOnlyList<string>>? _cuesChanged;
+    readonly Dictionary<string, CuePoints> _pendingCues = new(PathComparer); // edited here, not in the library yet
+    string? _cueSince; // server time of the last sync, less a margin; null = read them all
+    DateTime _cueSynced = DateTime.MinValue;
+    bool _syncing;
+    string? _lastCueError;
+
+    /// <summary>
+    /// Keeps <paramref name="cues"/> in step with the library: edits made here are saved to it, and edits made in
+    /// other studios are fetched every 30 seconds and passed to <paramref name="changed"/> (on the UI thread).
+    /// </summary>
+    public void AttachCues(CueStore cues, Action<IReadOnlyList<string>> changed)
+    {
+        _cues = cues;
+        _cuesChanged = changed;
+        cues.Edited += (path, points) =>
+        {
+            lock (_pendingCues) _pendingCues[path] = points;
+            if (Db is { } db) Queue(() => SaveCues(db, path, points));
+        };
+    }
+
+    /// <summary>Saves one file's cue points to the library, adding the file to it if needed. Runs in the write queue.</summary>
+    void SaveCues(LibraryDb db, string path, CuePoints cues)
+    {
+        try
+        {
+            // A file outside the music folders is added to the library, so its cue points are shared too. One that
+            // can't be added (not audio, path too long) keeps them on this computer only.
+            if (!db.SetCues(path, cues) && !cues.IsEmpty)
+            {
+                db.Refresh(path);
+                db.SetCues(path, cues);
+            }
+            lock (_pendingCues)
+                if (_pendingCues.TryGetValue(path, out var pending) && pending == cues) _pendingCues.Remove(path);
+            _lastCueError = null;
+        }
+        catch (Exception ex)
+        {
+            // Kept in the pending list: tried again at the next sync.
+            if (_lastCueError != ex.Message) Post($"Cue points not saved to the library yet: {ex.Message}");
+            _lastCueError = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Saves pending edits, then fetches the cue points set in other studios since the last sync (all of them
+    /// after opening; then cue points that only this computer has are added to the library).
+    /// </summary>
+    void SyncCues()
+    {
+        if (_cues is not { } store || Db is not { } db || _syncing) return;
+        _syncing = true;
+        _cueSynced = DateTime.UtcNow;
+        string? since = _cueSince;
+        Task.Run(() =>
+        {
+            List<(string, CuePoints)> pending;
+            lock (_pendingCues) pending = _pendingCues.Select(kv => (kv.Key, kv.Value)).ToList();
+            foreach (var (path, cues) in pending) SaveCues(db, path, cues);
+
+            string now = db.ServerTime();
+            var changes = db.CueChanges(since);
+            if (since == null)
+            {
+                // Cue points set here before the library had them (or while it couldn't be reached): add them.
+                var known = changes.Select(c => c.Path).ToHashSet(PathComparer);
+                foreach (var (path, cues) in store.All().Where(c => !known.Contains(c.Path))) SaveCues(db, path, cues);
+            }
+            HashSet<string> keep;
+            lock (_pendingCues) keep = _pendingCues.Keys.ToHashSet(PathComparer);
+            var changed = store.Apply(changes, keep);
+            // Edits stamped just before "now" may commit after this read: look a little further back next time.
+            var next = DateTime.Parse(now, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+            return (changed, since: LibraryDb.Time(next.AddSeconds(-30)));
+        }).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        {
+            _syncing = false;
+            if (!t.IsCompletedSuccessfully)
+            {
+                string error = t.Exception?.InnerException?.Message ?? "unknown error";
+                if (_lastCueError != error) Message?.Invoke($"Cue points not synced with the library: {error}");
+                _lastCueError = error;
+                return;
+            }
+            if (db != Db) return; // reopened meanwhile
+            _cueSince = t.Result.since;
+            if (t.Result.changed.Count > 0)
+            {
+                AppLog.Write($"Cue points of {t.Result.changed.Count} file(s) changed in the library");
+                _cuesChanged?.Invoke(t.Result.changed);
+            }
+        }));
+    }
 
     void Post(string message) => Dispatcher.UIThread.Post(() => Message?.Invoke(message));
 }

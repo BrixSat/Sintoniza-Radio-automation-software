@@ -19,11 +19,18 @@ public sealed class LibrarySettings
     public string Password { get; set; } = "";
     /// <summary>Music folders scanned into the library ("Scan now", radio-import without folders).</summary>
     public List<string> Folders { get; set; } = new();
+    /// <summary>The app scans the folders this often (minutes; 0 = only when asked). Each scan only reads what changed.</summary>
+    public int ScanEveryMinutes { get; set; } = 60;
+    /// <summary>The app also scans shortly after files in the folders are added, changed or deleted.</summary>
+    public bool WatchFolders { get; set; } = true;
 
     public bool IsMySql => Provider.Equals("mysql", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Where the library is, for messages: the file, or user@server/database.</summary>
     public string Describe() => IsMySql ? $"{User}@{Server}:{Port}/{Database}" : SqliteFile;
+
+    /// <summary>Changes only when the library to open changes (not with the folders or scan options).</summary>
+    public string ConnectionKey() => IsMySql ? $"mysql|{Server}|{Port}|{Database}|{User}|{Password}" : $"sqlite|{SqliteFile}";
 
     public string SqliteFile => string.IsNullOrWhiteSpace(File) ? LibraryDb.DefaultFile : File;
 

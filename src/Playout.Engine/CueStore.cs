@@ -4,6 +4,8 @@ namespace Playout.Engine;
 
 /// <summary>
 /// Cue points per file, kept in a JSON file (path → markers). The audio files themselves are never written to.
+/// With a music library the app also keeps them there (see <see cref="Edited"/> and <see cref="Apply"/>), so
+/// studios sharing a library share cue points; the file is this computer's copy for when the library can't be reached.
 /// Thread-safe; saving happens off the calling thread.
 /// </summary>
 public sealed class CueStore
@@ -13,6 +15,9 @@ public sealed class CueStore
     readonly string _file;
     readonly Dictionary<string, CuePoints> _cues;
     readonly object _lock = new();
+
+    /// <summary>Raised after <see cref="Set"/> (on the caller's thread): cue points were edited here.</summary>
+    public event Action<string, CuePoints>? Edited;
 
     public CueStore(string file)
     {
@@ -39,6 +44,37 @@ public sealed class CueStore
             else _cues[path] = cues;
         }
         Task.Run(Save);
+        Edited?.Invoke(path, cues);
+    }
+
+    /// <summary>Every file's cue points.</summary>
+    public List<(string Path, CuePoints Cues)> All()
+    {
+        lock (_lock) return _cues.Select(kv => (kv.Key, kv.Value)).ToList();
+    }
+
+    /// <summary>
+    /// Takes cue points that were set elsewhere (another studio, via the library); empty ones remove them.
+    /// Files in <paramref name="keep"/> (edited here, not saved to the library yet) keep theirs. Returns the files
+    /// whose cue points changed.
+    /// </summary>
+    public List<string> Apply(IEnumerable<(string Path, CuePoints Cues)> changes, ICollection<string> keep)
+    {
+        var changed = new List<string>();
+        lock (_lock)
+        {
+            foreach (var (path, cues) in changes)
+            {
+                if (keep.Contains(path)) continue;
+                var current = _cues.GetValueOrDefault(path) ?? CuePoints.None;
+                if (current == cues) continue;
+                if (cues.IsEmpty) _cues.Remove(path);
+                else _cues[path] = cues;
+                changed.Add(path);
+            }
+        }
+        if (changed.Count > 0) Task.Run(Save);
+        return changed;
     }
 
     readonly object _saveLock = new();

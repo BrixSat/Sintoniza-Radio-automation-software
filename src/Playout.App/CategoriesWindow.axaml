@@ -1,0 +1,92 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.CategoriesWindow"
+        Icon="/Assets/icon.ico"
+        Title="Categories"
+        Width="640" Height="460" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Button.swatch">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="CornerRadius" Value="13" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.swatch.chosen">
+            <Setter Property="BorderBrush" Value="White" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="18">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+            <TextBlock x:Name="StatusText" Classes="note" VerticalAlignment="Center" />
+            <Button Grid.Column="1" x:Name="CloseButton" Content="Close" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+        </Grid>
+
+        <Grid ColumnDefinitions="300,18,*">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                    <Button x:Name="AddButton" Content="New" />
+                    <Button x:Name="DeleteButton" Content="Delete" />
+                    <Button x:Name="UpButton" Content="▲" ToolTip.Tip="Move up (order in lists)" />
+                    <Button x:Name="DownButton" Content="▼" ToolTip.Tip="Move down" />
+                </StackPanel>
+                <ListBox x:Name="CategoryList" Background="#13161C">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="app:CategoryRow">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Ellipse Width="12" Height="12" Fill="{Binding Brush}" VerticalAlignment="Center" />
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding KindText}" Classes="muted" FontSize="11" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{Binding CountText}" Classes="muted digits" FontSize="11" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <StackPanel Grid.Column="2" x:Name="EditPanel" Spacing="14">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Name" />
+                    <TextBox x:Name="NameBox" MaxLength="100" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Kind" />
+                    <ComboBox x:Name="KindBox" HorizontalAlignment="Stretch">
+                        <ComboBoxItem Content="Music" />
+                        <ComboBoxItem Content="Jingle (IDs, sweepers)" />
+                        <ComboBoxItem Content="Commercial" />
+                        <ComboBoxItem Content="Other (promos, talk…)" />
+                    </ComboBox>
+                    <TextBlock Classes="note" Margin="0,4,0,0"
+                               Text="Fill music picks from music categories unless you choose others in Settings → Safety. A scan puts new files from jingle and ad folders in the first Jingle and Commercial category." />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Colour" />
+                    <WrapPanel x:Name="Swatches" ItemSpacing="6" LineSpacing="6" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="ApplyButton" Content="Save changes" Classes="accent" IsDefault="True" />
+                    <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center"
+                               TextWrapping="Wrap" MaxWidth="180" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

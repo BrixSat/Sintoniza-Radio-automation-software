@@ -57,6 +57,8 @@ public partial class MainWindow : Window
             };
             Watchdog.Watch(_engine);
             _engine.OnAir += track => _library.RecordPlay(track, "playlist");
+            var engine = _engine;
+            _library.AttachCues(cues, paths => engine.ReloadCues(paths));
             _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
         }
         catch (Exception ex)
@@ -73,6 +75,7 @@ public partial class MainWindow : Window
         _library.Changed += () => ScanButton.Content = _library.IsScanning ? "Stop" : "Scan";
         Tracks.Attach(_library);
         _ = _library.OpenAsync(_settings.Library);
+        ApplyAutoScan();
 
         BuildCartwall();
         LoadSettingsIntoUi();
@@ -86,6 +89,7 @@ public partial class MainWindow : Window
             _engine.ConfigureMic(_settings.ActiveMic);
             _engine.ConfigureTimeSignal(_settings.TimeSignal);
             ApplySafety();
+            ApplyRds();
             AddEntries(_settings.PlaylistItems);
             _ = CarryOn();
         }
@@ -241,6 +245,7 @@ public partial class MainWindow : Window
             UpdateMic();
         };
         Closing += (_, _) => SaveSettings();
+        Closed += (_, _) => _rds?.Dispose();
         Closed += (_, _) =>
         {
             _engine?.Dispose();
@@ -352,6 +357,7 @@ public partial class MainWindow : Window
 
         if (_engine == null) return;
         var st = _engine.GetStatus();
+        _rds?.Update(st.State == PlayerState.Stopped ? null : st.Current);
 
         MeterL.Push(st.LevelLeft);
         MeterR.Push(st.LevelRight);
@@ -941,7 +947,7 @@ public partial class MainWindow : Window
         try
         {
             var routingBefore = _settings.Routing;
-            string libraryBefore = System.Text.Json.JsonSerializer.Serialize(_settings.Library);
+            string libraryBefore = _settings.Library.ConnectionKey();
             var micBefore = _settings.ActiveMic;
             bool saved = await new SettingsWindow(_settings, _engine, this).ShowDialog<bool>(this);
             if (!saved) return;
@@ -952,8 +958,10 @@ public partial class MainWindow : Window
                 if (_settings.ActiveMic != micBefore) _engine.ConfigureMic(_settings.ActiveMic);
                 _engine.ConfigureTimeSignal(_settings.TimeSignal);
                 ApplySafety();
+                ApplyRds();
             }
-            if (System.Text.Json.JsonSerializer.Serialize(_settings.Library) != libraryBefore) _ = _library.OpenAsync(_settings.Library);
+            if (_settings.Library.ConnectionKey() != libraryBefore) _ = _library.OpenAsync(_settings.Library);
+            ApplyAutoScan();
             ApplyStationBranding();
             ShowStationType();
             ApplyShortcuts();
@@ -1030,6 +1038,15 @@ public partial class MainWindow : Window
 
     readonly LibraryService _library = new();
 
+    /// <summary>The music library (for the settings window).</summary>
+    internal LibraryService MusicLibrary => _library;
+
+    void ApplyAutoScan()
+    {
+        var library = _settings.Library;
+        _library.ConfigureAutoScan(library.Folders, library.ScanEveryMinutes, library.WatchFolders);
+    }
+
     /// <summary>The library (search) or the folders on disk in the left panel.</summary>
     void ShowMusicTab(bool library)
     {
@@ -1064,7 +1081,38 @@ public partial class MainWindow : Window
     {
         if (_engine == null) return;
         _engine.ConfigureSilence(_settings.Silence);
-        _engine.ConfigureFill(_settings.FillEnabled && Directory.Exists(_settings.FillFolder) ? new FillMusic(_settings.FillFolder).Next : null);
+        Func<string?>? fill = null;
+        if (_settings.FillEnabled)
+        {
+            var folder = Directory.Exists(_settings.FillFolder) ? new FillMusic(_settings.FillFolder) : null;
+            fill = _settings.FillSource == FillSource.Library
+                ? new LibraryFill(_library, _settings.FillCategories, TimeSpan.FromHours(_settings.FillSongHours),
+                    TimeSpan.FromMinutes(_settings.FillArtistMinutes), folder).Next
+                : folder == null ? null : folder.Next;
+        }
+        _engine.ConfigureFill(fill);
+    }
+
+    // ───────────────────────── RDS ─────────────────────────
+
+    RdsOutput? _rds;
+
+    /// <summary>Starts (or restarts, with new settings) sending now playing to the RDS encoder.</summary>
+    void ApplyRds()
+    {
+        _rds?.Dispose();
+        _rds = null;
+        if (_settings.Rds is not { Enabled: true } settings) return;
+        string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
+        var rds = new RdsOutput(settings, station);
+        rds.StatusChanged += error => Dispatcher.UIThread.Post(() =>
+        {
+            if (rds != _rds) return;
+            string message = error == null ? "RDS: sending to the encoder" : $"RDS: can't send to the encoder ({error}); trying again";
+            AppLog.Write(message);
+            LastLog.Text = message;
+        });
+        _rds = rds;
     }
 
     void ShowSilence(PlayerStatus st)

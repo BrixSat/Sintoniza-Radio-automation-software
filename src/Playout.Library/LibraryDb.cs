@@ -5,6 +5,7 @@ using System.Text;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using MySqlConnector;
+using Playout.Engine;
 
 namespace Playout.Library;
 
@@ -48,6 +49,12 @@ public readonly record struct CategoryFilter(long? Id = null, bool Uncategorised
 /// <summary>A page of search results: the first <see cref="Tracks"/>, out of <see cref="Total"/> matching.</summary>
 public sealed record TrackPage(IReadOnlyList<LibraryTrack> Tracks, int Total);
 
+/// <summary>A song fill music may pick: <see cref="LastPlayed"/> is UTC, null if it never went on air.</summary>
+public sealed record RotationTrack(long Id, string Path, string Artist, DateTime? LastPlayed);
+
+/// <summary>An item that went on air (UTC); <see cref="TrackId"/> is null for files not in the library.</summary>
+public sealed record RecentPlay(long? TrackId, string Artist, DateTime At);
+
 public sealed record LibraryStats(int Tracks, int Missing, int Uncategorised, double Hours);
 
 /// <summary>Attributes to set on several tracks at once; null = leave as it is.</summary>
@@ -61,7 +68,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed class LibraryDb
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -132,10 +139,24 @@ public sealed class LibraryDb
             throw new InvalidDataException($"The library was made by a newer version (schema {version}); update the app.");
         for (int v = version + 1; v <= SchemaVersion; v++)
         {
-            // (MySQL commits table changes as it goes; SQLite does the whole step or nothing.)
-            using var tx = c.BeginTransaction();
-            c.Execute(Script($"{(db._mySql ? "mysql" : "sqlite")}-{v}.sql"), transaction: tx);
-            tx.Commit();
+            string script = Script($"{(db._mySql ? "mysql" : "sqlite")}-{v}.sql");
+            if (db._mySql)
+            {
+                // MySQL commits table changes as it goes, so a step that stopped halfway is finished here: one
+                // statement at a time, skipping columns and indexes that are already there.
+                foreach (var statement in Statements(script))
+                {
+                    try { c.Execute(statement); }
+                    catch (MySqlException ex) when (ex.ErrorCode is MySqlErrorCode.DuplicateFieldName or MySqlErrorCode.DuplicateKeyName) { }
+                }
+            }
+            else
+            {
+                // SQLite does the whole step or nothing.
+                using var tx = c.BeginTransaction();
+                c.Execute(script, transaction: tx);
+                tx.Commit();
+            }
         }
         db.FillSearchText(c);
         return db;
@@ -147,6 +168,24 @@ public sealed class LibraryDb
             ?? throw new InvalidOperationException($"Missing schema script {name}");
         return new StreamReader(stream).ReadToEnd();
     }
+
+    /// <summary>The statements of a script: split at semicolons that end a line, comment lines left out.</summary>
+    static IEnumerable<string> Statements(string script)
+    {
+        var current = new StringBuilder();
+        foreach (var line in script.Split('\n'))
+        {
+            string text = line.TrimEnd('\r');
+            if (text.TrimStart().StartsWith("--", StringComparison.Ordinal)) continue;
+            current.AppendLine(text);
+            if (!text.TrimEnd().EndsWith(';')) continue;
+            if (current.ToString().Trim() is { Length: > 1 } statement) yield return statement;
+            current.Clear();
+        }
+        if (current.ToString().Trim() is { Length: > 0 } rest) yield return rest;
+    }
+
+    internal bool IsMySql => _mySql;
 
     internal DbConnection Connect()
     {
@@ -230,6 +269,15 @@ public sealed class LibraryDb
             .ToList();
     }
 
+    /// <summary>How many tracks (not missing) each category has.</summary>
+    public Dictionary<long, int> CategoryCounts()
+    {
+        using var c = Connect();
+        return c.Query<(long Id, long Count)>(
+                "SELECT category_id, COUNT(*) FROM tracks WHERE category_id IS NOT NULL AND missing = 0 GROUP BY category_id")
+            .ToDictionary(r => r.Id, r => (int)r.Count);
+    }
+
     public long AddCategory(string name, string kind, string? color)
     {
         using var c = Connect();
@@ -281,6 +329,43 @@ public sealed class LibraryDb
     /// <summary>Re-reads one file's tags into its track (after its tags were edited); adds it if it isn't in the library.</summary>
     public void Refresh(string path) => LibraryScanner.ScanFile(this, path);
 
+    // ───────────────────────── Cue points ─────────────────────────
+
+    /// <summary>The time on the database server, in the form of <c>cues_updated_at</c>: what <see cref="CueChanges"/> takes.</summary>
+    public string ServerTime()
+    {
+        using var c = Connect();
+        return c.ExecuteScalar<string>($"SELECT {NowSql}")!;
+    }
+
+    /// <summary>The current UTC time on the database server, as text: every studio stamps cue edits with the same clock.</summary>
+    string NowSql => _mySql ? "DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ')" : "strftime('%Y-%m-%dT%H:%M:%SZ', 'now')";
+
+    /// <summary>
+    /// Cue points set or cleared (empty) in the library since <paramref name="since"/> (a <see cref="ServerTime"/>),
+    /// or all of them when null. Files whose cue points were never set in the library are left out.
+    /// </summary>
+    public List<(string Path, CuePoints Cues)> CueChanges(string? since)
+    {
+        using var c = Connect();
+        string condition = since == null ? "IS NOT NULL" : ">= @since";
+        return c.Query<(string Path, double? CueIn, double? Intro, double? Outro, double? Mix, double? CueOut)>(
+                $"SELECT path, cue_in, intro, outro, mix, cue_out FROM tracks WHERE cues_updated_at {condition}", new { since })
+            .Select(r => (r.Path, new CuePoints(r.CueIn, r.Intro, r.Outro, r.Mix, r.CueOut)))
+            .ToList();
+    }
+
+    /// <summary>Saves a file's cue points (empty clears them). False if the file isn't in the library.</summary>
+    public bool SetCues(string path, CuePoints cues)
+    {
+        using var c = Connect();
+        return c.Execute($"""
+            UPDATE tracks SET cue_in = @CueIn, intro = @Intro, outro = @Outro, mix = @Mix, cue_out = @CueOut,
+                cues_updated_at = {NowSql}
+            WHERE {PathIs("path")}
+            """, new { path, cues.CueIn, cues.Intro, cues.Outro, cues.Mix, cues.CueOut }) > 0;
+    }
+
     // ───────────────────────── History ─────────────────────────
 
     /// <summary>Records an item going on air (linked to its track when the file is in the library).</summary>
@@ -303,11 +388,41 @@ public sealed class LibraryDb
             .ToDictionary(r => r.Id, r => DateTime.Parse(r.At, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal));
     }
 
+    /// <summary>
+    /// Songs that may be picked automatically from these categories (enabled, file not missing), with when each
+    /// last went on air (null = never).
+    /// </summary>
+    public List<RotationTrack> RotationTracks(IReadOnlyCollection<long> categoryIds)
+    {
+        if (categoryIds.Count == 0) return new();
+        using var c = Connect();
+        return c.Query<(long Id, string Path, string Artist, string? Last)>("""
+                SELECT t.id, t.path, t.artist, (SELECT MAX(p.started_at) FROM plays p WHERE p.track_id = t.id)
+                FROM tracks t
+                WHERE t.enabled = 1 AND t.missing = 0 AND t.category_id IN @categoryIds
+                """, new { categoryIds = categoryIds.ToArray() })
+            .Select(r => new RotationTrack(r.Id, r.Path, r.Artist, r.Last == null ? null : ParseTime(r.Last)))
+            .ToList();
+    }
+
+    /// <summary>What went on air since <paramref name="sinceUtc"/>, in any studio sharing the library.</summary>
+    public List<RecentPlay> PlaysSince(DateTime sinceUtc)
+    {
+        using var c = Connect();
+        return c.Query<(long? TrackId, string Artist, string At)>(
+                "SELECT track_id, artist, started_at FROM plays WHERE started_at >= @since", new { since = Time(sinceUtc) })
+            .Select(r => new RecentPlay(r.TrackId, r.Artist, ParseTime(r.At)))
+            .ToList();
+    }
+
     // ───────────────────────── Helpers ─────────────────────────
+
+    static DateTime ParseTime(string text) =>
+        DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 
     internal static string Now() => Time(DateTime.UtcNow);
 
-    internal static string Time(DateTime utc) => utc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+    public static string Time(DateTime utc) => utc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 
     /// <summary>What search matches against: lower case, accents removed ("Canção" → "cancao").</summary>
     public static string Normalize(string text)

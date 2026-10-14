@@ -180,19 +180,31 @@ public sealed class PlayoutEngine : IDisposable
         _cues.Set(path, cues);
         Post(() =>
         {
-            var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-            for (int i = 0; i < _playlist.Count; i++)
-                if (string.Equals(_playlist[i].Path, path, comparer))
-                    _playlist[i] = _playlist[i] with { Cues = cues.IsEmpty ? null : cues };
-
-            if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer))
-            {
-                if (deck.MixSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.MixSync);
-                if (deck.CueOutSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.CueOutSync);
-                _current = Arm(deck.Handle, deck.Track with { Cues = cues.IsEmpty ? null : cues }, deck.Length);
-            }
+            ApplyCues(path, cues);
             PlaylistUpdated();
         });
+    }
+
+    /// <summary>Cue points of these files changed in the cue store (set in another studio): apply them like <see cref="SetCues"/>.</summary>
+    public void ReloadCues(IReadOnlyCollection<string> paths) => Post(() =>
+    {
+        foreach (var path in paths) ApplyCues(path, _cues.Get(path) ?? CuePoints.None);
+        PlaylistUpdated();
+    });
+
+    void ApplyCues(string path, CuePoints cues)
+    {
+        var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        for (int i = 0; i < _playlist.Count; i++)
+            if (string.Equals(_playlist[i].Path, path, comparer))
+                _playlist[i] = _playlist[i] with { Cues = cues.IsEmpty ? null : cues };
+
+        if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer))
+        {
+            if (deck.MixSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.MixSync);
+            if (deck.CueOutSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.CueOutSync);
+            _current = Arm(deck.Handle, deck.Track with { Cues = cues.IsEmpty ? null : cues }, deck.Length);
+        }
     }
 
     /// <summary>

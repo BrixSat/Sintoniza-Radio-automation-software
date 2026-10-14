@@ -195,7 +195,7 @@
             <!-- ───────── Safety: never off air ───────── -->
             <TabItem Header="Safety">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="12" Margin="0,12,0,0">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
                     <StackPanel Spacing="6">
                         <CheckBox x:Name="SilenceBox" Content="Detect silence (dead air)" FontWeight="SemiBold" />
                         <StackPanel x:Name="SilencePanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
@@ -210,13 +210,31 @@
                     </StackPanel>
 
                     <StackPanel Spacing="6">
-                        <CheckBox x:Name="FillBox" Content="When the playlist runs out in AUTO, keep playing music from a folder" FontWeight="SemiBold" />
-                        <StackPanel x:Name="FillPanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
-                            <TextBlock x:Name="FillFolderText" VerticalAlignment="Center" MaxWidth="440" TextTrimming="CharacterEllipsis" />
-                            <Button x:Name="ChooseFillButton" Content="Choose…" />
+                        <CheckBox x:Name="FillBox" Content="When the playlist runs out in AUTO, keep playing music" FontWeight="SemiBold" />
+                        <StackPanel x:Name="FillPanel" Spacing="6" Margin="28,0,0,0">
+                            <RadioButton x:Name="FillLibraryRadio" GroupName="FillSource" Content="From the library, these categories:" />
+                            <StackPanel x:Name="FillLibraryPanel" Spacing="6" Margin="28,0,0,0">
+                                <WrapPanel x:Name="FillCategoriesPanel" ItemSpacing="14" />
+                                <TextBlock x:Name="FillCategoriesNote" Classes="note" Text="None ticked: every music category." />
+                                <Grid ColumnDefinitions="Auto,8,110,8,Auto" RowDefinitions="Auto,6,Auto">
+                                    <TextBlock Text="Not the same song within" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Column="2" x:Name="FillSongHoursBox" Minimum="0" Maximum="168" Increment="1" FormatString="0.#" />
+                                    <TextBlock Grid.Column="4" Text="hours" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Text="Not the same artist within" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="2" Grid.Column="2" x:Name="FillArtistMinutesBox" Minimum="0" Maximum="1440" Increment="15" FormatString="0" />
+                                    <TextBlock Grid.Row="2" Grid.Column="4" Text="minutes (when there is another choice)" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                            <RadioButton x:Name="FillFolderRadio" GroupName="FillSource" Content="From a folder only" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Folder:" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FillFolderText" VerticalAlignment="Center" MaxWidth="440" TextTrimming="CharacterEllipsis" />
+                                <Button x:Name="ChooseFillButton" Content="Choose…" />
+                                <Button x:Name="ClearFillButton" Content="Clear" />
+                            </StackPanel>
                         </StackPanel>
                         <TextBlock Classes="note" Margin="28,0,0,0"
-                                   Text="Random songs from this folder and its subfolders, without recent repeats, are added to the end. Off: the player stops at the end of the playlist." />
+                                   Text="Songs are added to the end of the playlist. From the library: songs that may be picked automatically, rested longest first, using the play history of every studio sharing the library; with the library, the folder is used while the library can't be reached or has nothing to pick. From a folder: random songs from it and its subfolders, without recent repeats. Off: the player stops at the end of the playlist." />
                     </StackPanel>
 
                     <StackPanel Spacing="4">
@@ -238,7 +256,7 @@
             <!-- ───────── Library database ───────── -->
             <TabItem Header="Library">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="12" Margin="0,12,0,0">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
                     <StackPanel>
                         <TextBlock Classes="label" Text="Library database" />
                         <ComboBox x:Name="LibraryTypeBox" HorizontalAlignment="Stretch">
@@ -288,8 +306,17 @@
                                 <Button x:Name="RemoveLibraryFolderButton" Content="Remove" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
                             </StackPanel>
                         </Grid>
-                        <TextBlock Classes="note" Margin="0,4,0,0"
-                                   Text="Click Scan above the library to add new music and pick up changes; moved files keep their category and history. radio-import does the same from the command line or on a schedule, using these settings. With a shared MySQL library, every studio must see the music under the same path." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <CheckBox x:Name="AutoScanBox" Content="Scan automatically every" />
+                            <NumericUpDown x:Name="AutoScanMinutesBox" Minimum="5" Maximum="1440" Increment="5" FormatString="0" Width="120" />
+                            <TextBlock Text="minutes" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <CheckBox x:Name="WatchFoldersBox" Content="Also scan shortly after files in the music folders are added, changed or deleted" />
+                        <TextBlock Classes="note"
+                                   Text="Scan (above the library) does it now. A scan only reads new and changed files; moved files keep their category, cue points and history. Network shares don't always report changes, so keep the schedule on for them. radio-import does the same from the command line, using these settings. With a shared MySQL library, every studio must see the music under the same path, and one studio scanning is enough." />
                     </StackPanel>
                 </StackPanel>
                 </ScrollViewer>
@@ -364,6 +391,127 @@
                     <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. Changes here apply the next time the stream starts." />
                 </StackPanel>
             </TabItem>
+            <!-- ───────── RDS ───────── -->
+            <TabItem Header="RDS">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
+                    <CheckBox x:Name="RdsBox" Content="Send now playing to the RDS encoder" FontWeight="SemiBold" />
+                    <StackPanel x:Name="RdsPanel" Spacing="12">
+                        <Grid ColumnDefinitions="140,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="PS (8 characters)" />
+                                <TextBox x:Name="RdsPsBox" MaxLength="8" FontFamily="monospace" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Radio text while a song is on air" />
+                                <TextBox x:Name="RdsTemplateBox" PlaceholderText="{}{artist} - {title}" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,12,Auto">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Radio text when no song is on air" />
+                                <TextBox x:Name="RdsDefaultBox" PlaceholderText="{}{station}" />
+                            </StackPanel>
+                            <CheckBox Grid.Column="2" x:Name="RdsJinglesBox" Content="Also during jingles and adverts" VerticalAlignment="Bottom" />
+                        </Grid>
+                        <TextBlock Classes="note"
+                                   Text="{}{artist}, {title} and {station} are filled in; up to 64 characters are sent. An empty PS uses the station name. A static PS is the norm: many countries don't allow a scrolling one." />
+
+                        <Grid ColumnDefinitions="*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Encoder protocol" />
+                                <ComboBox x:Name="RdsProtocolBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="ASCII commands (PIRA32, P232, MRDS, DEVA…)" />
+                                    <ComboBoxItem Content="UECP (professional encoders)" />
+                                    <ComboBoxItem Content="Text file (the encoder reads a file)" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" x:Name="RdsConnectionPanel">
+                                <TextBlock Classes="label" Text="Connection" />
+                                <ComboBox x:Name="RdsConnectionBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="TCP (network)" />
+                                    <ComboBoxItem Content="UDP (network)" />
+                                    <ComboBoxItem Content="Serial port (RS-232 / USB)" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="RdsNetworkPanel" ColumnDefinitions="*,12,120">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Encoder address" />
+                                <TextBox x:Name="RdsHostBox" PlaceholderText="192.168.1.50" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Port" />
+                                <TextBox x:Name="RdsPortBox" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="RdsSerialPanel" ColumnDefinitions="*,12,160">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Serial port" />
+                                <ComboBox x:Name="RdsSerialBox" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Speed (baud)" />
+                                <ComboBox x:Name="RdsBaudBox" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel x:Name="RdsFilePanel" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="File:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RdsFileText" VerticalAlignment="Center" MaxWidth="480" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseRdsFileButton" Content="Choose…" />
+                        </StackPanel>
+
+                        <Grid x:Name="RdsAsciiPanel" ColumnDefinitions="*,12,*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="PS command" />
+                                <TextBox x:Name="RdsPsCommandBox" FontFamily="monospace" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Radio text command" />
+                                <TextBox x:Name="RdsRtCommandBox" FontFamily="monospace" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Classes="label" Text="Characters" />
+                                <ComboBox x:Name="RdsCharsetBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Plain (no accents)" />
+                                    <ComboBoxItem Content="RDS character set" />
+                                    <ComboBoxItem Content="Latin-1" />
+                                    <ComboBoxItem Content="UTF-8" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="RdsUecpPanel" ColumnDefinitions="*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Site address (0 = all)" />
+                                <NumericUpDown x:Name="RdsSiteBox" Minimum="0" Maximum="1023" Increment="1" FormatString="0" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Encoder address (0 = all)" />
+                                <NumericUpDown x:Name="RdsEncoderBox" Minimum="0" Maximum="63" Increment="1" FormatString="0" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Send everything again every" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="RdsResendBox" Minimum="5" Maximum="3600" Increment="5" FormatString="0" Width="120" />
+                            <TextBlock Text="seconds" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="RdsTestButton" Content="Send now" ToolTip.Tip="Send the PS and the radio text for what is on air now, with these settings" />
+                            <TextBlock x:Name="RdsTestText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="ASCII commands: check the encoder's manual for the command names (RT= and PS= are the most common; some use TEXT= or DPS=). Plain characters show correctly on every radio. The text changes when the next item goes on air and is sent again regularly, so an encoder that restarted catches up." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ───────── About ───────── -->
             <TabItem Header="About">
                 <StackPanel Spacing="14" Margin="0,12,0,0">

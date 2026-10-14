@@ -37,6 +37,7 @@ public partial class TrackLibraryView : UserControl
         });
         SearchBox.TextChanged += (_, _) => { _searchDelay.Stop(); _searchDelay.Start(); };
         CategoryBox.SelectionChanged += (_, _) => Query();
+        EditCategoriesButton.Click += async (_, _) => await EditCategories();
 
         TrackList.DoubleTapped += (_, e) =>
         {
@@ -160,6 +161,8 @@ public partial class TrackLibraryView : UserControl
             category.Items.Add(Item(Mark(c.Name, current == c.Id), () => Edit(db => db.SetCategory(ids, c.Id))));
         category.Items.Add(new Separator());
         category.Items.Add(Item(Mark("None", current == null), () => Edit(db => db.SetCategory(ids, null))));
+        category.Items.Add(new Separator());
+        category.Items.Add(Item("Edit categories…", async () => await EditCategories()));
         menu.Items.Add(category);
 
         var tempo = new MenuItem { Header = "Tempo" + many };
@@ -204,6 +207,12 @@ public partial class TrackLibraryView : UserControl
             menu.Items.Add(Item("Edit tags…", () => EditTagsRequested?.Invoke(paths[0])));
             menu.Items.Add(Item("Edit cue points…", () => EditCuesRequested?.Invoke(paths[0])));
         }
+    }
+
+    async Task EditCategories()
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner || _service == null) return;
+        await new CategoriesWindow(_service).ShowDialog(owner);
     }
 
     static string Mark(string label, bool on) => on ? $"{label}  ✓" : label;

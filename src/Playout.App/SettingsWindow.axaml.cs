@@ -77,9 +77,16 @@ public partial class SettingsWindow : Window
         SilenceBox.IsCheckedChanged += (_, _) => SilencePanel.IsEnabled = SilenceBox.IsChecked == true;
         FillBox.IsChecked = settings.FillEnabled;
         _fillFolder = settings.FillFolder ?? "";
+        FillLibraryRadio.IsChecked = settings.FillSource == FillSource.Library;
+        FillFolderRadio.IsChecked = settings.FillSource == FillSource.Folder;
+        FillSongHoursBox.Value = (decimal)settings.FillSongHours;
+        FillArtistMinutesBox.Value = settings.FillArtistMinutes;
         ShowFillFolder();
         FillBox.IsCheckedChanged += (_, _) => ShowFillFolder();
+        FillLibraryRadio.IsCheckedChanged += (_, _) => ShowFillFolder();
         ChooseFillButton.Click += async (_, _) => await ChooseFillFolder();
+        ClearFillButton.Click += (_, _) => { _fillFolder = ""; ShowFillFolder(); };
+        _ = LoadFillCategories(settings.FillCategories ?? new());
         ResumeBox.IsChecked = settings.ResumeOnStart;
         WatchdogBox.IsChecked = settings.RestartAfterCrash;
         AutostartBox.IsChecked = Autostart.IsEnabled;
@@ -101,6 +108,11 @@ public partial class SettingsWindow : Window
         DbUserBox.Text = library.User;
         DbPasswordBox.Text = library.Password;
         foreach (var f in library.Folders) _libraryFolders.Add(f);
+        AutoScanBox.IsChecked = library.ScanEveryMinutes > 0;
+        AutoScanMinutesBox.Value = library.ScanEveryMinutes > 0 ? library.ScanEveryMinutes : 60;
+        AutoScanMinutesBox.IsEnabled = library.ScanEveryMinutes > 0;
+        AutoScanBox.IsCheckedChanged += (_, _) => AutoScanMinutesBox.IsEnabled = AutoScanBox.IsChecked == true;
+        WatchFoldersBox.IsChecked = library.WatchFolders;
         LibraryFoldersList.ItemsSource = _libraryFolders;
         ShowLibraryType();
         ChooseLibraryFileButton.Click += async (_, _) => await ChooseLibraryFile();
@@ -110,6 +122,8 @@ public partial class SettingsWindow : Window
         {
             foreach (var f in LibraryFoldersList.SelectedItems?.OfType<string>().ToList() ?? []) _libraryFolders.Remove(f);
         };
+
+        LoadRds(settings.Rds ?? new());
 
         BuildShortcuts(settings.Shortcuts ?? Shortcuts.Defaults());
         DefaultKeysButton.Click += (_, _) =>
@@ -269,6 +283,8 @@ public partial class SettingsWindow : Window
         User = DbUserBox.Text?.Trim() ?? "",
         Password = DbPasswordBox.Text ?? "",
         Folders = _libraryFolders.ToList(),
+        ScanEveryMinutes = AutoScanBox.IsChecked == true ? (int)(AutoScanMinutesBox.Value ?? 60) : 0,
+        WatchFolders = WatchFoldersBox.IsChecked == true,
     };
 
     async Task TestLibrary()
@@ -316,12 +332,162 @@ public partial class SettingsWindow : Window
             if (f.TryGetLocalPath() is { } path && !_libraryFolders.Contains(path)) _libraryFolders.Add(path);
     }
 
+    // ───────────────────────── RDS ─────────────────────────
+
+    static readonly int[] BaudRates = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+    string _rdsFile = "";
+
+    void LoadRds(RdsSettings rds)
+    {
+        RdsBox.IsChecked = rds.Enabled;
+        RdsPsBox.Text = rds.Ps;
+        RdsTemplateBox.Text = rds.Template;
+        RdsDefaultBox.Text = rds.DefaultText;
+        RdsJinglesBox.IsChecked = rds.DefaultForJingles;
+        RdsProtocolBox.SelectedIndex = (int)rds.Protocol;
+        RdsConnectionBox.SelectedIndex = (int)rds.Connection;
+        RdsHostBox.Text = rds.Host;
+        RdsPortBox.Text = rds.Port > 0 ? rds.Port.ToString() : "";
+        var ports = SerialPortNames();
+        if (rds.SerialPort.Length > 0 && !ports.Contains(rds.SerialPort)) ports.Insert(0, rds.SerialPort); // unplugged now
+        RdsSerialBox.ItemsSource = ports;
+        RdsSerialBox.SelectedItem = rds.SerialPort.Length > 0 ? rds.SerialPort : ports.FirstOrDefault();
+        RdsBaudBox.ItemsSource = BaudRates;
+        RdsBaudBox.SelectedItem = BaudRates.Contains(rds.BaudRate) ? rds.BaudRate : 9600;
+        _rdsFile = rds.FilePath;
+        RdsPsCommandBox.Text = rds.PsCommand;
+        RdsRtCommandBox.Text = rds.RtCommand;
+        RdsCharsetBox.SelectedIndex = (int)rds.Charset;
+        RdsSiteBox.Value = rds.SiteAddress;
+        RdsEncoderBox.Value = rds.EncoderAddress;
+        RdsResendBox.Value = rds.ResendSeconds;
+        ShowRds();
+        RdsBox.IsCheckedChanged += (_, _) => ShowRds();
+        RdsProtocolBox.SelectionChanged += (_, _) => ShowRds();
+        RdsConnectionBox.SelectionChanged += (_, _) => ShowRds();
+        ChooseRdsFileButton.Click += async (_, _) => await ChooseRdsFile();
+        RdsTestButton.Click += async (_, _) => await TestRds();
+    }
+
+    static List<string> SerialPortNames()
+    {
+        try { return System.IO.Ports.SerialPort.GetPortNames().Order().ToList(); }
+        catch { return new(); }
+    }
+
+    void ShowRds()
+    {
+        RdsPanel.IsEnabled = RdsBox.IsChecked == true;
+        var protocol = (RdsProtocol)Math.Max(0, RdsProtocolBox.SelectedIndex);
+        var connection = (RdsConnection)Math.Max(0, RdsConnectionBox.SelectedIndex);
+        bool file = protocol == RdsProtocol.TextFile;
+        RdsConnectionPanel.IsVisible = !file;
+        RdsNetworkPanel.IsVisible = !file && connection != RdsConnection.Serial;
+        RdsSerialPanel.IsVisible = !file && connection == RdsConnection.Serial;
+        RdsFilePanel.IsVisible = file;
+        RdsAsciiPanel.IsVisible = protocol == RdsProtocol.Ascii;
+        RdsUecpPanel.IsVisible = protocol == RdsProtocol.Uecp;
+        RdsFileText.Text = _rdsFile.Length > 0 ? _rdsFile : "No file chosen";
+        ToolTip.SetTip(RdsFileText, _rdsFile.Length > 0 ? _rdsFile : null);
+    }
+
+    RdsSettings RdsFromUi() => new()
+    {
+        Enabled = RdsBox.IsChecked == true,
+        Ps = RdsPsBox.Text ?? "",
+        Template = RdsTemplateBox.Text?.Trim() is { Length: > 0 } template ? template : "{artist} - {title}",
+        DefaultText = RdsDefaultBox.Text?.Trim() ?? "",
+        DefaultForJingles = RdsJinglesBox.IsChecked == true,
+        Protocol = (RdsProtocol)Math.Max(0, RdsProtocolBox.SelectedIndex),
+        Connection = (RdsConnection)Math.Max(0, RdsConnectionBox.SelectedIndex),
+        Host = RdsHostBox.Text?.Trim() ?? "",
+        Port = int.TryParse(RdsPortBox.Text, out int port) && port is > 0 and < 65536 ? port : 0,
+        SerialPort = RdsSerialBox.SelectedItem as string ?? "",
+        BaudRate = RdsBaudBox.SelectedItem is int baud ? baud : 9600,
+        FilePath = _rdsFile,
+        PsCommand = RdsPsCommandBox.Text ?? "",
+        RtCommand = RdsRtCommandBox.Text ?? "",
+        Charset = (RdsCharset)Math.Max(0, RdsCharsetBox.SelectedIndex),
+        SiteAddress = (int)(RdsSiteBox.Value ?? 0),
+        EncoderAddress = (int)(RdsEncoderBox.Value ?? 0),
+        ResendSeconds = (int)(RdsResendBox.Value ?? 60),
+    };
+
+    async Task ChooseRdsFile()
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "File to write the radio text to",
+            SuggestedFileName = "nowplaying.txt",
+            DefaultExtension = "txt",
+            ShowOverwritePrompt = false,
+        });
+        if (file?.TryGetLocalPath() is not { } path) return;
+        _rdsFile = path;
+        ShowRds();
+    }
+
+    /// <summary>Sends the PS and radio text for what is on air now, with the settings on screen.</summary>
+    async Task TestRds()
+    {
+        var rds = RdsFromUi();
+        string station = StationNameBox.Text?.Trim() is { Length: > 0 } name ? name : AppInfo.Name;
+        var status = _engine?.GetStatus();
+        var onAir = status is { State: not PlayerState.Stopped } st ? st.Current : null;
+        var (ps, rt) = RdsText.Compose(rds, onAir, station);
+        RdsTestButton.IsEnabled = false;
+        RdsTestText.Text = "Sending…";
+        using var output = new RdsOutput(rds, station);
+        output.Update(onAir);
+        string? error = await output.SendNowAsync();
+        RdsTestText.Text = error == null ? $"Sent: PS \"{ps}\", RT \"{rt}\"" : $"Failed: {error}";
+        RdsTestButton.IsEnabled = true;
+    }
+
     void ShowFillFolder()
     {
         FillPanel.IsEnabled = FillBox.IsChecked == true;
-        FillFolderText.Text = _fillFolder.Length > 0 ? _fillFolder : "No folder chosen";
+        FillLibraryPanel.IsEnabled = FillLibraryRadio.IsChecked == true;
+        FillFolderText.Text = _fillFolder.Length > 0 ? _fillFolder
+            : FillLibraryRadio.IsChecked == true ? "None (optional: used while the library can't be reached)" : "No folder chosen";
         ToolTip.SetTip(FillFolderText, _fillFolder.Length > 0 ? _fillFolder : null);
+        ClearFillButton.IsEnabled = _fillFolder.Length > 0;
     }
+
+    readonly Dictionary<long, CheckBox> _fillCategoryBoxes = new();
+    List<long> _fillCategoriesUnknown = new(); // chosen, but the library can't be read now: kept as they are
+
+    /// <summary>A tick box per library category (read in the background).</summary>
+    async Task LoadFillCategories(List<long> chosen)
+    {
+        _fillCategoriesUnknown = chosen.ToList();
+        if (_main?.MusicLibrary.Db is not { } db)
+        {
+            FillCategoriesNote.Text = "The library isn't open, so its categories can't be shown. " +
+                (chosen.Count > 0 ? "The categories chosen before are kept." : "None chosen: every music category.");
+            return;
+        }
+        try
+        {
+            var categories = await Task.Run(db.Categories);
+            foreach (var c in categories)
+            {
+                var box = new CheckBox { Content = c.Name, IsChecked = chosen.Contains(c.Id) };
+                ToolTip.SetTip(box, c.Kind == "music" ? null : $"A {c.Kind} category");
+                _fillCategoryBoxes[c.Id] = box;
+                FillCategoriesPanel.Children.Add(box);
+            }
+            _fillCategoriesUnknown.Clear();
+        }
+        catch (Exception ex)
+        {
+            FillCategoriesNote.Text = $"The library's categories can't be read: {ex.Message}";
+        }
+    }
+
+    List<long> FillCategoriesFromUi() =>
+        _fillCategoryBoxes.Count == 0 ? _fillCategoriesUnknown
+        : _fillCategoryBoxes.Where(kv => kv.Value.IsChecked == true).Select(kv => kv.Key).ToList();
 
     async Task ChooseFillFolder()
     {
@@ -401,10 +567,15 @@ public partial class SettingsWindow : Window
             SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
 
         _settings.Library = LibraryFromUi();
+        _settings.Rds = RdsFromUi();
         _settings.Silence = new SilenceSettings(SilenceBox.IsChecked == true,
             (double)(SilenceLevelBox.Value ?? -45), (double)(SilenceSecondsBox.Value ?? 15));
-        _settings.FillEnabled = FillBox.IsChecked == true && _fillFolder.Length > 0;
+        _settings.FillSource = FillLibraryRadio.IsChecked == true ? FillSource.Library : FillSource.Folder;
+        _settings.FillEnabled = FillBox.IsChecked == true && (_settings.FillSource == FillSource.Library || _fillFolder.Length > 0);
         _settings.FillFolder = _fillFolder;
+        _settings.FillCategories = FillCategoriesFromUi();
+        _settings.FillSongHours = (double)(FillSongHoursBox.Value ?? 3);
+        _settings.FillArtistMinutes = (int)(FillArtistMinutesBox.Value ?? 60);
         _settings.ResumeOnStart = ResumeBox.IsChecked == true;
         _settings.RestartAfterCrash = WatchdogBox.IsChecked == true;
         if (Autostart.IsSupported)
