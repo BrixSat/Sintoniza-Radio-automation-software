@@ -7,6 +7,7 @@ namespace Playout.App;
 sealed class FillMusic
 {
     static readonly TimeSpan Rescan = TimeSpan.FromMinutes(10);
+    static readonly TimeSpan RescanEmpty = TimeSpan.FromSeconds(30); // nothing found (yet): a network share may be back soon
 
     readonly string _folder;
     readonly Queue<string> _recent = new();
@@ -21,13 +22,12 @@ sealed class FillMusic
         StartScan();
     }
 
-    /// <summary>A file to play, or null if the folder has none (or isn't there). Called on the engine thread.</summary>
+    /// <summary>A file to play, or null if the folder has none, isn't there or hasn't been read yet. Called on the engine thread.</summary>
     public string? Next()
     {
-        Task? scan;
-        lock (_lock) scan = _scan;
-        if (_files.Length == 0) scan?.Wait(TimeSpan.FromSeconds(20)); // the first scan isn't done yet
-        if (DateTime.UtcNow - _scanned > Rescan) StartScan();
+        // Never waits for the folder to be read (this runs on the engine thread): null until it has been,
+        // and the engine asks again a few seconds later.
+        if (DateTime.UtcNow - _scanned > (_files.Length == 0 ? RescanEmpty : Rescan)) StartScan();
 
         lock (_lock)
         {

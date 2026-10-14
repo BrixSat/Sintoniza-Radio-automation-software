@@ -4,7 +4,7 @@
         x:Class="Playout.App.SettingsWindow"
         Icon="/Assets/icon.ico"
         Title="Settings"
-        Width="680" Height="580" CanResize="False"
+        Width="780" Height="580" CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
@@ -230,6 +230,66 @@
                         <CheckBox x:Name="AutostartBox" Content="Start the app when I log in to this computer" />
                         <TextBlock Classes="note"
                                    Text="Carries on with the item after the one that was on air, and turns streaming back on. The watchdog applies from the next start. On an unattended studio computer, also turn on automatic login and turn off sleep." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Library database ───────── -->
+            <TabItem Header="Library">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Library database" />
+                        <ComboBox x:Name="LibraryTypeBox" HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="SQLite: a file on this computer" />
+                            <ComboBoxItem Content="MySQL / MariaDB: a server that several studios can share" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SqlitePanel" Orientation="Horizontal" Spacing="8">
+                        <TextBlock x:Name="LibraryFileText" VerticalAlignment="Center" MaxWidth="480" TextTrimming="CharacterEllipsis" />
+                        <Button x:Name="ChooseLibraryFileButton" Content="Choose…" />
+                    </StackPanel>
+
+                    <Grid x:Name="MySqlPanel" ColumnDefinitions="*,10,*" RowDefinitions="Auto,8,Auto">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Server" />
+                            <Grid ColumnDefinitions="*,6,80">
+                                <TextBox x:Name="DbServerBox" PlaceholderText="localhost" />
+                                <TextBox Grid.Column="2" x:Name="DbPortBox" PlaceholderText="3306" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Database" />
+                            <TextBox x:Name="DbNameBox" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2">
+                            <TextBlock Classes="label" Text="User" />
+                            <TextBox x:Name="DbUserBox" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="2">
+                            <TextBlock Classes="label" Text="Password" />
+                            <TextBox x:Name="DbPasswordBox" PasswordChar="•" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="TestLibraryButton" Content="Test" ToolTip.Tip="Open the library with these settings (creates its tables if new)" />
+                        <TextBlock x:Name="LibraryTestText" Classes="note" VerticalAlignment="Center" MaxWidth="520" />
+                    </StackPanel>
+
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Music folders (scanned into the library)" />
+                        <Grid ColumnDefinitions="*,8,Auto">
+                            <ListBox x:Name="LibraryFoldersList" Height="96" />
+                            <StackPanel Grid.Column="2" Spacing="6">
+                                <Button x:Name="AddLibraryFolderButton" Content="Add…" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                <Button x:Name="RemoveLibraryFolderButton" Content="Remove" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="Click Scan above the library to add new music and pick up changes; moved files keep their category and history. radio-import does the same from the command line or on a schedule, using these settings. With a shared MySQL library, every studio must see the music under the same path." />
                     </StackPanel>
                 </StackPanel>
                 </ScrollViewer>

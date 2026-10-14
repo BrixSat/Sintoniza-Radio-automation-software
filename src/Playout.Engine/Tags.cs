@@ -46,8 +46,9 @@ public static class Tags
     public static void Write(string path, TrackTags tags, byte[]? cover)
     {
         using var file = Open(path) ?? throw new NotSupportedException("This kind of file has no tags that can be edited.");
-        // MP3: write ID3v2.3, which every player reads (v2.4 is not understood by some older ones).
-        if (file.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3) id3.Version = 3;
+        // MP3: write ID3v2.3, which every player reads (v2.4 is not understood by some older ones). Only MP3:
+        // asked for on a FLAC file, TagLib would put an ID3 tag in front of it, which FLAC tools reject.
+        if (file is TagLib.Mpeg.AudioFile && file.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3) id3.Version = 3;
 
         var t = file.Tag;
         t.Title = Empty(tags.Title);

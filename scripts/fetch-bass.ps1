@@ -5,7 +5,7 @@ param([ValidateSet('win', 'osx', 'linux', 'all')][string]$Platform = 'win')
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$libs = 'bass', 'bassmix', 'bassenc', 'bassenc_mp3', 'bassenc_ogg'
+$libs = 'bass', 'bassmix', 'bassenc', 'bassenc_mp3', 'bassenc_ogg', 'bassflac'
 
 function Get-Zip($name, $dest) {
     foreach ($base in 'https://www.un4seen.com/files/', 'https://www.un4seen.com/files/z/2/') {

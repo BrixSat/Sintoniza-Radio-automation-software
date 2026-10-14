@@ -51,14 +51,28 @@ static class Watchdog
                 AppLog.Write("Watchdog: could not start the app");
                 return 1;
             }
-            var started = DateTime.UtcNow;
+            // Timed on a monotonic clock: only *changes* of the file's time count, so the computer waking from sleep
+            // or its clock being set never looks like a hang.
+            var sinceBeat = Stopwatch.StartNew(); // since start, then since the file last changed
+            DateTime lastTouch = default;
             string heartbeat = HeartbeatFile(child.Id);
-            bool hung = false;
+            bool hung = false, beating = false;
+            var sincePoll = Stopwatch.StartNew();
             while (!child.WaitForExit(2000))
             {
-                if (stopping() || (DateTime.UtcNow - started).TotalSeconds < StartupGraceSeconds) continue;
-                var touched = File.Exists(heartbeat) ? File.GetLastWriteTimeUtc(heartbeat) : started;
-                if ((DateTime.UtcNow - touched).TotalSeconds < HungSeconds) continue;
+                // A check that comes far later than 2 s means the computer was asleep (Windows' clock counts sleep):
+                // give the app time to beat again.
+                if (sincePoll.Elapsed.TotalSeconds > 10) sinceBeat.Restart();
+                sincePoll.Restart();
+                var touched = File.Exists(heartbeat) ? File.GetLastWriteTimeUtc(heartbeat) : default;
+                if (touched != lastTouch)
+                {
+                    lastTouch = touched;
+                    beating = true;
+                    sinceBeat.Restart();
+                }
+                if (stopping()) continue;
+                if (sinceBeat.Elapsed.TotalSeconds < (beating ? HungSeconds : StartupGraceSeconds)) continue;
                 hung = true;
                 try { child.Kill(entireProcessTree: true); } catch { /* exited meanwhile */ }
                 child.WaitForExit(5000);

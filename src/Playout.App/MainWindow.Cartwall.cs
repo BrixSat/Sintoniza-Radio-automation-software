@@ -219,7 +219,11 @@ public partial class MainWindow
     {
         if (_engine == null || _page.Carts[index].Path is not { } path) return;
         if (_playingCarts.ContainsKey((_page, index))) StopCart(_page, index);
-        else if (_engine.FireCart(path) is var h && h != 0) _playingCarts[(_page, index)] = h;
+        else if (_engine.FireCart(path) is var h && h != 0)
+        {
+            _playingCarts[(_page, index)] = h;
+            _library.RecordPlay(path, "", Path.GetFileNameWithoutExtension(path), "cart");
+        }
     }
 
     void StopCart(CartwallPage page, int index)

@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Playout.Engine;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -19,6 +20,8 @@ public partial class SettingsWindow : Window
     string? _logoPath;
     string? _signalFile;
     string _fillFolder = "";
+    string _libraryFile = "";
+    readonly System.Collections.ObjectModel.ObservableCollection<string> _libraryFolders = new();
     readonly Dictionary<string, ShortcutBox> _keyBoxes = new();
 
     // Parameterless constructor for the XAML previewer.
@@ -86,6 +89,26 @@ public partial class SettingsWindow : Window
         {
             Directory.CreateDirectory(AppLog.Folder);
             Updates.OpenInBrowser(AppLog.Folder);
+        };
+
+        var library = settings.Library ?? new();
+        LibraryTypeBox.SelectedIndex = library.IsMySql ? 1 : 0;
+        LibraryTypeBox.SelectionChanged += (_, _) => ShowLibraryType();
+        _libraryFile = library.File;
+        DbServerBox.Text = library.Server;
+        DbPortBox.Text = library.Port.ToString();
+        DbNameBox.Text = library.Database;
+        DbUserBox.Text = library.User;
+        DbPasswordBox.Text = library.Password;
+        foreach (var f in library.Folders) _libraryFolders.Add(f);
+        LibraryFoldersList.ItemsSource = _libraryFolders;
+        ShowLibraryType();
+        ChooseLibraryFileButton.Click += async (_, _) => await ChooseLibraryFile();
+        TestLibraryButton.Click += async (_, _) => await TestLibrary();
+        AddLibraryFolderButton.Click += async (_, _) => await AddLibraryFolder();
+        RemoveLibraryFolderButton.Click += (_, _) =>
+        {
+            foreach (var f in LibraryFoldersList.SelectedItems?.OfType<string>().ToList() ?? []) _libraryFolders.Remove(f);
         };
 
         BuildShortcuts(settings.Shortcuts ?? Shortcuts.Defaults());
@@ -225,6 +248,74 @@ public partial class SettingsWindow : Window
         MicFmNote.IsVisible = !web;
     }
 
+    // ───────────────────────── Library ─────────────────────────
+
+    void ShowLibraryType()
+    {
+        bool mySql = LibraryTypeBox.SelectedIndex == 1;
+        SqlitePanel.IsVisible = !mySql;
+        MySqlPanel.IsVisible = mySql;
+        LibraryFileText.Text = string.IsNullOrWhiteSpace(_libraryFile) ? $"{LibraryDb.DefaultFile} (default)" : _libraryFile;
+        LibraryTestText.Text = "";
+    }
+
+    LibrarySettings LibraryFromUi() => new()
+    {
+        Provider = LibraryTypeBox.SelectedIndex == 1 ? "mysql" : "sqlite",
+        File = _libraryFile,
+        Server = DbServerBox.Text?.Trim() is { Length: > 0 } server ? server : "localhost",
+        Port = int.TryParse(DbPortBox.Text, out int port) && port > 0 ? port : 3306,
+        Database = DbNameBox.Text?.Trim() ?? "",
+        User = DbUserBox.Text?.Trim() ?? "",
+        Password = DbPasswordBox.Text ?? "",
+        Folders = _libraryFolders.ToList(),
+    };
+
+    async Task TestLibrary()
+    {
+        var library = LibraryFromUi();
+        TestLibraryButton.IsEnabled = false;
+        LibraryTestText.Text = "Connecting…";
+        try
+        {
+            var stats = await Task.Run(() => LibraryDb.Open(library).Stats());
+            LibraryTestText.Text = $"Works: {stats.Tracks:N0} songs in {library.Describe()}";
+        }
+        catch (Exception ex)
+        {
+            LibraryTestText.Text = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            TestLibraryButton.IsEnabled = true;
+        }
+    }
+
+    async Task ChooseLibraryFile()
+    {
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "Library database file (an existing one, or a new one)",
+            SuggestedFileName = "library.db",
+            DefaultExtension = "db",
+            ShowOverwritePrompt = false,
+        });
+        if (file?.TryGetLocalPath() is not { } path) return;
+        _libraryFile = path;
+        ShowLibraryType();
+    }
+
+    async Task AddLibraryFolder()
+    {
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Add a music folder to the library",
+            AllowMultiple = true,
+        });
+        foreach (var f in folders)
+            if (f.TryGetLocalPath() is { } path && !_libraryFolders.Contains(path)) _libraryFolders.Add(path);
+    }
+
     void ShowFillFolder()
     {
         FillPanel.IsEnabled = FillBox.IsChecked == true;
@@ -309,6 +400,7 @@ public partial class SettingsWindow : Window
             (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
             SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
 
+        _settings.Library = LibraryFromUi();
         _settings.Silence = new SilenceSettings(SilenceBox.IsChecked == true,
             (double)(SilenceLevelBox.Value ?? -45), (double)(SilenceSecondsBox.Value ?? 15));
         _settings.FillEnabled = FillBox.IsChecked == true && _fillFolder.Length > 0;

@@ -56,6 +56,7 @@ public partial class MainWindow : Window
                 Dispatcher.UIThread.Post(() => LastLog.Text = msg);
             };
             Watchdog.Watch(_engine);
+            _engine.OnAir += track => _library.RecordPlay(track, "playlist");
             _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
         }
         catch (Exception ex)
@@ -63,6 +64,15 @@ public partial class MainWindow : Window
             LastLog.Text = $"Audio engine failed to start: {ex.Message}";
             LastLog.Foreground = (IBrush)this.FindResource("OnAir")!;
         }
+
+        _library.Message += message =>
+        {
+            AppLog.Write(message);
+            LastLog.Text = message;
+        };
+        _library.Changed += () => ScanButton.Content = _library.IsScanning ? "Stop" : "Scan";
+        Tracks.Attach(_library);
+        _ = _library.OpenAsync(_settings.Library);
 
         BuildCartwall();
         LoadSettingsIntoUi();
@@ -182,6 +192,17 @@ public partial class MainWindow : Window
         });
 
         Library.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1);
+        Tracks.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1);
+        Tracks.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
+        Tracks.EditTagsRequested += async path => await EditTags(path);
+        // Clicking the open tab keeps it open (ShowMusicTab sets both buttons again).
+        LibraryTab.Click += (_, _) => ShowMusicTab(true);
+        FoldersTab.Click += (_, _) => ShowMusicTab(false);
+        ScanButton.Click += async (_, _) =>
+        {
+            if (_library.IsScanning) _library.CancelScan();
+            else await _library.ScanAsync(_settings.Library.Folders);
+        };
         Library.RootChanged += root => _settings.MusicFolder = root;
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
         Library.EditTagsRequested += async path => await EditTags(path);
@@ -835,7 +856,7 @@ public partial class MainWindow : Window
         _editorOpen = true;
         try
         {
-            await new TagEditorWindow(_engine, path).ShowDialog(this);
+            if (await new TagEditorWindow(_engine, path).ShowDialog<bool>(this)) _library.Refresh(path);
         }
         finally
         {
@@ -920,6 +941,7 @@ public partial class MainWindow : Window
         try
         {
             var routingBefore = _settings.Routing;
+            string libraryBefore = System.Text.Json.JsonSerializer.Serialize(_settings.Library);
             var micBefore = _settings.ActiveMic;
             bool saved = await new SettingsWindow(_settings, _engine, this).ShowDialog<bool>(this);
             if (!saved) return;
@@ -931,6 +953,7 @@ public partial class MainWindow : Window
                 _engine.ConfigureTimeSignal(_settings.TimeSignal);
                 ApplySafety();
             }
+            if (System.Text.Json.JsonSerializer.Serialize(_settings.Library) != libraryBefore) _ = _library.OpenAsync(_settings.Library);
             ApplyStationBranding();
             ShowStationType();
             ApplyShortcuts();
@@ -1001,6 +1024,20 @@ public partial class MainWindow : Window
             _settings.StreamingOn = _engine.GetStatus().Stream != StreamState.Off;
         }
         _settings.Save();
+    }
+
+    // ───────────────────────── Library ─────────────────────────
+
+    readonly LibraryService _library = new();
+
+    /// <summary>The library (search) or the folders on disk in the left panel.</summary>
+    void ShowMusicTab(bool library)
+    {
+        LibraryTab.IsChecked = library;
+        FoldersTab.IsChecked = !library;
+        Tracks.IsVisible = library;
+        Library.IsVisible = !library;
+        ScanButton.IsVisible = library;
     }
 
     // ───────────────────────── Safety ─────────────────────────

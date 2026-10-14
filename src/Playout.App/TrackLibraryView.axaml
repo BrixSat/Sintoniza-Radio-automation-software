@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:Playout.App"
+             x:Class="Playout.App.TrackLibraryView">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <TextBox x:Name="SearchBox" PlaceholderText="Search artist, title, album…" FontSize="12" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,6,0,6">
+            <ComboBox x:Name="CategoryBox" HorizontalAlignment="Stretch" FontSize="12" MinHeight="0" />
+            <TextBlock Grid.Column="1" x:Name="CountText" Classes="muted" FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" />
+        </Grid>
+
+        <ListBox Grid.Row="2" x:Name="TrackList" SelectionMode="Multiple" Background="Transparent">
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="8,4" />
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="CornerRadius" Value="4" />
+                </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="app:LibraryRow">
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ToolTip.Tip="{Binding Path}">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding Length}" FontSize="11" Margin="8,0,0,0"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="1" Classes="muted" Text="{Binding Artist}" FontSize="12" TextTrimming="CharacterEllipsis" />
+                        <Border Grid.Row="1" Grid.Column="1" CornerRadius="3" Padding="5,0" Margin="8,1,0,1" HorizontalAlignment="Right"
+                                Background="{Binding CategoryBrush}" IsVisible="{Binding HasCategory}">
+                            <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="SemiBold" Foreground="White" />
+                        </Border>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Grid.Row="2" x:Name="EmptyText" Classes="muted" FontSize="12" TextWrapping="Wrap" TextAlignment="Center"
+                   VerticalAlignment="Center" Margin="12" IsVisible="False" />
+
+        <TextBlock Grid.Row="3" x:Name="StatusText" Classes="muted" FontSize="11" Margin="2,6,0,0" TextTrimming="CharacterEllipsis" />
+    </Grid>
+</UserControl>

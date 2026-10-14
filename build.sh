@@ -22,14 +22,15 @@ appver=${appver:-0.0.0}
 command -v dotnet >/dev/null || { echo "dotnet not found. Install the .NET 10 SDK (see README)." >&2; exit 1; }
 
 build() { # $1 = win|linux
-  local plat=$1 rid native out pkg
+  local plat=$1 rid native flac out pkg
   case $plat in
-    win)   rid=win-x64;   native="$ROOT/native/win-x64" ;;
-    linux) rid=linux-x64; native="$ROOT/native/linux-x64" ;;
+    win)   rid=win-x64;   native="$ROOT/native/win-x64";   flac=bassflac.dll ;;
+    linux) rid=linux-x64; native="$ROOT/native/linux-x64"; flac=libbassflac.so ;;
     *) echo "Unknown platform: $plat (use win, linux or all)" >&2; exit 1 ;;
   esac
 
-  if [[ -z "$(ls -A "$native" 2>/dev/null)" ]]; then
+  # Also when an older checkout lacks an add-on added since (FLAC).
+  if [[ -z "$(ls -A "$native" 2>/dev/null)" || ! -e "$native/$flac" ]]; then
     "$ROOT/scripts/fetch-bass.sh" "$plat"
   fi
 
@@ -38,8 +39,11 @@ build() { # $1 = win|linux
   rm -rf "$out"
 
   echo "▶ Publishing $rid"
-  dotnet publish "$PROJECT" -c Release -r "$rid" --self-contained \
-    -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
+  # The app and radio-import (library scanner) share one folder and one .NET runtime.
+  for project in "$PROJECT" "$ROOT/src/Playout.Import"; do
+    dotnet publish "$project" -c Release -r "$rid" --self-contained \
+      -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
+  done
 
   cp "$ROOT/README.md" "$out/"
 
@@ -58,7 +62,7 @@ build() { # $1 = win|linux
       installer "$out" "$DIST/$pkg-setup.exe"
       ;;
     linux)
-      chmod +x "$out/$NAME"
+      chmod +x "$out/$NAME" "$out/radio-import"
       tar -C "$DIST" -czf "$DIST/$pkg.tar.gz" "$pkg"
       echo "→ $DIST/$pkg.tar.gz"
       deb "$out"
@@ -93,13 +97,17 @@ deb() { # $1 = publish dir
 #!/bin/sh
 exec /opt/$pkg/$NAME "\$@"
 SH
+  cat > "$root/usr/bin/radio-import" <<SH
+#!/bin/sh
+exec /opt/$pkg/radio-import "\$@"
+SH
   cp "$ROOT/packaging/linux/$pkg.desktop" "$root/usr/share/applications/"
   cp "$ROOT/packaging/linux/$pkg.png" "$root/usr/share/icons/hicolor/256x256/apps/"
   cp "$ROOT/packaging/icon.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg.svg"
 
   find "$root" -type d -exec chmod 755 {} +
   find "$root" -type f -exec chmod 644 {} +
-  chmod 755 "$root/opt/$pkg/$NAME" "$root/usr/bin/$pkg"
+  chmod 755 "$root/opt/$pkg/$NAME" "$root/opt/$pkg/radio-import" "$root/usr/bin/$pkg" "$root/usr/bin/radio-import"
 
   cat > "$root/DEBIAN/control" <<CTL
 Package: $pkg

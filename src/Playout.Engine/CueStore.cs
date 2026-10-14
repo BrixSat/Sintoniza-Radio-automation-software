@@ -33,24 +33,25 @@ public sealed class CueStore
     /// <summary>Stores the markers for a file (empty markers remove it) and saves in the background.</summary>
     public void Set(string path, CuePoints cues)
     {
-        string json;
         lock (_lock)
         {
             if (cues.IsEmpty) _cues.Remove(path);
             else _cues[path] = cues;
-            json = JsonSerializer.Serialize(_cues, Json);
         }
-        Task.Run(() => Save(json));
+        Task.Run(Save);
     }
 
     readonly object _saveLock = new();
 
-    void Save(string json)
+    /// <summary>Writes what is stored now, so saves that run out of order still end with the latest.</summary>
+    void Save()
     {
         lock (_saveLock)
         {
             try
             {
+                string json;
+                lock (_lock) json = JsonSerializer.Serialize(_cues, Json);
                 SafeFile.WriteAllText(_file, json);
             }
             catch

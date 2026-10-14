@@ -6,8 +6,9 @@ engine for decoding, mixing and streaming.
 
 ![Main window](docs/screenshot.png)
 
-> **Status:** proof of concept. It plays a playlist on air with crossfades, fires jingles from a cartwall and
-> streams to Icecast/Shoutcast. Scheduling, a music library and logging are not built yet (see [Roadmap](#roadmap)).
+> **Status:** in development. It plays a playlist on air with crossfades, fires jingles from a cartwall, streams to
+> Icecast/Shoutcast, keeps a music library and play history, and guards against dead air. Scheduling (hour
+> templates and rotation) is next (see [Roadmap](#roadmap)).
 
 ## Features
 
@@ -23,7 +24,14 @@ engine for decoding, mixing and streaming.
   (it crossfades into the next item when the time is up) or until you press Stop or Next. It connects a few seconds
   before it is due, so there is no dead air, and if the stream drops the playlist moves on. Saved with the playlist
   and in M3U files (`#EXTINF:-1` means until Stop).
-- **Music browser**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
+- **Music library**: a database of the station's music, an SQLite file or a shared MySQL / MariaDB server
+  (Settings → Library). The **LIBRARY** panel searches artist, title, album and file name as you type, ignoring
+  case and accents, and filters by category: Current, Recurrent, Gold, Jingles, IDs, Promos, Ads, or your own.
+  Right-click sets the category, tempo, voice and language of one or many songs. **Scan** adds new music and
+  follows moved or renamed files, keeping their category. Every item that goes on air is written to the play
+  history. `radio-import` does the scanning from the command line or on a schedule. The tables are documented
+  for other programs in [docs/library-database.md](docs/library-database.md).
+- **Folders**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
 - **Cue points**: mark the usual radio markers on any file: **Cue In** (start), **Intro** (talk-over until the
   vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
   **Cue Out** (stop). Playback, lengths, start times and the waveforms follow them, and an INTRO / OUTRO countdown
@@ -218,6 +226,8 @@ Then start the app:
 ```
 src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
                      Runs on its own thread; the UI only calls its public API.
+src/Playout.Library  Music library database (SQLite / MySQL) and the folder scanner.
+src/Playout.Import   radio-import: command-line library scanner.
 src/Playout.App      Avalonia desktop UI (deck, playlist, music browser, cartwall, settings).
 scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
 native/<platform>/   BASS libraries (downloaded, not committed).
@@ -231,10 +241,10 @@ Settings are stored in `settings.json` in the per-user app data folder:
 
 ## Roadmap
 
-- Music library with tags and categories
 - Auto cue (silence trimming) for files without cue points
-- Clocks / hour templates, rotation rules, jingles and IDs on a schedule
-- Played-tracks log and reports
+- Hour templates, rotation rules (artist and title separation), jingles and IDs on a schedule
+- Reports from the play history (royalties, advertisers)
+- RDS output, live input switching and GPIO, voice tracking
 - Loudness normalisation
 - REST API for remote control
 
@@ -243,5 +253,7 @@ Settings are stored in `settings.json` in the per-user app data folder:
 - **BASS** is free for non-commercial use. Commercial use, including running it at a commercial station or
   selling the software, needs a licence from [un4seen](https://www.un4seen.com/).
 - **Avalonia** and **ManagedBass** are MIT licensed.
-- **TagLib#** (tag editing) is LGPL 2.1.
+- **TagLib#** (tag editing, library scanning) is LGPL 2.1.
+- **Microsoft.Data.Sqlite** and **MySqlConnector** are MIT licensed, **Dapper** is Apache 2.0, and SQLite itself is
+  public domain.
 - The licence for this project's own code hasn't been chosen yet.

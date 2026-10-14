@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Playout.Engine;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -46,6 +47,9 @@ public sealed class AppSettings
     public Dictionary<string, string> Shortcuts { get; set; } = global::Playout.App.Shortcuts.Defaults();
     public bool AutoAdvance { get; set; } = true;
     public List<PlaylistEntry> PlaylistItems { get; set; } = new();
+
+    /// <summary>The music library database and the folders scanned into it (radio-import reads this too).</summary>
+    public LibrarySettings Library { get; set; } = new();
 
     /// <summary>Dead air detection: what counts as silence and how long before AUTO skips.</summary>
     public SilenceSettings Silence { get; set; } = new();
@@ -125,6 +129,8 @@ public sealed class AppSettings
         Playlist = null;
         TimeSignal ??= new();
         Silence ??= new();
+        Library ??= new();
+        Library.Folders ??= new();
         FillFolder ??= "";
         Shortcuts ??= new();
         // Actions added since the file was saved get their default.

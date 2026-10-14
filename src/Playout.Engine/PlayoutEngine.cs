@@ -22,6 +22,9 @@ public sealed class PlayoutEngine : IDisposable
     const double SignalFadeSeconds = 1;    // Stop mode: what is on air fades out over this, ending as the signal starts
     const int MaxSilenceSkips = 3;         // after this many silent items in a row the fault is not in the files: stop skipping, keep warning
     const int MaxStreamRetryDelay = 60;    // seconds between attempts to reconnect to the streaming server, at most
+    const double FillRetrySeconds = 5;     // how often to try again when fill music couldn't be added
+    const int FillAttempts = 10;           // files tried at a time (some may be unreadable)
+    const int KeepPlayed = 500;            // played items kept above the cursor when fill music grows the playlist
 
     readonly BlockingCollection<Action> _commands = new();
     readonly List<(DateTime Due, Action Action)> _timers = new();
@@ -46,6 +49,8 @@ public sealed class PlayoutEngine : IDisposable
     Guid? _connecting;     // stream item that is due but still connecting; automation waits for it instead of starting it again
     (Guid Id, Task<int> Handle)? _streamConnection; // connection to a stream item, opened ahead of its start
     readonly List<int> _playingOut = new(); // decks past their Mix marker, finishing under the next item
+    readonly HashSet<int> _fading = new();  // decks fading out before they are freed
+    readonly HashSet<string> _tagWriting = new(); // files whose tags are being written: not opened ahead of time meanwhile
     readonly ConcurrentDictionary<int, byte> _carts = new(); // carts fired and not stopped (some may have ended)
     TimeSignalSettings _timeSignal = new();
     double _signalHourAt;    // where the hour falls in the signal (seconds)
@@ -56,6 +61,9 @@ public sealed class PlayoutEngine : IDisposable
     int _silenceSkips;       // silent items skipped in a row
     Guid? _silenceReported;  // item whose silence has been logged (ASSISTED, or too many skips)
     Func<string?>? _fill;    // gives a file to add when the playlist runs out in AUTO
+    readonly HashSet<string> _badFill = new(); // fill files that couldn't be opened: not tried again
+    bool _waitingForFill;    // AUTO ran out with nothing to fill yet: start something as soon as there is
+    DateTime _nextFillTry;
 
     // Shared with polling readers; written only on the engine thread.
     volatile Deck? _current;
@@ -78,6 +86,9 @@ public sealed class PlayoutEngine : IDisposable
 
     public event Action<PlaylistSnapshot>? PlaylistChanged;
     public event Action<string>? Log;
+
+    /// <summary>An item went on air (raised on the engine thread: hand slow work, such as writing history, to another thread).</summary>
+    public event Action<Track>? OnAir;
 
     /// <param name="routing">Where the music, cart and preview buses go.</param>
     /// <param name="cues">Cue points per file; applied when files are added.</param>
@@ -186,51 +197,54 @@ public sealed class PlayoutEngine : IDisposable
 
     /// <summary>
     /// Writes a file's tags (see <see cref="Tags.Write"/>) and shows the new artist and title on every playlist item of
-    /// that file. Refused while the file is on air: rewriting the tags can move the audio under the player.
+    /// that file. Refused while the file can be heard (on air, playing out, on a cart): rewriting the tags can move
+    /// the audio under the player. The file is written off the engine thread, so automation never waits for it.
     /// </summary>
     public Task SaveTagsAsync(string path, TrackTags tags, byte[]? cover)
     {
         var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         Post(() =>
         {
-            try
+            if (IsAudible(path, comparer))
             {
-                var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-                if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer))
-                    throw new InvalidOperationException("This file is on air. Edit its tags once it has finished playing.");
-
-                // The next item is opened ahead of time: let go of the file while it is rewritten.
-                if (_preload is { } p && _playlist.Find(t => t.Id == p.Id) is { } pre && string.Equals(pre.Path, path, comparer))
-                {
-                    Bass.StreamFree(p.Handle);
-                    _preload = null;
-                }
-
-                try
-                {
-                    Tags.Write(path, tags, cover);
-                }
-                finally
-                {
-                    PlaylistUpdated(); // opens the next item again
-                }
-
-                if (!string.IsNullOrWhiteSpace(tags.Title))
-                {
+                done.SetException(new InvalidOperationException("This file is playing. Edit its tags once it has finished."));
+                return;
+            }
+            // The next item is opened ahead of time: let go of the file while it is rewritten.
+            _tagWriting.Add(path);
+            if (_preload is { } p && _playlist.Find(t => t.Id == p.Id) is { } pre && string.Equals(pre.Path, path, comparer))
+            {
+                Bass.StreamFree(p.Handle);
+                _preload = null;
+            }
+            Task.Run(() => Tags.Write(path, tags, cover)).ContinueWith(write => Post(() =>
+            {
+                _tagWriting.Remove(path);
+                if (write.IsCompletedSuccessfully && !string.IsNullOrWhiteSpace(tags.Title))
                     for (int i = 0; i < _playlist.Count; i++)
                         if (string.Equals(_playlist[i].Path, path, comparer))
                             _playlist[i] = _playlist[i] with { Artist = tags.Artist.Trim(), Title = tags.Title.Trim() };
-                    PlaylistUpdated();
+                PlaylistUpdated(); // opens the next item again
+                if (write.IsCompletedSuccessfully)
+                {
+                    Emit($"Tags saved: {Path.GetFileName(path)}");
+                    done.SetResult();
                 }
-                Emit($"Tags saved: {Path.GetFileName(path)}");
-                done.SetResult();
-            }
-            catch (Exception ex)
-            {
-                done.SetException(ex);
-            }
+                else done.SetException(write.Exception!.InnerException ?? write.Exception);
+            }));
         });
         return done.Task;
+    }
+
+    /// <summary>The file is being heard: on air, still fading or playing out under the next item, or on a cart.</summary>
+    bool IsAudible(string path, StringComparison comparer)
+    {
+        if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer)) return true;
+        foreach (int h in _playingOut.Concat(_fading).Concat(_carts.Keys))
+            if (Bass.ChannelIsActive(h) != PlaybackState.Stopped && string.Equals(Bass.ChannelGetInfo(h).FileName, path, comparer))
+                return true;
+        return false;
     }
 
     // ───────────────────────── Public API (thread-safe, non-blocking) ─────────────────────────
@@ -259,6 +273,7 @@ public sealed class PlayoutEngine : IDisposable
     public void ConfigureFill(Func<string?>? source) => Post(() =>
     {
         _fill = source;
+        _badFill.Clear();
         PlaylistUpdated();
     });
 
@@ -285,10 +300,9 @@ public sealed class PlayoutEngine : IDisposable
         _cursorIndex = index;
         PlaylistUpdated();
         if (!play || _current != null) return;
-        if (NextTrack() == null && FillTrack() is { } added) Insert([added], -1);
-        if (NextTrack() is not { } next) return;
         Emit("Carrying on after a restart");
-        StartTrack(next, 0);
+        if (NextTrack() is { } next) StartTrack(next, 0);
+        else StartFill();
     }
 
     /// <summary>False when the engine thread has been stuck for <paramref name="seconds"/>: automation has stopped.</summary>
@@ -469,11 +483,14 @@ public sealed class PlayoutEngine : IDisposable
         ConnectStreaming(s);
     }
 
-    void ConnectStreaming(StreamSettings s)
+    /// <param name="retryOf">A reconnect: only if streaming is still wanted and nothing restarted it since this attempt.</param>
+    void ConnectStreaming(StreamSettings s, int? retryOf = null)
     {
         int attempt;
         lock (_streamLock)
         {
+            // Checked and claimed in one go, so a Stop at the same moment can't be overtaken by the reconnect.
+            if (retryOf is { } failed && (failed != _streamAttempt || _streamWanted != s)) return;
             attempt = ++_streamAttempt;
             _streamState = (int)StreamState.Connecting;
             _streamError = null;
@@ -559,6 +576,7 @@ public sealed class PlayoutEngine : IDisposable
                 Safe(cmd);
             RunTimers();
             Safe(CheckSilence);
+            Safe(RetryFill);
             WatchStream();
             Safe(PreconnectStream);
             Safe(CheckTimeSignal);
@@ -611,12 +629,7 @@ public sealed class PlayoutEngine : IDisposable
         }
         Emit(_streamError);
         if (retry == null) return;
-        Post(() => After(delay, () =>
-        {
-            lock (_streamLock)
-                if (failed != _streamAttempt || _streamWanted != retry) return; // stopped or restarted since
-            ConnectStreaming(retry);
-        }));
+        Post(() => After(delay, () => ConnectStreaming(retry, failed)));
     }
 
     Track? NextTrack()
@@ -646,6 +659,7 @@ public sealed class PlayoutEngine : IDisposable
             return;
         }
         _current = null;
+        if (StartFill()) return;
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
     }
@@ -674,6 +688,7 @@ public sealed class PlayoutEngine : IDisposable
         }
         FadeOutAndFree(handle, CueOutFadeSeconds);
         _current = null;
+        if (StartFill()) return;
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
     }
@@ -793,11 +808,14 @@ public sealed class PlayoutEngine : IDisposable
 
         _current = deck;
         _state = (int)PlayerState.Playing;
+        _waitingForFill = false;
+        _silentSince = null; // a new item gets the full time before it counts as silent
         _played.Add(track.Id);
         _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
 
         if (_encoder is var enc and not 0) BassEnc.CastSetTitle(enc, track.Display, null);
         Emit($"On air: {track.Display}");
+        OnAir?.Invoke(track);
 
         PlaylistUpdated();
     }
@@ -844,6 +862,7 @@ public sealed class PlayoutEngine : IDisposable
     void StopInternal()
     {
         _resumeAfterSignal = false;
+        _waitingForFill = false;
         _connectAttempt++;
         _connecting = null;
         DropConnection();
@@ -866,7 +885,12 @@ public sealed class PlayoutEngine : IDisposable
     {
         if (seconds <= 0) { Bass.StreamFree(handle); return; }
         Bass.ChannelSlideAttribute(handle, ChannelAttribute.Volume, 0, (int)(seconds * 1000));
-        After(seconds + 0.2, () => Bass.StreamFree(handle));
+        _fading.Add(handle);
+        After(seconds + 0.2, () =>
+        {
+            _fading.Remove(handle);
+            Bass.StreamFree(handle);
+        });
     }
 
     // ───────────────────────── Dead air ─────────────────────────
@@ -877,7 +901,9 @@ public sealed class PlayoutEngine : IDisposable
     /// </summary>
     void CheckSilence()
     {
-        bool watching = _silence.Enabled && State == PlayerState.Playing && _current != null && _connecting == null && !_mic.IsLive;
+        // Waiting for fill music counts too: nothing is on air although the player should be playing.
+        bool watching = _silence.Enabled && State == PlayerState.Playing && (_current != null || _waitingForFill)
+                        && _connecting == null && !_mic.IsLive;
         if (watching)
         {
             var (left, right) = _graph.Levels();
@@ -890,6 +916,7 @@ public sealed class PlayoutEngine : IDisposable
         if (!watching)
         {
             _silentSince = null;
+            _silenceReported = null; // a new silence is reported again
             Volatile.Write(ref _silenceSeconds, 0);
             return;
         }
@@ -900,7 +927,13 @@ public sealed class PlayoutEngine : IDisposable
         Volatile.Write(ref _silenceSeconds, silent);
         if (silent < _silence.Seconds) return;
 
-        var track = _current!.Track;
+        if (_current is not { } deck)
+        {
+            if (_silenceReported != Guid.Empty) Emit($"Silence on air for {silent:0} s: waiting for fill music");
+            _silenceReported = Guid.Empty;
+            return;
+        }
+        var track = deck.Track;
         if (!_autoAdvance || _silenceSkips >= MaxSilenceSkips || NextTrack() is not { } next || next.Id == _connecting)
         {
             if (_silenceReported != track.Id)
@@ -925,23 +958,82 @@ public sealed class PlayoutEngine : IDisposable
     {
         if (!_autoAdvance || (_current == null && _connecting == null) || NextTrack() != null) return false;
         if (FillTrack() is not { } track) return false;
+        TrimPlayed();
         Emit($"Playlist ran out: added {track.Display}");
         Insert([track], -1);
         return true;
     }
 
+    /// <summary>
+    /// AUTO ran out of items with nothing on air: start a fill song now if there is one, otherwise keep trying
+    /// (<see cref="RetryFill"/>) until one can be played. False when there is no fill music, or not in AUTO.
+    /// </summary>
+    bool StartFill()
+    {
+        if (!_autoAdvance || _fill == null) return false;
+        _waitingForFill = true;
+        _state = (int)PlayerState.Playing; // still on duty: what's on air is coming
+        if (FillTrack() is { } track)
+        {
+            TrimPlayed();
+            Emit($"Playlist ran out: added {track.Display}");
+            Insert([track], -1);
+            StartTrack(track, 0);
+        }
+        else
+        {
+            Emit("Playlist ran out and no fill music could be played yet; trying again");
+            PlaylistUpdated();
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// A few times a minute: the last item is on air and nothing could be added after it, or AUTO is waiting for
+    /// fill music (folder still being read, network share away). Try again.
+    /// </summary>
+    void RetryFill()
+    {
+        if (_fill == null || !_autoAdvance || DateTime.UtcNow < _nextFillTry) return;
+        _nextFillTry = DateTime.UtcNow.AddSeconds(FillRetrySeconds);
+        if (_current != null && _connecting == null && NextTrack() == null) PlaylistUpdated(); // runs Fill
+        else if (_waitingForFill && _current == null && _connecting == null && FillTrack() is { } track)
+        {
+            Emit($"Fill music: {track.Display}");
+            Insert([track], -1);
+            StartTrack(track, 0);
+        }
+    }
+
     Track? FillTrack()
     {
         if (_fill == null) return null;
-        for (int attempt = 0; attempt < 3; attempt++) // a file or two may be unreadable
+        for (int attempt = 0; attempt < FillAttempts; attempt++) // some files may be unreadable
         {
             string? path;
             try { path = _fill(); }
             catch (Exception ex) { Emit($"Fill music: {ex.Message}"); return null; }
             if (path == null) return null;
+            if (_badFill.Contains(path)) continue;
             if (SafeProbe(path) is { } track) return track;
+            _badFill.Add(path);
         }
         return null;
+    }
+
+    /// <summary>
+    /// Fill music adds an item per song, so a station left in AUTO for weeks would grow the playlist without end:
+    /// keep only the last <see cref="KeepPlayed"/> played items above the one on air.
+    /// </summary>
+    void TrimPlayed()
+    {
+        int extra = _cursorIndex - KeepPlayed;
+        if (extra <= 0) return;
+        var gone = _playlist.Take(extra).ToList();
+        if (gone.Any(t => !_played.Contains(t.Id) || t.Id == _current?.Track.Id)) return; // unplayed items: leave the list alone
+        _playlist.RemoveRange(0, extra);
+        foreach (var t in gone) _played.Remove(t.Id);
+        _cursorIndex -= extra;
     }
 
     // ───────────────────────── Time signal ─────────────────────────
@@ -1021,7 +1113,7 @@ public sealed class PlayoutEngine : IDisposable
             _preload = null;
         }
         if (_streamConnection is { } sc && sc.Id != next?.Id) DropConnection();
-        if (next != null && !next.IsStream && _preload == null && _current != null)
+        if (next != null && !next.IsStream && _preload == null && _current != null && !_tagWriting.Contains(next.Path))
         {
             int h = OpenStream(next.Path, prescan: true);
             if (h != 0) _preload = (next.Id, h);
@@ -1070,11 +1162,13 @@ public sealed class PlayoutEngine : IDisposable
         try
         {
             double len = Bass.ChannelBytes2Seconds(h, Bass.ChannelGetLength(h, PositionFlags.Bytes));
-            TagReader? tags = null;
-            try { tags = TagReader.Read(h); }
+            // TagLib, like the tag editor and the library: BASS's tag reader garbles UTF-16 ID3v2.3 text (what the
+            // tag editor and many other programs write).
+            TrackTags? tags = null;
+            try { tags = Tags.Read(path); }
             catch (Exception ex)
             {
-                // Malformed tags (e.g. a corrupt ID3v2 frame) can make the tag parser throw; fall back to the filename.
+                // Malformed tags (e.g. a corrupt ID3v2 frame): fall back to the filename.
                 Emit($"Unreadable tags, using the filename: {Path.GetFileName(path)} ({ex.Message})");
             }
             string title = tags?.Title ?? "";
@@ -1094,13 +1188,17 @@ public sealed class PlayoutEngine : IDisposable
         }
     }
 
-    static void LoadPlugins()
+    internal static void LoadPlugins()
     {
-        // Windows and macOS decode AAC/M4A through the OS; Linux needs bass_aac.
-        string? file = OperatingSystem.IsLinux() ? "libbass_aac.so" : null;
-        if (file == null) return;
-        string full = Path.Combine(AppContext.BaseDirectory, file);
-        if (File.Exists(full)) Bass.PluginLoad(full);
+        // FLAC needs bassflac everywhere. Windows and macOS decode AAC/M4A through the OS; Linux needs bass_aac.
+        string[] files = OperatingSystem.IsWindows() ? ["bassflac.dll"]
+            : OperatingSystem.IsMacOS() ? ["libbassflac.dylib"]
+            : ["libbassflac.so", "libbass_aac.so"];
+        foreach (var file in files)
+        {
+            string full = Path.Combine(AppContext.BaseDirectory, file);
+            if (File.Exists(full)) Bass.PluginLoad(full);
+        }
     }
 
     void Emit(string message) => Log?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");

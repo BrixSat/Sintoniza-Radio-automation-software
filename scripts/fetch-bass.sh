@@ -5,7 +5,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LIBS=(bass bassmix bassenc bassenc_mp3 bassenc_ogg)
+LIBS=(bass bassmix bassenc bassenc_mp3 bassenc_ogg bassflac)
 
 fetch() { # $1 = linux|osx|win
   local plat=$1 suffix dest tmp
