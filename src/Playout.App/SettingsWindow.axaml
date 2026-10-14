@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
         x:Class="Playout.App.SettingsWindow"
         Icon="/Assets/icon.ico"
         Title="Settings"
@@ -266,7 +267,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <Image Source="/Assets/icon.ico" Width="56" Height="56" />
                         <StackPanel VerticalAlignment="Center" Spacing="2">
-                            <TextBlock Text="Radio Playout" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock Text="{x:Static app:AppInfo.Name}" FontSize="18" FontWeight="SemiBold" />
                             <TextBlock x:Name="VersionText" Classes="note" FontSize="12" />
                         </StackPanel>
                     </StackPanel>

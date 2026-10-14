@@ -1,16 +1,17 @@
-; Windows installer for Radio Playout. Built by build.sh with:
+; Windows installer for Sintoniza Radio Broadcast system. Built by build.sh with:
 ;   makensis -DVERSION=<version> -DSRCDIR=<publish dir> -DOUTFILE=<setup.exe> installer.nsi
 Unicode true
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 
-!define APPNAME "Radio Playout"
+!define APPNAME "Sintoniza Radio Broadcast system"
+!define OLDNAME "Radio Playout" ; shortcuts made by versions before the rename
 !define EXENAME "RadioPlayout.exe"
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\RadioPlayout"
 
 Name "${APPNAME}"
 OutFile "${OUTFILE}"
-InstallDir "$PROGRAMFILES64\${APPNAME}"
+InstallDir "$PROGRAMFILES64\${OLDNAME}" ; kept, so updates install over the same folder
 InstallDirRegKey HKLM "Software\RadioPlayout" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
@@ -47,6 +48,8 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File /r "${SRCDIR}/*.*"
 
+  Delete "$SMPROGRAMS\${OLDNAME}.lnk"
+  Delete "$DESKTOP\${OLDNAME}.lnk"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateShortcut "$SMPROGRAMS\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
   CreateShortcut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"

@@ -794,7 +794,7 @@ public partial class MainWindow : Window
             _settings.StreamHost, _settings.StreamPort, _settings.StreamMount, _settings.StreamPassword,
             _settings.StreamFormat == 1 ? StreamFormat.Ogg : StreamFormat.Mp3,
             bitrates[Math.Clamp(_settings.StreamBitrateIndex, 0, bitrates.Length - 1)],
-            StationName: string.IsNullOrWhiteSpace(_settings.StationName) ? "Radio Playout" : _settings.StationName,
+            StationName: string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName,
             Genre: _settings.StationGenre,
             Shoutcast: _settings.Shoutcast,
             Url: string.IsNullOrWhiteSpace(_settings.StationUrl) ? null : _settings.StationUrl));
@@ -818,8 +818,8 @@ public partial class MainWindow : Window
             if (_update != null)
             {
                 UpdateButton.Content = $"Update {_update.Version} available";
-                ToolTip.SetTip(UpdateButton, $"Radio Playout {_update.Version} is out (you have {Updates.CurrentText}). Click for details.");
-                if (!quiet || !UpdateButton.IsVisible) LastLog.Text = $"Radio Playout {_update.Version} is available";
+                ToolTip.SetTip(UpdateButton, $"{AppInfo.Name} {_update.Version} is out (you have {Updates.CurrentText}). Click for details.");
+                if (!quiet || !UpdateButton.IsVisible) LastLog.Text = $"{AppInfo.Name} {_update.Version} is available";
             }
             UpdateButton.IsVisible = _update != null;
             return _update;
@@ -874,7 +874,7 @@ public partial class MainWindow : Window
         bool hasName = !string.IsNullOrWhiteSpace(_settings.StationName);
         StationNameText.Text = hasName ? _settings.StationName.ToUpperInvariant() : "";
         StationNameText.IsVisible = hasName;
-        Title = hasName ? $"{_settings.StationName} — Radio Playout" : "Radio Playout";
+        Title = hasName ? $"{_settings.StationName} — {AppInfo.Name}" : AppInfo.Name;
 
         (LogoImage.Source as IDisposable)?.Dispose();
         LogoImage.Source = null;

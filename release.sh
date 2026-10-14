@@ -32,6 +32,6 @@ files=(
 for f in "${files[@]}"; do [[ -f $f ]] || fail "Missing $f"; done
 
 echo "▶ Publishing $tag"
-git tag -a "$tag" -m "Radio Playout $tag"
+git tag -a "$tag" -m "Sintoniza Radio Broadcast system $tag"
 git push -q origin "$tag"
-gh release create "$tag" "${files[@]}" --verify-tag --title "Radio Playout $tag" --generate-notes
+gh release create "$tag" "${files[@]}" --verify-tag --title "Sintoniza Radio Broadcast system $tag" --generate-notes

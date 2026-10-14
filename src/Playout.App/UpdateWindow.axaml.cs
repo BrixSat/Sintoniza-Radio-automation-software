@@ -23,7 +23,7 @@ public partial class UpdateWindow : Window
         _update = update;
         _engine = engine;
 
-        HeadingText.Text = $"Radio Playout {update.Version} is available";
+        HeadingText.Text = $"{AppInfo.Name} {update.Version} is available";
         CurrentText.Text = $"You have version {Updates.CurrentText}.";
         NotesText.Text = string.IsNullOrWhiteSpace(update.Notes) ? "No release notes." : update.Notes.Trim();
 
@@ -34,7 +34,7 @@ public partial class UpdateWindow : Window
             ShowStatus("This copy can't update itself (it isn't installed with the setup or the .deb package). Download the new version from the release page.");
         }
         else if (Updates.InstallClosesApp)
-            WarningText.Text = "Installing closes Radio Playout, so playout and streaming stop until it starts again (about a minute). Update when you are off air.";
+            WarningText.Text = $"Installing closes {AppInfo.Name}, so playout and streaming stop until it starts again (about a minute). Update when you are off air.";
         else
             WarningText.Text = "Installing asks for the administrator password. Playout carries on; the new version runs after a restart.";
         WarningText.IsVisible = !string.IsNullOrEmpty(WarningText.Text);
@@ -53,7 +53,7 @@ public partial class UpdateWindow : Window
         if (_installed) { await Restart(); return; }
 
         if (Updates.InstallClosesApp && OnAir
-            && !await Dialogs.Confirm(this, "Stop playout and update?", "Radio Playout is on air. Installing the update closes it, so playout and streaming stop.", "Update now"))
+            && !await Dialogs.Confirm(this, "Stop playout and update?", $"{AppInfo.Name} is on air. Installing the update closes it, so playout and streaming stop.", "Update now"))
             return;
 
         InstallButton.IsEnabled = false;
@@ -74,7 +74,7 @@ public partial class UpdateWindow : Window
                 return;
             }
             _installed = true;
-            ShowStatus($"Version {_update.Version} is installed. Restart Radio Playout to use it.");
+            ShowStatus($"Version {_update.Version} is installed. Restart {AppInfo.Name} to use it.");
             InstallButton.Content = "Restart now";
             InstallButton.IsEnabled = true;
             LaterButton.Content = "Restart later";
@@ -95,7 +95,7 @@ public partial class UpdateWindow : Window
 
     async Task Restart()
     {
-        if (OnAir && !await Dialogs.Confirm(this, "Restart now?", "Radio Playout is on air. Restarting stops playout and streaming for a few seconds.", "Restart"))
+        if (OnAir && !await Dialogs.Confirm(this, "Restart now?", $"{AppInfo.Name} is on air. Restarting stops playout and streaming for a few seconds.", "Restart"))
             return;
         Close(true);
     }

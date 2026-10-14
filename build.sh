@@ -111,7 +111,7 @@ Installed-Size: $(du -sk "$root" | cut -f1)
 Depends: libasound2t64 | libasound2, libfontconfig1, libx11-6, libice6, libsm6, libicu76 | libicu74 | libicu72 | libicu70 | libicu67 | libicu66
 Section: sound
 Priority: optional
-Description: Radio automation and playout
+Description: Sintoniza Radio Broadcast system - radio automation and playout
  Broadcast radio playout with crossfades, cartwall, cue points and
  Icecast/Shoutcast streaming.
 CTL

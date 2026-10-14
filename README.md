@@ -1,4 +1,4 @@
-# Radio Playout
+# Sintoniza Radio Broadcast system
 
 A broadcast radio automation / playout app for **Linux, macOS and Windows**, with the same look on all three.
 It is built in C# with [Avalonia](https://avaloniaui.net/) and uses the [BASS](https://www.un4seen.com/) audio
