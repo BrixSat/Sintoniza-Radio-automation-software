@@ -61,6 +61,22 @@ engine for decoding, mixing and streaming.
   installs it (Windows: the app closes and restarts on the new version; Linux: asks for the admin password, then
   offers a restart). Portable zip/tar copies open the download page instead.
 - Remembers the playlist, carts and settings between runs.
+- **Never off air** (Settings → Safety):
+  - **Silence detection**: if nothing is heard for a set time (default 15 s under -45 dB) while an item plays, AUTO
+    skips to the next item and a red SILENCE warning shows. After three silent items in a row it stops skipping
+    and only warns, because the fault is then the sound card or the output rather than the files.
+  - **Fill music**: when the playlist runs out in AUTO, random songs from a folder (no recent repeats) are added.
+  - **Crash-safe**: settings and the playlist are saved every few seconds, written so that a power cut can't corrupt
+    them (with a backup copy). After a crash, power cut or restart the app carries on with the item after the one
+    that was on air, and turns streaming back on.
+  - **Watchdog**: the app runs under a small supervisor process that starts it again if it crashes or its audio
+    engine stops responding. Run with `--no-watchdog` to turn it off for one run.
+  - **Start at login** (Windows, Linux, macOS). For an unattended studio computer, also turn on automatic login
+    and turn off sleep.
+  - **Stream reconnect**: a lost or refused connection to the streaming server is retried (5 s, 10 s, … up to every
+    60 s) until you switch streaming off.
+  - **Log**: what went on air, warnings, errors and restarts, one file a day in the `logs` folder next to the
+    settings, kept for 90 days.
 
 ### Keyboard shortcuts
 
@@ -215,12 +231,10 @@ Settings are stored in `settings.json` in the per-user app data folder:
 
 ## Roadmap
 
-- Automatic stream reconnect
 - Music library with tags and categories
 - Auto cue (silence trimming) for files without cue points
 - Clocks / hour templates, rotation rules, jingles and IDs on a schedule
 - Played-tracks log and reports
-- Silence detection with fallback audio
 - Loudness normalisation
 - REST API for remote control
 

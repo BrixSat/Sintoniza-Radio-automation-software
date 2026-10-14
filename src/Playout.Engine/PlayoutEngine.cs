@@ -20,6 +20,8 @@ public sealed class PlayoutEngine : IDisposable
     const double StreamConnectLeadSeconds = 10; // connect to a stream this long before it is due, so connecting never means dead air
     const double SignalPrepSeconds = 3;    // schedule the time signal this long before it starts
     const double SignalFadeSeconds = 1;    // Stop mode: what is on air fades out over this, ending as the signal starts
+    const int MaxSilenceSkips = 3;         // after this many silent items in a row the fault is not in the files: stop skipping, keep warning
+    const int MaxStreamRetryDelay = 60;    // seconds between attempts to reconnect to the streaming server, at most
 
     readonly BlockingCollection<Action> _commands = new();
     readonly List<(DateTime Due, Action Action)> _timers = new();
@@ -49,6 +51,11 @@ public sealed class PlayoutEngine : IDisposable
     double _signalHourAt;    // where the hour falls in the signal (seconds)
     DateTime? _signalHour;   // the next top of the hour that gets the signal (local time)
     bool _resumeAfterSignal; // Stop mode took the item off air: start the next one when the signal ends
+    SilenceSettings _silence = new();
+    DateTime? _silentSince;  // when the output last went quiet while an item was playing
+    int _silenceSkips;       // silent items skipped in a row
+    Guid? _silenceReported;  // item whose silence has been logged (ASSISTED, or too many skips)
+    Func<string?>? _fill;    // gives a file to add when the playlist runs out in AUTO
 
     // Shared with polling readers; written only on the engine thread.
     volatile Deck? _current;
@@ -58,6 +65,10 @@ public sealed class PlayoutEngine : IDisposable
     volatile string? _streamError;
     int _streamAttempt;
     readonly object _streamLock = new(); // bumped by every start and stop, so a connection that completes after Stop is dropped
+    StreamSettings? _streamWanted;       // streaming is switched on: reconnect when the connection fails (guarded by _streamLock)
+    int _streamRetries;                  // failed attempts in a row, for the wait before the next one
+    double _silenceSeconds;              // dead air so far (Volatile)
+    long _heartbeat = Environment.TickCount64; // last time the engine thread was free to take commands (Volatile)
 
     volatile bool _autoAdvance = true;
     double _crossfadeSeconds = 5;
@@ -224,7 +235,64 @@ public sealed class PlayoutEngine : IDisposable
 
     // ───────────────────────── Public API (thread-safe, non-blocking) ─────────────────────────
 
-    public bool AutoAdvance { get => _autoAdvance; set => _autoAdvance = value; }
+    public bool AutoAdvance
+    {
+        get => _autoAdvance;
+        set
+        {
+            _autoAdvance = value;
+            Post(PlaylistUpdated); // switched to AUTO on the last item: fill the playlist now
+        }
+    }
+
+    /// <summary>Sets up dead air detection.</summary>
+    public void ConfigureSilence(SilenceSettings settings) => Post(() =>
+    {
+        _silence = settings;
+        _silentSince = null;
+    });
+
+    /// <summary>
+    /// Where music comes from when the playlist runs out in AUTO: called on the engine thread for a file to add
+    /// (null = nothing). Null turns it off: the player stops at the end of the playlist.
+    /// </summary>
+    public void ConfigureFill(Func<string?>? source) => Post(() =>
+    {
+        _fill = source;
+        PlaylistUpdated();
+    });
+
+    /// <summary>
+    /// After a restart: the items up to <paramref name="index"/> (the one that was on air) count as played, and with
+    /// <paramref name="play"/> the one after it starts, so a file that brought the app down isn't played again.
+    /// </summary>
+    /// <returns>Completes once done; the playlist added before it is then complete.</returns>
+    public Task Resume(int index, bool play)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Post(() =>
+        {
+            try { ResumeAt(index, play); }
+            finally { done.SetResult(); }
+        });
+        return done.Task;
+    }
+
+    void ResumeAt(int index, bool play)
+    {
+        index = Math.Min(index, _playlist.Count - 1);
+        for (int i = 0; i <= index; i++) _played.Add(_playlist[i].Id);
+        _cursorIndex = index;
+        PlaylistUpdated();
+        if (!play || _current != null) return;
+        if (NextTrack() == null && FillTrack() is { } added) Insert([added], -1);
+        if (NextTrack() is not { } next) return;
+        Emit("Carrying on after a restart");
+        StartTrack(next, 0);
+    }
+
+    /// <summary>False when the engine thread has been stuck for <paramref name="seconds"/>: automation has stopped.</summary>
+    public bool IsResponsive(double seconds) => Environment.TickCount64 - Volatile.Read(ref _heartbeat) < seconds * 1000;
 
     /// <summary>Crossfade length in seconds. Applies to tracks started after the change.</summary>
     public double CrossfadeSeconds
@@ -238,7 +306,8 @@ public sealed class PlayoutEngine : IDisposable
         var list = paths.ToList();
         Post(() =>
         {
-            Insert(list.Select(SafeProbe).OfType<Track>().ToList(), insertAt);
+            // Adding a large folder can take a while: still alive.
+            Insert(list.Select(p => { Volatile.Write(ref _heartbeat, Environment.TickCount64); return SafeProbe(p); }).OfType<Track>().ToList(), insertAt);
         });
     }
 
@@ -383,17 +452,32 @@ public sealed class PlayoutEngine : IDisposable
         right = Math.Min(1, right + mic);
 
         return new PlayerStatus(State, deck?.Track, pos, len, left, right,
-            (StreamState)_streamState, _streamError);
+            (StreamState)_streamState, _streamError, Volatile.Read(ref _silenceSeconds));
     }
 
     public PlayerState State => (PlayerState)_state;
 
+    /// <summary>Connects to the streaming server. Until <see cref="StopStreaming"/>, a lost or failed connection is retried.</summary>
     public void StartStreaming(StreamSettings s)
     {
         StopStreaming();
-        int attempt = Interlocked.Increment(ref _streamAttempt);
-        _streamState = (int)StreamState.Connecting;
-        _streamError = null;
+        lock (_streamLock)
+        {
+            _streamWanted = s;
+            _streamRetries = 0;
+        }
+        ConnectStreaming(s);
+    }
+
+    void ConnectStreaming(StreamSettings s)
+    {
+        int attempt;
+        lock (_streamLock)
+        {
+            attempt = ++_streamAttempt;
+            _streamState = (int)StreamState.Connecting;
+            _streamError = null;
+        }
 
         // CastInit blocks while connecting, so keep it off the engine thread.
         Task.Run(() =>
@@ -425,6 +509,7 @@ public sealed class PlayoutEngine : IDisposable
                 }
                 _encoder = enc;
                 _streamState = (int)StreamState.OnAir;
+                _streamRetries = 0;
             }
             Emit($"Streaming to {server} ({s.Format} {s.Bitrate} kbps)");
             if (_current?.Track is { } t) BassEnc.CastSetTitle(enc, t.Display, null);
@@ -438,6 +523,7 @@ public sealed class PlayoutEngine : IDisposable
         bool connecting;
         lock (_streamLock)
         {
+            _streamWanted = null;
             Interlocked.Increment(ref _streamAttempt);
             connecting = _streamState == (int)StreamState.Connecting;
             enc = Interlocked.Exchange(ref _encoder, 0);
@@ -468,9 +554,11 @@ public sealed class PlayoutEngine : IDisposable
     {
         while (!_commands.IsCompleted)
         {
+            Volatile.Write(ref _heartbeat, Environment.TickCount64);
             if (_commands.TryTake(out var cmd, 50))
                 Safe(cmd);
             RunTimers();
+            Safe(CheckSilence);
             WatchStream();
             Safe(PreconnectStream);
             Safe(CheckTimeSignal);
@@ -510,13 +598,25 @@ public sealed class PlayoutEngine : IDisposable
     /// <param name="attempt">The start this failure belongs to; ignored if streaming was stopped or restarted since.</param>
     void FailStream(string message, int? attempt = null)
     {
+        StreamSettings? retry;
+        int failed, delay;
         lock (_streamLock)
         {
             if (attempt is { } a && a != _streamAttempt) return;
+            failed = _streamAttempt;
+            retry = _streamWanted;
+            delay = Math.Min(MaxStreamRetryDelay, 5 << Math.Min(_streamRetries++, 4)); // 5, 10, 20, 40, 60 s
             _streamState = (int)StreamState.Failed;
-            _streamError = message;
+            _streamError = retry != null ? $"{message}. Trying again in {delay} s" : message;
         }
-        Emit(message);
+        Emit(_streamError);
+        if (retry == null) return;
+        Post(() => After(delay, () =>
+        {
+            lock (_streamLock)
+                if (failed != _streamAttempt || _streamWanted != retry) return; // stopped or restarted since
+            ConnectStreaming(retry);
+        }));
     }
 
     Track? NextTrack()
@@ -769,6 +869,81 @@ public sealed class PlayoutEngine : IDisposable
         After(seconds + 0.2, () => Bass.StreamFree(handle));
     }
 
+    // ───────────────────────── Dead air ─────────────────────────
+
+    /// <summary>
+    /// Watches the output while an item is playing. After the set time under the threshold, AUTO moves on to the next
+    /// item; after a few silent items in a row the fault is elsewhere (sound card, output), so it only keeps warning.
+    /// </summary>
+    void CheckSilence()
+    {
+        bool watching = _silence.Enabled && State == PlayerState.Playing && _current != null && _connecting == null && !_mic.IsLive;
+        if (watching)
+        {
+            var (left, right) = _graph.Levels();
+            if (Math.Max(left, right) >= Math.Pow(10, _silence.ThresholdDb / 20))
+            {
+                watching = false;
+                _silenceSkips = 0;
+            }
+        }
+        if (!watching)
+        {
+            _silentSince = null;
+            Volatile.Write(ref _silenceSeconds, 0);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        _silentSince ??= now;
+        double silent = (now - _silentSince.Value).TotalSeconds;
+        Volatile.Write(ref _silenceSeconds, silent);
+        if (silent < _silence.Seconds) return;
+
+        var track = _current!.Track;
+        if (!_autoAdvance || _silenceSkips >= MaxSilenceSkips || NextTrack() is not { } next || next.Id == _connecting)
+        {
+            if (_silenceReported != track.Id)
+                Emit(_silenceSkips >= MaxSilenceSkips
+                    ? $"Silence on air for {silent:0} s after skipping {_silenceSkips} items: check the sound card and outputs"
+                    : $"Silence on air for {silent:0} s during {track.Display}");
+            _silenceReported = track.Id;
+            return;
+        }
+        Emit($"Silence on air for {silent:0} s during {track.Display}: skipping to the next item");
+        _silenceSkips++;
+        _silentSince = null;
+        FadePlayingOut(StopFadeSeconds);
+        StartTrack(next, StopFadeSeconds);
+    }
+
+    /// <summary>
+    /// In AUTO, once the item on air is the last one, adds one from the fill source so the playlist never runs out.
+    /// True when it added one (and so has already published the playlist).
+    /// </summary>
+    bool Fill()
+    {
+        if (!_autoAdvance || (_current == null && _connecting == null) || NextTrack() != null) return false;
+        if (FillTrack() is not { } track) return false;
+        Emit($"Playlist ran out: added {track.Display}");
+        Insert([track], -1);
+        return true;
+    }
+
+    Track? FillTrack()
+    {
+        if (_fill == null) return null;
+        for (int attempt = 0; attempt < 3; attempt++) // a file or two may be unreadable
+        {
+            string? path;
+            try { path = _fill(); }
+            catch (Exception ex) { Emit($"Fill music: {ex.Message}"); return null; }
+            if (path == null) return null;
+            if (SafeProbe(path) is { } track) return track;
+        }
+        return null;
+    }
+
     // ───────────────────────── Time signal ─────────────────────────
 
     /// <summary>Shortly before each top of the hour, schedules the time signal so the hour falls exactly on the hour.</summary>
@@ -838,6 +1013,7 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Publish a snapshot and pre-open the next file so the crossfade point never waits on disk.</summary>
     void PlaylistUpdated()
     {
+        if (Fill()) return; // Insert published the playlist
         var next = NextTrack();
         if (_preload is { } p && p.Id != next?.Id)
         {

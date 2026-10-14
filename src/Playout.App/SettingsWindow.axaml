@@ -192,6 +192,49 @@
             </TabItem>
 
             <!-- ───────── Shortcuts ───────── -->
+            <!-- ───────── Safety: never off air ───────── -->
+            <TabItem Header="Safety">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,0,0">
+                    <StackPanel Spacing="6">
+                        <CheckBox x:Name="SilenceBox" Content="Detect silence (dead air)" FontWeight="SemiBold" />
+                        <StackPanel x:Name="SilencePanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
+                            <TextBlock Text="Quieter than" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="SilenceLevelBox" Minimum="-70" Maximum="-20" Increment="1" FormatString="0" Width="120" />
+                            <TextBlock Text="dB for" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="SilenceSecondsBox" Minimum="3" Maximum="120" Increment="1" FormatString="0" Width="120" />
+                            <TextBlock Text="seconds" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="note" Margin="28,0,0,0"
+                                   Text="A red SILENCE warning shows after 5 s of dead air while an item plays. When the time is up, AUTO skips to the next item; ASSISTED only warns. Carts count as sound; an open mic pauses the check." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <CheckBox x:Name="FillBox" Content="When the playlist runs out in AUTO, keep playing music from a folder" FontWeight="SemiBold" />
+                        <StackPanel x:Name="FillPanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
+                            <TextBlock x:Name="FillFolderText" VerticalAlignment="Center" MaxWidth="440" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseFillButton" Content="Choose…" />
+                        </StackPanel>
+                        <TextBlock Classes="note" Margin="28,0,0,0"
+                                   Text="Random songs from this folder and its subfolders, without recent repeats, are added to the end. Off: the player stops at the end of the playlist." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="label" Text="After a crash, power cut or restart" VerticalAlignment="Bottom" />
+                            <Button Grid.Column="1" x:Name="OpenLogsButton" Content="Open log folder" FontSize="12" Padding="10,3"
+                                    ToolTip.Tip="What went on air, warnings and restarts: one file a day, kept for 90 days" />
+                        </Grid>
+                        <CheckBox x:Name="ResumeBox" Content="Carry on playing when the app starts, if it was playing in AUTO" />
+                        <CheckBox x:Name="WatchdogBox" Content="Start the app again if it crashes or stops responding" />
+                        <CheckBox x:Name="AutostartBox" Content="Start the app when I log in to this computer" />
+                        <TextBlock Classes="note"
+                                   Text="Carries on with the item after the one that was on air, and turns streaming back on. The watchdog applies from the next start. On an unattended studio computer, also turn on automatic login and turn off sleep." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <TabItem Header="Shortcuts">
                 <StackPanel Spacing="12" Margin="0,12,0,0">
                     <TextBlock Classes="note"

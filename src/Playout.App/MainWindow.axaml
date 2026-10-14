@@ -49,6 +49,15 @@
                                 <TextBlock x:Name="CueTime" Classes="digits" />
                             </StackPanel>
                         </Border>
+                        <!-- Dead air: the output has been silent for a while although an item is playing -->
+                        <Border Grid.Column="2" x:Name="SilenceBadge" Classes="badge cue" Background="{StaticResource OnAir}"
+                                HorizontalAlignment="Center" IsVisible="False"
+                                ToolTip.Tip="Nothing is being heard although an item is playing. AUTO skips to the next item (Settings → Safety).">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="SILENCE" />
+                                <TextBlock x:Name="SilenceTime" Classes="digits" />
+                            </StackPanel>
+                        </Border>
                         <ToggleButton Grid.Column="3" x:Name="AutoSwitch" Classes="mode" IsChecked="True">
                             <Panel>
                                 <StackPanel x:Name="AutoContent" Orientation="Horizontal" Spacing="7">

@@ -60,7 +60,7 @@ public sealed record PlaylistSnapshot(
     Guid? NextId,
     IReadOnlySet<Guid> Played);
 
-/// <summary>Cheap, poll-able view of the on-air player (the UI reads it ~30 times a second).</summary>
+/// <summary>Cheap, poll-able view of the on-air player (the UI reads it ~30 times a second). Silence: seconds of dead air so far (0 = sound).</summary>
 public readonly record struct PlayerStatus(
     PlayerState State,
     Track? Current,
@@ -69,7 +69,14 @@ public readonly record struct PlayerStatus(
     float LevelLeft,
     float LevelRight,
     StreamState Stream,
-    string? StreamError);
+    string? StreamError,
+    double Silence);
+
+/// <summary>
+/// Dead air: while an item is playing and the output stays under <paramref name="ThresholdDb"/> (peak, dBFS) for
+/// <paramref name="Seconds"/>, AUTO skips to the next item (ASSISTED only warns).
+/// </summary>
+public sealed record SilenceSettings(bool Enabled = true, double ThresholdDb = -45, double Seconds = 15);
 
 public enum StreamFormat { Mp3, Ogg }
 

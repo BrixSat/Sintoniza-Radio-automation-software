@@ -1,11 +1,33 @@
 using Avalonia;
+using Avalonia.Threading;
 
 namespace Playout.App;
 
 static class Program
 {
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    public static int Main(string[] args)
+    {
+        if (Watchdog.ShouldSupervise(args)) return Watchdog.Supervise(args);
+
+        AppLog.CleanUp();
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => AppLog.Write($"Crash: {e.ExceptionObject}");
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            AppLog.Write($"Background error: {e.Exception.InnerException ?? e.Exception}");
+            e.SetObserved();
+        };
+        if (args.Contains(Watchdog.ChildArg)) Watchdog.StartHeartbeat();
+
+        var builder = BuildAvaloniaApp();
+        // A mistake in a window must not take the station off air: the engine runs on, so log it and carry on.
+        Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            AppLog.Write($"Error: {e.Exception}");
+            e.Handled = true;
+        };
+        return builder.StartWithClassicDesktopLifetime(args);
+    }
 
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()

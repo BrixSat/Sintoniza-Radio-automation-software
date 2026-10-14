@@ -50,7 +50,12 @@ public partial class MainWindow : Window
         {
             var cues = new CueStore(Path.Combine(AppSettings.DataFolder, "cues.json"));
             _engine = new PlayoutEngine(_settings.Routing, cues, ForcedDeviceFromArgs());
-            _engine.Log += msg => Dispatcher.UIThread.Post(() => LastLog.Text = msg);
+            _engine.Log += msg =>
+            {
+                AppLog.Write(msg);
+                Dispatcher.UIThread.Post(() => LastLog.Text = msg);
+            };
+            Watchdog.Watch(_engine);
             _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
         }
         catch (Exception ex)
@@ -70,8 +75,15 @@ public partial class MainWindow : Window
             _engine.AutoAdvance = _settings.AutoAdvance;
             _engine.ConfigureMic(_settings.ActiveMic);
             _engine.ConfigureTimeSignal(_settings.TimeSignal);
+            ApplySafety();
             AddEntries(_settings.PlaylistItems);
+            _ = CarryOn();
         }
+        AppLog.Write($"Started {AppInfo.Name} {Updates.CurrentText}");
+
+        // Saved every few seconds (only when something changed), so a crash or power cut loses next to nothing.
+        _saveTimer = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Background, (_, _) => SaveSettings());
+        _saveTimer.Start();
 
         _fastTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => Tick());
         _fastTimer.Start();
@@ -338,6 +350,7 @@ public partial class MainWindow : Window
         double remaining = Math.Max(0, end - st.Position);
         bool openEnded = st.Current?.IsOpenEnded == true;
         UpdateCueBadge(st, end);
+        ShowSilence(st);
         UpdateCueTimes(st);
         Remaining.Text = openEnded ? "∞" : "-" + Format.Duration(Math.Ceiling(remaining));
         Remaining.Foreground = hasTrack && !openEnded && remaining <= 10
@@ -577,7 +590,8 @@ public partial class MainWindow : Window
         PlaylistInfo.Text = _rows.Count == 0 ? "" : $"{_rows.Count} items · {Format.Duration(total)}";
         NextTitle.Text = snap.NextId is { } n && _rowsById.TryGetValue(n, out var next) ? next.Track.Display : "—";
 
-        _settings.PlaylistItems = snap.Items.Select(PlaylistEntry.From).ToList();
+        // Not while the saved playlist is still being added: a save then would lose the rest of it.
+        if (_restored) _settings.PlaylistItems = snap.Items.Select(PlaylistEntry.From).ToList();
     }
 
     void RemoveSelected()
@@ -915,6 +929,7 @@ public partial class MainWindow : Window
                 if (_settings.Routing != routingBefore) _engine.ApplyRouting(_settings.Routing);
                 if (_settings.ActiveMic != micBefore) _engine.ConfigureMic(_settings.ActiveMic);
                 _engine.ConfigureTimeSignal(_settings.TimeSignal);
+                ApplySafety();
             }
             ApplyStationBranding();
             ShowStationType();
@@ -971,5 +986,58 @@ public partial class MainWindow : Window
         ApplyStationBranding();
     }
 
-    void SaveSettings() => _settings.Save();
+    void SaveSettings()
+    {
+        if (_engine != null && _restored && _snapshot is { } snap)
+        {
+            // What was on air (else the last item played), for carrying on after a restart.
+            var items = snap.Items;
+            int onAir = -1;
+            for (int i = 0; i < items.Count; i++)
+                if (items[i].Id == snap.CurrentId) { onAir = i; break; }
+                else if (snap.Played.Contains(items[i].Id)) onAir = i;
+            _settings.OnAirIndex = onAir;
+            _settings.WasPlaying = _engine.State == PlayerState.Playing && _engine.AutoAdvance;
+            _settings.StreamingOn = _engine.GetStatus().Stream != StreamState.Off;
+        }
+        _settings.Save();
+    }
+
+    // ───────────────────────── Safety ─────────────────────────
+
+    readonly DispatcherTimer _saveTimer;
+    bool _restored; // the saved playlist is back in the engine: from now on the playlist is saved
+
+    /// <summary>
+    /// Puts back the saved playlist position and, if AUTO was playing when the app closed, crashed or the computer
+    /// went down, carries on with the next item. Streaming is switched back on too.
+    /// </summary>
+    async Task CarryOn()
+    {
+        // Missing files are not added again: count what's left up to the item that was on air.
+        int index = _settings.PlaylistItems.Take(_settings.OnAirIndex + 1).Count(e => e.IsStream || File.Exists(e.Path)) - 1;
+        bool play = _settings.ResumeOnStart && _settings.WasPlaying && _settings.AutoAdvance;
+        await _engine!.Resume(index, play);
+        _restored = true;
+        if (_settings.ResumeOnStart && _settings.StreamingOn && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();
+    }
+
+    /// <summary>Dead air detection and fill music, from the settings.</summary>
+    void ApplySafety()
+    {
+        if (_engine == null) return;
+        _engine.ConfigureSilence(_settings.Silence);
+        _engine.ConfigureFill(_settings.FillEnabled && Directory.Exists(_settings.FillFolder) ? new FillMusic(_settings.FillFolder).Next : null);
+    }
+
+    void ShowSilence(PlayerStatus st)
+    {
+        bool silent = st.Silence >= 5;
+        SilenceBadge.IsVisible = silent;
+        if (silent)
+        {
+            SilenceTime.Text = Format.Duration(st.Silence);
+            CueBadge.IsVisible = false;
+        }
+    }
 }

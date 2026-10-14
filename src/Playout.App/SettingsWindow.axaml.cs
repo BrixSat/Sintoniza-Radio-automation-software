@@ -18,6 +18,7 @@ public partial class SettingsWindow : Window
     UpdateInfo? _update;
     string? _logoPath;
     string? _signalFile;
+    string _fillFolder = "";
     readonly Dictionary<string, ShortcutBox> _keyBoxes = new();
 
     // Parameterless constructor for the XAML previewer.
@@ -64,6 +65,28 @@ public partial class SettingsWindow : Window
         ChooseSignalButton.Click += async (_, _) => await ChooseSignalFile();
         ListenSignalButton.Click += (_, _) => _engine?.PreviewTimeSignal(SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
         ListenSignalButton.IsEnabled = _engine != null;
+
+        var silence = settings.Silence ?? new();
+        SilenceBox.IsChecked = silence.Enabled;
+        SilenceLevelBox.Value = (decimal)silence.ThresholdDb;
+        SilenceSecondsBox.Value = (decimal)silence.Seconds;
+        SilencePanel.IsEnabled = silence.Enabled;
+        SilenceBox.IsCheckedChanged += (_, _) => SilencePanel.IsEnabled = SilenceBox.IsChecked == true;
+        FillBox.IsChecked = settings.FillEnabled;
+        _fillFolder = settings.FillFolder ?? "";
+        ShowFillFolder();
+        FillBox.IsCheckedChanged += (_, _) => ShowFillFolder();
+        ChooseFillButton.Click += async (_, _) => await ChooseFillFolder();
+        ResumeBox.IsChecked = settings.ResumeOnStart;
+        WatchdogBox.IsChecked = settings.RestartAfterCrash;
+        AutostartBox.IsChecked = Autostart.IsEnabled;
+        AutostartBox.IsEnabled = Autostart.IsSupported;
+        if (!Autostart.IsSupported) ToolTip.SetTip(AutostartBox, "Only in an installed copy of the app");
+        OpenLogsButton.Click += (_, _) =>
+        {
+            Directory.CreateDirectory(AppLog.Folder);
+            Updates.OpenInBrowser(AppLog.Folder);
+        };
 
         BuildShortcuts(settings.Shortcuts ?? Shortcuts.Defaults());
         DefaultKeysButton.Click += (_, _) =>
@@ -202,6 +225,26 @@ public partial class SettingsWindow : Window
         MicFmNote.IsVisible = !web;
     }
 
+    void ShowFillFolder()
+    {
+        FillPanel.IsEnabled = FillBox.IsChecked == true;
+        FillFolderText.Text = _fillFolder.Length > 0 ? _fillFolder : "No folder chosen";
+        ToolTip.SetTip(FillFolderText, _fillFolder.Length > 0 ? _fillFolder : null);
+    }
+
+    async Task ChooseFillFolder()
+    {
+        var start = Directory.Exists(_fillFolder) ? _fillFolder : _settings.MusicFolder;
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Choose the music to play when the playlist runs out",
+            SuggestedStartLocation = Directory.Exists(start) ? await StorageProvider.TryGetFolderFromPathAsync(start) : null,
+        });
+        if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+        _fillFolder = path;
+        ShowFillFolder();
+    }
+
     void ShowSignalFile()
     {
         SignalFileText.Text = _signalFile != null ? Path.GetFileName(_signalFile) : "No file chosen";
@@ -265,6 +308,18 @@ public partial class SettingsWindow : Window
         _settings.TimeSignal = new TimeSignalSettings(
             (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
             SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
+
+        _settings.Silence = new SilenceSettings(SilenceBox.IsChecked == true,
+            (double)(SilenceLevelBox.Value ?? -45), (double)(SilenceSecondsBox.Value ?? 15));
+        _settings.FillEnabled = FillBox.IsChecked == true && _fillFolder.Length > 0;
+        _settings.FillFolder = _fillFolder;
+        _settings.ResumeOnStart = ResumeBox.IsChecked == true;
+        _settings.RestartAfterCrash = WatchdogBox.IsChecked == true;
+        if (Autostart.IsSupported)
+        {
+            try { Autostart.Set(AutostartBox.IsChecked == true); }
+            catch (Exception ex) { AppLog.Write($"Start at login: {ex.Message}"); }
+        }
 
         _settings.Shortcuts = _keyBoxes.ToDictionary(kv => kv.Key, kv => kv.Value.Gesture?.ToString() ?? "");
 

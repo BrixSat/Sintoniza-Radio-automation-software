@@ -47,6 +47,23 @@ public sealed class AppSettings
     public bool AutoAdvance { get; set; } = true;
     public List<PlaylistEntry> PlaylistItems { get; set; } = new();
 
+    /// <summary>Dead air detection: what counts as silence and how long before AUTO skips.</summary>
+    public SilenceSettings Silence { get; set; } = new();
+    /// <summary>When the playlist runs out in AUTO, add random music from <see cref="FillFolder"/>.</summary>
+    public bool FillEnabled { get; set; }
+    public string FillFolder { get; set; } = "";
+    /// <summary>When the app starts and AUTO was playing when it closed, crashed or the computer went down: play on.</summary>
+    public bool ResumeOnStart { get; set; } = true;
+    /// <summary>Run under a watchdog that starts the app again if it crashes or its audio engine hangs.</summary>
+    public bool RestartAfterCrash { get; set; } = true;
+
+    /// <summary>Index in <see cref="PlaylistItems"/> of the item on air (or last played); -1 = none. Saved every few seconds.</summary>
+    public int OnAirIndex { get; set; } = -1;
+    /// <summary>The player was playing in AUTO at the last save.</summary>
+    public bool WasPlaying { get; set; }
+    /// <summary>Streaming was switched on at the last save: it is switched on again at start.</summary>
+    public bool StreamingOn { get; set; }
+
     /// <summary>Playlist from before streams could be added: plain file paths, moved into <see cref="PlaylistItems"/> on load.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Playlist { get; set; }
@@ -66,8 +83,12 @@ public sealed class AppSettings
         return Directory.Exists(music) ? music : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     }
 
-    /// <summary>Where the app keeps its files (settings, cue points).</summary>
-    public static string DataFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RadioPlayout");
+    /// <summary>
+    /// Where the app keeps its files (settings, cue points, logs). The system folder is created if missing: otherwise
+    /// .NET returns "" and the files would land in whatever folder the app was started from.
+    /// </summary>
+    public static string DataFolder =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create), "RadioPlayout");
 
     static string FilePath => Path.Combine(DataFolder, "settings.json");
 
@@ -75,22 +96,11 @@ public sealed class AppSettings
 
     public static AppSettings Load()
     {
-        try
-        {
-            if (File.Exists(FilePath))
-            {
-                var s = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new();
-                s.Normalize();
-                return s;
-            }
-        }
-        catch
-        {
-            // A corrupt settings file must never stop the station from starting.
-        }
-        var fresh = new AppSettings();
-        fresh.Normalize();
-        return fresh;
+        // A damaged settings file must never stop the station from starting: then the backup, or the defaults.
+        var s = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<AppSettings>(json)) ?? new();
+        s.Normalize();
+        s._saved = JsonSerializer.Serialize(s, Json);
+        return s;
     }
 
     /// <summary>Moves old-style carts into a cartwall and makes sure there is at least one, each with <see cref="CartCount"/> carts.</summary>
@@ -114,21 +124,28 @@ public sealed class AppSettings
             PlaylistItems = Playlist.Select(p => new PlaylistEntry { Path = p }).ToList();
         Playlist = null;
         TimeSignal ??= new();
+        Silence ??= new();
+        FillFolder ??= "";
         Shortcuts ??= new();
         // Actions added since the file was saved get their default.
         foreach (var (id, key) in global::Playout.App.Shortcuts.Defaults()) Shortcuts.TryAdd(id, key);
     }
 
+    string? _saved; // what is in the file, so an unchanged save writes nothing
+
+    /// <summary>Saves, if anything changed since the last save. Crash-safe: see <see cref="SafeFile"/>.</summary>
     public void Save()
     {
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, Json));
+            string json = JsonSerializer.Serialize(this, Json);
+            if (json == _saved) return;
+            SafeFile.WriteAllText(FilePath, json);
+            _saved = json;
         }
         catch
         {
-            // Best effort.
+            // Best effort; the next save tries again.
         }
     }
 }

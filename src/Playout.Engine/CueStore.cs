@@ -20,15 +20,9 @@ public sealed class CueStore
         // Paths are case-insensitive on Windows and (by default) macOS.
         var comparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
         _cues = new Dictionary<string, CuePoints>(comparer);
-        try
-        {
-            if (File.Exists(file) && JsonSerializer.Deserialize<Dictionary<string, CuePoints>>(File.ReadAllText(file)) is { } saved)
-                foreach (var (path, cues) in saved) _cues[path] = cues;
-        }
-        catch
-        {
-            // A corrupt cue file must never stop the station from starting.
-        }
+        // A damaged cue file must never stop the station from starting: then the backup, or no cue points.
+        if (SafeFile.Read(file, json => JsonSerializer.Deserialize<Dictionary<string, CuePoints>>(json)) is { } saved)
+            foreach (var (path, cues) in saved) _cues[path] = cues;
     }
 
     public CuePoints? Get(string path)
@@ -57,11 +51,7 @@ public sealed class CueStore
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(_file)!);
-                // Write then rename, so a crash mid-save never leaves a half-written file.
-                string tmp = _file + ".tmp";
-                File.WriteAllText(tmp, json);
-                File.Move(tmp, _file, overwrite: true);
+                SafeFile.WriteAllText(_file, json);
             }
             catch
             {
