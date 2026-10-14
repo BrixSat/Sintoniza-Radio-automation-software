@@ -202,6 +202,28 @@
         <Style Selector="Button.stop:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="#8A2A2D" />
         </Style>
+        <!-- Microphone (web radio): red while open -->
+        <Style Selector="Button.transport.mic">
+            <Setter Property="Width" Value="100" />
+        </Style>
+        <Style Selector="Button.mic PathIcon">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+        </Style>
+        <Style Selector="Button.mic TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.mic.live /template/ ContentPresenter">
+            <Setter Property="Background" Value="#B8353A" />
+            <Setter Property="BorderBrush" Value="#FF8A8D" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Button.mic.live:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#C93D42" />
+        </Style>
         <Style Selector="Button.next.flash /template/ ContentPresenter">
             <Setter Property="Background" Value="#2F5FB8" />
             <Setter Property="BorderBrush" Value="#4C8DFF" />
@@ -293,6 +315,9 @@
         </Style>
         <Style Selector="PathIcon.commercial">
             <Setter Property="Foreground" Value="#3ECF8E" />
+        </Style>
+        <Style Selector="PathIcon.stream">
+            <Setter Property="Foreground" Value="#B392F0" />
         </Style>
         <Style Selector="Grid.playing PathIcon.kind">
             <Setter Property="Width" Value="18" />

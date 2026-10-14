@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Playout.Engine;
@@ -13,6 +15,8 @@ public partial class SettingsWindow : Window
     readonly AppSettings _settings;
     readonly PlayoutEngine? _engine;
     string? _logoPath;
+    string? _signalFile;
+    readonly Dictionary<string, ShortcutBox> _keyBoxes = new();
 
     // Parameterless constructor for the XAML previewer.
     public SettingsWindow() : this(new AppSettings(), null) { }
@@ -27,6 +31,36 @@ public partial class SettingsWindow : Window
         GenreBox.Text = settings.StationGenre;
         UrlBox.Text = settings.StationUrl;
         SetLogo(settings.LogoPath);
+
+        StationTypeBox.SelectedIndex = settings.StationType == StationType.Web ? 1 : 0;
+        StationTypeBox.SelectionChanged += (_, _) => ShowMicPanel();
+        var mic = settings.Mic ?? new();
+        var inputs = PlayoutEngine.GetInputDevices().Prepend(DefaultDevice).ToList();
+        MicDeviceBox.ItemsSource = inputs;
+        MicDeviceBox.SelectedItem = inputs.Contains(mic.Device) ? mic.Device : DefaultDevice;
+        MicGainBox.Value = (decimal)mic.GainDb;
+        DuckBox.Value = (decimal)mic.DuckDb;
+        FadeDownBox.Value = (decimal)mic.FadeDown;
+        FadeUpBox.Value = (decimal)mic.FadeUp;
+        ShowMicPanel();
+
+        var signal = settings.TimeSignal ?? new();
+        TimeSignalModeBox.SelectedIndex = (int)signal.Mode;
+        _signalFile = string.IsNullOrEmpty(signal.File) ? null : signal.File;
+        SignalFileRadio.IsChecked = _signalFile != null;
+        PipsRadio.IsChecked = _signalFile == null;
+        ShowSignalFile();
+        ChooseSignalButton.Click += async (_, _) => await ChooseSignalFile();
+        ListenSignalButton.Click += (_, _) => _engine?.PreviewTimeSignal(SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
+        ListenSignalButton.IsEnabled = _engine != null;
+
+        BuildShortcuts(settings.Shortcuts ?? Shortcuts.Defaults());
+        DefaultKeysButton.Click += (_, _) =>
+        {
+            var defaults = Shortcuts.Defaults();
+            foreach (var (id, box) in _keyBoxes) box.Gesture = Shortcuts.Parse(defaults.GetValueOrDefault(id));
+            ShortcutMessage.Text = "";
+        };
 
         CrossfadeBox.Value = (decimal)settings.Crossfade;
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
@@ -84,6 +118,73 @@ public partial class SettingsWindow : Window
     static OutputRoute RouteFrom(ComboBox deviceBox, ComboBox channelBox) =>
         new(DeviceName(deviceBox), Math.Max(0, channelBox.SelectedIndex) * 2);
 
+    // ───────────────────────── Shortcuts ─────────────────────────
+
+    /// <summary>One row per action: transport and mic on the left, carts 1–6 and 7–12 beside them.</summary>
+    void BuildShortcuts(Dictionary<string, string> keys)
+    {
+        var carts = Enumerable.Range(0, AppSettings.CartCount).Select(Shortcuts.Cart).ToList();
+        foreach (var (id, name) in Shortcuts.Actions)
+        {
+            var box = new ShortcutBox { Gesture = Shortcuts.Parse(keys.GetValueOrDefault(id)) };
+            box.Assigning = g => Assign(id, g);
+            _keyBoxes[id] = box;
+
+            int cart = carts.IndexOf(id);
+            var row = new Grid { ColumnDefinitions = new ColumnDefinitions(cart < 0 ? "110,*" : "56,*") };
+            row.Children.Add(new TextBlock { Text = name, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center });
+            Grid.SetColumn(box, 1);
+            row.Children.Add(box);
+            (cart < 0 ? PlayerKeys : cart < carts.Count / 2 ? CartKeysA : CartKeysB).Children.Add(row);
+        }
+    }
+
+    /// <summary>Refuses keys the app already uses; a key used by another action moves here.</summary>
+    bool Assign(string id, KeyGesture? g)
+    {
+        ShortcutMessage.Text = "";
+        if (g == null) return true;
+        var command = Application.Current?.PlatformSettings?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+        if (Shortcuts.Reserved(g, command) is { } use)
+        {
+            ShortcutMessage.Text = $"{Shortcuts.Display(g)} is already used for {use}.";
+            return false;
+        }
+        foreach (var (other, box) in _keyBoxes)
+        {
+            if (other == id || !g.Equals(box.Gesture)) continue;
+            box.Gesture = null;
+            ShortcutMessage.Text = $"{Shortcuts.Display(g)} was moved from {Shortcuts.Name(other)} to {Shortcuts.Name(id)}.";
+        }
+        return true;
+    }
+
+    void ShowMicPanel()
+    {
+        bool web = StationTypeBox.SelectedIndex == 1;
+        MicPanel.IsEnabled = web;
+        MicFmNote.IsVisible = !web;
+    }
+
+    void ShowSignalFile()
+    {
+        SignalFileText.Text = _signalFile != null ? Path.GetFileName(_signalFile) : "No file chosen";
+        ToolTip.SetTip(SignalFileText, _signalFile);
+    }
+
+    async Task ChooseSignalFile()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Choose time signal",
+            FileTypeFilter = [new FilePickerFileType("Audio") { Patterns = AudioFiles.Patterns }],
+        });
+        if (files.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+        _signalFile = path;
+        SignalFileRadio.IsChecked = true;
+        ShowSignalFile();
+    }
+
     void SetLogo(string? path)
     {
         Bitmap? bitmap = null;
@@ -115,6 +216,20 @@ public partial class SettingsWindow : Window
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
         _settings.LogoPath = _logoPath;
+
+        _settings.StationType = StationTypeBox.SelectedIndex == 1 ? StationType.Web : StationType.Fm;
+        _settings.Mic = new MicSettings(
+            DeviceName(MicDeviceBox),
+            (double)(MicGainBox.Value ?? 0),
+            (double)(DuckBox.Value ?? -15),
+            (double)(FadeDownBox.Value ?? 0.3m),
+            (double)(FadeUpBox.Value ?? 1));
+
+        _settings.TimeSignal = new TimeSignalSettings(
+            (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
+            SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
+
+        _settings.Shortcuts = _keyBoxes.ToDictionary(kv => kv.Key, kv => kv.Value.Gesture?.ToString() ?? "");
 
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);

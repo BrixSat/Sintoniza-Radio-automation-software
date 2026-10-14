@@ -119,14 +119,22 @@ sealed class AudioGraph
 
     public int PreviewDelay => Delay(_previewDeviceMixer, _previewDeviceChannels);
 
-    /// <summary>Peak levels of what is going out (music and carts combined).</summary>
+    /// <summary>Peak levels of what is going out (music and carts combined, after ducking).</summary>
     public (float Left, float Right) Levels()
     {
         var m = new float[2];
         var c = new float[2];
         BassMix.ChannelGetLevel(_musicOut, m, 0.05f, LevelRetrievalFlags.Stereo);
         BassMix.ChannelGetLevel(_cartOut, c, 0.05f, LevelRetrievalFlags.Stereo);
-        return (Math.Min(1f, m[0] + c[0]), Math.Min(1f, m[1] + c[1]));
+        float duck = (float)Bass.ChannelGetAttribute(_musicOut, ChannelAttribute.Volume);
+        return (Math.Min(1f, (m[0] + c[0]) * duck), Math.Min(1f, (m[1] + c[1]) * duck));
+    }
+
+    /// <summary>Fades music and carts, on the outputs and in the stream, to a level (1 = normal), e.g. under the microphone.</summary>
+    public void Duck(float level, int milliseconds)
+    {
+        foreach (int split in new[] { _musicOut, _cartOut, _musicProg, _cartProg })
+            Bass.ChannelSlideAttribute(split, ChannelAttribute.Volume, level, milliseconds);
     }
 
     // ───────────────────────── Devices ─────────────────────────

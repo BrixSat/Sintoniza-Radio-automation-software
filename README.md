@@ -19,6 +19,10 @@ engine for decoding, mixing and streaming.
 - **Playlist**: drag and drop from the built-in music browser or your file manager, drag rows to reorder,
   estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial), and an
   on-air row that fills from left to right as the track plays. M3U open/save.
+- **Internet streams in the playlist**: put another station's stream in the playlist (**Stream…**) for a set time
+  (it crossfades into the next item when the time is up) or until you press Stop or Next. It connects a few seconds
+  before it is due, so there is no dead air, and if the stream drops the playlist moves on. Saved with the playlist
+  and in M3U files (`#EXTINF:-1` means until Stop).
 - **Music browser**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
 - **Cue points**: mark the usual radio markers on any file: **Cue In** (start), **Intro** (talk-over until the
   vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
@@ -29,20 +33,42 @@ engine for decoding, mixing and streaming.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time, and stereo peak meters.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
+  Click the STREAM button to start and stop (also while it is still connecting), or right-click it for Start / Stop;
+  after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.
   One click on the **STREAM** badge next to ON AIR starts or stops it.
 - **Separate outputs for the mixing desk**: music and cartwall can each go to their own sound card or output pair
   (Out 1–2, 3–4, …), so they come up on separate desk faders. A test tone helps you find which fader is which.
   The stream always carries music and cartwall together. A third output, **Preview**, is for pre-listening in the
   cue editor and is never streamed.
-- **Settings** (Ctrl/Cmd+,): station name, logo, genre and website, crossfade length, audio outputs, and the
-  streaming server.
+- **Web radio microphone**: set the station type to *Web radio* (Settings → Station) and a **MIC** button appears.
+  Hold it (or F9) to talk: music and cartwall fade down to a set level and come back up when you let go. The mic
+  goes into the stream only, not to the audio outputs, so you don't hear yourself with a delay; use headphones.
+  The input, mic level, music level while talking and fade times are on the Microphone tab. With *FM radio* the
+  mic goes through the mixing desk and there is no MIC button.
+- **Top of the hour time signal** (Settings → Time signal): the pips (five short, the long one on the hour) or your own
+  audio file, timed to end on the hour. Either play it **over** whatever is on air, or **stop** what is on air: it
+  fades out just before the signal and the next playlist item starts right after it (in AUTO). Or turn it off.
+  It plays on the Cartwall output and in the stream, and follows the computer's clock.
+- **Settings** (Ctrl/Cmd+,): station name, logo, genre, website and station type, crossfade length, audio outputs,
+  microphone, time signal, keyboard shortcuts and the streaming server.
 - Remembers the playlist, carts and settings between runs.
 
 ### Keyboard shortcuts
 
+Play, Pause, Next, Stop, the mic, streaming on/off and each of the 12 carts can be given any key or combination in
+**Settings → Shortcuts** (click a box, press the key). Cart keys play or stop the carts of the cartwall on screen,
+and each cart shows its key in its corner. Plain keys don't fire while you type in a text box. The defaults:
+
 | Key | Action |
 | --- | --- |
 | F5 / F6 / F7 / F8 | Play / Pause / Next / Stop |
+| F9 (hold) | Microphone open, music ducked (web radio) |
+| (none) | Stream on/off, carts 1–12 |
+
+These are fixed:
+
+| Key | Action |
+| --- | --- |
 | Ctrl/Cmd + O | Add files |
 | Ctrl/Cmd + S | Save playlist |
 | Ctrl/Cmd + E | Edit cue points of the selected item |
@@ -183,7 +209,6 @@ Settings are stored in `settings.json` in the per-user app data folder:
 - Music library with tags and categories
 - Auto cue (silence trimming) for files without cue points
 - Clocks / hour templates, rotation rules, jingles and IDs on a schedule
-- Live assist with mic ducking
 - Played-tracks log and reports
 - Silence detection with fallback audio
 - Loudness normalisation

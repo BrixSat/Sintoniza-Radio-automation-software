@@ -18,6 +18,8 @@
         <StreamGeometry x:Key="IconMusic">M5.5,2.2 L15,0 V11.3 A2.6,2.2 0 1 1 13.4,9.3 V3.4 L7.1,4.9 V13.3 A2.6,2.2 0 1 1 5.5,11.3 Z</StreamGeometry>
         <StreamGeometry x:Key="IconJingle">M8,0 L9.9,6.1 L16,8 L9.9,9.9 L8,16 L6.1,9.9 L0,8 L6.1,6.1 Z</StreamGeometry>
         <StreamGeometry x:Key="IconCommercial">M0,5 H3 L12,0 V16 L3,11 H0 Z M13.5,6 H16 V10 H13.5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconMic">M8,0 A3,3 0 0 1 11,3 V8 A3,3 0 0 1 5,8 V3 A3,3 0 0 1 8,0 Z M2.5,7 H4 A4,4 0 0 0 12,7 H13.5 A5.5,5.5 0 0 1 8.75,12.45 V14.5 H11 V16 H5 V14.5 H7.25 V12.45 A5.5,5.5 0 0 1 2.5,7 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconStream">M8,6.4 A1.6,1.6 0 1 1 8,9.6 A1.6,1.6 0 1 1 8,6.4 Z M4.11,4.11 L5.17,5.17 A4,4 0 0 0 5.17,10.83 L4.11,11.89 A5.5,5.5 0 0 1 4.11,4.11 Z M11.89,4.11 A5.5,5.5 0 0 1 11.89,11.89 L10.83,10.83 A4,4 0 0 0 10.83,5.17 Z M2.34,2.34 L3.4,3.4 A6.5,6.5 0 0 0 3.4,12.6 L2.34,13.66 A8,8 0 0 1 2.34,2.34 Z M13.66,2.34 A8,8 0 0 1 13.66,13.66 L12.6,12.6 A6.5,6.5 0 0 0 12.6,3.4 Z</StreamGeometry>
         <StreamGeometry x:Key="IconGear">M10.3,1 L11,3.1 C11.5,3.3 12,3.6 12.4,3.9 L14.5,3.4 L15.9,5.8 L14.4,7.4 C14.5,7.9 14.5,8.4 14.4,8.9 L15.9,10.5 L14.5,12.9 L12.4,12.4 C12,12.7 11.5,13 11,13.2 L10.3,15.3 H7.5 L6.9,13.2 C6.4,13 5.9,12.7 5.5,12.4 L3.4,12.9 L2,10.5 L3.5,8.9 C3.4,8.4 3.4,7.9 3.5,7.4 L2,5.8 L3.4,3.4 L5.5,3.9 C5.9,3.6 6.4,3.3 6.9,3.1 L7.5,1 Z M8.9,5.6 A2.6,2.6 0 1 0 8.9,10.8 A2.6,2.6 0 1 0 8.9,5.6 Z</StreamGeometry>
     </Window.Resources>
 
@@ -85,17 +87,25 @@
                         </StackPanel>
                         <Border Grid.Column="1" Background="#13161C" CornerRadius="10" Padding="6">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button x:Name="PlayButton" Classes="transport play" ToolTip.Tip="Play (F5)">
+                                <Button x:Name="PlayButton" Classes="transport play" ToolTip.Tip="Play">
                                     <PathIcon Data="{StaticResource IconPlay}" />
                                 </Button>
-                                <Button x:Name="PauseButton" Classes="transport pause" ToolTip.Tip="Pause / resume (F6)">
+                                <Button x:Name="PauseButton" Classes="transport pause" ToolTip.Tip="Pause / resume">
                                     <PathIcon Data="{StaticResource IconPause}" />
                                 </Button>
-                                <Button x:Name="NextButton" Classes="transport next" ToolTip.Tip="Next, crossfade now (F7)">
+                                <Button x:Name="NextButton" Classes="transport next" ToolTip.Tip="Next, crossfade now">
                                     <PathIcon Data="{StaticResource IconNext}" />
                                 </Button>
-                                <Button x:Name="StopButton" Classes="transport stop" ToolTip.Tip="Stop (F8)">
+                                <Button x:Name="StopButton" Classes="transport stop" ToolTip.Tip="Stop">
                                     <PathIcon Data="{StaticResource IconStop}" />
+                                </Button>
+                                <!-- Web radio only: hold to talk; music and carts are ducked while it is open -->
+                                <Button x:Name="MicButton" Classes="transport mic" IsVisible="False" Margin="10,0,0,0"
+                                        ToolTip.Tip="Hold to talk. Music and cartwall fade down while the mic is open.">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <PathIcon Data="{StaticResource IconMic}" />
+                                        <TextBlock Text="MIC" />
+                                    </StackPanel>
                                 </Button>
                             </StackPanel>
                         </Border>
@@ -189,13 +199,14 @@
 
             <Border Grid.Column="2" Classes="panel" Padding="10">
                 <DockPanel>
-                    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="4,0,0,8">
-                        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                            <TextBlock Classes="caption" Text="PLAYLIST" VerticalAlignment="Center" />
-                            <TextBlock x:Name="PlaylistInfo" Classes="muted" FontSize="12" VerticalAlignment="Center" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="4,0,0,8">
+                        <TextBlock Classes="caption" Text="PLAYLIST" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" x:Name="PlaylistInfo" Classes="muted" FontSize="12" VerticalAlignment="Center"
+                                   Margin="10,0,8,0" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
                             <Button x:Name="AddButton" Classes="tool" Content="Add…" />
+                            <Button x:Name="AddStreamButton" Classes="tool" Content="Stream…"
+                                    ToolTip.Tip="Add another station's internet stream, for a set time or until Stop" />
                             <Button x:Name="OpenListButton" Classes="tool" Content="Open list…" />
                             <Button x:Name="SaveListButton" Classes="tool" Content="Save list…" />
                             <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
@@ -229,6 +240,7 @@
                                             <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="Music" />
                                             <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="Jingle" />
                                             <PathIcon Classes="kind commercial" Data="{StaticResource IconCommercial}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="Commercial" />
+                                            <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="Internet stream" />
                                         </Panel>
                                         <StackPanel Grid.Column="3" VerticalAlignment="Center">
                                             <DockPanel>

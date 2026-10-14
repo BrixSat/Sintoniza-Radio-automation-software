@@ -27,6 +27,7 @@ public partial class MainWindow
         public required Button Button;
         public required TextBlock Name;
         public required TextBlock Time;
+        public required TextBlock Number;
         public required PathIcon Icon;
         public required Border Color;
         /// <summary>Two star columns: played part (with the fill) and the rest.</summary>
@@ -90,7 +91,7 @@ public partial class MainWindow
             menu.Opening += (_, _) => FillCartMenu(menu, index);
             button.ContextMenu = menu;
 
-            _carts[i] = new CartSlot { Button = button, Name = name, Time = time, Icon = icon, Color = color, Progress = progress };
+            _carts[i] = new CartSlot { Button = button, Name = name, Time = time, Number = number, Icon = icon, Color = color, Progress = progress };
             Cartwall.Children.Add(button);
         }
 
@@ -182,6 +183,13 @@ public partial class MainWindow
         _page.Carts[index] = new CartItem();
         ShowCart(index);
         _settings.Save();
+    }
+
+    /// <summary>Shows each cart's number and keyboard shortcut in its corner.</summary>
+    void ShowCartShortcuts()
+    {
+        for (int i = 0; i < _carts.Length; i++)
+            _carts[i].Number.Text = CartShortcut(i) is { Length: > 0 } key ? $"{i + 1} · {key}" : (i + 1).ToString();
     }
 
     void ShowCart(int index)

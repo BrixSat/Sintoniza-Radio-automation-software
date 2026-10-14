@@ -36,6 +36,10 @@ public partial class MainWindow : Window
     int _playedToday;
     bool _settingsOpen;
     DateTime? _playlistEnds;
+    bool _micKeyHeld;
+    List<(string Id, KeyGesture? Gesture)> _shortcuts = new();
+    readonly HashSet<Key> _keysDown = new(); // shortcut keys held down: auto-repeat must not toggle Pause or a cart over and over
+    bool _micOn;
 
     public MainWindow()
     {
@@ -57,14 +61,16 @@ public partial class MainWindow : Window
 
         BuildCartwall();
         LoadSettingsIntoUi();
+        ApplyShortcuts();
         WireEvents();
 
         if (_engine != null)
         {
             _engine.CrossfadeSeconds = _settings.Crossfade;
             _engine.AutoAdvance = _settings.AutoAdvance;
-            var existing = _settings.Playlist.Where(File.Exists).ToList();
-            if (existing.Count > 0) _engine.AddFiles(existing);
+            _engine.ConfigureMic(_settings.ActiveMic);
+            _engine.ConfigureTimeSignal(_settings.TimeSignal);
+            AddEntries(_settings.PlaylistItems);
         }
 
         _fastTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => Tick());
@@ -87,6 +93,10 @@ public partial class MainWindow : Window
         PauseButton.Click += (_, _) => _engine?.TogglePause();
         NextButton.Click += (_, _) => _engine?.Next();
         StopButton.Click += (_, _) => _engine?.Stop();
+        MicButton.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == Button.IsPressedProperty) UpdateMic();
+        };
 
         AutoSwitch.IsCheckedChanged += (_, _) =>
         {
@@ -96,6 +106,7 @@ public partial class MainWindow : Window
         };
 
         AddButton.Click += async (_, _) => await AddFilesFromPicker();
+        AddStreamButton.Click += async (_, _) => await AddStream();
         OpenListButton.Click += async (_, _) => await OpenPlaylist();
         SaveListButton.Click += async (_, _) => await SavePlaylist();
         RemoveButton.Click += (_, _) => RemoveSelected();
@@ -153,9 +164,38 @@ public partial class MainWindow : Window
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
 
         StreamToggle.Click += (_, _) => ToggleStreaming();
+        // Right-click: explicit start and stop; Stop also clears an error (a click on an error retries).
+        var startStream = new MenuItem { Header = "Start streaming" };
+        startStream.Click += (_, _) => { if (_engine?.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming(); };
+        var stopStream = new MenuItem { Header = "Stop streaming" };
+        stopStream.Click += (_, _) => _engine?.StopStreaming();
+        var streamMenu = new ContextMenu { Items = { startStream, stopStream } };
+        streamMenu.Opening += (_, _) =>
+        {
+            var state = _engine?.GetStatus().Stream ?? StreamState.Off;
+            startStream.IsEnabled = state is StreamState.Off or StreamState.Failed;
+            stopStream.IsEnabled = state != StreamState.Off;
+            stopStream.Header = state switch
+            {
+                StreamState.Connecting => "Cancel connecting",
+                StreamState.Failed => "Turn streaming off",
+                _ => "Stop streaming",
+            };
+        };
+        StreamToggle.ContextMenu = streamMenu;
         SettingsButton.Click += async (_, _) => await OpenSettings();
 
+        // Tunnel: the operator's shortcuts come before whatever control has focus (Space on a button, keys in the playlist).
+        AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnShortcutKeyUp, RoutingStrategies.Tunnel);
         KeyDown += OnWindowKeyDown;
+        // Releasing the mic key in another window never reaches us: close the mic when focus leaves.
+        Deactivated += (_, _) =>
+        {
+            _keysDown.Clear();
+            _micKeyHeld = false;
+            UpdateMic();
+        };
         Closing += (_, _) => SaveSettings();
         Closed += (_, _) => _engine?.Dispose();
     }
@@ -170,15 +210,68 @@ public partial class MainWindow : Window
     static KeyModifiers CommandModifiers =>
         Application.Current?.PlatformSettings?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
 
+    /// <summary>The operator's shortcuts (Settings → Shortcuts): transport, mic and the carts on screen.</summary>
+    void OnShortcutKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (Shortcuts.FromEvent(e) is not { } pressed) return;
+        // Plain keys type text in a text box (e.g. searching the music folder).
+        if (FocusManager?.GetFocusedElement() is TextBox && Shortcuts.TypesText(pressed)) return;
+        if (_shortcuts.FirstOrDefault(s => pressed.Equals(s.Gesture)).Id is not { } id) return;
+        e.Handled = true;
+        if (!_keysDown.Add(e.Key)) return; // auto-repeat
+        switch (id)
+        {
+            case Shortcuts.Play: PlayPressed(); break;
+            case Shortcuts.Pause: _engine?.TogglePause(); break;
+            case Shortcuts.Next: _engine?.Next(); break;
+            case Shortcuts.Stop: _engine?.Stop(); break;
+            case Shortcuts.Mic: _micKeyHeld = true; UpdateMic(); break;
+            case Shortcuts.Stream: ToggleStreaming(); break;
+            default:
+                ToggleCart(Array.FindIndex(Shortcuts.Actions, a => a.Id == id) - Array.FindIndex(Shortcuts.Actions, a => a.Id == Shortcuts.Cart(0)));
+                break;
+        }
+    }
+
+    void OnShortcutKeyUp(object? sender, KeyEventArgs e)
+    {
+        _keysDown.Remove(e.Key);
+        // Key only: the modifiers may already be up.
+        if (!_micKeyHeld || _shortcuts.FirstOrDefault(s => s.Id == Shortcuts.Mic).Gesture?.Key != e.Key) return;
+        _micKeyHeld = false;
+        UpdateMic();
+        e.Handled = true;
+    }
+
+    /// <summary>Reads the shortcuts from the settings and shows them on the buttons.</summary>
+    void ApplyShortcuts()
+    {
+        _shortcuts = _settings.Shortcuts
+            .Select(kv => (Id: kv.Key, Gesture: Shortcuts.Parse(kv.Value)))
+            .Where(s => s.Gesture != null && Shortcuts.Actions.Any(a => a.Id == s.Id))
+            .ToList();
+        string Key(string id) => _shortcuts.FirstOrDefault(s => s.Id == id).Gesture is { } g ? $" ({Shortcuts.Display(g)})" : "";
+        ToolTip.SetTip(PlayButton, "Play" + Key(Shortcuts.Play));
+        ToolTip.SetTip(PauseButton, "Pause / resume" + Key(Shortcuts.Pause));
+        ToolTip.SetTip(NextButton, "Next, crossfade now" + Key(Shortcuts.Next));
+        ToolTip.SetTip(StopButton, "Stop" + Key(Shortcuts.Stop));
+        ToolTip.SetTip(MicButton, $"Hold to talk{Key(Shortcuts.Mic)}. Music and cartwall fade down while the mic is open.");
+        ShowCartShortcuts();
+        _lastStreamState = null; // refresh the STREAM tooltip
+    }
+
+    string StreamKey() =>
+        _shortcuts.FirstOrDefault(s => s.Id == Shortcuts.Stream).Gesture is { } g ? $" ({Shortcuts.Display(g)})" : "";
+
+    /// <summary>The shortcut for a cart, as shown on it ("" if none).</summary>
+    string CartShortcut(int index) =>
+        _shortcuts.FirstOrDefault(s => s.Id == Shortcuts.Cart(index)).Gesture is { } g ? Shortcuts.Display(g) : "";
+
     void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         var cmd = CommandModifiers;
         switch (e.Key)
         {
-            case Key.F5: PlayPressed(); break;
-            case Key.F6: _engine?.TogglePause(); break;
-            case Key.F7: _engine?.Next(); break;
-            case Key.F8: _engine?.Stop(); break;
             case Key.O when e.KeyModifiers == cmd: _ = AddFilesFromPicker(); break;
             case Key.S when e.KeyModifiers == cmd: _ = SavePlaylist(); break;
             case Key.E when e.KeyModifiers == cmd: _ = EditSelectedCues(); break;
@@ -188,6 +281,15 @@ public partial class MainWindow : Window
             default: return;
         }
         e.Handled = true;
+    }
+
+    /// <summary>Push to talk: the mic is open while the MIC button or its key is held (web radio only).</summary>
+    void UpdateMic()
+    {
+        bool on = MicButton.IsVisible && (MicButton.IsPressed || _micKeyHeld);
+        if (on == _micOn) return;
+        _micOn = on;
+        _engine?.SetMic(on);
     }
 
     // ───────────────────────── Polling: clock, meters, deck ─────────────────────────
@@ -215,16 +317,18 @@ public partial class MainWindow : Window
             onAirRow.Progress = end > start ? elapsed / (end - start) : 0;
         Elapsed.Text = Format.Duration(elapsed);
         double remaining = Math.Max(0, end - st.Position);
+        bool openEnded = st.Current?.IsOpenEnded == true;
         UpdateCueBadge(st, end);
         UpdateCueTimes(st);
-        Remaining.Text = "-" + Format.Duration(Math.Ceiling(remaining));
-        Remaining.Foreground = hasTrack && remaining <= 10
+        Remaining.Text = openEnded ? "∞" : "-" + Format.Duration(Math.Ceiling(remaining));
+        Remaining.Foreground = hasTrack && !openEnded && remaining <= 10
             ? (IBrush)this.FindResource("OnAir")!
             : (IBrush)this.FindResource("TextMain")!;
 
         PlayButton.Classes.Set("active", st.State == PlayerState.Playing);
         PauseButton.Classes.Set("active", st.State == PlayerState.Paused);
         StopButton.Classes.Set("active", st.State == PlayerState.Stopped);
+        MicButton.Classes.Set("live", _engine.MicLive);
         if (st.Current?.Id != _lastOnAirId)
         {
             // A new item went on air (Next button, double-click or auto-advance): flash Next.
@@ -341,7 +445,8 @@ public partial class MainWindow : Window
         double Tail(Track t) => t.End - t.MixPoint(xfade);
         double lastTail = st.Current is { } cur ? Tail(cur) : 0;
 
-        DateTime? at = st.State == PlayerState.Playing && current >= 0 && st.Current != null
+        // A stream that plays until Stop has no end, so nothing after it has a start time.
+        DateTime? at = st.State == PlayerState.Playing && current >= 0 && st.Current is { IsOpenEnded: false }
             ? DateTime.Now.AddSeconds(Math.Max(0, st.Current.MixPoint(xfade) - st.Position))
             : null;
 
@@ -352,7 +457,7 @@ public partial class MainWindow : Window
             {
                 row.StartTime = t.ToString("HH:mm:ss");
                 lastTail = Tail(items[i]);
-                at = t.AddSeconds(items[i].PlayLength - lastTail);
+                at = items[i].IsOpenEnded ? null : t.AddSeconds(items[i].PlayLength - lastTail);
             }
             else row.StartTime = "";
         }
@@ -379,10 +484,10 @@ public partial class MainWindow : Window
         StreamToggle.Classes.Set("failed", st.Stream == StreamState.Failed);
         ToolTip.SetTip(StreamToggle, st.Stream switch
         {
-            StreamState.OnAir => "Streaming — click to stop",
-            StreamState.Connecting => "Connecting — click to cancel",
-            StreamState.Failed => $"{st.StreamError}\nClick to retry",
-            _ => "Stream off — click to start (server is set in Settings)",
+            StreamState.OnAir => $"Streaming — click to stop{StreamKey()}",
+            StreamState.Connecting => $"Connecting — click to cancel{StreamKey()}",
+            StreamState.Failed => $"{st.StreamError}\nClick to retry, or right-click to turn streaming off",
+            _ => $"Stream off — click to start (server is set in Settings){StreamKey()}",
         });
         _slowTick = 0;
     }
@@ -453,7 +558,7 @@ public partial class MainWindow : Window
         PlaylistInfo.Text = _rows.Count == 0 ? "" : $"{_rows.Count} items · {Format.Duration(total)}";
         NextTitle.Text = snap.NextId is { } n && _rowsById.TryGetValue(n, out var next) ? next.Track.Display : "—";
 
-        _settings.Playlist = snap.Items.Select(t => t.Path).ToList();
+        _settings.PlaylistItems = snap.Items.Select(PlaylistEntry.From).ToList();
     }
 
     void RemoveSelected()
@@ -530,12 +635,65 @@ public partial class MainWindow : Window
         if (files.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
 
         var baseDir = Path.GetDirectoryName(path)!;
-        var entries = File.ReadAllLines(path)
-            .Select(l => l.Trim())
-            .Where(l => l.Length > 0 && !l.StartsWith('#'))
-            .Select(l => Path.IsPathRooted(l) ? l : Path.GetFullPath(Path.Combine(baseDir, l)))
-            .Where(File.Exists);
-        _engine?.AddFiles(entries);
+        var entries = new List<PlaylistEntry>();
+        (double Seconds, string Name)? info = null;
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("#EXTINF:", StringComparison.OrdinalIgnoreCase))
+            {
+                // #EXTINF:<seconds>,<name>; for a stream, -1 (or 0) means until Stop or Next.
+                var parts = line["#EXTINF:".Length..].Split(',', 2);
+                double.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double secs);
+                info = (secs, parts.Length > 1 ? parts[1].Trim() : "");
+                continue;
+            }
+            if (line.Length == 0 || line.StartsWith('#')) continue;
+            if (PlayoutEngine.IsUrl(line))
+                entries.Add(new PlaylistEntry
+                {
+                    Path = line,
+                    StreamName = info is { Name.Length: > 0 } i ? i.Name : line,
+                    StreamSeconds = Math.Max(0, info?.Seconds ?? 0),
+                });
+            else
+                entries.Add(new PlaylistEntry { Path = Path.IsPathRooted(line) ? line : Path.GetFullPath(Path.Combine(baseDir, line)) });
+            info = null;
+        }
+        AddEntries(entries);
+    }
+
+    /// <summary>Adds saved or loaded playlist items in order: files that still exist, and streams.</summary>
+    void AddEntries(IEnumerable<PlaylistEntry> entries)
+    {
+        if (_engine is not { } engine) return;
+        var files = new List<string>();
+        foreach (var e in entries)
+        {
+            if (!e.IsStream)
+            {
+                if (File.Exists(e.Path)) files.Add(e.Path);
+                continue;
+            }
+            Flush();
+            engine.AddStream(e.Path, e.StreamName!, e.StreamSeconds);
+        }
+        Flush();
+
+        // The engine runs commands in order, so batching the files between streams keeps the order.
+        void Flush()
+        {
+            if (files.Count == 0) return;
+            engine.AddFiles(files.ToList());
+            files.Clear();
+        }
+    }
+
+    async Task AddStream()
+    {
+        if (_engine == null) return;
+        if (await new StreamDialog().ShowDialog<StreamRequest?>(this) is not { } s) return;
+        _engine.AddStream(s.Url, s.Name, s.Seconds, s.PlayNext ? NextInsertIndex() : -1);
     }
 
     async Task SavePlaylist()
@@ -552,7 +710,7 @@ public partial class MainWindow : Window
         var lines = new List<string> { "#EXTM3U" };
         foreach (var t in _snapshot.Items)
         {
-            lines.Add($"#EXTINF:{(int)t.Duration},{t.Display}");
+            lines.Add($"#EXTINF:{(t.IsOpenEnded ? -1 : (int)t.Duration)},{t.Display}");
             lines.Add(t.Path);
         }
         File.WriteAllLines(path, lines);
@@ -580,7 +738,7 @@ public partial class MainWindow : Window
 
     async Task EditSelectedCues()
     {
-        if (Playlist.SelectedItem is PlaylistRow row) await EditCues(row.Track.Path, row.Track.Display);
+        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false } row) await EditCues(row.Track.Path, row.Track.Display);
     }
 
     bool _cueEditorOpen;
@@ -637,14 +795,19 @@ public partial class MainWindow : Window
         try
         {
             var routingBefore = _settings.Routing;
+            var micBefore = _settings.ActiveMic;
             bool saved = await new SettingsWindow(_settings, _engine).ShowDialog<bool>(this);
             if (!saved) return;
             if (_engine != null)
             {
                 _engine.CrossfadeSeconds = _settings.Crossfade;
                 if (_settings.Routing != routingBefore) _engine.ApplyRouting(_settings.Routing);
+                if (_settings.ActiveMic != micBefore) _engine.ConfigureMic(_settings.ActiveMic);
+                _engine.ConfigureTimeSignal(_settings.TimeSignal);
             }
             ApplyStationBranding();
+            ShowStationType();
+            ApplyShortcuts();
             LastLog.Text = "Settings saved";
         }
         finally
@@ -681,8 +844,16 @@ public partial class MainWindow : Window
             : "ASSISTED: stops after each item; start the next one yourself. Click for AUTO.");
     }
 
+    /// <summary>Web radio gets a MIC button; on FM the mic goes through the desk.</summary>
+    void ShowStationType()
+    {
+        MicButton.IsVisible = _settings.StationType == StationType.Web;
+        UpdateMic();
+    }
+
     void LoadSettingsIntoUi()
     {
+        ShowStationType();
         AutoSwitch.IsChecked = _settings.AutoAdvance;
         ShowAutomationMode();
         Library.SetRoot(_settings.MusicFolder);

@@ -1,6 +1,7 @@
 namespace Playout.Engine;
 
-public enum TrackKind { Music, Jingle, Commercial }
+/// <summary>Stream: another station's internet stream, played for <see cref="Track.Duration"/> seconds or, with 0, until Stop or Next.</summary>
+public enum TrackKind { Music, Jingle, Commercial, Stream }
 
 /// <summary>
 /// The usual radio markers for a file, in seconds from the start of the file. Null = not set.
@@ -21,10 +22,15 @@ public sealed record CuePoints(double? CueIn = null, double? Intro = null, doubl
     public bool IsEmpty => this == None;
 }
 
-/// <summary>An audio file known to the engine. Immutable; the playlist holds these.</summary>
+/// <summary>An audio file or internet stream known to the engine. Immutable; the playlist holds these.</summary>
 public sealed record Track(Guid Id, string Path, string Artist, string Title, double Duration, TrackKind Kind = TrackKind.Music, CuePoints? Cues = null)
 {
     public string Display => string.IsNullOrWhiteSpace(Artist) ? Title : $"{Artist} - {Title}";
+
+    public bool IsStream => Kind == TrackKind.Stream;
+
+    /// <summary>A stream with no set play time: it stays on air until Stop or Next.</summary>
+    public bool IsOpenEnded => IsStream && Duration <= 0;
 
     /// <summary>Where playback starts (Cue In).</summary>
     public double Start => Math.Max(0, Cues?.CueIn ?? 0);

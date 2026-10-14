@@ -25,14 +25,16 @@ public sealed class PlaylistRow : INotifyPropertyChanged
 
     public Guid Id => Track.Id;
     public string Title => Track.Title;
-    public string Artist => Track.Artist;
-    public bool HasArtist => !string.IsNullOrWhiteSpace(Track.Artist);
-    /// <summary>On-air length, Cue In to Cue Out.</summary>
-    public string Length => Format.Duration(Track.PlayLength);
+    /// <summary>The artist; for a stream, its address.</summary>
+    public string Artist => Track.IsStream ? Track.Path : Track.Artist;
+    public bool HasArtist => !string.IsNullOrWhiteSpace(Artist);
+    /// <summary>On-air length, Cue In to Cue Out; ∞ for a stream that plays until Stop or Next.</summary>
+    public string Length => Track.IsOpenEnded ? "∞" : Format.Duration(Track.PlayLength);
     public bool HasCues => Track.Cues != null;
     public bool IsMusic => Track.Kind == TrackKind.Music;
     public bool IsJingle => Track.Kind == TrackKind.Jingle;
     public bool IsCommercial => Track.Kind == TrackKind.Commercial;
+    public bool IsStream => Track.IsStream;
 
     double _progress;
     /// <summary>0..1 while on air, drives the row's background fill.</summary>

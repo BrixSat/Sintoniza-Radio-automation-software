@@ -13,6 +13,14 @@ public sealed class AppSettings
     public string? LogoPath { get; set; }
     public string StationGenre { get; set; } = "Various";
     public string StationUrl { get; set; } = "";
+    /// <summary>FM: the mic goes through the mixing desk. Web: the mic goes through this computer (MIC button).</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public StationType StationType { get; set; } = StationType.Fm;
+    public MicSettings Mic { get; set; } = new();
+
+    /// <summary>The microphone setup for the engine, or null when the mic isn't ours to handle (FM).</summary>
+    [JsonIgnore]
+    public MicSettings? ActiveMic => StationType == StationType.Web ? Mic ?? new() : null;
     /// <summary>Where the playlist (music) and the cartwall come out: sound card name (empty = default) + channel pair.</summary>
     public OutputRoute MusicOutput { get; set; } = new();
     public OutputRoute CartOutput { get; set; } = new();
@@ -30,8 +38,16 @@ public sealed class AppSettings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string?[]? Carts { get; set; }
     public double Crossfade { get; set; } = 5;
+    /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
+    public TimeSignalSettings TimeSignal { get; set; } = new();
+    /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>
+    public Dictionary<string, string> Shortcuts { get; set; } = global::Playout.App.Shortcuts.Defaults();
     public bool AutoAdvance { get; set; } = true;
-    public List<string> Playlist { get; set; } = new();
+    public List<PlaylistEntry> PlaylistItems { get; set; } = new();
+
+    /// <summary>Playlist from before streams could be added: plain file paths, moved into <see cref="PlaylistItems"/> on load.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Playlist { get; set; }
     public string MusicFolder { get; set; } = DefaultMusicFolder();
 
     public string StreamHost { get; set; } = "localhost";
@@ -90,6 +106,15 @@ public sealed class AppSettings
             if (page.Carts.Count > CartCount) page.Carts.RemoveRange(CartCount, page.Carts.Count - CartCount);
         }
         if (Cartwalls.All(c => c.Name != ActiveCartwall)) ActiveCartwall = Cartwalls[0].Name;
+
+        PlaylistItems ??= new();
+        if (Playlist != null && PlaylistItems.Count == 0)
+            PlaylistItems = Playlist.Select(p => new PlaylistEntry { Path = p }).ToList();
+        Playlist = null;
+        TimeSignal ??= new();
+        Shortcuts ??= new();
+        // Actions added since the file was saved get their default.
+        foreach (var (id, key) in global::Playout.App.Shortcuts.Defaults()) Shortcuts.TryAdd(id, key);
     }
 
     public void Save()
@@ -104,6 +129,24 @@ public sealed class AppSettings
             // Best effort.
         }
     }
+}
+
+public enum StationType { Fm, Web }
+
+/// <summary>A saved playlist item: a file, or an internet stream (it has a <see cref="StreamName"/>) with its play time (0 = until Stop or Next).</summary>
+public sealed class PlaylistEntry
+{
+    public string Path { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StreamName { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double StreamSeconds { get; set; }
+
+    [JsonIgnore]
+    public bool IsStream => StreamName != null;
+
+    public static PlaylistEntry From(Track t) =>
+        t.IsStream ? new() { Path = t.Path, StreamName = t.Title, StreamSeconds = t.Duration } : new() { Path = t.Path };
 }
 
 /// <summary>A named set of <see cref="AppSettings.CartCount"/> carts.</summary>

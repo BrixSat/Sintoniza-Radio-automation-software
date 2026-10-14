@@ -17,6 +17,9 @@ public sealed class PlayoutEngine : IDisposable
     const double StopFadeSeconds = 0.4;
     const double CartStopFadeSeconds = 0.25;
     const double CueOutFadeSeconds = 0.05; // just enough to avoid a click when cutting at Cue Out
+    const double StreamConnectLeadSeconds = 10; // connect to a stream this long before it is due, so connecting never means dead air
+    const double SignalPrepSeconds = 3;    // schedule the time signal this long before it starts
+    const double SignalFadeSeconds = 1;    // Stop mode: what is on air fades out over this, ending as the signal starts
 
     readonly BlockingCollection<Action> _commands = new();
     readonly List<(DateTime Due, Action Action)> _timers = new();
@@ -28,6 +31,7 @@ public sealed class PlayoutEngine : IDisposable
     readonly SyncProcedure _cueOutSync;
 
     readonly AudioGraph _graph;
+    readonly Microphone _mic;
     readonly WaveformLoader _waveforms = new();
     readonly CueStore _cues;
 
@@ -36,7 +40,15 @@ public sealed class PlayoutEngine : IDisposable
     readonly HashSet<Guid> _played = new();
     int _cursorIndex = -1; // index of the last started item; survives removal of that item
     (Guid Id, int Handle)? _preload;
+    int _connectAttempt;   // bumped by every start and stop, so a stream that connects too late is dropped
+    Guid? _connecting;     // stream item that is due but still connecting; automation waits for it instead of starting it again
+    (Guid Id, Task<int> Handle)? _streamConnection; // connection to a stream item, opened ahead of its start
     readonly List<int> _playingOut = new(); // decks past their Mix marker, finishing under the next item
+    readonly ConcurrentDictionary<int, byte> _carts = new(); // carts fired and not stopped (some may have ended)
+    TimeSignalSettings _timeSignal = new();
+    double _signalHourAt;    // where the hour falls in the signal (seconds)
+    DateTime? _signalHour;   // the next top of the hour that gets the signal (local time)
+    bool _resumeAfterSignal; // Stop mode took the item off air: start the next one when the signal ends
 
     // Shared with polling readers; written only on the engine thread.
     volatile Deck? _current;
@@ -44,6 +56,8 @@ public sealed class PlayoutEngine : IDisposable
     volatile int _encoder;
     volatile int _streamState = (int)StreamState.Off;
     volatile string? _streamError;
+    int _streamAttempt;
+    readonly object _streamLock = new(); // bumped by every start and stop, so a connection that completes after Stop is dropped
 
     volatile bool _autoAdvance = true;
     double _crossfadeSeconds = 5;
@@ -64,6 +78,7 @@ public sealed class PlayoutEngine : IDisposable
 
         _graph = new AudioGraph(forceDevice);
         _graph.Apply(routing);
+        _mic = new Microphone(_graph, After, Emit);
 
         _crossfadeSync = (_, channel, _, _) => _commands.Add(() => OnCrossfadePoint(channel));
         _endSync = (_, channel, _, _) => _commands.Add(() => OnTrackEnd(channel));
@@ -84,6 +99,33 @@ public sealed class PlayoutEngine : IDisposable
         _graph.Apply(routing);
         Emit("Audio outputs updated");
     });
+
+    public static IReadOnlyList<string> GetInputDevices() => Microphone.DeviceNames();
+
+    /// <summary>Sets up the web radio microphone; null turns it off (FM: the mic goes through the desk).</summary>
+    public void ConfigureMic(MicSettings? settings) => Post(() => _mic.Configure(settings));
+
+    /// <summary>Opens (on air, music ducked) or closes the microphone.</summary>
+    public void SetMic(bool on) => Post(() => _mic.Set(on));
+
+    /// <summary>True while the microphone is open.</summary>
+    public bool MicLive => _mic.IsLive;
+
+    /// <summary>Sets up the top of the hour time signal.</summary>
+    public void ConfigureTimeSignal(TimeSignalSettings settings) => Post(() =>
+    {
+        _timeSignal = settings;
+        _signalHour = null;
+        if (settings.Mode == TimeSignalMode.Off) return;
+        Bass.StreamFree(TimeSignal.Open(settings.File, Emit, out _signalHourAt, out _));
+    });
+
+    /// <summary>Plays the time signal (file, or empty for the pips) on the Preview output, to check it off air.</summary>
+    public void PreviewTimeSignal(string file)
+    {
+        int h = TimeSignal.Open(file, Emit, out _, out _);
+        if (h != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.AutoFree)) Bass.StreamFree(h);
+    }
 
     /// <summary>Short 1 kHz tone on a card/channel pair, to find the right desk fader.</summary>
     public void PlayTestTone(OutputRoute route) => _graph.TestTone(route);
@@ -147,12 +189,20 @@ public sealed class PlayoutEngine : IDisposable
         var list = paths.ToList();
         Post(() =>
         {
-            var tracks = list.Select(SafeProbe).OfType<Track>().ToList();
-            int at = insertAt < 0 || insertAt > _playlist.Count ? _playlist.Count : insertAt;
-            _playlist.InsertRange(at, tracks);
-            if (at <= _cursorIndex) _cursorIndex += tracks.Count;
-            PlaylistUpdated();
+            Insert(list.Select(SafeProbe).OfType<Track>().ToList(), insertAt);
         });
+    }
+
+    /// <summary>Adds another station's internet stream (http/https URL), played for <paramref name="seconds"/> or, with 0, until Stop or Next.</summary>
+    public void AddStream(string url, string name, double seconds, int insertAt = -1) => Post(() =>
+        Insert([new Track(Guid.NewGuid(), url.Trim(), "", string.IsNullOrWhiteSpace(name) ? url.Trim() : name.Trim(), Math.Max(0, seconds), TrackKind.Stream)], insertAt));
+
+    void Insert(List<Track> tracks, int insertAt)
+    {
+        int at = insertAt < 0 || insertAt > _playlist.Count ? _playlist.Count : insertAt;
+        _playlist.InsertRange(at, tracks);
+        if (at <= _cursorIndex) _cursorIndex += tracks.Count;
+        PlaylistUpdated();
     }
 
     public void Remove(Guid id) => Post(() =>
@@ -236,12 +286,14 @@ public sealed class PlayoutEngine : IDisposable
         int h = OpenStream(path, prescan: false);
         if (h == 0) { Emit($"Cart failed: {Path.GetFileName(path)} ({Bass.LastError})"); return 0; }
         BassMix.MixerAddChannel(_graph.CartBus, h, BassFlags.AutoFree);
+        _carts[h] = 0;
         return h;
     }
 
     public void StopCart(int handle)
     {
         if (handle == 0) return;
+        _carts.TryRemove(handle, out _);
         Bass.ChannelSlideAttribute(handle, ChannelAttribute.Volume, 0, (int)(CartStopFadeSeconds * 1000));
         Post(() => After(CartStopFadeSeconds + 0.2, () => Bass.StreamFree(handle)));
     }
@@ -258,7 +310,11 @@ public sealed class PlayoutEngine : IDisposable
     }
 
     /// <summary>Amplitude envelope for drawing; decoded off the on-air path and cached.</summary>
-    public Task<Waveform?> LoadWaveformAsync(string path) => _waveforms.LoadAsync(path);
+    public Task<Waveform?> LoadWaveformAsync(string path) =>
+        IsUrl(path) ? Task.FromResult<Waveform?>(null) : _waveforms.LoadAsync(path);
+
+    public static bool IsUrl(string path) =>
+        path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
     public PlayerStatus GetStatus()
     {
@@ -273,6 +329,9 @@ public sealed class PlayoutEngine : IDisposable
         }
 
         var (left, right) = _graph.Levels();
+        float mic = _mic.Level();
+        left = Math.Min(1, left + mic);
+        right = Math.Min(1, right + mic);
 
         return new PlayerStatus(State, deck?.Track, pos, len, left, right,
             (StreamState)_streamState, _streamError);
@@ -283,6 +342,7 @@ public sealed class PlayoutEngine : IDisposable
     public void StartStreaming(StreamSettings s)
     {
         StopStreaming();
+        int attempt = Interlocked.Increment(ref _streamAttempt);
         _streamState = (int)StreamState.Connecting;
         _streamError = null;
 
@@ -292,7 +352,7 @@ public sealed class PlayoutEngine : IDisposable
             int enc = s.Format == StreamFormat.Mp3
                 ? BassEnc_Mp3.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero)
                 : BassEnc_Ogg.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero);
-            if (enc == 0) { FailStream($"Encoder start failed: {Bass.LastError}"); return; }
+            if (enc == 0) { FailStream($"Encoder start failed: {Bass.LastError}", attempt); return; }
 
             string mount = s.Mount.StartsWith('/') ? s.Mount : "/" + s.Mount;
             string server = s.Shoutcast ? $"{s.Host}:{s.Port}" : $"{s.Host}:{s.Port}{mount}";
@@ -302,22 +362,41 @@ public sealed class PlayoutEngine : IDisposable
             {
                 var err = Bass.LastError;
                 BassEnc.EncodeStop(enc);
-                FailStream($"Could not connect to {server} ({err}); check host, port, mount and password");
+                FailStream($"Could not connect to {server} ({err}); check host, port, mount and password", attempt);
                 return;
             }
 
-            _encoder = enc;
-            _streamState = (int)StreamState.OnAir;
+            lock (_streamLock)
+            {
+                if (attempt != _streamAttempt)
+                {
+                    // Stopped while connecting: hang up instead of going on air.
+                    BassEnc.EncodeStop(enc);
+                    return;
+                }
+                _encoder = enc;
+                _streamState = (int)StreamState.OnAir;
+            }
             Emit($"Streaming to {server} ({s.Format} {s.Bitrate} kbps)");
             if (_current?.Track is { } t) BassEnc.CastSetTitle(enc, t.Display, null);
         });
     }
 
+    /// <summary>Stops streaming, cancels a connection in progress, or clears a stream error.</summary>
     public void StopStreaming()
     {
-        int enc = Interlocked.Exchange(ref _encoder, 0);
+        int enc;
+        bool connecting;
+        lock (_streamLock)
+        {
+            Interlocked.Increment(ref _streamAttempt);
+            connecting = _streamState == (int)StreamState.Connecting;
+            enc = Interlocked.Exchange(ref _encoder, 0);
+            _streamState = (int)StreamState.Off;
+            _streamError = null;
+        }
         if (enc != 0) { BassEnc.EncodeStop(enc); Emit("Streaming stopped"); }
-        _streamState = (int)StreamState.Off;
+        else if (connecting) Emit("Streaming cancelled");
     }
 
     public void Dispose()
@@ -325,6 +404,7 @@ public sealed class PlayoutEngine : IDisposable
         StopStreaming();
         _commands.CompleteAdding();
         _thread.Join(2000);
+        _mic.Free();
         _graph.Free();
     }
 
@@ -343,6 +423,8 @@ public sealed class PlayoutEngine : IDisposable
                 Safe(cmd);
             RunTimers();
             WatchStream();
+            Safe(PreconnectStream);
+            Safe(CheckTimeSignal);
         }
     }
 
@@ -369,17 +451,22 @@ public sealed class PlayoutEngine : IDisposable
     void WatchStream()
     {
         int enc = _encoder;
-        if (enc != 0 && BassEnc.EncodeIsActive(enc) == PlaybackState.Stopped)
+        if (enc != 0 && BassEnc.EncodeIsActive(enc) == PlaybackState.Stopped
+            && Interlocked.CompareExchange(ref _encoder, 0, enc) == enc) // not if Stop got there first
         {
-            _encoder = 0;
             FailStream("Connection to the streaming server was lost");
         }
     }
 
-    void FailStream(string message)
+    /// <param name="attempt">The start this failure belongs to; ignored if streaming was stopped or restarted since.</param>
+    void FailStream(string message, int? attempt = null)
     {
-        _streamState = (int)StreamState.Failed;
-        _streamError = message;
+        lock (_streamLock)
+        {
+            if (attempt is { } a && a != _streamAttempt) return;
+            _streamState = (int)StreamState.Failed;
+            _streamError = message;
+        }
         Emit(message);
     }
 
@@ -395,15 +482,17 @@ public sealed class PlayoutEngine : IDisposable
     void OnCrossfadePoint(int handle)
     {
         if (_current is not { } deck || deck.Handle != handle || !_autoAdvance) return;
-        if (NextTrack() is { } next) StartTrack(next, deck.MixFade);
+        if (NextTrack() is { } next && next.Id != _connecting) StartTrack(next, deck.MixFade);
     }
 
     void OnTrackEnd(int handle)
     {
         _playingOut.Remove(handle);
         if (_current?.Handle != handle) return; // a faded-out deck finishing, nothing to do
+        if (_current.Track.IsStream) Emit($"Stream ended: {_current.Track.Title}");
         if (_autoAdvance && NextTrack() is { } next)
         {
+            if (next.Id == _connecting) { _current = null; PlaylistUpdated(); return; } // on air as soon as it connects
             StartTrack(next, 0);
             return;
         }
@@ -424,6 +513,13 @@ public sealed class PlayoutEngine : IDisposable
         }
         if (_autoAdvance && NextTrack() is { } next)
         {
+            if (next.Id == _connecting)
+            {
+                FadeOutAndFree(handle, CueOutFadeSeconds);
+                _current = null;
+                PlaylistUpdated();
+                return;
+            }
             StartTrack(next, CueOutFadeSeconds);
             return;
         }
@@ -436,14 +532,14 @@ public sealed class PlayoutEngine : IDisposable
     /// <param name="outgoingFade">How the deck now on air leaves: fade time in seconds (0 = cut), or null to let it play on to its Cue Out.</param>
     void StartTrack(Track track, double? outgoingFade)
     {
+        _connectAttempt++;
+        _connecting = null;
+        if (track.IsStream) { ConnectStream(track, outgoingFade); return; }
+
         int handle = TakePreload(track.Id) ?? OpenStream(track.Path, prescan: true);
         if (handle == 0)
         {
-            Emit($"Cannot play {track.Display}: {Bass.LastError}; skipping");
-            _played.Add(track.Id);
-            _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
-            if (_autoAdvance && NextTrack() is { } after && after.Id != track.Id) StartTrack(after, outgoingFade);
-            else PlaylistUpdated();
+            Skip(track, outgoingFade, Bass.LastError.ToString());
             return;
         }
 
@@ -456,7 +552,74 @@ public sealed class PlayoutEngine : IDisposable
             if (index >= 0) _playlist[index] = track;
         }
         if (track.Start > 0) Bass.ChannelSetPosition(handle, Bass.ChannelSeconds2Bytes(handle, track.Start));
+        Begin(track, handle, length, outgoingFade);
+    }
 
+    /// <summary>An item that can't be played: mark it played and, in AUTO, go on to the one after it.</summary>
+    void Skip(Track track, double? outgoingFade, string reason)
+    {
+        Emit($"Cannot play {track.Display}: {reason}; skipping");
+        _played.Add(track.Id);
+        _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
+        if (_autoAdvance && NextTrack() is { } after && after.Id != track.Id) StartTrack(after, outgoingFade);
+        else PlaylistUpdated();
+    }
+
+    /// <summary>
+    /// Connects to an internet stream off the engine thread (it can take seconds); whatever is on air keeps playing
+    /// until it is ready. A later start or stop cancels it.
+    /// </summary>
+    void ConnectStream(Track track, double? outgoingFade)
+    {
+        int attempt = _connectAttempt;
+        _connecting = track.Id;
+        var connection = Connection(track);
+        if (!connection.IsCompleted) Emit($"Connecting to {track.Title}…");
+        connection.ContinueWith(t => Post(() =>
+        {
+            if (attempt != _connectAttempt) return; // superseded; PlaylistUpdated or Stop drops the connection
+            _connecting = null;
+            if (_streamConnection is { } c && c.Handle == t) _streamConnection = null; // taken: it's ours now
+            if (t.IsCompletedSuccessfully) Begin(track, t.Result, track.Duration, outgoingFade);
+            else Skip(track, outgoingFade, $"could not connect ({t.Exception?.InnerException?.Message})");
+        }));
+    }
+
+    /// <summary>The connection to a stream item: the one already opened ahead of time, or a new one.</summary>
+    Task<int> Connection(Track track)
+    {
+        if (_streamConnection is { } c && c.Id == track.Id) return c.Handle;
+        DropConnection();
+        var task = Task.Run(() =>
+        {
+            int handle = Bass.CreateStream(track.Path, 0, BassFlags.Decode | BassFlags.Float, null, IntPtr.Zero);
+            return handle != 0 ? handle : throw new IOException(Bass.LastError.ToString());
+        });
+        _streamConnection = (track.Id, task);
+        return task;
+    }
+
+    void DropConnection()
+    {
+        if (_streamConnection is not { } c) return;
+        _streamConnection = null;
+        c.Handle.ContinueWith(t => { if (t.IsCompletedSuccessfully) Bass.StreamFree(t.Result); });
+    }
+
+    /// <summary>In AUTO, opens the connection to a stream that is next up shortly before the current item reaches its mix point.</summary>
+    void PreconnectStream()
+    {
+        if (!_autoAdvance || _connecting != null || _streamConnection != null) return;
+        if (_current is not { } deck || deck.Track.IsOpenEnded || NextTrack() is not { IsStream: true } next) return;
+        long bytes = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes);
+        if (bytes < 0) return;
+        double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeSeconds), deck.Track.IsStream ? deck.Track.End : deck.Length);
+        if (mixAt - Bass.ChannelBytes2Seconds(deck.Handle, bytes) <= StreamConnectLeadSeconds) Connection(next);
+    }
+
+    /// <summary>Puts an opened item on air, taking over from the current one.</summary>
+    void Begin(Track track, int handle, double length, double? outgoingFade)
+    {
         if (_current is { } old)
         {
             // Manual changes while paused should not un-pause the old deck into a fade.
@@ -474,8 +637,9 @@ public sealed class PlayoutEngine : IDisposable
             return;
         }
 
+        // For a stream, End means the connection dropped.
         BassMix.ChannelSetSync(handle, SyncFlags.End | SyncFlags.Mixtime, 0, _endSync);
-        var deck = Arm(handle, track, length);
+        var deck = track.IsStream ? ArmStream(handle, track) : Arm(handle, track, length);
         BassMix.ChannelFlags(handle, BassFlags.Default, BassFlags.MixerChanPause);
 
         _current = deck;
@@ -507,6 +671,20 @@ public sealed class PlayoutEngine : IDisposable
         return new Deck(handle, track, length, mixSync, cueOutSync, mixFade);
     }
 
+    /// <summary>
+    /// A stream has no length to put syncs on, so its play time runs on timers: the next item starts one crossfade
+    /// before the end, and at the end it goes (like Cue Out). An open-ended stream waits for Stop or Next.
+    /// </summary>
+    Deck ArmStream(int handle, Track track)
+    {
+        if (track.IsOpenEnded) return new Deck(handle, track, 0, 0, 0, CrossfadeSeconds);
+        double mixAt = track.MixPoint(CrossfadeSeconds);
+        if (mixAt < track.End) After(mixAt, () => OnCrossfadePoint(handle));
+        // Only while still on air: once the next item has started, its crossfade fades this one out.
+        After(track.End, () => { if (_current?.Handle == handle) OnCueOut(handle); });
+        return new Deck(handle, track, track.Duration, 0, 0, track.End - mixAt);
+    }
+
     /// <summary>Fades decks that are still playing out under the current item (the operator took over).</summary>
     void FadePlayingOut(double seconds)
     {
@@ -516,6 +694,10 @@ public sealed class PlayoutEngine : IDisposable
 
     void StopInternal()
     {
+        _resumeAfterSignal = false;
+        _connectAttempt++;
+        _connecting = null;
+        DropConnection();
         FadePlayingOut(StopFadeSeconds);
         if (_current is { } deck) FadeOutAndFree(deck.Handle, State == PlayerState.Paused ? 0 : StopFadeSeconds);
         _current = null;
@@ -538,6 +720,72 @@ public sealed class PlayoutEngine : IDisposable
         After(seconds + 0.2, () => Bass.StreamFree(handle));
     }
 
+    // ───────────────────────── Time signal ─────────────────────────
+
+    /// <summary>Shortly before each top of the hour, schedules the time signal so the hour falls exactly on the hour.</summary>
+    void CheckTimeSignal()
+    {
+        if (_timeSignal.Mode == TimeSignalMode.Off) return;
+        var now = DateTime.Now;
+        // The first hour that still leaves time to prepare (switched on at 59:58, it starts with the next hour).
+        _signalHour ??= TopOfHour(now.AddSeconds(_signalHourAt + SignalPrepSeconds));
+        double untilHour = (_signalHour.Value - now).TotalSeconds;
+        if (untilHour > _signalHourAt + SignalPrepSeconds) return;
+        var hour = _signalHour.Value;
+        _signalHour = hour.AddHours(1);
+        if (untilHour < _signalHourAt) return; // too late for this one (the computer was asleep, the clock jumped)
+        StartTimeSignal(hour, untilHour);
+    }
+
+    static DateTime TopOfHour(DateTime after) => new DateTime(after.Year, after.Month, after.Day, after.Hour, 0, 0, after.Kind).AddHours(1);
+
+    void StartTimeSignal(DateTime hour, double untilHour)
+    {
+        int h = TimeSignal.Open(_timeSignal.File, Emit, out double hourAt, out double length);
+        if (h == 0) { Emit($"Time signal: {Bass.LastError}"); return; }
+
+        // Mixed in with a delay so it is heard, after what is still queued on the card, exactly on time.
+        double cartLatency = Bass.ChannelBytes2Seconds(_graph.CartBus, _graph.CartDelay);
+        double startIn = Math.Max(0, untilHour - hourAt - cartLatency);
+        if (!BassMix.MixerAddChannel(_graph.CartBus, h, BassFlags.AutoFree, Bass.ChannelSeconds2Bytes(_graph.CartBus, startIn), 0))
+        {
+            Emit($"Time signal: {Bass.LastError}");
+            Bass.StreamFree(h);
+            return;
+        }
+        Emit($"Time signal for {hour:HH:mm}");
+        if (_timeSignal.Mode != TimeSignalMode.Stop) return;
+
+        double musicLatency = Bass.ChannelBytes2Seconds(_graph.MusicBus, _graph.MusicDelay);
+        double signalStart = untilHour - hourAt; // when it is heard
+        After(signalStart - SignalFadeSeconds - musicLatency, TakeOffAirForSignal);
+        After(signalStart + length - musicLatency, ResumeAfterSignal);
+    }
+
+    /// <summary>Stop mode: fades out the item on air and any carts, so the time signal is heard on its own.</summary>
+    void TakeOffAirForSignal()
+    {
+        foreach (int cart in _carts.Keys) StopCart(cart);
+        bool playing = State == PlayerState.Playing && (_current != null || _connecting != null);
+        if (!playing) return; // stopped or paused: the operator is in charge
+        _resumeAfterSignal = _autoAdvance;
+        _connectAttempt++; // a stream still connecting is not put on air; the next item takes its connection
+        _connecting = null;
+        FadePlayingOut(SignalFadeSeconds);
+        if (_current is { } deck) FadeOutAndFree(deck.Handle, SignalFadeSeconds);
+        _current = null;
+        _state = (int)PlayerState.Stopped;
+        PlaylistUpdated();
+    }
+
+    void ResumeAfterSignal()
+    {
+        if (!_resumeAfterSignal) return;
+        _resumeAfterSignal = false;
+        // Not if the operator started something during the signal.
+        if (_current == null && _connecting == null && NextTrack() is { } next) StartTrack(next, 0);
+    }
+
     /// <summary>Publish a snapshot and pre-open the next file so the crossfade point never waits on disk.</summary>
     void PlaylistUpdated()
     {
@@ -547,7 +795,8 @@ public sealed class PlayoutEngine : IDisposable
             Bass.StreamFree(p.Handle);
             _preload = null;
         }
-        if (next != null && _preload == null && _current != null)
+        if (_streamConnection is { } sc && sc.Id != next?.Id) DropConnection();
+        if (next != null && !next.IsStream && _preload == null && _current != null)
         {
             int h = OpenStream(next.Path, prescan: true);
             if (h != 0) _preload = (next.Id, h);
