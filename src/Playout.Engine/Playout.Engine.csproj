@@ -8,5 +8,6 @@
     <PackageReference Include="ManagedBass" Version="4.0.2" />
     <PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
     <PackageReference Include="ManagedBass.Enc" Version="4.0.2" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
 </Project>

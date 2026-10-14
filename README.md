@@ -11,7 +11,7 @@ engine for decoding, mixing and streaming.
 
 ## Features
 
-- **On-air deck**: title and artist, a scrolling waveform with a playhead, a full-track overview with the
+- **On-air deck**: title and artist, the album cover (when the file has one), a scrolling waveform with a playhead, a full-track overview with the
   crossfade zone marked, elapsed/remaining time (turns red in the last 10 s), and the next item.
 - **Transport**: Play, Pause, Next (crossfades straight away) and Stop. The button for the current state lights up,
   and Next flashes on every track change. The mode button switches between **AUTO**
@@ -28,6 +28,10 @@ engine for decoding, mixing and streaming.
   vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
   **Cue Out** (stop). Playback, lengths, start times and the waveforms follow them, and an INTRO / OUTRO countdown
   appears above the waveform for talking over. See [Cue points](#cue-points).
+- **Tag editor**: right-click a playlist item or a file in the music browser → *Edit tags…* (Ctrl/Cmd+T) to
+  change title, artist, album, genre, year, track number and comment, and to set or remove the cover picture
+  (choose a JPEG/PNG or drop one on it). MP3s get ID3v2.3 tags; FLAC, OGG, M4A and WAV work too. The file on air
+  can't be edited until it has finished playing.
 - **Cartwall**: 12 instant buttons that play over the music, with a countdown and a progress fill while playing.
   Drop a file on a cart (from the music browser or the file manager) to assign it.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
@@ -77,6 +81,7 @@ These are fixed:
 | Ctrl/Cmd + O | Add files |
 | Ctrl/Cmd + S | Save playlist |
 | Ctrl/Cmd + E | Edit cue points of the selected item |
+| Ctrl/Cmd + T | Edit tags of the selected item |
 | Ctrl/Cmd + ↑ / ↓ | Move selected playlist items |
 | Ctrl/Cmd + , | Settings |
 | Delete | Remove selected items |
@@ -224,4 +229,5 @@ Settings are stored in `settings.json` in the per-user app data folder:
 - **BASS** is free for non-commercial use. Commercial use, including running it at a commercial station or
   selling the software, needs a licence from [un4seen](https://www.un4seen.com/).
 - **Avalonia** and **ManagedBass** are MIT licensed.
+- **TagLib#** (tag editing) is LGPL 2.1.
 - The licence for this project's own code hasn't been chosen yet.

@@ -63,13 +63,22 @@
                         </ToggleButton>
                     </Grid>
 
-                    <TextBlock Grid.Row="1" x:Name="NowTitle" Text="Nothing on air" FontSize="26" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" Margin="0,6,0,0" />
-                    <TextBlock Grid.Row="2" x:Name="NowArtist" Classes="muted" FontSize="16" Margin="0,0,0,10" Text=" " />
-
-                    <Grid Grid.Row="3" RowDefinitions="78,4,22">
-                        <c:WaveformView x:Name="WaveMain" Mode="Scrolling" />
-                        <c:WaveformView Grid.Row="2" x:Name="WaveOverview" Mode="Overview" />
+                    <!-- Album cover (when the file has one) beside the title and the waveforms -->
+                    <Grid Grid.Row="1" Grid.RowSpan="3" ColumnDefinitions="Auto,*" Margin="0,6,0,0">
+                        <Border x:Name="NowCoverFrame" Width="164" Height="164" CornerRadius="8" ClipToBounds="True"
+                                Background="#13161C" Margin="0,0,14,0" VerticalAlignment="Top" IsVisible="False">
+                            <Image x:Name="NowCover" Stretch="UniformToFill" />
+                        </Border>
+                        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock x:Name="NowTitle" Text="Nothing on air" FontSize="26" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Row="1" x:Name="NowArtist" Classes="muted" FontSize="16" Margin="0,0,0,10" Text=" "
+                                       TextTrimming="CharacterEllipsis" />
+                            <Grid Grid.Row="2" RowDefinitions="78,4,22">
+                                <c:WaveformView x:Name="WaveMain" Mode="Scrolling" />
+                                <c:WaveformView Grid.Row="2" x:Name="WaveOverview" Mode="Overview" />
+                            </Grid>
+                        </Grid>
                     </Grid>
 
                     <!-- Transport bar -->

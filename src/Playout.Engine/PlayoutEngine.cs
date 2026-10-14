@@ -173,6 +173,55 @@ public sealed class PlayoutEngine : IDisposable
         });
     }
 
+    /// <summary>
+    /// Writes a file's tags (see <see cref="Tags.Write"/>) and shows the new artist and title on every playlist item of
+    /// that file. Refused while the file is on air: rewriting the tags can move the audio under the player.
+    /// </summary>
+    public Task SaveTagsAsync(string path, TrackTags tags, byte[]? cover)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Post(() =>
+        {
+            try
+            {
+                var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+                if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer))
+                    throw new InvalidOperationException("This file is on air. Edit its tags once it has finished playing.");
+
+                // The next item is opened ahead of time: let go of the file while it is rewritten.
+                if (_preload is { } p && _playlist.Find(t => t.Id == p.Id) is { } pre && string.Equals(pre.Path, path, comparer))
+                {
+                    Bass.StreamFree(p.Handle);
+                    _preload = null;
+                }
+
+                try
+                {
+                    Tags.Write(path, tags, cover);
+                }
+                finally
+                {
+                    PlaylistUpdated(); // opens the next item again
+                }
+
+                if (!string.IsNullOrWhiteSpace(tags.Title))
+                {
+                    for (int i = 0; i < _playlist.Count; i++)
+                        if (string.Equals(_playlist[i].Path, path, comparer))
+                            _playlist[i] = _playlist[i] with { Artist = tags.Artist.Trim(), Title = tags.Title.Trim() };
+                    PlaylistUpdated();
+                }
+                Emit($"Tags saved: {Path.GetFileName(path)}");
+                done.SetResult();
+            }
+            catch (Exception ex)
+            {
+                done.SetException(ex);
+            }
+        });
+        return done.Task;
+    }
+
     // ───────────────────────── Public API (thread-safe, non-blocking) ─────────────────────────
 
     public bool AutoAdvance { get => _autoAdvance; set => _autoAdvance = value; }

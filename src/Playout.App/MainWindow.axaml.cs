@@ -128,9 +128,11 @@ public partial class MainWindow : Window
         };
         var editCues = new MenuItem { Header = "Edit cue points…", InputGesture = new KeyGesture(Key.E, CommandModifiers) };
         editCues.Click += async (_, _) => await EditSelectedCues();
+        var editTags = new MenuItem { Header = "Edit tags…", InputGesture = new KeyGesture(Key.T, CommandModifiers) };
+        editTags.Click += async (_, _) => await EditSelectedTags();
         var remove = new MenuItem { Header = "Remove", InputGesture = new KeyGesture(Key.Delete) };
         remove.Click += (_, _) => RemoveSelected();
-        Playlist.ContextMenu = new ContextMenu { Items = { editCues, remove } };
+        Playlist.ContextMenu = new ContextMenu { Items = { editCues, editTags, remove } };
 
         Playlist.KeyDown += (_, e) =>
         {
@@ -170,6 +172,7 @@ public partial class MainWindow : Window
         Library.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1);
         Library.RootChanged += root => _settings.MusicFolder = root;
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
+        Library.EditTagsRequested += async path => await EditTags(path);
 
         StreamToggle.Click += (_, _) => ToggleStreaming();
         // Right-click: explicit start and stop; Stop also clears an error (a click on an error retries).
@@ -289,6 +292,7 @@ public partial class MainWindow : Window
             case Key.O when e.KeyModifiers == cmd: _ = AddFilesFromPicker(); break;
             case Key.S when e.KeyModifiers == cmd: _ = SavePlaylist(); break;
             case Key.E when e.KeyModifiers == cmd: _ = EditSelectedCues(); break;
+            case Key.T when e.KeyModifiers == cmd: _ = EditSelectedTags(); break;
             case Key.Up when e.KeyModifiers == cmd: MoveSelected(-1); break;
             case Key.Down when e.KeyModifiers == cmd: MoveSelected(+1); break;
             case Key.OemComma when e.KeyModifiers == cmd: _ = OpenSettings(); break;
@@ -323,6 +327,7 @@ public partial class MainWindow : Window
         NowTitle.Text = st.Current?.Title ?? "Nothing on air";
         NowArtist.Text = string.IsNullOrWhiteSpace(st.Current?.Artist) ? " " : st.Current!.Artist;
         UpdateWaveforms(st);
+        ShowCover(st.Current);
         // Times run from Cue In to Cue Out, not over the whole file.
         double start = st.Current?.Start ?? 0;
         double end = st.Current != null ? Math.Min(st.Current.End, st.Length) : 0;
@@ -755,19 +760,72 @@ public partial class MainWindow : Window
         if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false } row) await EditCues(row.Track.Path, row.Track.Display);
     }
 
-    bool _cueEditorOpen;
+    bool _editorOpen;
 
     async Task EditCues(string path, string title)
     {
-        if (_engine == null || _cueEditorOpen) return;
-        _cueEditorOpen = true;
+        if (_engine == null || _editorOpen) return;
+        _editorOpen = true;
         try
         {
             await new CueEditorWindow(_engine, path, title).ShowDialog(this);
         }
         finally
         {
-            _cueEditorOpen = false;
+            _editorOpen = false;
+        }
+    }
+
+    // ───────────────────────── Tags ─────────────────────────
+
+    string? _coverPath; // file whose cover is shown (or being loaded)
+
+    /// <summary>Shows the album cover of the item on air, if its file has one.</summary>
+    void ShowCover(Track? track)
+    {
+        string? path = track is { IsStream: false } ? track.Path : null;
+        if (path == _coverPath) return;
+        _coverPath = path;
+        if (path == null)
+        {
+            SetCover(null);
+            return;
+        }
+        Task.Run(() =>
+        {
+            if (Tags.ReadCover(path) is not { } data) return null;
+            try { return Bitmap.DecodeToWidth(new MemoryStream(data), 328); }
+            catch { return null; } // not a picture we can show
+        }).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        {
+            if (path == _coverPath) SetCover(t.Result);
+            else t.Result?.Dispose(); // another item is on air by now
+        }));
+    }
+
+    void SetCover(Bitmap? cover)
+    {
+        (NowCover.Source as IDisposable)?.Dispose();
+        NowCover.Source = cover;
+        NowCoverFrame.IsVisible = cover != null;
+    }
+
+    async Task EditSelectedTags()
+    {
+        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false } row) await EditTags(row.Track.Path);
+    }
+
+    async Task EditTags(string path)
+    {
+        if (_engine == null || _editorOpen) return;
+        _editorOpen = true;
+        try
+        {
+            await new TagEditorWindow(_engine, path).ShowDialog(this);
+        }
+        finally
+        {
+            _editorOpen = false;
         }
     }
 

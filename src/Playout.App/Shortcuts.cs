@@ -63,6 +63,7 @@ static class Shortcuts
             Key.O => "Add files",
             Key.S => "Save playlist",
             Key.E => "Edit cue points",
+            Key.T => "Edit tags",
             Key.Up or Key.Down => "moving playlist items",
             Key.OemComma => "Settings",
             _ => null,

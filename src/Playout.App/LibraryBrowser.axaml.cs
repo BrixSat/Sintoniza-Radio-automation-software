@@ -23,6 +23,9 @@ public partial class LibraryBrowser : UserControl
     /// <summary>Raised when the user wants to set the cue points of a file.</summary>
     public event Action<string>? EditCuesRequested;
 
+    /// <summary>Raised when the user wants to edit the tags of a file.</summary>
+    public event Action<string>? EditTagsRequested;
+
     /// <summary>Raised when the user picks a different root folder.</summary>
     public event Action<string>? RootChanged;
 
@@ -56,6 +59,9 @@ public partial class LibraryBrowser : UserControl
         editCues.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditCuesRequested?.Invoke(p); };
         FileList.ContextMenu.Items.Add(new Separator());
         FileList.ContextMenu.Items.Add(editCues);
+        var editTags = new MenuItem { Header = "Edit tags…" };
+        editTags.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditTagsRequested?.Invoke(p); };
+        FileList.ContextMenu.Items.Add(editTags);
         FolderTree.ContextMenu = BuildMenu(() =>
             FolderTree.SelectedItem is FolderNode n ? [n.Path] : []);
 

@@ -1,0 +1,93 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.TagEditorWindow"
+        Icon="/Assets/icon.ico"
+        Title="Edit tags"
+        Width="680" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Button.small">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <StackPanel Margin="18" Spacing="14">
+        <StackPanel>
+            <TextBlock x:Name="FileText" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="PathText" Classes="note" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="180,18,*">
+            <!-- Cover: choose a picture, or drop one on it -->
+            <StackPanel Spacing="8">
+                <Border x:Name="CoverFrame" Width="180" Height="180" CornerRadius="8" ClipToBounds="True" Background="#13161C"
+                        BorderBrush="#2A2F3A" BorderThickness="1" DragDrop.AllowDrop="True">
+                    <Panel>
+                        <TextBlock x:Name="NoCoverText" Classes="note" Text="No cover&#10;&#10;Drop a picture here" TextAlignment="Center"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Image x:Name="CoverImage" Stretch="UniformToFill" />
+                    </Panel>
+                </Border>
+                <Grid ColumnDefinitions="*,6,*">
+                    <Button x:Name="ChooseCoverButton" Classes="small" Content="Choose…" ToolTip.Tip="Use a JPEG or PNG picture as the cover" />
+                    <Button Grid.Column="2" x:Name="RemoveCoverButton" Classes="small" Content="Remove" />
+                </Grid>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Spacing="10">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Title" />
+                    <TextBox x:Name="TitleBox" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Artist" />
+                    <TextBox x:Name="ArtistBox" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Album" />
+                    <TextBox x:Name="AlbumBox" />
+                </StackPanel>
+                <Grid ColumnDefinitions="*,10,90,10,90">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Genre" />
+                        <TextBox x:Name="GenreBox" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Classes="label" Text="Year" />
+                        <TextBox x:Name="YearBox" MaxLength="4" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Classes="label" Text="Track no." />
+                        <TextBox x:Name="TrackBox" MaxLength="4" />
+                    </StackPanel>
+                </Grid>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Comment" />
+                    <TextBox x:Name="CommentBox" />
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" IsVisible="False" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+            <Button x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" IsDefault="True" Classes="accent"
+                    IsEnabled="False" />
+        </StackPanel>
+    </StackPanel>
+</Window>
