@@ -2,6 +2,7 @@
 ;   makensis -DVERSION=<version> -DSRCDIR=<publish dir> -DOUTFILE=<setup.exe> installer.nsi
 Unicode true
 !include "MUI2.nsh"
+!include "FileFunc.nsh"
 
 !define APPNAME "Radio Playout"
 !define EXENAME "RadioPlayout.exe"
@@ -28,6 +29,21 @@ SetCompressor /SOLID lzma
 
 Section "Install"
   SetShellVarContext all
+  ; An in-app update starts this silently and then closes the app: wait (up to 30 s) until its files are free.
+  StrCpy $1 0
+  wait:
+    IfFileExists "$INSTDIR\${EXENAME}" 0 ready
+    ClearErrors
+    FileOpen $0 "$INSTDIR\${EXENAME}" a
+    IfErrors 0 opened
+    IntOp $1 $1 + 1
+    IntCmp $1 60 ready
+    Sleep 500
+    Goto wait
+  opened:
+    FileClose $0
+  ready:
+
   SetOutPath "$INSTDIR"
   File /r "${SRCDIR}/*.*"
 
@@ -46,6 +62,13 @@ Section "Install"
   WriteRegStr HKLM "${UNINSTKEY}" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKLM "${UNINSTKEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINSTKEY}" "NoRepair" 1
+
+  ; In-app update (/S /RESTART): start the new version.
+  ${GetParameters} $0
+  ClearErrors
+  ${GetOptions} $0 "/RESTART" $1
+  IfErrors +2
+  Exec '"$INSTDIR\${EXENAME}"'
 SectionEnd
 
 Section "Uninstall"

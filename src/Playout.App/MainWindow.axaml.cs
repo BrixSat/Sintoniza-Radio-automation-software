@@ -75,6 +75,14 @@ public partial class MainWindow : Window
 
         _fastTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => Tick());
         _fastTimer.Start();
+
+        // Look for a new version shortly after start (not while everything is still loading), then every few hours.
+        _updateTimer = new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, async (_, _) =>
+        {
+            _updateTimer!.Interval = UpdateCheckInterval;
+            if (_settings.CheckForUpdates && !Updates.IsDevBuild) await CheckForUpdate(quiet: true);
+        });
+        _updateTimer.Start();
         Tick();
     }
 
@@ -197,7 +205,13 @@ public partial class MainWindow : Window
             UpdateMic();
         };
         Closing += (_, _) => SaveSettings();
-        Closed += (_, _) => _engine?.Dispose();
+        Closed += (_, _) =>
+        {
+            _engine?.Dispose();
+            // After the settings are saved and the sound card is free, so the new version starts cleanly.
+            if (_restartAfterClose) Updates.Restart();
+        };
+        UpdateButton.Click += async (_, _) => { if (_update != null) await ShowUpdate(_update); };
     }
 
     /// <summary>Play resumes or continues; when stopped, it starts from the selected item if there is one.</summary>
@@ -788,6 +802,45 @@ public partial class MainWindow : Window
 
     // ───────────────────────── Settings ─────────────────────────
 
+    // ───────────────────────── Updates ─────────────────────────
+
+    static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(6);
+    DispatcherTimer? _updateTimer;
+    UpdateInfo? _update;
+    bool _restartAfterClose;
+
+    /// <summary>Asks GitHub for a newer version; shows the update button if there is one. Quiet: no message unless one is found.</summary>
+    public async Task<UpdateInfo?> CheckForUpdate(bool quiet)
+    {
+        try
+        {
+            _update = await Updates.CheckAsync();
+            if (_update != null)
+            {
+                UpdateButton.Content = $"Update {_update.Version} available";
+                ToolTip.SetTip(UpdateButton, $"Radio Playout {_update.Version} is out (you have {Updates.CurrentText}). Click for details.");
+                if (!quiet || !UpdateButton.IsVisible) LastLog.Text = $"Radio Playout {_update.Version} is available";
+            }
+            UpdateButton.IsVisible = _update != null;
+            return _update;
+        }
+        catch (Exception ex)
+        {
+            if (!quiet) throw;
+            System.Diagnostics.Trace.WriteLine($"Update check failed: {ex.Message}"); // offline etc.: try again next time
+            return null;
+        }
+    }
+
+    public async Task ShowUpdate(UpdateInfo update, Window? owner = null)
+    {
+        bool close = await new UpdateWindow(update, _engine).ShowDialog<bool>(owner ?? this);
+        if (!close) return;
+        _restartAfterClose = !Updates.InstallClosesApp; // Windows: the installer starts the new version
+        (owner as Window)?.Close();
+        Close();
+    }
+
     async Task OpenSettings()
     {
         if (_settingsOpen) return;
@@ -796,7 +849,7 @@ public partial class MainWindow : Window
         {
             var routingBefore = _settings.Routing;
             var micBefore = _settings.ActiveMic;
-            bool saved = await new SettingsWindow(_settings, _engine).ShowDialog<bool>(this);
+            bool saved = await new SettingsWindow(_settings, _engine, this).ShowDialog<bool>(this);
             if (!saved) return;
             if (_engine != null)
             {

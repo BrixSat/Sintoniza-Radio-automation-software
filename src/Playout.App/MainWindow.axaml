@@ -180,14 +180,15 @@
         </Grid>
 
         <!-- ═════════ Status bar ═════════ -->
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*" Margin="2,10,2,0">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*" Margin="2,10,2,0">
             <Button x:Name="SettingsButton" Classes="tool" ToolTip.Tip="Settings (Ctrl/Cmd+,)">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Width="12" Height="12" Data="{StaticResource IconGear}" />
                     <TextBlock Text="Settings" />
                 </StackPanel>
             </Button>
-            <TextBlock Grid.Column="1" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
+            <Button Grid.Column="1" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
+            <TextBlock Grid.Column="2" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </Grid>
 
@@ -207,8 +208,8 @@
                             <Button x:Name="AddButton" Classes="tool" Content="Add…" />
                             <Button x:Name="AddStreamButton" Classes="tool" Content="Stream…"
                                     ToolTip.Tip="Add another station's internet stream, for a set time or until Stop" />
-                            <Button x:Name="OpenListButton" Classes="tool" Content="Open list…" />
-                            <Button x:Name="SaveListButton" Classes="tool" Content="Save list…" />
+                            <Button x:Name="OpenListButton" Classes="tool" Content="Open…" ToolTip.Tip="Open a playlist (M3U)" />
+                            <Button x:Name="SaveListButton" Classes="tool" Content="Save…" ToolTip.Tip="Save the playlist (M3U, Ctrl/Cmd+S)" />
                             <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
                             <Button x:Name="DownButton" Classes="tool" Content="▼" ToolTip.Tip="Move down" />
                             <Button x:Name="RemoveButton" Classes="tool" Content="Remove" />

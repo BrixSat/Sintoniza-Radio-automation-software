@@ -8,6 +8,8 @@
     <AssemblyName>RadioPlayout</AssemblyName>
     <RootNamespace>Playout.App</RootNamespace>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <!-- build.sh sets the real version; a build from source is 0.0.0 and never offers updates. -->
+    <Version>0.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -41,6 +41,8 @@ public sealed class AppSettings
     /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
     public TimeSignalSettings TimeSignal { get; set; } = new();
     /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>
+    /// <summary>Look for a new version on GitHub at start and every few hours.</summary>
+    public bool CheckForUpdates { get; set; } = true;
     public Dictionary<string, string> Shortcuts { get; set; } = global::Playout.App.Shortcuts.Defaults();
     public bool AutoAdvance { get; set; } = true;
     public List<PlaylistEntry> PlaylistItems { get; set; } = new();

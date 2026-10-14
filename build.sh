@@ -15,6 +15,9 @@ NAME=RadioPlayout
 
 target=${1:-all}
 version=${2:-$(git -C "$ROOT" describe --tags --always --dirty 2>/dev/null || echo dev)}
+# The app compares this with GitHub releases to offer updates; 0.0.0 (untagged build) never offers one.
+appver=$(grep -oE '^v?[0-9]+(\.[0-9]+){1,3}' <<<"$version" | tr -d v || true)
+appver=${appver:-0.0.0}
 
 command -v dotnet >/dev/null || { echo "dotnet not found. Install the .NET 10 SDK (see README)." >&2; exit 1; }
 
@@ -36,7 +39,7 @@ build() { # $1 = win|linux
 
   echo "▶ Publishing $rid"
   dotnet publish "$PROJECT" -c Release -r "$rid" --self-contained \
-    -p:DebugType=none -p:DebugSymbols=false -o "$out"
+    -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
 
   cp "$ROOT/README.md" "$out/"
 

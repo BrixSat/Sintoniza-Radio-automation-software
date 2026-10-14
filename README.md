@@ -51,6 +51,11 @@ engine for decoding, mixing and streaming.
   It plays on the Cartwall output and in the stream, and follows the computer's clock.
 - **Settings** (Ctrl/Cmd+,): station name, logo, genre, website and station type, crossfade length, audio outputs,
   microphone, time signal, keyboard shortcuts and the streaming server.
+- **Updates**: checks GitHub Releases at start and every 6 hours (can be turned off in Settings → About, which also
+  has *Check now*). A new version shows a green *Update available* button; nothing is installed until you click
+  it. Installed with the Windows setup or the .deb package, it downloads the package, checks its SHA-256 and
+  installs it (Windows: the app closes and restarts on the new version; Linux: asks for the admin password, then
+  offers a restart). Portable zip/tar copies open the download page instead.
 - Remembers the playlist, carts and settings between runs.
 
 ### Keyboard shortcuts

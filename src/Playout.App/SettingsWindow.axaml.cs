@@ -14,6 +14,8 @@ public partial class SettingsWindow : Window
 
     readonly AppSettings _settings;
     readonly PlayoutEngine? _engine;
+    readonly MainWindow? _main;
+    UpdateInfo? _update;
     string? _logoPath;
     string? _signalFile;
     readonly Dictionary<string, ShortcutBox> _keyBoxes = new();
@@ -21,11 +23,20 @@ public partial class SettingsWindow : Window
     // Parameterless constructor for the XAML previewer.
     public SettingsWindow() : this(new AppSettings(), null) { }
 
-    public SettingsWindow(AppSettings settings, PlayoutEngine? engine)
+    public SettingsWindow(AppSettings settings, PlayoutEngine? engine, MainWindow? main = null)
     {
         InitializeComponent();
         _settings = settings;
         _engine = engine;
+        _main = main;
+
+        VersionText.Text = Updates.IsDevBuild ? "Development build (built from source)" : $"Version {Updates.CurrentText}";
+        AutoUpdateBox.IsChecked = settings.CheckForUpdates;
+        WebsiteButton.Click += (_, _) => Updates.OpenInBrowser("https://cesararaujo.net");
+        SourceButton.Click += (_, _) => Updates.OpenInBrowser(Updates.ReleasesPage);
+        CheckNowButton.Click += async (_, _) => await CheckNow();
+        CheckNowButton.IsEnabled = main != null;
+        ShowUpdateButton.Click += async (_, _) => { if (_update != null && _main != null) await _main.ShowUpdate(_update, this); };
 
         StationNameBox.Text = settings.StationName;
         GenreBox.Text = settings.StationGenre;
@@ -117,6 +128,31 @@ public partial class SettingsWindow : Window
 
     static OutputRoute RouteFrom(ComboBox deviceBox, ComboBox channelBox) =>
         new(DeviceName(deviceBox), Math.Max(0, channelBox.SelectedIndex) * 2);
+
+    // ───────────────────────── Updates ─────────────────────────
+
+    async Task CheckNow()
+    {
+        CheckNowButton.IsEnabled = false;
+        UpdateResultText.Text = "Checking…";
+        ShowUpdateButton.IsVisible = false;
+        try
+        {
+            _update = await _main!.CheckForUpdate(quiet: false);
+            UpdateResultText.Text = _update != null ? $"Version {_update.Version} is available."
+                : Updates.IsDevBuild ? "Built from source: no version to compare. The latest release is on GitHub."
+                : "You have the latest version.";
+            ShowUpdateButton.IsVisible = _update != null;
+        }
+        catch (Exception ex)
+        {
+            UpdateResultText.Text = $"Could not check: {ex.Message}";
+        }
+        finally
+        {
+            CheckNowButton.IsEnabled = true;
+        }
+    }
 
     // ───────────────────────── Shortcuts ─────────────────────────
 
@@ -212,6 +248,7 @@ public partial class SettingsWindow : Window
 
     void Save()
     {
+        _settings.CheckForUpdates = AutoUpdateBox.IsChecked == true;
         _settings.StationName = StationNameBox.Text?.Trim() ?? "";
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
