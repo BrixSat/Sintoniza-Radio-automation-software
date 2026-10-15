@@ -68,6 +68,20 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     string _startTime = "";
     public string StartTime { get => _startTime; set => Set(ref _startTime, value); }
 
+    string _hourMark = "";
+    /// <summary>The hour this item starts ("12:00"), when it is the first in a new hour; "" otherwise.</summary>
+    public string HourMark
+    {
+        get => _hourMark;
+        set
+        {
+            if (_hourMark == value) return;
+            Set(ref _hourMark, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasHourMark)));
+        }
+    }
+    public bool HasHourMark => _hourMark.Length > 0;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)

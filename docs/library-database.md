@@ -4,11 +4,14 @@ The music library is a SQL database: an SQLite file on the studio computer, or a
 several studios share (Settings → Library). The app reads and edits it, and `radio-import` fills it from the music
 folders. Other programs may read it and write to it too. This page is the contract they rely on.
 
-Schema version **2**. The scripts that create the tables are
+Schema version **3**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
-[`mysql-2.sql`](../src/Playout.Library/Schema/mysql-2.sql) (cue points). The app creates the tables itself the
+[`mysql-2.sql`](../src/Playout.Library/Schema/mysql-2.sql) (cue points), then
+[`sqlite-3.sql`](../src/Playout.Library/Schema/sqlite-3.sql) and
+[`mysql-3.sql`](../src/Playout.Library/Schema/mysql-3.sql) (scheduling: stations, clocks, rotation, traffic and
+daily logs, documented in [scheduling-design.md](scheduling-design.md)). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -83,6 +86,7 @@ Every item that went on air: the as-run history. Rotation rules (artist and titl
 | `path`, `artist`, `title` | text | as played, so the history stays readable if the track is deleted |
 | `started_at` | time | when it went on air |
 | `source` | text | `playlist` or `cart` |
+| `station_id`, `log_item_id`, `ended_at`, `kind` | | from schema 3, see [scheduling-design.md](scheduling-design.md) |
 
 ## Adding music from another program
 

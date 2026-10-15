@@ -36,6 +36,14 @@ engine for decoding, mixing and streaming.
   Settings → Library). Every item that goes on air is written to the play history. Studios sharing a MySQL
   library share categories, cue points and history. `radio-import` does the scanning from the command line. The
   tables are documented for other programs in [docs/library-database.md](docs/library-database.md).
+- **Daily logs (scheduling)**: the library also holds each station's clocks (the plan of each hour), rotation
+  rules, advertisers, campaigns and bookings. `radio-schedule make`, run every night, makes the next days' logs from
+  them: songs by the rotation rules (song, artist and title rest times, longest-rested first), the booked adverts
+  placed in the breaks (spread over their hours or in named breaks, competitors kept apart, breaks within their
+  length, versions in turn), timed breaks and events, and gaps before them filled. Late bookings and cancellations
+  are put into logs already made. Several stations can share one database. See
+  [docs/scheduling-design.md](docs/scheduling-design.md); the playout loading the logs, and a program with screens to
+  edit clocks and campaigns, come next.
 - **Folders**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
 - **Cue points**: mark the usual radio markers on any file: **Cue In** (start), **Intro** (talk-over until the
   vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
@@ -287,8 +295,9 @@ Then start the app:
 ```
 src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
                      Runs on its own thread; the UI only calls its public API.
-src/Playout.Library  Music library database (SQLite / MySQL) and the folder scanner.
+src/Playout.Library  Music library database (SQLite / MySQL), the folder scanner and the log maker.
 src/Playout.Import   radio-import: command-line library scanner.
+src/Playout.Schedule radio-schedule: makes the daily logs (clocks, rotation, traffic).
 src/Playout.App      Avalonia desktop UI (deck, playlist, music browser, cartwall, settings).
 scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
 native/<platform>/   BASS libraries (downloaded, not committed).
@@ -305,8 +314,8 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 ## Roadmap
 
 - Auto cue (silence trimming) for files without cue points
-- A separate scheduling program: hour templates (clocks), rotation rules and commercial traffic, making each
-  day's logs in the shared database for the playout to load
+- The playout loading the daily logs (and reporting what aired or was missed), then a scheduling program with
+  screens for clocks, the week grid, advertisers, campaigns and checking each day's log
 - Live input switching and GPIO, voice tracking
 - RT+ over UECP (it is sent with ASCII commands now)
 - REST API for remote control

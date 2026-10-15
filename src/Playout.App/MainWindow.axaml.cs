@@ -530,14 +530,23 @@ public partial class MainWindow : Window
             ? DateTime.Now.AddSeconds(Math.Max(0, st.Current.MixPoint(xfade) - st.Position))
             : null;
 
+        // The hour on air now: the first item starting in a later hour gets a divider, and so on.
+        var lastHour = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
         for (int i = 0; i < items.Count; i++)
         {
             if (!_rowsById.TryGetValue(items[i].Id, out var row)) continue;
+            row.HourMark = "";
             // An item with a latest start starts then at the latest (what is on air is faded).
             if (at is { } late && startFrom >= 0 && i >= startFrom && items[i].StartBy is { } by && by.ToLocalTime() < late) at = by.ToLocalTime();
             if (at is { } t && startFrom >= 0 && i >= startFrom)
             {
                 row.StartTime = t.ToString("HH:mm:ss");
+                var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
+                if (hour > lastHour)
+                {
+                    row.HourMark = hour.Date == DateTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
+                    lastHour = hour;
+                }
                 lastTail = Tail(items[i]);
                 at = items[i].IsOpenEnded ? null : t.AddSeconds(items[i].PlayLength - lastTail);
             }

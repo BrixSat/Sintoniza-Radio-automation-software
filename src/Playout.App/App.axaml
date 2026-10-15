@@ -270,6 +270,25 @@
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="CornerRadius" Value="4" />
         </Style>
+        <!-- Hour divider above the first item of a new hour -->
+        <Style Selector="Border.hour-tag">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="6,1" />
+            <Setter Property="Background" Value="#2A2F3A" />
+        </Style>
+        <Style Selector="Border.hour-tag > TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1" />
+            <Setter Property="Foreground" Value="#C9CFDA" />
+            <Setter Property="FontFeatures" Value="+tnum" />
+        </Style>
+        <Style Selector="Border.hour-line">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="#4A5263" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+        </Style>
         <Style Selector="Border.row-marker">
             <Setter Property="Width" Value="4" />
             <Setter Property="CornerRadius" Value="2" />

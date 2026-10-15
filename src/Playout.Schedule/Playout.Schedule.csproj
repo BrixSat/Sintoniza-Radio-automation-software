@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>radio-schedule</AssemblyName>
+    <RootNamespace>Playout.Schedule</RootNamespace>
+    <!-- build.sh sets the real version. -->
+    <Version>0.0.0</Version>
+    <Product>Sintoniza Radio Broadcast system</Product>
+    <AssemblyTitle>Sintoniza log maker</AssemblyTitle>
+    <Company>César Araújo</Company>
+  </PropertyGroup>
+  <Import Project="..\Bass.targets" />
+  <ItemGroup>
+    <ProjectReference Include="..\Playout.Library\Playout.Library.csproj" />
+  </ItemGroup>
+</Project>
