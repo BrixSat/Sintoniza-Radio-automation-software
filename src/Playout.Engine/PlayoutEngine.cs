@@ -143,7 +143,7 @@ public sealed class PlayoutEngine : IDisposable
     public void ApplyRouting(AudioRouting routing) => Post(() =>
     {
         _graph.Apply(routing);
-        Emit("Audio outputs updated");
+        Emit(L.T("Audio outputs updated"));
     });
 
     public static IReadOnlyList<string> GetInputDevices() => Microphone.DeviceNames();
@@ -244,7 +244,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             if (IsAudible(path, comparer))
             {
-                done.SetException(new InvalidOperationException("This file is playing. Edit its tags once it has finished."));
+                done.SetException(new InvalidOperationException(L.T("This file is playing. Edit its tags once it has finished.")));
                 return;
             }
             // The next item is opened ahead of time: let go of the file while it is rewritten.
@@ -264,7 +264,7 @@ public sealed class PlayoutEngine : IDisposable
                 PlaylistUpdated(); // opens the next item again
                 if (write.IsCompletedSuccessfully)
                 {
-                    Emit($"Tags saved: {Path.GetFileName(path)}");
+                    Emit(L.F("Tags saved: {0}", Path.GetFileName(path)));
                     done.SetResult();
                 }
                 else done.SetException(write.Exception!.InnerException ?? write.Exception);
@@ -348,7 +348,7 @@ public sealed class PlayoutEngine : IDisposable
         var tracks = Scheduled(label, items);
         if (tracks.Count == 0)
         {
-            Emit($"{label}: nothing to play");
+            Emit(L.F("{0}: nothing to play", label));
             return;
         }
         if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
@@ -363,7 +363,7 @@ public sealed class PlayoutEngine : IDisposable
             {
                 // Already due (the app started late): now, ending late by as much.
                 InsertAfterOnAir(tracks, afterWaiting: false);
-                Emit($"{label}: on air ({-left:0} s late to end on time)");
+                Emit(L.F("{0}: on air ({1:0} s late to end on time)", label, -left));
                 FadePlayingOut(EventFadeSeconds);
                 StartTrack(tracks[0], _current == null ? 0 : EventFadeSeconds);
                 return;
@@ -375,7 +375,7 @@ public sealed class PlayoutEngine : IDisposable
                 _playlist.InsertRange(at, tracks);
                 if (at <= _cursorIndex) _cursorIndex += tracks.Count;
             }
-            Emit($"{label}: starts at {startAt.ToLocalTime():HH:mm:ss} to end at {endsAt.ToLocalTime():HH:mm:ss}");
+            Emit(L.F("{0}: starts at {1:HH:mm:ss} to end at {2:HH:mm:ss}", label, startAt.ToLocalTime(), endsAt.ToLocalTime()));
             PlaylistUpdated();
             return;
         }
@@ -386,13 +386,15 @@ public sealed class PlayoutEngine : IDisposable
         InsertAfterOnAir(tracks, afterWaiting: !hard);
         if (playing && (hard || (_current == null && _connecting == null)))
         {
-            Emit($"{label}: on air");
+            Emit(L.F("{0}: on air", label));
             FadePlayingOut(EventFadeSeconds);
             StartTrack(tracks[0], _current == null ? 0 : EventFadeSeconds);
         }
         else
         {
-            Emit(playing ? $"{label}: plays next" : $"{label}: waiting as next (the player is {State.ToString().ToLowerInvariant()})");
+            Emit(playing ? L.F("{0}: plays next", label)
+                : State == PlayerState.Paused ? L.F("{0}: waiting as next (the player is paused)", label)
+                : L.F("{0}: waiting as next (the player is stopped)", label));
             PlaylistUpdated();
         }
     });
@@ -460,7 +462,7 @@ public sealed class PlayoutEngine : IDisposable
         _cursorIndex = index;
         PlaylistUpdated();
         if (!play || _current != null) return;
-        Emit("Carrying on after a restart");
+        Emit(L.T("Carrying on after a restart"));
         if (NextTrack() is { } next) StartTrack(next, 0);
         else StartFill();
     }
@@ -504,7 +506,9 @@ public sealed class PlayoutEngine : IDisposable
         if (i < 0) return;
         if (IsKept(_playlist[i]))
         {
-            Emit($"{_playlist[i].Display} can't be removed: the schedule {(_playlist[i].Lock == ItemLock.Locked ? "locked it" : "only lets it be moved")} ({_playlist[i].Event})");
+            Emit(_playlist[i].Lock == ItemLock.Locked
+                ? L.F("{0} can't be removed: the schedule locked it ({1})", _playlist[i].Display, _playlist[i].Event)
+                : L.F("{0} can't be removed: the schedule only lets it be moved ({1})", _playlist[i].Display, _playlist[i].Event));
             return;
         }
         _playlist.RemoveAt(i);
@@ -522,7 +526,7 @@ public sealed class PlayoutEngine : IDisposable
         var moving = ids.ToHashSet();
         foreach (var locked in _playlist.Where(t => moving.Contains(t.Id) && t.Lock == ItemLock.Locked && !_played.Contains(t.Id)).ToList())
         {
-            Emit($"{locked.Display} can't be moved: the schedule locked it ({locked.Event})");
+            Emit(L.F("{0} can't be moved: the schedule locked it ({1})", locked.Display, locked.Event));
             moving.Remove(locked.Id);
         }
         var block = _playlist.Where(t => moving.Contains(t.Id)).ToList();
@@ -550,7 +554,7 @@ public sealed class PlayoutEngine : IDisposable
         if (current != null) { _playlist.Add(current); _played.Add(current.Id); _cursorIndex = 0; }
         else _cursorIndex = -1;
         _playlist.AddRange(kept.Where(t => t.Id != current?.Id));
-        if (kept.Count > 0) Emit($"Playlist cleared; {kept.Count} scheduled items the schedule keeps are still there");
+        if (kept.Count > 0) Emit(L.F("Playlist cleared; {0} scheduled items the schedule keeps are still there", kept.Count));
         PlaylistUpdated();
     });
 
@@ -564,7 +568,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             var t = _playlist.FirstOrDefault(x => x.Id == target);
             if (t == null) return;
-            CutShort("started another item");
+            CutShort(L.T("started another item"));
             KeepSkipped(t);
             FadePlayingOut(ManualFade);
             StartTrack(t, ManualFade);
@@ -579,7 +583,7 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Crossfade into the next playlist item immediately.</summary>
     public void Next() => Post(() =>
     {
-        CutShort("pressed Next");
+        CutShort(L.T("pressed Next"));
         if (NextTrack() is not { } next) { StopInternal(); return; }
         FadePlayingOut(ManualFade);
         StartTrack(next, ManualFade);
@@ -587,14 +591,14 @@ public sealed class PlayoutEngine : IDisposable
 
     public void Stop() => Post(() =>
     {
-        CutShort("stopped the player");
+        CutShort(L.T("stopped the player"));
         StopInternal();
     });
 
     /// <summary>The operator takes a locked item off air early: said in the log (the as-run log has how long it played).</summary>
     void CutShort(string how)
     {
-        if (_current?.Track is { Lock: ItemLock.Locked } t) Emit($"The operator {how} during {t.Display}, which the schedule locked ({t.Event})");
+        if (_current?.Track is { Lock: ItemLock.Locked } t) Emit(L.F("The operator {0} during {1}, which the schedule locked ({2})", how, t.Display, t.Event));
     }
 
     /// <summary>
@@ -612,7 +616,7 @@ public sealed class PlayoutEngine : IDisposable
         int at = _playlist.FindIndex(t => t.Id == target.Id) + 1;
         while (at < _playlist.Count && target.Event != null && _playlist[at].Event == target.Event && !_played.Contains(_playlist[at].Id)) at++;
         _playlist.InsertRange(at, skipped);
-        Emit($"{skipped.Count} scheduled items jumped over stay in the playlist, after {target.Display}");
+        Emit(L.F("{0} scheduled items jumped over stay in the playlist, after {1}", skipped.Count, target.Display));
     }
 
     public void TogglePause() => Post(() =>
@@ -625,7 +629,7 @@ public sealed class PlayoutEngine : IDisposable
     public int FireCart(string path)
     {
         int h = OpenStream(path, prescan: false);
-        if (h == 0) { Emit($"Cart failed: {Path.GetFileName(path)} ({Bass.LastError})"); return 0; }
+        if (h == 0) { Emit(L.F("Cart failed: {0} ({1})", Path.GetFileName(path), Bass.LastError)); return 0; }
         SetGain(h, GainFor(path, isStream: false));
         BassMix.MixerAddChannel(_graph.CartBus, h, BassFlags.AutoFree);
         _carts[h] = 0;
@@ -712,7 +716,7 @@ public sealed class PlayoutEngine : IDisposable
             int enc = s.Format == StreamFormat.Mp3
                 ? BassEnc_Mp3.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero)
                 : BassEnc_Ogg.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero);
-            if (enc == 0) { FailStream($"Encoder start failed: {Bass.LastError}", attempt); return; }
+            if (enc == 0) { FailStream(L.F("Encoder start failed: {0}", Bass.LastError), attempt); return; }
 
             string mount = s.Mount.StartsWith('/') ? s.Mount : "/" + s.Mount;
             string server = s.Shoutcast ? $"{s.Host}:{s.Port}" : $"{s.Host}:{s.Port}{mount}";
@@ -722,7 +726,7 @@ public sealed class PlayoutEngine : IDisposable
             {
                 var err = Bass.LastError;
                 BassEnc.EncodeStop(enc);
-                FailStream($"Could not connect to {server} ({err}); check host, port, mount and password", attempt);
+                FailStream(L.F("Could not connect to {0} ({1}); check host, port, mount and password", server, err), attempt);
                 return;
             }
 
@@ -738,7 +742,7 @@ public sealed class PlayoutEngine : IDisposable
                 _streamState = (int)StreamState.OnAir;
                 _streamRetries = 0;
             }
-            Emit($"Streaming to {server} ({s.Format} {s.Bitrate} kbps)");
+            Emit(L.F("Streaming to {0} ({1} {2} kbps)", server, s.Format, s.Bitrate));
             if (_current?.Track is { } t) BassEnc.CastSetTitle(enc, t.Display, null);
         });
     }
@@ -757,8 +761,8 @@ public sealed class PlayoutEngine : IDisposable
             _streamState = (int)StreamState.Off;
             _streamError = null;
         }
-        if (enc != 0) { BassEnc.EncodeStop(enc); Emit("Streaming stopped"); }
-        else if (connecting) Emit("Streaming cancelled");
+        if (enc != 0) { BassEnc.EncodeStop(enc); Emit(L.T("Streaming stopped")); }
+        else if (connecting) Emit(L.T("Streaming cancelled"));
     }
 
     public void Dispose()
@@ -798,7 +802,7 @@ public sealed class PlayoutEngine : IDisposable
     void Safe(Action a)
     {
         try { a(); }
-        catch (Exception ex) { Emit($"Engine error: {ex.Message}"); }
+        catch (Exception ex) { Emit(L.F("Engine error: {0}", ex.Message)); }
     }
 
     void After(double seconds, Action a) => _timers.Add((DateTime.UtcNow.AddSeconds(seconds), a));
@@ -821,7 +825,7 @@ public sealed class PlayoutEngine : IDisposable
         if (enc != 0 && BassEnc.EncodeIsActive(enc) == PlaybackState.Stopped
             && Interlocked.CompareExchange(ref _encoder, 0, enc) == enc) // not if Stop got there first
         {
-            FailStream("Connection to the streaming server was lost");
+            FailStream(L.T("Connection to the streaming server was lost"));
         }
     }
 
@@ -837,7 +841,7 @@ public sealed class PlayoutEngine : IDisposable
             retry = _streamWanted;
             delay = Math.Min(MaxStreamRetryDelay, 5 << Math.Min(_streamRetries++, 4)); // 5, 10, 20, 40, 60 s
             _streamState = (int)StreamState.Failed;
-            _streamError = retry != null ? $"{message}. Trying again in {delay} s" : message;
+            _streamError = retry != null ? L.F("{0}. Trying again in {1} s", message, delay) : message;
         }
         Emit(_streamError);
         if (retry == null) return;
@@ -863,7 +867,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         _playingOut.Remove(handle);
         if (_current?.Handle != handle) return; // a faded-out deck finishing, nothing to do
-        if (_current.Track.IsStream) Emit($"Stream ended: {_current.Track.Title}");
+        if (_current.Track.IsStream) Emit(L.F("Stream ended: {0}", _current.Track.Title));
         if (_autoAdvance && NextTrack() is { } next)
         {
             if (next.Id == _connecting) { SetCurrent(null); PlaylistUpdated(); return; } // on air as soon as it connects
@@ -934,7 +938,7 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>An item that can't be played: mark it played and, in AUTO, go on to the one after it.</summary>
     void Skip(Track track, double? outgoingFade, string reason)
     {
-        Emit($"Cannot play {track.Display}: {reason}; skipping");
+        Emit(L.F("Cannot play {0}: {1}; skipping", track.Display, reason));
         _played.Add(track.Id);
         _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
         if (_autoAdvance && NextTrack() is { } after && after.Id != track.Id) StartTrack(after, outgoingFade);
@@ -950,14 +954,14 @@ public sealed class PlayoutEngine : IDisposable
         int attempt = _connectAttempt;
         _connecting = track.Id;
         var connection = Connection(track);
-        if (!connection.IsCompleted) Emit($"Connecting to {track.Title}…");
+        if (!connection.IsCompleted) Emit(L.F("Connecting to {0}…", track.Title));
         connection.ContinueWith(t => Post(() =>
         {
             if (attempt != _connectAttempt) return; // superseded; PlaylistUpdated or Stop drops the connection
             _connecting = null;
             if (_streamConnection is { } c && c.Handle == t) _streamConnection = null; // taken: it's ours now
             if (t.IsCompletedSuccessfully) Begin(track, t.Result, track.Duration, outgoingFade);
-            else Skip(track, outgoingFade, $"could not connect ({t.Exception?.InnerException?.Message})");
+            else Skip(track, outgoingFade, L.F("could not connect ({0})", t.Exception?.InnerException?.Message));
         }));
     }
 
@@ -1008,7 +1012,7 @@ public sealed class PlayoutEngine : IDisposable
         // so add it paused, attach the syncs, then let it go.
         if (!BassMix.MixerAddChannel(_graph.MusicBus, handle, BassFlags.AutoFree | BassFlags.MixerChanPause))
         {
-            Emit($"Mixer rejected {track.Display}: {Bass.LastError}");
+            Emit(L.F("Mixer rejected {0}: {1}", track.Display, Bass.LastError));
             Bass.StreamFree(handle);
             return;
         }
@@ -1028,7 +1032,7 @@ public sealed class PlayoutEngine : IDisposable
         _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
 
         if (_encoder is var enc and not 0) BassEnc.CastSetTitle(enc, track.Display, null);
-        Emit($"On air: {track.Display}");
+        Emit(L.F("On air: {0}", track.Display));
         OnAir?.Invoke(track);
 
         PlaylistUpdated();
@@ -1187,7 +1191,7 @@ public sealed class PlayoutEngine : IDisposable
 
         if (_current is not { } deck)
         {
-            if (_silenceReported != Guid.Empty) Emit($"Silence on air for {silent:0} s: waiting for fill music");
+            if (_silenceReported != Guid.Empty) Emit(L.F("Silence on air for {0:0} s: waiting for fill music", silent));
             _silenceReported = Guid.Empty;
             return;
         }
@@ -1196,12 +1200,12 @@ public sealed class PlayoutEngine : IDisposable
         {
             if (_silenceReported != track.Id)
                 Emit(_silenceSkips >= MaxSilenceSkips
-                    ? $"Silence on air for {silent:0} s after skipping {_silenceSkips} items: check the sound card and outputs"
-                    : $"Silence on air for {silent:0} s during {track.Display}");
+                    ? L.F("Silence on air for {0:0} s after skipping {1} items: check the sound card and outputs", silent, _silenceSkips)
+                    : L.F("Silence on air for {0:0} s during {1}", silent, track.Display));
             _silenceReported = track.Id;
             return;
         }
-        Emit($"Silence on air for {silent:0} s during {track.Display}: skipping to the next item");
+        Emit(L.F("Silence on air for {0:0} s during {1}: skipping to the next item", silent, track.Display));
         _silenceSkips++;
         _silentSince = null;
         FadePlayingOut(StopFadeSeconds);
@@ -1217,7 +1221,7 @@ public sealed class PlayoutEngine : IDisposable
         if (!_autoAdvance || (_current == null && _connecting == null) || NextTrack() != null) return false;
         if (FillTrack() is not { } track) return false;
         TrimPlayed();
-        Emit($"Playlist ran out: added {track.Display}");
+        Emit(L.F("Playlist ran out: added {0}", track.Display));
         Insert([track], -1);
         return true;
     }
@@ -1234,13 +1238,13 @@ public sealed class PlayoutEngine : IDisposable
         if (FillTrack() is { } track)
         {
             TrimPlayed();
-            Emit($"Playlist ran out: added {track.Display}");
+            Emit(L.F("Playlist ran out: added {0}", track.Display));
             Insert([track], -1);
             StartTrack(track, 0);
         }
         else
         {
-            Emit("Playlist ran out and no fill music could be played yet; trying again");
+            Emit(L.T("Playlist ran out and no fill music could be played yet; trying again"));
             PlaylistUpdated();
         }
         return true;
@@ -1257,7 +1261,7 @@ public sealed class PlayoutEngine : IDisposable
         if (_current != null && _connecting == null && NextTrack() == null) PlaylistUpdated(); // runs Fill
         else if (_waitingForFill && _current == null && _connecting == null && FillTrack() is { } track)
         {
-            Emit($"Fill music: {track.Display}");
+            Emit(L.F("Fill music: {0}", track.Display));
             Insert([track], -1);
             StartTrack(track, 0);
         }
@@ -1270,7 +1274,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             string? path;
             try { path = _fill(); }
-            catch (Exception ex) { Emit($"Fill music: {ex.Message}"); return null; }
+            catch (Exception ex) { Emit(L.F("Fill music: {0}", ex.Message)); return null; }
             if (path == null) return null;
             if (_badFill.Contains(path)) continue;
             if (SafeProbe(path) is { } track) return track;
@@ -1316,7 +1320,7 @@ public sealed class PlayoutEngine : IDisposable
         double left = (timed.StartBy!.Value - now).TotalSeconds;
         if (left <= 0)
         {
-            Emit($"{timed.Event ?? timed.Display}: on air (its latest start time)");
+            Emit(L.F("{0}: on air (its latest start time)", timed.Event ?? timed.Display));
             KeepSkipped(timed);
             FadePlayingOut(EventFadeSeconds);
             StartTrack(timed, _current == null ? 0 : EventFadeSeconds);
@@ -1347,7 +1351,7 @@ public sealed class PlayoutEngine : IDisposable
                 int after = _playlist.FindIndex(t => t.Id == timed.Id) + 1;
                 while (after < _playlist.Count && _playlist[after].Event == timed.Event && !_played.Contains(_playlist[after].Id)) after++;
                 _playlist.Insert(after, song);
-                Emit($"Backtiming {timed.Event}: {song.Display} moved after it ({error:0} s too long)");
+                Emit(L.F("Backtiming {0}: {1} moved after it ({2:0} s too long)", timed.Event, song.Display, error));
                 PlaylistUpdated();
                 return;
             }
@@ -1379,13 +1383,13 @@ public sealed class PlayoutEngine : IDisposable
             if (best == null)
             {
                 if (_backtimeReported != timedId)
-                    Emit($"Backtiming {_playlist[index].Event}: no fill song short enough for {stillGap:0} s; it starts that much early");
+                    Emit(L.F("Backtiming {0}: no fill song short enough for {1:0} s; it starts that much early", _playlist[index].Event, stillGap));
                 _backtimeReported = timedId;
                 return;
             }
             _playlist.Insert(index, best);
             if (_loudness.Enabled) _loudnessWorker.Add(best.Path);
-            Emit($"Backtiming {_playlist[index + 1].Event}: added {best.Display} to fill {stillGap:0} s");
+            Emit(L.F("Backtiming {0}: added {1} to fill {2:0} s", _playlist[index + 1].Event, best.Display, stillGap));
             PlaylistUpdated();
         }));
     }
@@ -1477,18 +1481,18 @@ public sealed class PlayoutEngine : IDisposable
     void StartTimeSignal(DateTime hour, double untilHour)
     {
         int h = TimeSignal.Open(_timeSignal.File, Emit, out double hourAt, out double length);
-        if (h == 0) { Emit($"Time signal: {Bass.LastError}"); return; }
+        if (h == 0) { Emit(L.F("Time signal: {0}", Bass.LastError)); return; }
 
         // Mixed in with a delay so it is heard, after what is still queued on the card, exactly on time.
         double cartLatency = Bass.ChannelBytes2Seconds(_graph.CartBus, _graph.CartDelay);
         double startIn = Math.Max(0, untilHour - hourAt - cartLatency);
         if (!BassMix.MixerAddChannel(_graph.CartBus, h, BassFlags.AutoFree, Bass.ChannelSeconds2Bytes(_graph.CartBus, startIn), 0))
         {
-            Emit($"Time signal: {Bass.LastError}");
+            Emit(L.F("Time signal: {0}", Bass.LastError));
             Bass.StreamFree(h);
             return;
         }
-        Emit($"Time signal for {hour:HH:mm}");
+        Emit(L.F("Time signal for {0:HH:mm}", hour));
         if (_timeSignal.Mode != TimeSignalMode.Stop) return;
 
         double musicLatency = Bass.ChannelBytes2Seconds(_graph.MusicBus, _graph.MusicDelay);
@@ -1565,7 +1569,7 @@ public sealed class PlayoutEngine : IDisposable
         try { return Probe(path); }
         catch (Exception ex)
         {
-            Emit($"Skipped {Path.GetFileName(path)}: {ex.Message}");
+            Emit(L.F("Skipped {0}: {1}", Path.GetFileName(path), ex.Message));
             return null;
         }
     }
@@ -1575,7 +1579,7 @@ public sealed class PlayoutEngine : IDisposable
         int h = OpenStream(path, prescan: false);
         if (h == 0)
         {
-            Emit($"Unsupported or unreadable: {Path.GetFileName(path)} ({Bass.LastError})");
+            Emit(L.F("Unsupported or unreadable: {0} ({1})", Path.GetFileName(path), Bass.LastError));
             return null;
         }
         try
@@ -1588,7 +1592,7 @@ public sealed class PlayoutEngine : IDisposable
             catch (Exception ex)
             {
                 // Malformed tags (e.g. a corrupt ID3v2 frame): fall back to the filename.
-                Emit($"Unreadable tags, using the filename: {Path.GetFileName(path)} ({ex.Message})");
+                Emit(L.F("Unreadable tags, using the filename: {0} ({1})", Path.GetFileName(path), ex.Message));
             }
             string title = tags?.Title ?? "";
             string artist = tags?.Artist ?? "";

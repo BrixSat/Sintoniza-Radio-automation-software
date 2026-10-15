@@ -21,17 +21,17 @@ public sealed record Report(string Title, string Period, IReadOnlyList<string> C
 {
     public static Report Build(ReportKind kind, IReadOnlyList<AsRunEntry> entries, DateTime from, DateTime to, string station, string? advertiser = null)
     {
-        string period = from.Date == to.Date ? $"{from:yyyy-MM-dd}" : $"{from:yyyy-MM-dd} to {to:yyyy-MM-dd}";
+        string period = from.Date == to.Date ? $"{from:yyyy-MM-dd}" : L.F("{0:yyyy-MM-dd} to {1:yyyy-MM-dd}", from, to);
         string name = string.IsNullOrWhiteSpace(station) ? AppInfo.Name : station.Trim();
         var music = entries.Where(e => e.Type == "Music").ToList();
         switch (kind)
         {
             case ReportKind.MusicPlays:
-                return new Report($"{name}: music played", period,
-                    ["Date", "Start", "Duration", "Seconds", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year"],
+                return new Report(L.F("{0}: music played", name), period,
+                    Names("Date", "Start", "Duration", "Seconds", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year"),
                     music.Select(e => Row(e.Start.ToString("yyyy-MM-dd"), e.Start.ToString("HH:mm:ss"), Duration(e.Seconds), Seconds(e.Seconds),
                         e.Artist, e.Title, e.Album, e.Composer, e.Label, e.Isrc, e.Year)).ToList(),
-                    $"{Plural(music.Count, "song")} played, {Duration(music.Sum(e => e.Seconds ?? 0))} in all");
+                    L.F("{0} played, {1} in all", Plural(music.Count, "{0} song", "{0} songs"), Duration(music.Sum(e => e.Seconds ?? 0))));
 
             case ReportKind.MusicTotals:
                 var songs = music
@@ -39,33 +39,36 @@ public sealed record Report(string Title, string Period, IReadOnlyList<string> C
                     .Select(g => (First: g.First(), Plays: g.Count(), Seconds: g.Sum(e => e.Seconds ?? 0)))
                     .OrderByDescending(s => s.Plays).ThenBy(s => s.First.Artist, StringComparer.CurrentCultureIgnoreCase).ThenBy(s => s.First.Title)
                     .ToList();
-                return new Report($"{name}: music totals", period,
-                    ["Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "Plays", "Total time", "Total seconds"],
+                return new Report(L.F("{0}: music totals", name), period,
+                    Names("Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "Plays", "Total time", "Total seconds"),
                     songs.Select(s => Row(s.First.Artist, s.First.Title, s.First.Album, s.First.Composer, s.First.Label, s.First.Isrc, s.First.Year,
                         s.Plays.ToString(CultureInfo.InvariantCulture), Duration(s.Seconds), Seconds(s.Seconds))).ToList(),
-                    $"{Plural(songs.Count, "different song")}, {Plural(music.Count, "play")}");
+                    $"{Plural(songs.Count, "{0} different song", "{0} different songs")}, {Plural(music.Count, "{0} play", "{0} plays")}");
 
             case ReportKind.Adverts:
                 var ads = entries.Where(e => e.Type == "Advert" && (advertiser == null || e.Advertiser == advertiser)).ToList();
-                string title = advertiser == null ? $"{name}: proof of broadcast" : $"{name}: proof of broadcast for {advertiser}";
+                string title = advertiser == null ? L.F("{0}: proof of broadcast", name) : L.F("{0}: proof of broadcast for {1}", name, advertiser);
                 return new Report(title, period,
-                    ["Date", "Start", "End", "Duration", "Advertiser", "Advert", "Break"],
+                    Names("Date", "Start", "End", "Duration", "Advertiser", "Advert", "Break"),
                     ads.Select(e => Row(e.Start.ToString("yyyy-MM-dd"), e.Start.ToString("HH:mm:ss"), e.End?.ToString("HH:mm:ss") ?? "",
                         Duration(e.Seconds), e.Advertiser, AdvertName(e), e.Event)).ToList(),
-                    $"{Plural(ads.Count, "advert")} broadcast" + (ads.Count > 0 ? $", {Duration(ads.Sum(e => e.Seconds ?? 0))} in all" : ""));
+                    L.F("{0} broadcast", Plural(ads.Count, "{0} advert", "{0} adverts")) + (ads.Count > 0 ? L.F(", {0} in all", Duration(ads.Sum(e => e.Seconds ?? 0))) : ""));
 
             default:
-                return new Report($"{name}: as-run log", period,
-                    ["Date", "Start", "End", "Duration", "Type", "Source", "Event", "Advertiser", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "File"],
+                return new Report(L.F("{0}: as-run log", name), period,
+                    Names("Date", "Start", "End", "Duration", "Type", "Source", "Event", "Advertiser", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "File"),
                     entries.Select(e => Row(e.Start.ToString("yyyy-MM-dd"), e.Start.ToString("HH:mm:ss"), e.End?.ToString("HH:mm:ss") ?? "",
-                        Duration(e.Seconds), e.Type, e.Source, e.Event, e.Advertiser, e.Artist, e.Title, e.Album, e.Composer, e.Label, e.Isrc, e.Year, e.File)).ToList(),
-                    $"{Plural(entries.Count, "item")}");
+                        Duration(e.Seconds), L.T(e.Type), L.T(e.Source), e.Event, e.Advertiser, e.Artist, e.Title, e.Album, e.Composer, e.Label, e.Isrc, e.Year, e.File)).ToList(),
+                    Plural(entries.Count, "{0} item", "{0} items"));
         }
     }
 
     static IReadOnlyList<string> Row(params string[] fields) => fields;
 
-    static string Plural(int n, string word) => $"{n} {word}{(n == 1 ? "" : "s")}";
+    static string Plural(int n, string one, string many) => L.F(n == 1 ? one : many, n);
+
+    /// <summary>Column names in the interface language.</summary>
+    static IReadOnlyList<string> Names(params string[] names) => names.Select(L.T).ToArray();
 
     static string Key(string text) => text.Trim().ToLowerInvariant();
 

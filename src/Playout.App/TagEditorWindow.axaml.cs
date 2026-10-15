@@ -23,9 +23,10 @@ public partial class TagEditorWindow : Window
     public TagEditorWindow(PlayoutEngine engine, string path)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _engine = engine;
         _path = path;
-        Title = $"Edit tags — {Path.GetFileName(path)}";
+        Title = L.F("Edit tags — {0}", Path.GetFileName(path));
         FileText.Text = Path.GetFileName(path);
         PathText.Text = path;
 
@@ -49,7 +50,7 @@ public partial class TagEditorWindow : Window
             var (tags, cover) = await Task.Run(() => (Tags.Read(_path), Tags.ReadCover(_path)));
             if (tags == null)
             {
-                ShowError("This kind of file has no tags that can be edited.");
+                ShowError(L.T("This kind of file has no tags that can be edited."));
                 return;
             }
             TitleBox.Text = tags.Title;
@@ -65,7 +66,7 @@ public partial class TagEditorWindow : Window
         }
         catch (Exception ex)
         {
-            ShowError($"Cannot read the tags: {ex.Message}");
+            ShowError(L.F("Cannot read the tags: {0}", ex.Message));
         }
     }
 
@@ -91,8 +92,8 @@ public partial class TagEditorWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Choose cover picture",
-            FileTypeFilter = [new FilePickerFileType("Pictures (JPEG, PNG)") { Patterns = PicturePatterns }],
+            Title = L.T("Choose cover picture"),
+            FileTypeFilter = [new FilePickerFileType(L.T("Pictures (JPEG, PNG)")) { Patterns = PicturePatterns }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) LoadPicture(path);
     }
@@ -106,11 +107,11 @@ public partial class TagEditorWindow : Window
         try
         {
             if (SetCover(File.ReadAllBytes(path), changed: true)) ErrorText.IsVisible = false;
-            else ShowError($"{Path.GetFileName(path)} is not a picture that can be used.");
+            else ShowError(L.F("{0} is not a picture that can be used.", Path.GetFileName(path)));
         }
         catch (Exception ex)
         {
-            ShowError($"Cannot read {Path.GetFileName(path)}: {ex.Message}");
+            ShowError(L.F("Cannot read {0}: {1}", Path.GetFileName(path), ex.Message));
         }
     }
 
@@ -118,12 +119,12 @@ public partial class TagEditorWindow : Window
     {
         if (!TryNumber(YearBox.Text, 9999, out uint year))
         {
-            ShowError("Enter the year as a number, e.g. 1998, or leave it empty.");
+            ShowError(L.T("Enter the year as a number, e.g. 1998, or leave it empty."));
             return;
         }
         if (!TryNumber(TrackBox.Text, 9999, out uint track))
         {
-            ShowError("Enter the track number as a number, or leave it empty.");
+            ShowError(L.T("Enter the track number as a number, or leave it empty."));
             return;
         }
 
@@ -138,7 +139,7 @@ public partial class TagEditorWindow : Window
         }
         catch (Exception ex)
         {
-            ShowError($"Not saved: {ex.Message}");
+            ShowError(L.F("Not saved: {0}", ex.Message));
             SaveButton.IsEnabled = true;
         }
     }

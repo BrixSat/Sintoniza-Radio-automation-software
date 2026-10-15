@@ -15,8 +15,8 @@ static class Shortcuts
     /// <summary>Every action, in settings order: id and name.</summary>
     public static readonly (string Id, string Name)[] Actions =
     [
-        (Play, "Play"), (Pause, "Pause / resume"), (Next, "Next"), (Stop, "Stop"), (Mic, "Mic (hold)"), (Stream, "Stream on/off"),
-        .. Enumerable.Range(0, AppSettings.CartCount).Select(i => (Cart(i), $"Cart {i + 1}")),
+        (Play, L.T("Play")), (Pause, L.T("Pause / resume")), (Next, L.T("Next")), (Stop, L.T("Stop")), (Mic, L.T("Microphone")), (Stream, L.T("Stream on/off")),
+        .. Enumerable.Range(0, AppSettings.CartCount).Select(i => (Cart(i), L.F("Cart {0}", i + 1))),
     ];
 
     public static Dictionary<string, string> Defaults() => new()
@@ -51,21 +51,21 @@ static class Shortcuts
         if (g.KeyModifiers == KeyModifiers.None)
             return g.Key switch
             {
-                Key.Enter => "playing the selected playlist item",
-                Key.Delete => "removing playlist items",
-                Key.Tab => "moving between controls",
-                Key.Up or Key.Down or Key.Left or Key.Right or Key.Home or Key.End or Key.PageUp or Key.PageDown => "moving through lists",
+                Key.Enter => L.T("playing the selected playlist item"),
+                Key.Delete => L.T("removing playlist items"),
+                Key.Tab => L.T("moving between controls"),
+                Key.Up or Key.Down or Key.Left or Key.Right or Key.Home or Key.End or Key.PageUp or Key.PageDown => L.T("moving through lists"),
                 _ => null,
             };
         if (g.KeyModifiers != command) return null;
         return g.Key switch
         {
-            Key.O => "Add files",
-            Key.S => "Save playlist",
-            Key.E => "Edit cue points",
-            Key.T => "Edit tags",
-            Key.Up or Key.Down => "moving playlist items",
-            Key.OemComma => "Settings",
+            Key.O => L.T("Add files"),
+            Key.S => L.T("Save playlist"),
+            Key.E => L.T("Edit cue points"),
+            Key.T => L.T("Edit tags"),
+            Key.Up or Key.Down => L.T("moving playlist items"),
+            Key.OemComma => L.T("Settings"),
             _ => null,
         };
     }
@@ -154,7 +154,7 @@ sealed class ShortcutBox : Button
 
     void Show()
     {
-        Content = _capturing ? "Press a key…" : _gesture == null ? "—" : Shortcuts.Display(_gesture);
+        Content = _capturing ? L.T("Press a key…") : _gesture == null ? L.T("—") : Shortcuts.Display(_gesture);
         Classes.Set("capturing", _capturing);
     }
 

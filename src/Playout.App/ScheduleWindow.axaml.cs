@@ -59,6 +59,7 @@ public partial class ScheduleWindow : Window
     public ScheduleWindow(ScheduleData data, string browseFolder)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _data = data;
         _data.Normalize();
         _browseFolder = browseFolder;
@@ -111,7 +112,7 @@ public partial class ScheduleWindow : Window
         EventList.SelectionChanged += (_, _) => ShowEvent();
         AddEventButton.Click += (_, _) =>
         {
-            var e = new ScheduledEvent { Name = "News" };
+            var e = new ScheduledEvent { Name = L.T("News") };
             _data.Events.Add(e);
             _eventRows = _eventRows.Append(EventRow(e)).ToList();
             EventList.ItemsSource = _eventRows;
@@ -122,7 +123,7 @@ public partial class ScheduleWindow : Window
         DeleteEventButton.Click += async (_, _) =>
         {
             if (EventList.SelectedItem is not ScheduleRow { Item: ScheduledEvent e } row) return;
-            if (!await Dialogs.Confirm(this, "Delete event", $"Delete \"{EntryName(e)}\"?", "Delete")) return;
+            if (!await Dialogs.Confirm(this, L.T("Delete event"), L.F("Delete \"{0}\"?", EntryName(e)), L.T("Delete"))) return;
             _data.Events.Remove(e);
             int i = _eventRows.IndexOf(row);
             _eventRows = _eventRows.Where(r => r != row).ToList();
@@ -137,8 +138,8 @@ public partial class ScheduleWindow : Window
             Edit<ScheduledEvent>(EventList, e => e.Path = EventPathBox.Text?.Trim() ?? "");
             ShowEventPathKind();
         };
-        EventFileButton.Click += async (_, _) => { if (await PickFile("Event: file to play") is { } p) EventPathBox.Text = p; };
-        EventFolderButton.Click += async (_, _) => { if (await PickFolder("Event: folder whose newest file plays") is { } p) EventPathBox.Text = p; };
+        EventFileButton.Click += async (_, _) => { if (await PickFile(L.T("Event: file to play")) is { } p) EventPathBox.Text = p; };
+        EventFolderButton.Click += async (_, _) => { if (await PickFolder(L.T("Event: folder whose newest file plays")) is { } p) EventPathBox.Text = p; };
         EventMaxAgeBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.MaxAgeMinutes = (int)(EventMaxAgeBox.Value ?? 0));
         EventStreamMinutesBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.StreamMinutes = (double)(EventStreamMinutesBox.Value ?? 0));
         WireStart(EventList, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel);
@@ -169,14 +170,14 @@ public partial class ScheduleWindow : Window
         EventStreamPanel.IsVisible = stream;
         EventFolderPanel.IsVisible = folder;
         EventPathNote.Text = path.Length == 0 ? "" :
-            stream ? "An internet stream." :
-            folder ? "A folder: its newest audio file plays (e.g. a news bulletin that is downloaded there)." :
-            File.Exists(path) ? "A file." : "Not found on this computer.";
+            stream ? L.T("An internet stream.") :
+            folder ? L.T("A folder: its newest audio file plays (e.g. a news bulletin that is downloaded there).") :
+            File.Exists(path) ? L.T("A file.") : L.T("Not found on this computer.");
     }
 
     ScheduleRow EventRow(ScheduledEvent e) => new(e, () =>
     {
-        string what = PlayoutEngine.IsUrl(e.Path) ? "stream" : Directory.Exists(e.Path) ? "newest in folder" : Path.GetFileName(e.Path);
+        string what = PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : Directory.Exists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
         return (EntryName(e), $"{SlotsSummary(e)} · {StartText(e)}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
     });
 
@@ -187,7 +188,7 @@ public partial class ScheduleWindow : Window
         BreakList.SelectionChanged += (_, _) => ShowBreak();
         AddBreakButton.Click += (_, _) =>
         {
-            var b = new AdBreak { Name = "Ad break" };
+            var b = new AdBreak { Name = L.T("Ad break") };
             _data.Breaks.Add(b);
             _breakRows = _breakRows.Append(BreakRow(b)).ToList();
             BreakList.ItemsSource = _breakRows;
@@ -201,8 +202,8 @@ public partial class ScheduleWindow : Window
             if (BreakList.SelectedItem is not ScheduleRow { Item: AdBreak b } row) return;
             // Adverts booked only into this break would otherwise play in every break (none ticked): switched off.
             int only = _data.Spots.Count(s => s.Placements.Count == 0 && s.Breaks.Count == 1 && s.Breaks[0] == b.Id);
-            string more = only > 0 ? $" {Plural(only, "advert")} booked only into this break will be switched off." : "";
-            if (!await Dialogs.Confirm(this, "Delete ad break", $"Delete \"{EntryName(b)}\"?{more}", "Delete")) return;
+            string more = only > 0 ? L.F(" {0} booked only into this break will be switched off.", Plural(only, "{0} advert", "{0} adverts")) : "";
+            if (!await Dialogs.Confirm(this, L.T("Delete ad break"), L.F("Delete \"{0}\"?{1}", EntryName(b), more), L.T("Delete"))) return;
             _data.Breaks.Remove(b);
             foreach (var s in _data.Spots)
                 if (s.Breaks.Remove(b.Id) && s.Breaks.Count == 0 && s.Placements.Count == 0) s.Enabled = false;
@@ -219,8 +220,8 @@ public partial class ScheduleWindow : Window
         BreakEnabledBox.IsCheckedChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Enabled = BreakEnabledBox.IsChecked == true);
         BreakIntroBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Intro = BreakIntroBox.Text?.Trim() ?? "");
         BreakOutroBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Outro = BreakOutroBox.Text?.Trim() ?? "");
-        BreakIntroButton.Click += async (_, _) => { if (await PickFile("Opening jingle") is { } p) BreakIntroBox.Text = p; };
-        BreakOutroButton.Click += async (_, _) => { if (await PickFile("Closing jingle") is { } p) BreakOutroBox.Text = p; };
+        BreakIntroButton.Click += async (_, _) => { if (await PickFile(L.T("Opening jingle")) is { } p) BreakIntroBox.Text = p; };
+        BreakOutroButton.Click += async (_, _) => { if (await PickFile(L.T("Closing jingle")) is { } p) BreakOutroBox.Text = p; };
         BreakIntroClear.Click += (_, _) => BreakIntroBox.Text = "";
         BreakOutroClear.Click += (_, _) => BreakOutroBox.Text = "";
         WireStart(BreakList, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
@@ -244,13 +245,13 @@ public partial class ScheduleWindow : Window
     void ShowBooked()
     {
         var b = (BreakList.SelectedItem as ScheduleRow)?.Item as AdBreak;
-        BreakBookedText.Text = b == null ? "" : $"Today: {Plural(BookedToday(b), "advert")}";
+        BreakBookedText.Text = b == null ? "" : L.F("Today: {0}", Plural(BookedToday(b), "{0} advert", "{0} adverts"));
     }
 
     int BookedToday(AdBreak b) => _data.Spots.Count(s => b.TimesOn(DateTime.Today).Any(t => s.PlaysIn(b, t)));
 
     ScheduleRow BreakRow(AdBreak b) => new(b, () =>
-        (EntryName(b), $"{SlotsSummary(b)} · {StartText(b)} · {Plural(BookedToday(b), "advert")} today", b.Enabled));
+        (EntryName(b), L.F("{0} · {1} · {2} today", SlotsSummary(b), StartText(b), Plural(BookedToday(b), "{0} advert", "{0} adverts")), b.Enabled));
 
     // ───────────────────────── Adverts ─────────────────────────
 
@@ -263,7 +264,7 @@ public partial class ScheduleWindow : Window
         };
         AddSpotButton.Click += async (_, _) =>
         {
-            if (await PickFile("Advert") is not { } path) return;
+            if (await PickFile(L.T("Advert")) is not { } path) return;
             var s = new AdSpot { Path = path, From = DateTime.Today };
             _data.Spots.Add(s);
             _spotRows = _spotRows.Append(SpotRow(s)).ToList();
@@ -275,7 +276,7 @@ public partial class ScheduleWindow : Window
         DeleteSpotButton.Click += async (_, _) =>
         {
             if (SpotList.SelectedItem is not ScheduleRow { Item: AdSpot s } row) return;
-            if (!await Dialogs.Confirm(this, "Delete advert", $"Delete \"{SpotName(s)}\" from the schedule? The file stays on disk.", "Delete")) return;
+            if (!await Dialogs.Confirm(this, L.T("Delete advert"), L.F("Delete \"{0}\" from the schedule? The file stays on disk.", SpotName(s)), L.T("Delete"))) return;
             _data.Spots.Remove(s);
             int i = _spotRows.IndexOf(row);
             _spotRows = _spotRows.Where(r => r != row).ToList();
@@ -288,7 +289,7 @@ public partial class ScheduleWindow : Window
         SpotUpButton.Click += (_, _) => MoveSpot(-1);
         SpotDownButton.Click += (_, _) => MoveSpot(1);
         SpotPathBox.TextChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.Path = SpotPathBox.Text?.Trim() ?? "");
-        SpotFileButton.Click += async (_, _) => { if (await PickFile("Advert") is { } p) SpotPathBox.Text = p; };
+        SpotFileButton.Click += async (_, _) => { if (await PickFile(L.T("Advert")) is { } p) SpotPathBox.Text = p; };
         SpotAdvertiserBox.TextChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.Advertiser = SpotAdvertiserBox.Text?.Trim() ?? "");
         SpotEnabledBox.IsCheckedChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.Enabled = SpotEnabledBox.IsChecked == true);
         SpotFromBox.SelectedDateChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.From = SpotFromBox.SelectedDate?.Date);
@@ -360,8 +361,8 @@ public partial class ScheduleWindow : Window
         var s = SelectedSpot;
         int places = s?.Placements.Count ?? 0;
         SpotPlacedText.Text = s == null ? "" : places == 0
-            ? "Not placed in the calendar."
-            : $"Placed in {Plural(places, "break")} of the calendar ({s.Placements.Count(p => p.Date == null)} every week, {s.Placements.Count(p => p.Date != null)} on a date).";
+            ? L.T("Not placed in the calendar.")
+            : L.F("Placed in {0} of the calendar ({1} every week, {2} on a date).", Plural(places, "{0} break", "{0} breaks"), s.Placements.Count(p => p.Date == null), s.Placements.Count(p => p.Date != null));
         SpotClearPlacesButton.IsVisible = places > 0;
         SpotRulesPanel.IsVisible = places == 0;
     }
@@ -376,8 +377,8 @@ public partial class ScheduleWindow : Window
         SpotGrid.Times = _spotTimes;
         SpotNoBreaks.IsVisible = _spotTimes.Count == 0;
         var culture = CultureInfo.CurrentCulture;
-        WeekText.Text = $"Week {ISOWeek.GetWeekOfYear(_week)}: {_week.ToString("d MMM", culture)} – {_week.AddDays(6).ToString("d MMM yyyy", culture)}";
-        Header(SpotHeader, days.Select(d => (d.ToString("ddd d/M", culture), d == DateTime.Today)).ToList());
+        WeekText.Text = L.F("Week {0}: {1} – {2}", ISOWeek.GetWeekOfYear(_week), _week.ToString("d MMM", culture), _week.AddDays(6).ToString("d MMM yyyy", culture));
+        Header(SpotHeader, days.Select(d => ($"{DayShort(d.DayOfWeek)} {d.ToString("d/M", culture)}", d == DateTime.Today)).ToList());
         SpotGrid.Refresh();
     }
 
@@ -420,15 +421,15 @@ public partial class ScheduleWindow : Window
     {
         string dates = (s.From, s.To) switch
         {
-            (null, null) => "no end date",
-            ({ } f, null) => $"from {f:yyyy-MM-dd}",
-            (null, { } t) => $"until {t:yyyy-MM-dd}",
-            ({ } f, { } t) => $"{f:yyyy-MM-dd} to {t:yyyy-MM-dd}",
+            (null, null) => L.T("no end date"),
+            ({ } f, null) => L.F("from {0:yyyy-MM-dd}", f),
+            (null, { } t) => L.F("until {0:yyyy-MM-dd}", t),
+            ({ } f, { } t) => L.F("{0:yyyy-MM-dd} to {1:yyyy-MM-dd}", f, t),
         };
-        string where = s.Placements.Count > 0 ? $"{Plural(s.Placements.Count, "place")} in the calendar"
-            : $"{DaysText(s.Days)} · {(s.Breaks.Count == 0 ? "every break" : string.Join(", ", _data.Breaks.Where(b => s.Breaks.Contains(b.Id)).Select(EntryName)))}";
+        string where = s.Placements.Count > 0 ? L.F("{0} in the calendar", Plural(s.Placements.Count, "{0} place", "{0} places"))
+            : L.F("{0} · {1}", DaysText(s.Days), (s.Breaks.Count == 0 ? L.T("every break") : string.Join(", ", _data.Breaks.Where(b => s.Breaks.Contains(b.Id)).Select(EntryName))));
         bool over = s.To is { } to && to.Date < DateTime.Today;
-        return (SpotName(s), $"{Path.GetFileName(s.Path)} · {dates}{(over ? " (ended)" : "")} · {where}", s.Enabled && !over);
+        return (SpotName(s), L.F("{0} · {1}{2} · {3}", Path.GetFileName(s.Path), dates, (over ? L.T(" (ended)") : ""), where), s.Enabled && !over);
     });
 
     static string SpotName(AdSpot s) => s.Advertiser.Length > 0 ? s.Advertiser : Path.GetFileNameWithoutExtension(s.Path);
@@ -460,12 +461,12 @@ public partial class ScheduleWindow : Window
             _all = all;
             _selected = selected;
             _changed = changed;
-            step.ItemsSource = Steps.Select(m => m == 60 ? "hour" : $"{m} min").ToList();
+            step.ItemsSource = Steps.Select(m => m == 60 ? L.T("hour") : L.F("{0} min", m)).ToList();
             step.SelectedIndex = 1;
             offset.Value = 0;
             step.SelectionChanged += (_, _) => Rebuild();
             offset.ValueChanged += (_, _) => Rebuild();
-            Header(header, Week.Select(d => (CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(d), false)).ToList());
+            Header(header, Week.Select(d => (DayShort(d), false)).ToList());
 
             grid.CellOf = Cell;
             grid.PaintStarted += () => _snapshot = _selected()?.Slots.Select(s => new WeekTime { Day = s.Day, Time = s.Time }).ToList();
@@ -481,7 +482,7 @@ public partial class ScheduleWindow : Window
             {
                 if (ScheduleTimes.Parse(addBox.Text) is not { EveryHour: false } t)
                 {
-                    window.ErrorText.Text = $"\"{addBox.Text}\" isn't a time (e.g. 12:59:55)";
+                    window.ErrorText.Text = L.F("\"{0}\" isn't a time (e.g. 12:59:55)", addBox.Text);
                     return;
                 }
                 _extra.Add(t.Time.TotalSeconds);
@@ -542,6 +543,14 @@ public partial class ScheduleWindow : Window
         }
     }
 
+    /// <summary>A day's short name in the interface language, at most three letters: Mon, Seg, Lun.</summary>
+    static string DayShort(DayOfWeek day)
+    {
+        string name = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedDayName(day).TrimEnd('.');
+        if (name.Length > 3) name = name[..3];
+        return name.Length == 0 ? day.ToString()[..3] : char.ToUpper(name[0], CultureInfo.CurrentCulture) + name[1..];
+    }
+
     static DateTime Monday(DateTime date) => date.Date.AddDays(-(((int)date.DayOfWeek + 6) % 7));
 
     // ───────────────────────── Shared ─────────────────────────
@@ -577,13 +586,13 @@ public partial class ScheduleWindow : Window
 
     static string StartText(ScheduleEntry e) => (e.Start switch
     {
-        EventStart.Hard => "hard",
-        EventStart.EndAt => "ends at its time",
-        _ => e.MaxDelayMinutes > 0 ? $"soft, ≤ {e.MaxDelayMinutes:0} min late" : "soft",
+        EventStart.Hard => L.T("hard"),
+        EventStart.EndAt => L.T("ends at its time"),
+        _ => e.MaxDelayMinutes > 0 ? L.F("soft, ≤ {0:0} min late", e.MaxDelayMinutes) : L.T("soft"),
     }) + e.Lock switch
     {
-        ItemLock.Locked => " · locked",
-        ItemLock.Movable => " · movable",
+        ItemLock.Locked => L.T(" · locked"),
+        ItemLock.Movable => L.T(" · movable"),
         _ => "",
     };
 
@@ -615,33 +624,33 @@ public partial class ScheduleWindow : Window
         foreach (var r in rows) r.Refresh();
     }
 
-    static string EntryName(ScheduleEntry e) => string.IsNullOrWhiteSpace(e.Name) ? e is AdBreak ? "Ad break" : "Event" : e.Name.Trim();
+    static string EntryName(ScheduleEntry e) => string.IsNullOrWhiteSpace(e.Name) ? e is AdBreak ? L.T("Ad break") : L.T("Event") : e.Name.Trim();
 
-    static string Plural(int n, string word) => $"{n} {word}{(n == 1 ? "" : "s")}";
+    static string Plural(int n, string one, string many) => L.F(n == 1 ? one : many, n);
 
     /// <summary>"07:00, 13:00 · Mon–Fri" when every time is on the same days; else how many times a week.</summary>
     static string SlotsSummary(ScheduleEntry e)
     {
-        if (e.Slots.Count == 0) return "not in the calendar yet";
+        if (e.Slots.Count == 0) return L.T("not in the calendar yet");
         var byTime = e.Slots.GroupBy(s => s.At).OrderBy(g => g.Key).ToList();
         var days = byTime[0].Select(s => s.Day).ToHashSet();
-        if (byTime.Any(g => !g.Select(s => s.Day).ToHashSet().SetEquals(days))) return $"{e.Slots.Count} times a week";
-        string times = byTime.Count <= 4 ? string.Join(", ", byTime.Select(g => WeekGrid.Time(g.Key.TotalSeconds))) : $"{byTime.Count} times";
+        if (byTime.Any(g => !g.Select(s => s.Day).ToHashSet().SetEquals(days))) return L.F("{0} times a week", e.Slots.Count);
+        string times = byTime.Count <= 4 ? string.Join(", ", byTime.Select(g => WeekGrid.Time(g.Key.TotalSeconds))) : L.F("{0} times", byTime.Count);
         return $"{times} · {DaysText(days)}";
     }
 
     static string DaysText(IReadOnlyCollection<DayOfWeek> days)
     {
-        if (days.Count == 0 || days.Count == 7) return "every day";
+        if (days.Count == 0 || days.Count == 7) return L.T("every day");
         var set = days.ToHashSet();
-        if (set.SetEquals(Week[..5])) return "Mon–Fri";
-        if (set.SetEquals(Week[5..])) return "weekends";
-        return string.Join(" ", Week.Where(set.Contains).Select(d => d.ToString()[..3]));
+        if (set.SetEquals(Week[..5])) return L.T("Mon–Fri");
+        if (set.SetEquals(Week[5..])) return L.T("weekends");
+        return string.Join(" ", Week.Where(set.Contains).Select(DayShort));
     }
 
     ToggleButton[] DayButtons(Panel panel, Action changed)
     {
-        var buttons = Week.Select(d => new ToggleButton { Content = d.ToString()[..3], Tag = d }).ToArray();
+        var buttons = Week.Select(d => new ToggleButton { Content = DayShort(d), Tag = d }).ToArray();
         foreach (var b in buttons)
         {
             b.Classes.Add("day");
@@ -666,7 +675,7 @@ public partial class ScheduleWindow : Window
         {
             Title = title,
             SuggestedStartLocation = start,
-            FileTypeFilter = [new FilePickerFileType("Audio") { Patterns = AudioFiles.Patterns }, FilePickerFileTypes.All],
+            FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }, FilePickerFileTypes.All],
         });
         return files.FirstOrDefault()?.TryGetLocalPath();
     }
@@ -687,7 +696,7 @@ public partial class ScheduleWindow : Window
             if (!entry.Enabled || entry.Slots.Count > 0) continue;
             Tabs.SelectedIndex = tab;
             list.SelectedItem = (tab == 0 ? _eventRows : _breakRows).FirstOrDefault(r => r.Item == entry);
-            ErrorText.Text = $"{EntryName(entry)} isn't in the calendar yet: click the days and times it runs (or switch it off).";
+            ErrorText.Text = L.F("{0} isn't in the calendar yet: click the days and times it runs (or switch it off).", EntryName(entry));
             return;
         }
         foreach (var s in _data.Spots)
@@ -695,7 +704,7 @@ public partial class ScheduleWindow : Window
             {
                 Tabs.SelectedIndex = 2;
                 SpotList.SelectedItem = _spotRows.FirstOrDefault(r => r.Item == s);
-                ErrorText.Text = $"{SpotName(s)}: the last day is before the first.";
+                ErrorText.Text = L.F("{0}: the last day is before the first.", SpotName(s));
                 return;
             }
         Close(_data);

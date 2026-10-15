@@ -300,20 +300,20 @@
                                         <Border Classes="row-marker" HorizontalAlignment="Left" />
                                         <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding NumberText}" VerticalAlignment="Center" />
                                         <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="Music" />
-                                            <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="Jingle" />
-                                            <TextBlock Classes="kind-currency" Text="{Binding CurrencySign}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="Advert" />
-                                            <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="Internet stream" />
-                                            <PathIcon Classes="kind programme" Data="{StaticResource IconMic}" IsVisible="{Binding IsProgramme}" ToolTip.Tip="Programme (news, shows)" />
+                                            <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="{x:Static app:Strings.Music}" />
+                                            <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="{x:Static app:Strings.Jingle}" />
+                                            <TextBlock Classes="kind-currency" Text="{Binding CurrencySign}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="{x:Static app:Strings.Advert}" />
+                                            <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="{x:Static app:Strings.InternetStream}" />
+                                            <PathIcon Classes="kind programme" Data="{StaticResource IconMic}" IsVisible="{Binding IsProgramme}" ToolTip.Tip="{x:Static app:Strings.Programme}" />
                                         </Panel>
                                         <StackPanel Grid.Column="3" VerticalAlignment="Center">
                                             <DockPanel>
-                                                <Border DockPanel.Dock="Right" Classes="cue-tag" Margin="6,0,0,0" IsVisible="{Binding HasCues}" ToolTip.Tip="Has cue points">
-                                                    <TextBlock Text="CUE" />
+                                                <Border DockPanel.Dock="Right" Classes="cue-tag" Margin="6,0,0,0" IsVisible="{Binding HasCues}" ToolTip.Tip="{x:Static app:Strings.HasCues}">
+                                                    <TextBlock Text="{x:Static app:Strings.Cue}" />
                                                 </Border>
                                                 <Border DockPanel.Dock="Right" Classes="preview-tag" Margin="6,0,0,0" IsVisible="{Binding IsPreview}"
-                                                        ToolTip.Tip="From the schedule: it goes into the playlist when it is due">
-                                                    <TextBlock Text="SCHEDULED" />
+                                                        ToolTip.Tip="{x:Static app:Strings.ScheduledTip}">
+                                                    <TextBlock Text="{x:Static app:Strings.Scheduled}" />
                                                 </Border>
                                                 <PathIcon DockPanel.Dock="Right" Classes="lock" Margin="6,0,0,0" Data="{StaticResource IconLock}"
                                                           IsVisible="{Binding IsLocked}" ToolTip.Tip="{Binding LockTip}" />

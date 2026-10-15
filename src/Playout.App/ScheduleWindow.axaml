@@ -13,6 +13,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style Selector="TextBlock.note">
             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
@@ -126,11 +127,11 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="EventSoftBox" GroupName="EventStart" Content="Soft: after the item on air ends" />
-                                <StackPanel x:Name="EventDelayPanel" Orientation="Horizontal" Spacing="6" Margin="28,0,0,6">
+                                <WrapPanel x:Name="EventDelayPanel" ItemSpacing="6" LineSpacing="4" Margin="28,0,0,6">
                                     <TextBlock Text="at most" VerticalAlignment="Center" />
                                     <NumericUpDown x:Name="EventDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
                                     <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
-                                </StackPanel>
+                                </WrapPanel>
                                 <RadioButton x:Name="EventHardBox" GroupName="EventStart" Content="Hard: on the second" />
                                 <RadioButton x:Name="EventEndBox" GroupName="EventStart" Content="Ends at its time (songs adjusted)" />
                             </StackPanel>
@@ -203,11 +204,11 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="BreakSoftBox" GroupName="BreakStart" Content="Soft: after the item on air ends" />
-                                <StackPanel x:Name="BreakDelayPanel" Orientation="Horizontal" Spacing="6" Margin="28,0,0,6">
+                                <WrapPanel x:Name="BreakDelayPanel" ItemSpacing="6" LineSpacing="4" Margin="28,0,0,6">
                                     <TextBlock Text="at most" VerticalAlignment="Center" />
                                     <NumericUpDown x:Name="BreakDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
                                     <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
-                                </StackPanel>
+                                </WrapPanel>
                                 <RadioButton x:Name="BreakHardBox" GroupName="BreakStart" Content="Hard: on the second" />
                                 <RadioButton x:Name="BreakEndBox" GroupName="BreakStart" Content="Ends at its time (songs adjusted)" />
                             </StackPanel>

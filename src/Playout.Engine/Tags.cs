@@ -69,7 +69,7 @@ public static class Tags
     /// </summary>
     public static void Write(string path, TrackTags tags, byte[]? cover)
     {
-        using var file = Open(path) ?? throw new NotSupportedException("This kind of file has no tags that can be edited.");
+        using var file = Open(path) ?? throw new NotSupportedException(L.T("This kind of file has no tags that can be edited."));
         // MP3: write ID3v2.3, which every player reads (v2.4 is not understood by some older ones). Only MP3:
         // asked for on a FLAC file, TagLib would put an ID3 tag in front of it, which FLAC tools reject.
         if (file is TagLib.Mpeg.AudioFile && file.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3) id3.Version = 3;
@@ -100,7 +100,7 @@ public static class Tags
         }
         catch (UnauthorizedAccessException)
         {
-            throw new IOException("The file is read-only or you don't have permission to change it.");
+            throw new IOException(L.T("The file is read-only or you don't have permission to change it."));
         }
     }
 
@@ -116,7 +116,7 @@ public static class Tags
         }
         catch (TagLib.CorruptFileException ex)
         {
-            throw new InvalidDataException($"The file's tags are damaged ({ex.Message}).");
+            throw new InvalidDataException(L.F("The file's tags are damaged ({0}).", ex.Message));
         }
     }
 

@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Localization.Apply(this);
         Playlist.ItemsSource = _rows;
 
         try
@@ -66,7 +67,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            LastLog.Text = $"Audio engine failed to start: {ex.Message}";
+            LastLog.Text = L.F("Audio engine failed to start: {0}", ex.Message);
             LastLog.Foreground = (IBrush)this.FindResource("OnAir")!;
         }
 
@@ -75,7 +76,7 @@ public partial class MainWindow : Window
             AppLog.Write(message);
             LastLog.Text = message;
         };
-        _library.Changed += () => ScanButton.Content = _library.IsScanning ? "Stop" : "Scan";
+        _library.Changed += () => ScanButton.Content = _library.IsScanning ? L.T("Stop") : L.T("Scan");
         Tracks.Attach(_library);
         _ = _library.OpenAsync(_settings.Library);
         ApplyAutoScan();
@@ -142,6 +143,7 @@ public partial class MainWindow : Window
         {
             if (e.Property == Button.IsPressedProperty) UpdateMic();
         };
+        MicButton.Click += (_, _) => ToggleMic();
 
         AutoSwitch.IsCheckedChanged += (_, _) =>
         {
@@ -163,11 +165,11 @@ public partial class MainWindow : Window
         {
             if ((e.Source as Control)?.DataContext is PlaylistRow row) _engine?.Play(row.Id);
         };
-        var editCues = new MenuItem { Header = "Edit cue points…", InputGesture = new KeyGesture(Key.E, CommandModifiers) };
+        var editCues = new MenuItem { Header = L.T("Edit cue points…"), InputGesture = new KeyGesture(Key.E, CommandModifiers) };
         editCues.Click += async (_, _) => await EditSelectedCues();
-        var editTags = new MenuItem { Header = "Edit tags…", InputGesture = new KeyGesture(Key.T, CommandModifiers) };
+        var editTags = new MenuItem { Header = L.T("Edit tags…"), InputGesture = new KeyGesture(Key.T, CommandModifiers) };
         editTags.Click += async (_, _) => await EditSelectedTags();
-        var remove = new MenuItem { Header = "Remove", InputGesture = new KeyGesture(Key.Delete) };
+        var remove = new MenuItem { Header = L.T("Remove"), InputGesture = new KeyGesture(Key.Delete) };
         remove.Click += (_, _) => RemoveSelected();
         Playlist.ContextMenu = new ContextMenu { Items = { editCues, editTags, remove } };
 
@@ -224,9 +226,9 @@ public partial class MainWindow : Window
 
         StreamToggle.Click += (_, _) => ToggleStreaming();
         // Right-click: explicit start and stop; Stop also clears an error (a click on an error retries).
-        var startStream = new MenuItem { Header = "Start streaming" };
+        var startStream = new MenuItem { Header = L.T("Start streaming") };
         startStream.Click += (_, _) => { if (_engine?.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming(); };
-        var stopStream = new MenuItem { Header = "Stop streaming" };
+        var stopStream = new MenuItem { Header = L.T("Stop streaming") };
         stopStream.Click += (_, _) => _engine?.StopStreaming();
         var streamMenu = new ContextMenu { Items = { startStream, stopStream } };
         streamMenu.Opening += (_, _) =>
@@ -236,9 +238,9 @@ public partial class MainWindow : Window
             stopStream.IsEnabled = state != StreamState.Off;
             stopStream.Header = state switch
             {
-                StreamState.Connecting => "Cancel connecting",
-                StreamState.Failed => "Turn streaming off",
-                _ => "Stop streaming",
+                StreamState.Connecting => L.T("Cancel connecting"),
+                StreamState.Failed => L.T("Turn streaming off"),
+                _ => L.T("Stop streaming"),
             };
         };
         StreamToggle.ContextMenu = streamMenu;
@@ -250,7 +252,8 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnShortcutKeyUp, RoutingStrategies.Tunnel);
         KeyDown += OnWindowKeyDown;
-        // Releasing the mic key in another window never reaches us: close the mic when focus leaves.
+        // Releasing the mic key in another window never reaches us: close a held mic when focus leaves (a mic
+        // switched on with a press stays on).
         Deactivated += (_, _) =>
         {
             _keysDown.Clear();
@@ -300,7 +303,10 @@ public partial class MainWindow : Window
             case Shortcuts.Pause: _engine?.TogglePause(); break;
             case Shortcuts.Next: _engine?.Next(); break;
             case Shortcuts.Stop: _engine?.Stop(); break;
-            case Shortcuts.Mic: _micKeyHeld = true; UpdateMic(); break;
+            case Shortcuts.Mic:
+                if (_settings.MicToggle) ToggleMic();
+                else { _micKeyHeld = true; UpdateMic(); }
+                break;
             case Shortcuts.Stream: if (StreamToggle.IsVisible) ToggleStreaming(); break;
             default:
                 ToggleCart(Array.FindIndex(Shortcuts.Actions, a => a.Id == id) - Array.FindIndex(Shortcuts.Actions, a => a.Id == Shortcuts.Cart(0)));
@@ -326,11 +332,16 @@ public partial class MainWindow : Window
             .Where(s => s.Gesture != null && Shortcuts.Actions.Any(a => a.Id == s.Id))
             .ToList();
         string Key(string id) => _shortcuts.FirstOrDefault(s => s.Id == id).Gesture is { } g ? $" ({Shortcuts.Display(g)})" : "";
-        ToolTip.SetTip(PlayButton, "Play" + Key(Shortcuts.Play));
-        ToolTip.SetTip(PauseButton, "Pause / resume" + Key(Shortcuts.Pause));
-        ToolTip.SetTip(NextButton, "Next, crossfade now" + Key(Shortcuts.Next));
-        ToolTip.SetTip(StopButton, "Stop" + Key(Shortcuts.Stop));
-        ToolTip.SetTip(MicButton, $"Hold to talk{Key(Shortcuts.Mic)}. Music and cartwall fade down while the mic is open.");
+        ToolTip.SetTip(PlayButton, L.T("Play") + Key(Shortcuts.Play));
+        ToolTip.SetTip(PauseButton, L.T("Pause / resume") + Key(Shortcuts.Pause));
+        ToolTip.SetTip(NextButton, L.T("Next, crossfade now") + Key(Shortcuts.Next));
+        ToolTip.SetTip(StopButton, L.T("Stop") + Key(Shortcuts.Stop));
+        ToolTip.SetTip(MicButton, _settings.MicToggle
+            ? L.F("Press to open the mic, press again to close it{0}. Music and cartwall fade down while the mic is open.", Key(Shortcuts.Mic))
+            : L.F("Hold to talk{0}. Music and cartwall fade down while the mic is open.", Key(Shortcuts.Mic)));
+        // The mode may have changed: start closed.
+        _micLatched = false;
+        UpdateMic();
         ShowCartShortcuts();
         _lastStreamState = null; // refresh the STREAM tooltip
     }
@@ -359,10 +370,22 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    /// <summary>Push to talk: the mic is open while the MIC button or its key is held (web radio only).</summary>
+    bool _micLatched; // switched on with a press (MicToggle)
+
+    /// <summary>A press of the MIC button or key when it switches the mic on and off.</summary>
+    void ToggleMic()
+    {
+        if (!_settings.MicToggle) return;
+        _micLatched = !_micLatched;
+        UpdateMic();
+    }
+
+    /// <summary>
+    /// The mic is open while the MIC button or its key is held, or (MicToggle) from one press to the next. Web radio only.
+    /// </summary>
     void UpdateMic()
     {
-        bool on = MicButton.IsVisible && (MicButton.IsPressed || _micKeyHeld);
+        bool on = MicButton.IsVisible && (_settings.MicToggle ? _micLatched : MicButton.IsPressed || _micKeyHeld);
         if (on == _micOn) return;
         _micOn = on;
         _engine?.SetMic(on);
@@ -383,7 +406,7 @@ public partial class MainWindow : Window
         MeterR.Push(st.LevelRight);
 
         bool hasTrack = st.Current != null;
-        NowTitle.Text = st.Current?.Title ?? "Nothing on air";
+        NowTitle.Text = st.Current?.Title ?? L.T("Nothing on air");
         NowArtist.Text = string.IsNullOrWhiteSpace(st.Current?.Artist) ? " " : st.Current!.Artist;
         UpdateWaveforms(st);
         ShowCover(st.Current);
@@ -418,9 +441,9 @@ public partial class MainWindow : Window
 
         (OnAirText.Text, OnAirBadge.Background) = st.State switch
         {
-            PlayerState.Playing => ("ON AIR", (IBrush)this.FindResource("OnAir")!),
-            PlayerState.Paused => ("PAUSED", (IBrush)this.FindResource("NextUp")!),
-            _ => ("STOPPED", new SolidColorBrush(Color.Parse("#3A3F4B"))),
+            PlayerState.Playing => (L.T("ON AIR"), (IBrush)this.FindResource("OnAir")!),
+            PlayerState.Paused => (L.T("PAUSED"), (IBrush)this.FindResource("NextUp")!),
+            _ => (L.T("STOPPED"), new SolidColorBrush(Color.Parse("#3A3F4B"))),
         };
 
         UpdateCarts();
@@ -482,7 +505,7 @@ public partial class MainWindow : Window
         }
         CueBadge.IsVisible = label != null;
         if (label == null) return;
-        CueLabel.Text = label;
+        CueLabel.Text = L.T(label);
         CueTime.Text = Math.Ceiling(left).ToString("0");
         CueBadge.Classes.Set("intro", label == "INTRO");
         CueBadge.Classes.Set("outro", label == "OUTRO");
@@ -546,7 +569,7 @@ public partial class MainWindow : Window
             row.StartTime = t.ToString("HH:mm:ss");
             // The first ad break still to come (shown ahead, or already in the playlist), for the countdown.
             if (_nextBreak == null && row.IsAdBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
-                _nextBreak = (t, row.IsPreview ? row.Title : row.Track.Event ?? "Ad break",
+                _nextBreak = (t, row.IsPreview ? row.Title : row.Track.Event ?? L.T("Ad break"),
                     row.IsPreview ? _upcoming.FirstOrDefault(u => row.Title == u.Label)?.How ?? "" : BreakHow(row.Track));
             var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
             if (hour <= lastHour) return;
@@ -605,8 +628,8 @@ public partial class MainWindow : Window
 
     /// <summary>How a break already in the playlist starts (from its first item).</summary>
     static string BreakHow(Track first) => first.StartBy is { } by
-        ? first.Backtime ? $"ends on time" : $"can wait until {by.ToLocalTime():HH:mm:ss}"
-        : "after the song";
+        ? first.Backtime ? L.T("ends on time") : L.F("can wait until {0:HH:mm:ss}", by.ToLocalTime())
+        : L.T("after the song");
 
     /// <summary>
     /// "€ BREAK IN 04:32 · hard start at 12:20:00" on the deck when the next ad break is less than 10 minutes away;
@@ -622,7 +645,7 @@ public partial class MainWindow : Window
         BreakTime.Text = left.TotalHours >= 1 ? left.ToString(@"h\:mm\:ss") : left.ToString(@"mm\:ss");
         BreakHowText.Text = _nextBreak!.Value.How.Length > 0 ? "· " + _nextBreak.Value.How.ToUpperInvariant() : "";
         BreakBadge.Classes.Set("soon", left <= TimeSpan.FromMinutes(1));
-        ToolTip.SetTip(BreakBadge, $"{_nextBreak.Value.Name}: starts about {_nextBreak.Value.At:HH:mm:ss}");
+        ToolTip.SetTip(BreakBadge, L.F("{0}: starts about {1:HH:mm:ss}", _nextBreak.Value.Name, _nextBreak.Value.At));
     }
 
     /// <summary>Puts the playlist's rows in this order, moving as few as it can (keeps the scroll position and selection).</summary>
@@ -696,20 +719,20 @@ public partial class MainWindow : Window
 
         (StreamText.Text, StreamDot.Fill) = st.Stream switch
         {
-            StreamState.OnAir => ("STREAMING", (IBrush)Brushes.White),
-            StreamState.Connecting => ("CONNECTING…", (IBrush)this.FindResource("NextUp")!),
-            StreamState.Failed => ("STREAM ERROR", (IBrush)this.FindResource("OnAir")!),
-            _ => ("STREAM OFF", new SolidColorBrush(Color.Parse("#8B93A3"))),
+            StreamState.OnAir => (L.T("STREAMING"), (IBrush)Brushes.White),
+            StreamState.Connecting => (L.T("CONNECTING…"), (IBrush)this.FindResource("NextUp")!),
+            StreamState.Failed => (L.T("STREAM ERROR"), (IBrush)this.FindResource("OnAir")!),
+            _ => (L.T("STREAM OFF"), new SolidColorBrush(Color.Parse("#8B93A3"))),
         };
         StreamToggle.Classes.Set("onair", st.Stream == StreamState.OnAir);
         StreamToggle.Classes.Set("connecting", st.Stream == StreamState.Connecting);
         StreamToggle.Classes.Set("failed", st.Stream == StreamState.Failed);
         ToolTip.SetTip(StreamToggle, st.Stream switch
         {
-            StreamState.OnAir => $"Streaming — click to stop{StreamKey()}",
-            StreamState.Connecting => $"Connecting — click to cancel{StreamKey()}",
-            StreamState.Failed => $"{st.StreamError}\nClick to retry, or right-click to turn streaming off",
-            _ => $"Stream off — click to start (server is set in Settings){StreamKey()}",
+            StreamState.OnAir => L.F("Streaming — click to stop{0}", StreamKey()),
+            StreamState.Connecting => L.F("Connecting — click to cancel{0}", StreamKey()),
+            StreamState.Failed => L.F("{0}\nClick to retry, or right-click to turn streaming off", st.StreamError),
+            _ => L.F("Stream off — click to start (server is set in Settings){0}", StreamKey()),
         });
         _slowTick = 0;
     }
@@ -727,13 +750,13 @@ public partial class MainWindow : Window
 
         StreamTimeText.Text = _lastStreamState == StreamState.OnAir
             ? Format.Duration((now - _streamSince).TotalSeconds)
-            : "Off";
+            : L.T("Off");
 
         var next = _scheduler?.Next(now);
         NextEventPanel.IsVisible = next != null;
         if (next is { } n)
-            NextEventText.Text = $"{n.At:HH:mm:ss}  {(string.IsNullOrWhiteSpace(n.Name) ? "Event" : n.Name)}"
-                                 + (n.At.Date != now.Date ? " (tomorrow)" : "");
+            NextEventText.Text = L.F("{0:HH:mm:ss}  {1}", n.At, (string.IsNullOrWhiteSpace(n.Name) ? L.T("Event") : n.Name))
+                                 + (n.At.Date != now.Date ? L.T(" (tomorrow)") : "");
     }
 
     void CountPlayed()
@@ -773,7 +796,7 @@ public partial class MainWindow : Window
 
         EmptyHint.IsVisible = _rows.Count == 0;
         double total = snap.Items.Sum(t => t.PlayLength);
-        PlaylistInfo.Text = snap.Items.Count == 0 ? "" : $"{snap.Items.Count} items · {Format.Duration(total)}";
+        PlaylistInfo.Text = snap.Items.Count == 0 ? "" : L.F("{0} items · {1}", snap.Items.Count, Format.Duration(total));
         NextTitle.Text = snap.NextId is { } n && _rowsById.TryGetValue(n, out var next) ? next.Track.Display : "—";
 
         // Not while the saved playlist is still being added: a save then would lose the rest of it.
@@ -838,9 +861,9 @@ public partial class MainWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Add audio files",
+            Title = L.T("Add audio files"),
             AllowMultiple = true,
-            FileTypeFilter = [new FilePickerFileType("Audio") { Patterns = AudioFiles.Patterns }, FilePickerFileTypes.All],
+            FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }, FilePickerFileTypes.All],
         });
         var paths = files.Select(f => f.TryGetLocalPath()).OfType<string>().ToList();
         if (paths.Count > 0) _engine?.AddFiles(paths);
@@ -850,7 +873,7 @@ public partial class MainWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open playlist",
+            Title = L.T("Open playlist"),
             FileTypeFilter = [new FilePickerFileType("M3U playlist") { Patterns = ["*.m3u", "*.m3u8"] }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
@@ -929,7 +952,7 @@ public partial class MainWindow : Window
         if (_snapshot == null || _snapshot.Items.Count == 0) return;
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save playlist",
+            Title = L.T("Save playlist"),
             DefaultExtension = "m3u8",
             SuggestedFileName = $"playlist-{DateTime.Now:yyyyMMdd-HHmm}.m3u8",
         });
@@ -1051,7 +1074,7 @@ public partial class MainWindow : Window
 
         if (string.IsNullOrWhiteSpace(_settings.StreamHost) || _settings.StreamPort <= 0)
         {
-            LastLog.Text = "Set up the streaming server in Settings first";
+            LastLog.Text = L.T("Set up the streaming server in Settings first");
             _ = OpenSettings();
             return;
         }
@@ -1084,9 +1107,9 @@ public partial class MainWindow : Window
             _update = await Updates.CheckAsync();
             if (_update != null)
             {
-                UpdateButton.Content = $"Update {_update.Version} available";
-                ToolTip.SetTip(UpdateButton, $"{AppInfo.Name} {_update.Version} is out (you have {Updates.CurrentText}). Click for details.");
-                if (!quiet || !UpdateButton.IsVisible) LastLog.Text = $"{AppInfo.Name} {_update.Version} is available";
+                UpdateButton.Content = L.F("Update {0} available", _update.Version);
+                ToolTip.SetTip(UpdateButton, L.F("{0} {1} is out (you have {2}). Click for details.", AppInfo.Name, _update.Version, Updates.CurrentText));
+                if (!quiet || !UpdateButton.IsVisible) LastLog.Text = L.F("{0} {1} is available", AppInfo.Name, _update.Version);
             }
             UpdateButton.IsVisible = _update != null;
             return _update;
@@ -1135,7 +1158,7 @@ public partial class MainWindow : Window
             ApplyStationBranding();
             ShowStationType();
             ApplyShortcuts();
-            LastLog.Text = "Settings saved";
+            LastLog.Text = L.T("Settings saved");
         }
         finally
         {
@@ -1169,8 +1192,8 @@ public partial class MainWindow : Window
         AutoContent.IsVisible = auto;
         AssistedContent.IsVisible = !auto;
         ToolTip.SetTip(AutoSwitch, auto
-            ? "AUTO: plays through the playlist with crossfades. Click for ASSISTED."
-            : "ASSISTED: stops after each item; start the next one yourself. Click for AUTO.");
+            ? L.T("AUTO: plays through the playlist with crossfades. Click for ASSISTED.")
+            : L.T("ASSISTED: stops after each item; start the next one yourself. Click for AUTO."));
     }
 
     /// <summary>Web radio gets a MIC button; on FM the mic goes through the desk.</summary>
@@ -1292,7 +1315,7 @@ public partial class MainWindow : Window
         rds.StatusChanged += error => Dispatcher.UIThread.Post(() =>
         {
             if (rds != _rds) return;
-            string message = error == null ? "RDS: sending to the encoder" : $"RDS: can't send to the encoder ({error}); trying again";
+            string message = error == null ? L.T("RDS: sending to the encoder") : L.F("RDS: can't send to the encoder ({0}); trying again", error);
             AppLog.Write(message);
             LastLog.Text = message;
         });
@@ -1317,7 +1340,7 @@ public partial class MainWindow : Window
                     .ShowDialog<ScheduleData?>(this) is { } edited)
             {
                 _scheduler.Update(edited);
-                LastLog.Text = "Schedule saved";
+                LastLog.Text = L.T("Schedule saved");
                 ReadUpcoming(DateTime.Now, force: true);
             }
         }
@@ -1350,7 +1373,7 @@ public partial class MainWindow : Window
         web.StatusChanged += error => Dispatcher.UIThread.Post(() =>
         {
             if (web != _web) return;
-            string message = error == null ? "Website: now playing sent" : $"Website: can't send now playing ({error}); trying again";
+            string message = error == null ? L.T("Website: now playing sent") : L.F("Website: can't send now playing ({0}); trying again", error);
             AppLog.Write(message);
             LastLog.Text = message;
         });

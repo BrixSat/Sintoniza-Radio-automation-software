@@ -4,7 +4,7 @@
         x:Class="Playout.App.SettingsWindow"
         Icon="/Assets/icon.ico"
         Title="Settings"
-        Width="860" Height="600" CanResize="False"
+        Width="960" Height="600" CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
@@ -73,7 +73,12 @@
                     <TextBlock Classes="note" Text="Name, genre and website are also sent to the streaming server and shown in directory listings." />
 
                     <StackPanel>
-                        <Grid ColumnDefinitions="Auto,24,Auto">
+                        <Grid ColumnDefinitions="Auto,24,Auto,24,Auto">
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Classes="label" Text="Language" />
+                                <ComboBox x:Name="LanguageBox" MinWidth="200"
+                                          ToolTip.Tip="The language of the windows and messages. Applies the next time the app starts." />
+                            </StackPanel>
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Station type" />
                                 <ComboBox x:Name="StationTypeBox" MinWidth="320">
@@ -149,6 +154,11 @@
                                Text="The station type is FM radio, so the mic goes through the mixing desk and these settings are not used. Choose Web radio on the Station tab to use them." />
                     <StackPanel x:Name="MicPanel" Spacing="14">
                         <StackPanel>
+                            <TextBlock Classes="label" Text="The MIC button and its key" />
+                            <RadioButton x:Name="MicHoldRadio" GroupName="MicMode" Content="Hold to talk" />
+                            <RadioButton x:Name="MicToggleRadio" GroupName="MicMode" Content="Press to switch the mic on, press again to switch it off" />
+                        </StackPanel>
+                        <StackPanel>
                             <TextBlock Classes="label" Text="Microphone input" />
                             <ComboBox x:Name="MicDeviceBox" HorizontalAlignment="Stretch" />
                         </StackPanel>
@@ -177,7 +187,7 @@
                             </StackPanel>
                         </Grid>
                         <TextBlock Classes="note"
-                                   Text="Hold the MIC button or its key (F9 unless changed on the Shortcuts tab) to talk. Music and cartwall fade down to the level above, and back up when you let go. The mic goes into the stream only, not to the audio outputs, so you don't hear yourself with a delay; listen on headphones." />
+                                   Text="The MIC button or its key (F9 unless changed on the Shortcuts tab) opens the mic: held down, or from one press to the next. Music and cartwall fade down to the level above while it is open, and back up when it closes. The mic goes into the stream only, not to the audio outputs, so you don't hear yourself with a delay; listen on headphones." />
                     </StackPanel>
                 </StackPanel>
             </TabItem>

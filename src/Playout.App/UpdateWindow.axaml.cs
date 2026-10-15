@@ -20,23 +20,24 @@ public partial class UpdateWindow : Window
     public UpdateWindow(UpdateInfo update, PlayoutEngine? engine)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _update = update;
         _engine = engine;
 
-        HeadingText.Text = $"{AppInfo.Name} {update.Version} is available";
-        CurrentText.Text = $"You have version {Updates.CurrentText}.";
-        NotesText.Text = string.IsNullOrWhiteSpace(update.Notes) ? "No release notes." : update.Notes.Trim();
+        HeadingText.Text = L.F("{0} {1} is available", AppInfo.Name, update.Version);
+        CurrentText.Text = L.F("You have version {0}.", Updates.CurrentText);
+        NotesText.Text = string.IsNullOrWhiteSpace(update.Notes) ? L.T("No release notes.") : update.Notes.Trim();
 
         if (update.Asset == null)
         {
             // Portable zip/tar or macOS: no installer this copy can run.
-            InstallButton.Content = "Download page";
-            ShowStatus("This copy can't update itself (it isn't installed with the setup or the .deb package). Download the new version from the release page.");
+            InstallButton.Content = L.T("Download page");
+            ShowStatus(L.T("This copy can't update itself (it isn't installed with the setup or the .deb package). Download the new version from the release page."));
         }
         else if (Updates.InstallClosesApp)
-            WarningText.Text = $"Installing closes {AppInfo.Name}, so playout and streaming stop until it starts again (about a minute). Update when you are off air.";
+            WarningText.Text = L.F("Installing closes {0}, so playout and streaming stop until it starts again (about a minute). Update when you are off air.", AppInfo.Name);
         else
-            WarningText.Text = "Installing asks for the administrator password. Playout carries on; the new version runs after a restart.";
+            WarningText.Text = L.T("Installing asks for the administrator password. Playout carries on; the new version runs after a restart.");
         WarningText.IsVisible = !string.IsNullOrEmpty(WarningText.Text);
 
         PageButton.Click += (_, _) => Updates.OpenInBrowser(update.PageUrl);
@@ -53,20 +54,20 @@ public partial class UpdateWindow : Window
         if (_installed) { await Restart(); return; }
 
         if (Updates.InstallClosesApp && OnAir
-            && !await Dialogs.Confirm(this, "Stop playout and update?", $"{AppInfo.Name} is on air. Installing the update closes it, so playout and streaming stop.", "Update now"))
+            && !await Dialogs.Confirm(this, L.T("Stop playout and update?"), L.F("{0} is on air. Installing the update closes it, so playout and streaming stop.", AppInfo.Name), L.T("Update now")))
             return;
 
         InstallButton.IsEnabled = false;
-        LaterButton.Content = "Cancel";
+        LaterButton.Content = L.T("Cancel");
         _download = new CancellationTokenSource();
         try
         {
-            ShowStatus($"Downloading {asset.Name}…");
+            ShowStatus(L.F("Downloading {0}…", asset.Name));
             Progress.IsVisible = true;
             string file = await Updates.DownloadAsync(asset, new Progress<double>(p => Progress.Value = p), _download.Token);
             Progress.IsVisible = false;
 
-            ShowStatus("Installing…");
+            ShowStatus(L.T("Installing…"));
             await Updates.InstallAsync(file);
             if (Updates.InstallClosesApp)
             {
@@ -74,10 +75,10 @@ public partial class UpdateWindow : Window
                 return;
             }
             _installed = true;
-            ShowStatus($"Version {_update.Version} is installed. Restart {AppInfo.Name} to use it.");
-            InstallButton.Content = "Restart now";
+            ShowStatus(L.F("Version {0} is installed. Restart {1} to use it.", _update.Version, AppInfo.Name));
+            InstallButton.Content = L.T("Restart now");
             InstallButton.IsEnabled = true;
-            LaterButton.Content = "Restart later";
+            LaterButton.Content = L.T("Restart later");
         }
         catch (OperationCanceledException ex) when (!(_download?.IsCancellationRequested ?? false))
         {
@@ -95,7 +96,7 @@ public partial class UpdateWindow : Window
 
     async Task Restart()
     {
-        if (OnAir && !await Dialogs.Confirm(this, "Restart now?", $"{AppInfo.Name} is on air. Restarting stops playout and streaming for a few seconds.", "Restart"))
+        if (OnAir && !await Dialogs.Confirm(this, L.T("Restart now?"), L.F("{0} is on air. Restarting stops playout and streaming for a few seconds.", AppInfo.Name), L.T("Restart")))
             return;
         Close(true);
     }
@@ -106,8 +107,8 @@ public partial class UpdateWindow : Window
         ShowStatus(message);
         StatusText.Foreground = (Avalonia.Media.IBrush)this.FindResource("OnAir")!;
         InstallButton.IsEnabled = true;
-        InstallButton.Content = "Try again";
-        LaterButton.Content = "Later";
+        InstallButton.Content = L.T("Try again");
+        LaterButton.Content = L.T("Later");
     }
 
     void ShowStatus(string text)

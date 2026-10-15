@@ -118,7 +118,8 @@ engine for decoding, mixing and streaming.
   The stream always carries music and cartwall together. A third output, **Preview**, is for pre-listening in the
   cue editor and is never streamed.
 - **Web radio microphone**: set the station type to *Web radio* (Settings → Station) and a **MIC** button appears.
-  Hold it (or F9) to talk: music and cartwall fade down to a set level and come back up when you let go. The mic
+  Hold it (or F9) to talk, or choose on the Microphone tab to press it once to open the mic and again to close it.
+  Music and cartwall fade down to a set level while it is open and come back up when it closes. The mic
   goes into the stream only, not to the audio outputs, so you don't hear yourself with a delay; use headphones.
   The input, mic level, music level while talking and fade times are on the Microphone tab. With *FM radio* the
   mic goes through the mixing desk and there is no MIC button.
@@ -126,6 +127,9 @@ engine for decoding, mixing and streaming.
   audio file, timed to end on the hour. Either play it **over** whatever is on air, or **stop** what is on air: it
   fades out just before the signal and the next playlist item starts right after it (in AUTO). Or turn it off.
   It plays on the Cartwall output and in the stream, and follows the computer's clock.
+- **Languages**: English, Português and Français (Settings → Station → Language, from the next start; automatic
+  follows the computer). Every window and message is translated; dates and day names follow the language. The
+  translations are in `src/Playout.App/i18n/`; `python3 scripts/i18n-check.py` lists texts that have none.
 - **Settings** (Ctrl/Cmd+,): station name, logo, genre, website and station type, crossfade length, audio outputs,
   loudness levelling, microphone, time signal, safety, library, keyboard shortcuts, the streaming server, RDS and
   the website.

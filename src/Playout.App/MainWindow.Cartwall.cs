@@ -101,13 +101,13 @@ public partial class MainWindow
             if (!_fillingPicker && CartwallPicker.SelectedItem is string name && name != _page.Name) ShowCartwall(name);
         };
 
-        var create = new MenuItem { Header = "New cartwall…" };
+        var create = new MenuItem { Header = L.T("New cartwall…") };
         create.Click += async (_, _) => await AddCartwall(copy: false);
-        var saveAs = new MenuItem { Header = "Save as new cartwall…" };
+        var saveAs = new MenuItem { Header = L.T("Save as new cartwall…") };
         saveAs.Click += async (_, _) => await AddCartwall(copy: true);
-        var rename = new MenuItem { Header = "Rename…" };
+        var rename = new MenuItem { Header = L.T("Rename…") };
         rename.Click += async (_, _) => await RenameCartwall();
-        var delete = new MenuItem { Header = "Delete…" };
+        var delete = new MenuItem { Header = L.T("Delete…") };
         delete.Click += async (_, _) => await DeleteCartwall();
         var flyout = new MenuFlyout { Items = { create, saveAs, rename, new Separator(), delete } };
         flyout.Opening += (_, _) => delete.IsEnabled = _settings.Cartwalls.Count > 1;
@@ -124,27 +124,27 @@ public partial class MainWindow
         var item = _page.Carts[index];
         menu.Items.Clear();
 
-        var assign = new MenuItem { Header = "Assign file…" };
+        var assign = new MenuItem { Header = L.T("Assign file…") };
         assign.Click += async (_, _) => await AssignCart(index);
         menu.Items.Add(assign);
 
-        var colors = new MenuItem { Header = "Colour" };
-        colors.Items.Add(LookItem("None", item.Color == null, null, () => item.Color = null, index));
+        var colors = new MenuItem { Header = L.T("Colour") };
+        colors.Items.Add(LookItem(L.T("None"), item.Color == null, null, () => item.Color = null, index));
         foreach (var (name, hex) in CartLook.Colors)
         {
             var swatch = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(3), Background = CartLook.Brush(hex) };
-            colors.Items.Add(LookItem(name, item.Color == hex, swatch, () => item.Color = hex, index));
+            colors.Items.Add(LookItem(L.T(name), item.Color == hex, swatch, () => item.Color = hex, index));
         }
         menu.Items.Add(colors);
 
-        var icons = new MenuItem { Header = "Icon" };
-        icons.Items.Add(LookItem("None", item.Icon == null, null, () => item.Icon = null, index));
+        var icons = new MenuItem { Header = L.T("Icon") };
+        icons.Items.Add(LookItem(L.T("None"), item.Icon == null, null, () => item.Icon = null, index));
         foreach (var (key, name, _) in CartLook.Icons)
-            icons.Items.Add(LookItem(name, item.Icon == key, new PathIcon { Width = 14, Height = 14, Data = CartLook.Icon(key) }, () => item.Icon = key, index));
+            icons.Items.Add(LookItem(L.T(name), item.Icon == key, new PathIcon { Width = 14, Height = 14, Data = CartLook.Icon(key) }, () => item.Icon = key, index));
         menu.Items.Add(icons);
 
         menu.Items.Add(new Separator());
-        var clear = new MenuItem { Header = "Clear", IsEnabled = item.Path != null || item.Color != null || item.Icon != null };
+        var clear = new MenuItem { Header = L.T("Clear"), IsEnabled = item.Path != null || item.Color != null || item.Icon != null };
         clear.Click += (_, _) => ClearCart(index);
         menu.Items.Add(clear);
     }
@@ -211,8 +211,8 @@ public partial class MainWindow
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = $"Assign cart {index + 1}",
-            FileTypeFilter = [new FilePickerFileType("Audio") { Patterns = AudioFiles.Patterns }],
+            Title = L.F("Assign cart {0}", index + 1),
+            FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) SetCart(index, path);
     }
@@ -298,9 +298,9 @@ public partial class MainWindow
     /// <summary>Error for a cartwall name, or null if it can be used. <paramref name="current"/> may keep its own name.</summary>
     string? CheckCartwallName(string name, CartwallPage? current)
     {
-        if (name.Length == 0) return "Enter a name.";
+        if (name.Length == 0) return L.T("Enter a name.");
         if (_settings.Cartwalls.Any(c => c != current && string.Equals(c.Name, name, StringComparison.CurrentCultureIgnoreCase)))
-            return $"There is already a cartwall called “{name}”.";
+            return L.F("There is already a cartwall called “{0}”.", name);
         return null;
     }
 
@@ -308,9 +308,9 @@ public partial class MainWindow
     async Task AddCartwall(bool copy)
     {
         int n = _settings.Cartwalls.Count + 1;
-        while (CheckCartwallName($"Cartwall {n}", null) != null) n++;
-        string? name = await Dialogs.AskText(this, copy ? "Save as new cartwall" : "New cartwall", "Name of the cartwall:",
-            copy ? $"{_page.Name} copy" : $"Cartwall {n}", text => CheckCartwallName(text, null));
+        while (CheckCartwallName(L.F("Cartwall {0}", n), null) != null) n++;
+        string? name = await Dialogs.AskText(this, copy ? L.T("Save as new cartwall") : L.T("New cartwall"), L.T("Name of the cartwall:"),
+            copy ? L.F("{0} copy", _page.Name) : L.F("Cartwall {0}", n), text => CheckCartwallName(text, null));
         if (name == null) return;
 
         var carts = copy
@@ -323,7 +323,7 @@ public partial class MainWindow
     async Task RenameCartwall()
     {
         var page = _page;
-        string? name = await Dialogs.AskText(this, "Rename cartwall", "Name of the cartwall:", page.Name, text => CheckCartwallName(text, page));
+        string? name = await Dialogs.AskText(this, L.T("Rename cartwall"), L.T("Name of the cartwall:"), page.Name, text => CheckCartwallName(text, page));
         if (name == null || name == page.Name) return;
         page.Name = name;
         if (_page == page) _settings.ActiveCartwall = name;
@@ -335,8 +335,8 @@ public partial class MainWindow
     {
         if (_settings.Cartwalls.Count <= 1) return;
         var page = _page;
-        if (!await Dialogs.Confirm(this, "Delete cartwall",
-                $"Delete the cartwall “{page.Name}”? Its carts are removed; the audio files are not touched.", "Delete"))
+        if (!await Dialogs.Confirm(this, L.T("Delete cartwall"),
+                L.F("Delete the cartwall “{0}”? Its carts are removed; the audio files are not touched.", page.Name), L.T("Delete")))
             return;
         for (int i = 0; i < AppSettings.CartCount; i++) StopCart(page, i);
         _settings.Cartwalls.Remove(page);

@@ -108,7 +108,7 @@ static class Updates
             if (!actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
             {
                 File.Delete(file);
-                throw new InvalidDataException("The download is damaged (checksum mismatch). Try again later.");
+                throw new InvalidDataException(L.T("The download is damaged (checksum mismatch). Try again later."));
             }
         }
         return file;
@@ -133,17 +133,17 @@ static class Updates
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
-        }) ?? throw new InvalidOperationException("Could not start pkexec");
+        }) ?? throw new InvalidOperationException(L.T("Could not start pkexec"));
         var errors = process.StandardError.ReadToEndAsync();
         await process.StandardOutput.ReadToEndAsync();
         await process.WaitForExitAsync();
         switch (process.ExitCode)
         {
             case 0: return;
-            case 126 or 127: throw new OperationCanceledException("Installation cancelled (no administrator password given).");
+            case 126 or 127: throw new OperationCanceledException(L.T("Installation cancelled (no administrator password given)."));
             default:
                 string detail = (await errors).Trim().Split('\n').LastOrDefault(l => l.Length > 0) ?? $"exit code {process.ExitCode}";
-                throw new InvalidOperationException($"Installation failed: {detail}");
+                throw new InvalidOperationException(L.F("Installation failed: {0}", detail));
         }
     }
 

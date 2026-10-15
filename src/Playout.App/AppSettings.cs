@@ -11,6 +11,8 @@ public sealed class AppSettings
     public const int CartCount = 12;
 
     public string StationName { get; set; } = "";
+    /// <summary>Interface language: "en", "pt", "fr"; "" = the computer's (Portuguese, French, else English). From the next start.</summary>
+    public string Language { get; set; } = "";
     public string? LogoPath { get; set; }
     public string StationGenre { get; set; } = "Various";
     public string StationUrl { get; set; } = "";
@@ -20,6 +22,8 @@ public sealed class AppSettings
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public StationType StationType { get; set; } = StationType.Fm;
     public MicSettings Mic { get; set; } = new();
+    /// <summary>The MIC button and key: false = hold to talk; true = press to open the mic, press again to close it.</summary>
+    public bool MicToggle { get; set; }
 
     /// <summary>The microphone setup for the engine, or null when the mic isn't ours to handle (FM).</summary>
     [JsonIgnore]

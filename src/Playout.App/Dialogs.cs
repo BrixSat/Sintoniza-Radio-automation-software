@@ -16,9 +16,9 @@ static class Dialogs
     {
         var box = new TextBox { Text = initial };
         var error = new TextBlock { Foreground = (IBrush)owner.FindResource("OnAir")!, FontSize = 12, TextWrapping = TextWrapping.Wrap, IsVisible = false };
-        var ok = new Button { Content = "Save", IsDefault = true };
+        var ok = new Button { Content = L.T("Save"), IsDefault = true };
         ok.Classes.Add("accent");
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var cancel = new Button { Content = L.T("Cancel"), IsCancel = true };
 
         var window = Create(title, new StackPanel
         {
@@ -45,7 +45,7 @@ static class Dialogs
     {
         var ok = new Button { Content = action, IsDefault = true };
         ok.Classes.Add("accent");
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var cancel = new Button { Content = L.T("Cancel"), IsCancel = true };
         var window = Create(title, new StackPanel
         {
             Spacing = 8,

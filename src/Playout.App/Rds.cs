@@ -391,7 +391,7 @@ public sealed class RdsOutput : IDisposable
 
     void WriteFile(string rt)
     {
-        if (string.IsNullOrWhiteSpace(_s.FilePath)) throw new InvalidOperationException("No file chosen for the radio text");
+        if (string.IsNullOrWhiteSpace(_s.FilePath)) throw new InvalidOperationException(L.T("No file chosen for the radio text"));
         string temp = _s.FilePath + ".tmp";
         File.WriteAllText(temp, rt + Environment.NewLine, new UTF8Encoding(false));
         File.Move(temp, _s.FilePath, overwrite: true);
@@ -405,12 +405,12 @@ public sealed class RdsOutput : IDisposable
                 if (_tcp is not { Connected: true })
                 {
                     Close();
-                    if (string.IsNullOrWhiteSpace(_s.Host) || _s.Port <= 0) throw new InvalidOperationException("No encoder address set");
+                    if (string.IsNullOrWhiteSpace(_s.Host) || _s.Port <= 0) throw new InvalidOperationException(L.T("No encoder address set"));
                     var tcp = new TcpClient { NoDelay = true, SendTimeout = 5000 };
                     using (var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)))
                     {
                         try { tcp.ConnectAsync(_s.Host.Trim(), _s.Port, timeout.Token).AsTask().GetAwaiter().GetResult(); }
-                        catch (OperationCanceledException) { tcp.Dispose(); throw new TimeoutException($"No answer from {_s.Host}:{_s.Port}"); }
+                        catch (OperationCanceledException) { tcp.Dispose(); throw new TimeoutException(L.F("No answer from {0}:{1}", _s.Host, _s.Port)); }
                         catch { tcp.Dispose(); throw; }
                     }
                     _tcp = tcp;
@@ -423,7 +423,7 @@ public sealed class RdsOutput : IDisposable
                 break;
 
             case RdsConnection.Udp:
-                if (string.IsNullOrWhiteSpace(_s.Host) || _s.Port <= 0) throw new InvalidOperationException("No encoder address set");
+                if (string.IsNullOrWhiteSpace(_s.Host) || _s.Port <= 0) throw new InvalidOperationException(L.T("No encoder address set"));
                 _udp ??= new UdpClient();
                 _udp.Send(data, data.Length, _s.Host.Trim(), _s.Port);
                 break;
@@ -432,7 +432,7 @@ public sealed class RdsOutput : IDisposable
                 if (_serial is not { IsOpen: true })
                 {
                     Close();
-                    if (string.IsNullOrWhiteSpace(_s.SerialPort)) throw new InvalidOperationException("No serial port chosen");
+                    if (string.IsNullOrWhiteSpace(_s.SerialPort)) throw new InvalidOperationException(L.T("No serial port chosen"));
                     var serial = new SerialPort(_s.SerialPort, _s.BaudRate, Parity.None, 8, StopBits.One) { WriteTimeout = 5000 };
                     try { serial.Open(); }
                     catch { serial.Dispose(); throw; }

@@ -20,11 +20,11 @@ public partial class CueEditorWindow : Window
 
     static readonly (Marker Marker, string Name, string Color, string Help)[] Rows =
     [
-        (Marker.CueIn, "Cue In", "#E7E9EE", "Playback starts here. Skips silence or a count-in at the start."),
-        (Marker.Intro, "Intro", "#3ECF8E", "End of the intro (where the vocals start). Talk-over countdown on air."),
-        (Marker.Outro, "Outro", "#B392F0", "Start of the ending. Countdown to the end from here, to talk over the close."),
-        (Marker.Mix, "Mix", "#F5A524", "The next item starts here and this one plays on to Cue Out. Empty = normal crossfade."),
-        (Marker.CueOut, "Cue Out", "#E7E9EE", "Playback stops here. Cuts silence or a long fade at the end."),
+        (Marker.CueIn, L.T("Cue In"), "#E7E9EE", L.T("Playback starts here. Skips silence or a count-in at the start.")),
+        (Marker.Intro, L.T("Intro"), "#3ECF8E", L.T("End of the intro (where the vocals start). Talk-over countdown on air.")),
+        (Marker.Outro, L.T("Outro"), "#B392F0", L.T("Start of the ending. Countdown to the end from here, to talk over the close.")),
+        (Marker.Mix, L.T("Mix"), "#F5A524", L.T("The next item starts here and this one plays on to Cue Out. Empty = normal crossfade.")),
+        (Marker.CueOut, L.T("Cue Out"), "#E7E9EE", L.T("Playback stops here. Cuts silence or a long fade at the end.")),
     ];
 
     /// <summary>The ▶ button next to a marker starts this far before it, so you hear the lead-in.</summary>
@@ -45,9 +45,10 @@ public partial class CueEditorWindow : Window
     public CueEditorWindow(PlayoutEngine engine, string path, string title)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _engine = engine;
         _path = path;
-        Title = $"Cue points — {title}";
+        Title = L.F("Cue points — {0}", title);
         TitleText.Text = title;
         PathText.Text = path;
         OnAirWarning.IsVisible = engine.PreviewIsOnAir;
@@ -59,7 +60,7 @@ public partial class CueEditorWindow : Window
         _length = _preview?.Length ?? 0;
         if (_preview == null)
         {
-            ErrorText.Text = "This file cannot be opened.";
+            ErrorText.Text = L.T("This file cannot be opened.");
             SaveButton.IsEnabled = false;
         }
 
@@ -141,7 +142,7 @@ public partial class CueEditorWindow : Window
             Add(grid, 0, new Ellipse { Width = 9, Height = 9, Fill = brush, VerticalAlignment = VerticalAlignment.Center });
             Add(grid, 1, new TextBlock { Text = name, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center });
 
-            var box = new TextBox { PlaceholderText = "not set", VerticalAlignment = VerticalAlignment.Center };
+            var box = new TextBox { PlaceholderText = L.T("not set"), VerticalAlignment = VerticalAlignment.Center };
             box.Classes.Add("time");
             box.LostFocus += (_, _) => Commit(index);
             box.KeyDown += (_, e) =>
@@ -153,7 +154,7 @@ public partial class CueEditorWindow : Window
             _boxes[i] = box;
             Add(grid, 2, box);
 
-            var set = SmallButton("Set", $"Put {name} at the playhead");
+            var set = SmallButton(L.T("Set"), L.F("Put {0} at the playhead", name));
             set.Click += (_, _) =>
             {
                 if (_preview == null) return;
@@ -162,7 +163,7 @@ public partial class CueEditorWindow : Window
             };
             Add(grid, 4, set);
 
-            var play = SmallButton("▶", Rows[i].Marker == Marker.CueIn ? "Play from here" : $"Play from {PreRoll:0} s before");
+            var play = SmallButton("▶", Rows[i].Marker == Marker.CueIn ? L.T("Play from here") : L.F("Play from {0:0} s before", PreRoll));
             play.Click += (_, _) =>
             {
                 if (_preview == null || _values[index] is not { } at) return;
@@ -171,7 +172,7 @@ public partial class CueEditorWindow : Window
             };
             Add(grid, 6, play);
 
-            var clear = SmallButton("✕", "Clear");
+            var clear = SmallButton("✕", L.T("Clear"));
             clear.Click += (_, _) =>
             {
                 _values[index] = null;
@@ -232,17 +233,17 @@ public partial class CueEditorWindow : Window
 
     string? Validate()
     {
-        if (_preview == null) return "This file cannot be opened.";
+        if (_preview == null) return L.T("This file cannot be opened.");
         for (int i = 0; i < Rows.Length; i++)
-            if (_values[i] > _length + 0.05) return $"{Rows[i].Name} is past the end of the file ({Format.CueTime(_length)}).";
+            if (_values[i] > _length + 0.05) return L.F("{0} is past the end of the file ({1}).", Rows[i].Name, Format.CueTime(_length));
 
         double cueIn = _values[(int)Marker.CueIn] ?? 0;
         double cueOut = _values[(int)Marker.CueOut] ?? _length;
-        if (cueIn >= cueOut) return "Cue In must be before Cue Out.";
-        if (_values[(int)Marker.Intro] is { } intro && (intro <= cueIn || intro >= cueOut)) return "Intro must be between Cue In and Cue Out.";
-        if (_values[(int)Marker.Outro] is { } outro && (outro <= cueIn || outro >= cueOut)) return "Outro must be between Cue In and Cue Out.";
-        if (_values[(int)Marker.Intro] >= _values[(int)Marker.Outro]) return "Intro must be before Outro.";
-        if (_values[(int)Marker.Mix] is { } mix && (mix < cueIn || mix > cueOut)) return "Mix must be between Cue In and Cue Out.";
+        if (cueIn >= cueOut) return L.T("Cue In must be before Cue Out.");
+        if (_values[(int)Marker.Intro] is { } intro && (intro <= cueIn || intro >= cueOut)) return L.T("Intro must be between Cue In and Cue Out.");
+        if (_values[(int)Marker.Outro] is { } outro && (outro <= cueIn || outro >= cueOut)) return L.T("Outro must be between Cue In and Cue Out.");
+        if (_values[(int)Marker.Intro] >= _values[(int)Marker.Outro]) return L.T("Intro must be before Outro.");
+        if (_values[(int)Marker.Mix] is { } mix && (mix < cueIn || mix > cueOut)) return L.T("Mix must be between Cue In and Cue Out.");
         return null;
     }
 

@@ -256,9 +256,9 @@ public sealed record UpcomingEvent(Guid EntryId, string Label, string What, Date
     /// <summary>How it starts, for the playlist and the countdown: "hard start at 12:20:00", "can wait 5 min"…</summary>
     public string How => Timing switch
     {
-        EventStart.Hard => $"hard start at {Due:HH:mm:ss}",
-        EventStart.EndAt => $"ends at {Due:HH:mm:ss}",
-        _ => MaxDelayMinutes > 0 ? $"from {Due:HH:mm}, can wait {MaxDelayMinutes:0} min" : $"from {Due:HH:mm}, waits for the song",
+        EventStart.Hard => L.F("hard start at {0:HH:mm:ss}", Due),
+        EventStart.EndAt => L.F("ends at {0:HH:mm:ss}", Due),
+        _ => MaxDelayMinutes > 0 ? L.F("from {0:HH:mm}, can wait {1:0} min", Due, MaxDelayMinutes) : L.F("from {0:HH:mm}, waits for the song", Due),
     };
 }
 
@@ -350,8 +350,8 @@ sealed class Scheduler : IDisposable
             double seconds = items.Sum(i => i.StreamName != null ? i.StreamSeconds : Length(i.Path));
             string what = entry switch
             {
-                AdBreak => items.Count(i => i.Kind == TrackKind.Commercial) is var n && n == 1 ? "1 advert" : $"{n} adverts",
-                _ => items[0].StreamName != null ? "stream" : System.IO.Path.GetFileNameWithoutExtension(items[0].Path),
+                AdBreak => items.Count(i => i.Kind == TrackKind.Commercial) is var n && n == 1 ? L.T("1 advert") : L.F("{0} adverts", n),
+                _ => items[0].StreamName != null ? L.T("stream") : System.IO.Path.GetFileNameWithoutExtension(items[0].Path),
             };
             var start = entry.Start == EventStart.EndAt ? at.AddSeconds(-seconds) : at;
             list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak, entry.MaxDelayMinutes));
@@ -414,7 +414,7 @@ sealed class Scheduler : IDisposable
                 if (at == DateTime.MinValue) continue;
                 _data.LastStarted[entry.Id] = at;
                 bool missed = entry.Start == EventStart.EndAt ? now > at : now - at > Grace;
-                if (missed) Say($"{Label(entry, at)}: missed (it was due {(now - at).TotalMinutes:0} minutes ago)");
+                if (missed) Say(L.F("{0}: missed (it was due {1:0} minutes ago)", Label(entry, at), (now - at).TotalMinutes));
                 else due.Add((entry, at));
             }
             if (now - _prepared > TimeSpan.FromMinutes(1)) PrepareSoon(now);
@@ -446,12 +446,12 @@ sealed class Scheduler : IDisposable
         }
         catch (Exception ex)
         {
-            Say($"{Label(entry, at)}: {ex.Message}");
+            Say(L.F("{0}: {1}", Label(entry, at), ex.Message));
         }
     }
 
     static string Label(ScheduleEntry entry, DateTime at) =>
-        $"{(string.IsNullOrWhiteSpace(entry.Name) ? entry is AdBreak ? "Ad break" : "Event" : entry.Name.Trim())} {at:HH:mm}";
+        L.F("{0} {1:HH:mm}", (string.IsNullOrWhiteSpace(entry.Name) ? entry is AdBreak ? L.T("Ad break") : L.T("Event") : entry.Name.Trim()), at);
 
     /// <summary>What an event or break plays at <paramref name="at"/>; quiet: no messages (looking ahead).</summary>
     List<ScheduledItem> Items(ScheduleEntry entry, DateTime at, bool quiet)
@@ -467,15 +467,15 @@ sealed class Scheduler : IDisposable
                 else if (Directory.Exists(e.Path))
                 {
                     var newest = AudioFiles.InFolder(e.Path).Select(f => new FileInfo(f)).MaxBy(f => f.LastWriteTimeUtc);
-                    if (newest == null) { if (!quiet) Say($"{label}: no audio files in {e.Path}"); }
+                    if (newest == null) { if (!quiet) Say(L.F("{0}: no audio files in {1}", label, e.Path)); }
                     else if (e.MaxAgeMinutes > 0 && DateTime.UtcNow - newest.LastWriteTimeUtc > TimeSpan.FromMinutes(e.MaxAgeMinutes))
                     {
-                        if (!quiet) Say($"{label}: skipped, the newest file ({newest.Name}) is older than {e.MaxAgeMinutes} minutes");
+                        if (!quiet) Say(L.F("{0}: skipped, the newest file ({1}) is older than {2} minutes", label, newest.Name, e.MaxAgeMinutes));
                     }
                     else items.Add(new ScheduledItem(newest.FullName, TrackKind.Programme));
                 }
                 else if (File.Exists(e.Path)) items.Add(new ScheduledItem(e.Path, TrackKind.Programme));
-                else if (!quiet) Say($"{label}: {(string.IsNullOrWhiteSpace(e.Path) ? "nothing chosen to play" : $"not found: {e.Path}")}");
+                else if (!quiet) Say(string.IsNullOrWhiteSpace(e.Path) ? L.F("{0}: nothing chosen to play", label) : L.F("{0}: not found: {1}", label, e.Path));
                 break;
 
             case AdBreak b:
@@ -485,11 +485,11 @@ sealed class Scheduler : IDisposable
                 {
                     if (File.Exists(spot.Path))
                         items.Add(new ScheduledItem(spot.Path, TrackKind.Commercial, Advertiser: string.IsNullOrWhiteSpace(spot.Advertiser) ? null : spot.Advertiser.Trim()));
-                    else if (!quiet) Say($"{label}: advert not found, left out: {spot.Path}");
+                    else if (!quiet) Say(L.F("{0}: advert not found, left out: {1}", label, spot.Path));
                 }
                 if (items.Count == 0)
                 {
-                    if (!quiet) Say($"{label}: no adverts booked, skipped");
+                    if (!quiet) Say(L.F("{0}: no adverts booked, skipped", label));
                     break;
                 }
                 if (File.Exists(b.Intro)) items.Insert(0, new ScheduledItem(b.Intro, TrackKind.Jingle));

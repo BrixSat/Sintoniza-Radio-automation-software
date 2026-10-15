@@ -116,12 +116,12 @@ sealed class Microphone
     bool StartCapture()
     {
         int device = Resolve(_settings!.Device);
-        if (device < 0) { _log("Microphone: no input device found"); return false; }
+        if (device < 0) { _log(L.T("Microphone: no input device found")); return false; }
         if (!_initialised.Contains(device))
         {
             if (!Bass.RecordInit(device) && Bass.LastError != Errors.Already)
             {
-                _log($"Microphone: cannot open the input ({Bass.LastError})");
+                _log(L.F("Microphone: cannot open the input ({0})", Bass.LastError));
                 return false;
             }
             _initialised.Add(device);
@@ -129,12 +129,12 @@ sealed class Microphone
         Bass.CurrentRecordingDevice = device;
 
         int push = Bass.CreateStream(AudioGraph.SampleRate, 1, BassFlags.Decode | BassFlags.Float, StreamProcedureType.Push);
-        if (push == 0) { _log($"Microphone: {Bass.LastError}"); return false; }
+        if (push == 0) { _log(L.F("Microphone: {0}", Bass.LastError)); return false; }
         Bass.ChannelSetAttribute(push, ChannelAttribute.Volume, 0);
         // ChanBuffer keeps recent data so the level can be measured.
         if (!BassMix.MixerAddChannel(_graph.Program, push, BassFlags.MixerChanBuffer))
         {
-            _log($"Microphone: {Bass.LastError}");
+            _log(L.F("Microphone: {0}", Bass.LastError));
             Bass.StreamFree(push);
             return false;
         }
@@ -144,7 +144,7 @@ sealed class Microphone
         _record = Bass.RecordStart(AudioGraph.SampleRate, 1, BassFlags.Float, RecordPeriodMs, _recordProc, IntPtr.Zero);
         if (_record == 0)
         {
-            _log($"Microphone: cannot start recording ({Bass.LastError})");
+            _log(L.F("Microphone: cannot start recording ({0})", Bass.LastError));
             StopCapture();
             return false;
         }

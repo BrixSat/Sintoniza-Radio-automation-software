@@ -67,10 +67,10 @@ sealed class LibraryService
         {
             if (version != _openVersion) return;
             bool first = Error == null && _lastOpenError != ex.Message;
-            Error = $"Library unavailable ({copy.Describe()}): {ex.Message}";
+            Error = L.F("Library unavailable ({0}): {1}", copy.Describe(), ex.Message);
             _lastOpenError = ex.Message;
             _nextOpen = DateTime.UtcNow + RetryOpen;
-            if (first) Message?.Invoke($"{Error.TrimEnd('.')}. Trying again every minute.");
+            if (first) Message?.Invoke(L.F("{0}. Trying again every minute.", Error.TrimEnd('.')));
             else AppLog.Write(Error);
         }
         Changed?.Invoke();
@@ -98,7 +98,7 @@ sealed class LibraryService
         Queue(() =>
         {
             try { db.RecordPlay(path, artist, title, at, source); }
-            catch (Exception ex) { Post($"Play history not saved: {ex.Message}"); }
+            catch (Exception ex) { Post(L.F("Play history not saved: {0}", ex.Message)); }
         });
     }
 
@@ -109,7 +109,7 @@ sealed class LibraryService
         Task.Run(() =>
         {
             try { db.Refresh(path); }
-            catch (Exception ex) { Post($"Library not updated: {ex.Message}"); return; }
+            catch (Exception ex) { Post(L.F("Library not updated: {0}", ex.Message)); return; }
             Dispatcher.UIThread.Post(() => Changed?.Invoke());
         });
     }
@@ -218,7 +218,7 @@ sealed class LibraryService
         if (Db is not { } db || _scan != null) return;
         if (folders.Count == 0)
         {
-            if (!automatic) Message?.Invoke("Choose the music folders to scan in Settings → Library");
+            if (!automatic) Message?.Invoke(L.T("Choose the music folders to scan in Settings → Library"));
             return;
         }
         _scan = new CancellationTokenSource();
@@ -226,34 +226,35 @@ sealed class LibraryService
         Changed?.Invoke();
         var token = _scan.Token;
         // Scheduled and automatic scans stay quiet unless they find something.
-        if (!automatic) Message?.Invoke("Library scan: looking for files…");
+        if (!automatic) Message?.Invoke(L.T("Library scan: looking for files…"));
         var last = DateTime.MinValue;
         var progress = new Progress<ScanProgress>(p =>
         {
             if ((DateTime.UtcNow - last).TotalSeconds < 0.5 || (automatic && p.Read == 0)) return;
             last = DateTime.UtcNow;
             Message?.Invoke(p.Read == 0
-                ? $"Library scan: {p.Found:N0} files found, {p.ToRead:N0} new or changed"
-                : $"Library scan: reading tags, {p.Read:N0} of {p.ToRead:N0}");
+                ? L.F("Library scan: {0:N0} files found, {1:N0} new or changed", p.Found, p.ToRead)
+                : L.F("Library scan: reading tags, {0:N0} of {1:N0}", p.Read, p.ToRead));
         });
         try
         {
             var r = await Task.Run(() => LibraryScanner.Scan(db, folders, progress, token));
-            var parts = new List<string> { $"{r.Added:N0} added", $"{r.Updated:N0} updated" };
-            if (r.Moved > 0) parts.Add($"{r.Moved:N0} moved");
-            if (r.Missing > 0) parts.Add($"{r.Missing:N0} missing");
-            if (r.SkippedFolders.Count > 0) parts.Add($"skipped {string.Join(", ", r.SkippedFolders)} (not found)");
+            var parts = new List<string> { L.F("{0:N0} added", r.Added), L.F("{0:N0} updated", r.Updated) };
+            if (r.Moved > 0) parts.Add(L.F("{0:N0} moved", r.Moved));
+            if (r.Missing > 0) parts.Add(L.F("{0:N0} missing", r.Missing));
+            if (r.SkippedFolders.Count > 0) parts.Add(L.F("skipped {0} (not found)", string.Join(", ", r.SkippedFolders)));
             bool found = r.Added + r.Updated + r.Moved + r.Missing > 0;
             if (!automatic || found || r.Cancelled)
-                Message?.Invoke($"Library {(automatic ? "auto scan" : "scan")} {(r.Cancelled ? "stopped" : "done")}: {string.Join(", ", parts)}");
+                Message?.Invoke(L.F(automatic ? r.Cancelled ? "Library auto scan stopped: {0}" : "Library auto scan done: {0}"
+                    : r.Cancelled ? "Library scan stopped: {0}" : "Library scan done: {0}", string.Join(", ", parts)));
         }
         catch (OperationCanceledException)
         {
-            Message?.Invoke("Library scan stopped");
+            Message?.Invoke(L.T("Library scan stopped"));
         }
         catch (Exception ex)
         {
-            Message?.Invoke($"Library scan failed: {ex.Message}");
+            Message?.Invoke(L.F("Library scan failed: {0}", ex.Message));
         }
         finally
         {
@@ -309,7 +310,7 @@ sealed class LibraryService
         catch (Exception ex)
         {
             // Kept in the pending list: tried again at the next sync.
-            if (_lastCueError != ex.Message) Post($"Cue points not saved to the library yet: {ex.Message}");
+            if (_lastCueError != ex.Message) Post(L.F("Cue points not saved to the library yet: {0}", ex.Message));
             _lastCueError = ex.Message;
         }
     }
@@ -349,8 +350,8 @@ sealed class LibraryService
             _syncing = false;
             if (!t.IsCompletedSuccessfully)
             {
-                string error = t.Exception?.InnerException?.Message ?? "unknown error";
-                if (_lastCueError != error) Message?.Invoke($"Cue points not synced with the library: {error}");
+                string error = t.Exception?.InnerException?.Message ?? L.T("unknown error");
+                if (_lastCueError != error) Message?.Invoke(L.F("Cue points not synced with the library: {0}", error));
                 _lastCueError = error;
                 return;
             }

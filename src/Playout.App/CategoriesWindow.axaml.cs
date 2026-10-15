@@ -30,6 +30,7 @@ public partial class CategoriesWindow : Window
     internal CategoriesWindow(LibraryService? service)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _service = service;
 
         foreach (var color in Palette)
@@ -58,7 +59,7 @@ public partial class CategoriesWindow : Window
     {
         if (_service?.Db is not { } db)
         {
-            StatusText.Text = _service?.Error ?? "The library isn't open.";
+            StatusText.Text = _service?.Error ?? L.T("The library isn't open.");
             EditPanel.IsEnabled = false;
             return;
         }
@@ -69,11 +70,11 @@ public partial class CategoriesWindow : Window
             long? keep = selectId ?? Selected?.Category.Id;
             CategoryList.ItemsSource = _rows;
             CategoryList.SelectedItem = _rows.FirstOrDefault(r => r.Category.Id == keep) ?? _rows.FirstOrDefault();
-            StatusText.Text = $"{_rows.Count} categories";
+            StatusText.Text = L.F("{0} categories", _rows.Count);
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Library unavailable: {ex.Message}";
+            StatusText.Text = L.F("Library unavailable: {0}", ex.Message);
         }
         ShowSelected();
     }
@@ -109,7 +110,7 @@ public partial class CategoriesWindow : Window
         }
         catch (Exception ex)
         {
-            ErrorText.Text = IsDuplicate(ex) ? "There is already a category with this name." : $"Not saved: {ex.Message}";
+            ErrorText.Text = IsDuplicate(ex) ? L.T("There is already a category with this name.") : L.F("Not saved: {0}", ex.Message);
             return false;
         }
         await Load(selectId);
@@ -126,12 +127,12 @@ public partial class CategoriesWindow : Window
         string name = NameBox.Text?.Trim() ?? "";
         if (name.Length == 0)
         {
-            ErrorText.Text = "Give the category a name.";
+            ErrorText.Text = L.T("Give the category a name.");
             return;
         }
         if (_rows.Any(r => r != row && r.Category.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
         {
-            ErrorText.Text = "There is already a category with this name.";
+            ErrorText.Text = L.T("There is already a category with this name.");
             return;
         }
         var updated = new LibraryCategory
@@ -142,13 +143,13 @@ public partial class CategoriesWindow : Window
             Color = _color,
             SortOrder = row.Category.SortOrder,
         };
-        if (await Change(db => db.UpdateCategory(updated), row.Category.Id)) StatusText.Text = $"Saved {name}";
+        if (await Change(db => db.UpdateCategory(updated), row.Category.Id)) StatusText.Text = L.F("Saved {0}", name);
     }
 
     async Task AddCategory()
     {
-        string name = "New category";
-        for (int i = 2; _rows.Any(r => r.Category.Name.Equals(name, StringComparison.OrdinalIgnoreCase)); i++) name = $"New category {i}";
+        string name = L.T("New category");
+        for (int i = 2; _rows.Any(r => r.Category.Name.Equals(name, StringComparison.OrdinalIgnoreCase)); i++) name = L.F("New category {0}", i);
         // A colour not used yet, if there is one.
         string color = Palette.FirstOrDefault(p => _rows.All(r => !p.Equals(r.Category.Color, StringComparison.OrdinalIgnoreCase))) ?? Palette[0];
         long id = 0;
@@ -163,14 +164,14 @@ public partial class CategoriesWindow : Window
         if (Selected is not { } row) return;
         string songs = row.Count switch
         {
-            0 => "No songs are in it.",
-            1 => "The 1 song in it will have no category.",
-            _ => $"The {row.Count:N0} songs in it will have no category.",
+            0 => L.T("No songs are in it."),
+            1 => L.T("The 1 song in it will have no category."),
+            _ => L.F("The {0:N0} songs in it will have no category.", row.Count),
         };
-        if (!await Dialogs.Confirm(this, "Delete category", $"Delete \"{row.Category.Name}\"? {songs}", "Delete")) return;
+        if (!await Dialogs.Confirm(this, L.T("Delete category"), L.F("Delete \"{0}\"? {1}", row.Category.Name, songs), L.T("Delete"))) return;
         int index = _rows.IndexOf(row);
         long? next = _rows.ElementAtOrDefault(index + 1)?.Category.Id ?? _rows.ElementAtOrDefault(index - 1)?.Category.Id;
-        if (await Change(db => db.DeleteCategory(row.Category.Id), next)) StatusText.Text = $"Deleted {row.Category.Name}";
+        if (await Change(db => db.DeleteCategory(row.Category.Id), next)) StatusText.Text = L.F("Deleted {0}", row.Category.Name);
     }
 
     /// <summary>Moves the selected category up or down; the order is saved as 1, 2, 3… for all of them.</summary>
@@ -200,11 +201,11 @@ public sealed class CategoryRow(LibraryCategory category, int count)
     public string Name => Category.Name;
     public string KindText => Category.Kind switch
     {
-        "jingle" => "Jingle",
-        "commercial" => "Commercial",
-        "other" => "Other",
-        _ => "Music",
+        "jingle" => L.T("Jingle"),
+        "commercial" => L.T("Commercial"),
+        "other" => L.T("Other"),
+        _ => L.T("Music"),
     };
-    public string CountText => Count == 1 ? "1 song" : $"{Count:N0} songs";
+    public string CountText => Count == 1 ? L.T("1 song") : L.F("{0:N0} songs", Count);
     public IBrush Brush { get; } = Color.TryParse(category.Color, out var c) ? new SolidColorBrush(c) : new SolidColorBrush(Color.Parse("#4A5160"));
 }

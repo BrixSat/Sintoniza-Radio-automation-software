@@ -51,7 +51,7 @@ static class Autostart
     public static void Set(bool on)
     {
         if (on == IsEnabled) return;
-        string exe = Exe ?? (on ? throw new InvalidOperationException("Starting at login is only available in an installed copy.") : "");
+        string exe = Exe ?? (on ? throw new InvalidOperationException(L.T("Starting at login is only available in an installed copy.")) : "");
 
         if (OperatingSystem.IsWindows()) SetWindows(on, exe);
         else if (OperatingSystem.IsLinux())

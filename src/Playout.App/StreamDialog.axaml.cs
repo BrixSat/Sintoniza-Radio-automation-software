@@ -12,6 +12,7 @@ public partial class StreamDialog : Window
     public StreamDialog()
     {
         InitializeComponent();
+        Localization.Apply(this);
         LengthBox.GotFocus += (_, _) => ForRadio.IsChecked = true;
         CancelButton.Click += (_, _) => Close(null);
         AddButton.Click += (_, _) => Add();
@@ -23,7 +24,7 @@ public partial class StreamDialog : Window
         string url = UrlBox.Text?.Trim() ?? "";
         if (!PlayoutEngine.IsUrl(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
-            ShowError("Enter the stream address, starting with http:// or https://");
+            ShowError(L.T("Enter the stream address, starting with http:// or https://"));
             return;
         }
 
@@ -32,7 +33,7 @@ public partial class StreamDialog : Window
         {
             if (Format.ParseCueTime(LengthBox.Text) is not { } length || length < 1)
             {
-                ShowError("Enter how long to play it, e.g. 1:00:00 for an hour or 30:00 for half an hour");
+                ShowError(L.T("Enter how long to play it, e.g. 1:00:00 for an hour or 30:00 for half an hour"));
                 return;
             }
             seconds = length;

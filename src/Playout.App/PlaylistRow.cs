@@ -43,7 +43,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
             string text = Track.IsStream ? Track.Path : Track.Kind == TrackKind.Commercial && Track.Advertiser is { } a ? a : Track.Artist;
             if (Track.StartBy is { } by)
             {
-                string how = Track.Backtime ? $"timed to start at {by.ToLocalTime():HH:mm:ss} and end on time" : $"can wait until {by.ToLocalTime():HH:mm:ss}";
+                string how = Track.Backtime ? L.F("timed to start at {0:HH:mm:ss} and end on time", by.ToLocalTime()) : L.F("can wait until {0:HH:mm:ss}", by.ToLocalTime());
                 text = text.Length > 0 ? $"{text} · {how}" : how;
             }
             return text;
@@ -56,18 +56,18 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     /// <summary>Put in the playlist by a scheduled event or ad break: its name and time, shown on the row.</summary>
     public bool HasEvent => Track.Event != null;
     public string EventTag => Track.Event?.ToUpperInvariant() ?? "";
-    public string EventTip => Track.Advertiser is { } a ? $"{Track.Event} · advertiser: {a}" : $"Scheduled: {Track.Event}";
+    public string EventTip => Track.Advertiser is { } a ? L.F("{0} · advertiser: {1}", Track.Event, a) : L.F("Scheduled: {0}", Track.Event);
     /// <summary>The schedule doesn't let the operator remove it (and, locked, not move it either).</summary>
     public bool IsLocked => Track.Lock != ItemLock.Free;
     public string LockTip => Track.Lock == ItemLock.Locked
-        ? "Locked by the schedule: it can't be removed or moved"
-        : "The schedule lets it be moved, but not removed";
+        ? L.T("Locked by the schedule: it can't be removed or moved")
+        : L.T("The schedule lets it be moved, but not removed");
     /// <summary>Has a latest start time: its start time is shown in colour.</summary>
     public bool IsTimed => Track.StartBy != null;
     public string? TimedTip => Track.StartBy is { } at
         ? Track.Backtime
-            ? $"Starts at {at.ToLocalTime():HH:mm:ss} to end on time: the songs before it are adjusted, and what is on air then fades out"
-            : $"Starts by {at.ToLocalTime():HH:mm:ss} at the latest: what is on air then fades out"
+            ? L.F("Starts at {0:HH:mm:ss} to end on time: the songs before it are adjusted, and what is on air then fades out", at.ToLocalTime())
+            : L.F("Starts by {0:HH:mm:ss} at the latest: what is on air then fades out", at.ToLocalTime())
         : null;
     public bool IsMusic => Track.Kind == TrackKind.Music;
     public bool IsJingle => Track.Kind == TrackKind.Jingle;

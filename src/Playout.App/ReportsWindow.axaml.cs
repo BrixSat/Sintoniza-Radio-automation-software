@@ -8,7 +8,7 @@ namespace Playout.App;
 public partial class ReportsWindow : Window
 {
     const int PreviewRows = 300;
-    const string AllAdvertisers = "All advertisers";
+    static readonly string AllAdvertisers = L.T("All advertisers");
 
     readonly string _folder;
     readonly string _station;
@@ -22,6 +22,7 @@ public partial class ReportsWindow : Window
     public ReportsWindow(string folder, string station)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _folder = folder;
         _station = station;
         // This month so far.
@@ -46,7 +47,7 @@ public partial class ReportsWindow : Window
         if (FromBox.SelectedDate is not { } from || ToBox.SelectedDate is not { } to) return;
         if (to < from) (from, to) = (to, from);
         int version = ++_loadVersion;
-        SummaryText.Text = "Reading…";
+        SummaryText.Text = L.T("Reading…");
         var entries = await Task.Run(() => AsRunLog.Read(_folder, from, to));
         if (version != _loadVersion) return;
         _entries = entries;
@@ -66,8 +67,8 @@ public partial class ReportsWindow : Window
         if (to < from) (from, to) = (to, from);
         string? advertiser = Kind == ReportKind.Adverts && AdvertiserBox.SelectedItem is string a && a != AllAdvertisers ? a : null;
         _report = Report.Build(Kind, _entries, from, to, _station, advertiser);
-        SummaryText.Text = $"{_report.Period}: {_report.Summary}";
-        PreviewText.Text = _report.Rows.Count == 0 ? "Nothing went on air in these days (or nothing of this kind)." : Table(_report);
+        SummaryText.Text = L.F("{0}: {1}", _report.Period, _report.Summary);
+        PreviewText.Text = _report.Rows.Count == 0 ? L.T("Nothing went on air in these days (or nothing of this kind).") : Table(_report);
         CsvButton.IsEnabled = HtmlButton.IsEnabled = _report.Rows.Count > 0;
     }
 
@@ -81,7 +82,7 @@ public partial class ReportsWindow : Window
         var text = new StringBuilder();
         text.AppendLine(Line(report.Columns));
         foreach (var row in rows) text.AppendLine(Line(row));
-        if (report.Rows.Count > PreviewRows) text.AppendLine($"… and {report.Rows.Count - PreviewRows} more (all of them are saved)");
+        if (report.Rows.Count > PreviewRows) text.AppendLine(L.F("… and {0} more (all of them are saved)", report.Rows.Count - PreviewRows));
         return text.ToString();
     }
 
@@ -95,24 +96,27 @@ public partial class ReportsWindow : Window
             ReportKind.Adverts => "adverts",
             _ => "as-run",
         };
-        if (report.Title.Contains(" for ") && AdvertiserBox.SelectedItem is string a) name += "-" + string.Concat(a.Split(Path.GetInvalidFileNameChars()));
+        if (Kind == ReportKind.Adverts && AdvertiserBox.SelectedItem is string a && a != AllAdvertisers) name += "-" + string.Concat(a.Split(Path.GetInvalidFileNameChars()));
+        var (from, to) = (FromBox.SelectedDate ?? DateTime.Today, ToBox.SelectedDate ?? DateTime.Today);
+        if (to < from) (from, to) = (to, from);
+        string days = from.Date == to.Date ? $"{from:yyyy-MM-dd}" : $"{from:yyyy-MM-dd}_{to:yyyy-MM-dd}";
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = csv ? "Save the report as CSV" : "Save the report as a page to print",
-            SuggestedFileName = $"{name}-{report.Period.Replace(" to ", "_")}.{(csv ? "csv" : "html")}",
+            Title = csv ? L.T("Save the report as CSV") : L.T("Save the report as a page to print"),
+            SuggestedFileName = $"{name}-{days}.{(csv ? "csv" : "html")}",
             DefaultExtension = csv ? "csv" : "html",
-            FileTypeChoices = [csv ? new FilePickerFileType("CSV") { Patterns = ["*.csv"] } : new FilePickerFileType("Web page") { Patterns = ["*.html"] }],
+            FileTypeChoices = [csv ? new FilePickerFileType(L.T("CSV")) { Patterns = ["*.csv"] } : new FilePickerFileType(L.T("Web page")) { Patterns = ["*.html"] }],
         });
         if (file?.TryGetLocalPath() is not { } path) return;
         try
         {
             if (csv) await File.WriteAllTextAsync(path, report.ToCsv(SeparatorBox.SelectedIndex == 1 ? ';' : ','), new UTF8Encoding(true));
-            else await File.WriteAllTextAsync(path, report.ToHtml($"Made by {AppInfo.Name} on {DateTime.Now:yyyy-MM-dd HH:mm}"), new UTF8Encoding(false));
-            SummaryText.Text = $"Saved {Path.GetFileName(path)}";
+            else await File.WriteAllTextAsync(path, report.ToHtml(L.F("Made by {0} on {1:yyyy-MM-dd HH:mm}", AppInfo.Name, DateTime.Now)), new UTF8Encoding(false));
+            SummaryText.Text = L.F("Saved {0}", Path.GetFileName(path));
         }
         catch (Exception ex)
         {
-            SummaryText.Text = $"Not saved: {ex.Message}";
+            SummaryText.Text = L.F("Not saved: {0}", ex.Message);
         }
     }
 }

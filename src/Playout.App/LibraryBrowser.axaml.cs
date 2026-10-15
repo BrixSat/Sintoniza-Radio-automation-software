@@ -32,6 +32,7 @@ public partial class LibraryBrowser : UserControl
     public LibraryBrowser()
     {
         InitializeComponent();
+        Localization.Apply(this);
         FolderTree.ItemsSource = _roots;
 
         FolderTree.SelectionChanged += (_, _) =>
@@ -55,11 +56,11 @@ public partial class LibraryBrowser : UserControl
         };
 
         FileList.ContextMenu = BuildMenu(SelectedFilePaths);
-        var editCues = new MenuItem { Header = "Edit cue points…" };
+        var editCues = new MenuItem { Header = L.T("Edit cue points…") };
         editCues.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditCuesRequested?.Invoke(p); };
         FileList.ContextMenu.Items.Add(new Separator());
         FileList.ContextMenu.Items.Add(editCues);
-        var editTags = new MenuItem { Header = "Edit tags…" };
+        var editTags = new MenuItem { Header = L.T("Edit tags…") };
         editTags.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditTagsRequested?.Invoke(p); };
         FileList.ContextMenu.Items.Add(editTags);
         FolderTree.ContextMenu = BuildMenu(() =>
@@ -123,7 +124,7 @@ public partial class LibraryBrowser : UserControl
     {
         var top = TopLevel.GetTopLevel(this);
         if (top == null) return;
-        var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose music folder" });
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = L.T("Choose music folder") });
         if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
         SetRoot(path);
         RootChanged?.Invoke(path);
@@ -131,9 +132,9 @@ public partial class LibraryBrowser : UserControl
 
     ContextMenu BuildMenu(Func<List<string>> paths)
     {
-        var add = new MenuItem { Header = "Add to playlist" };
+        var add = new MenuItem { Header = L.T("Add to playlist") };
         add.Click += (_, _) => { var p = paths(); if (p.Count > 0) AddRequested?.Invoke(p, false); };
-        var next = new MenuItem { Header = "Play next" };
+        var next = new MenuItem { Header = L.T("Play next") };
         next.Click += (_, _) => { var p = paths(); if (p.Count > 0) AddRequested?.Invoke(p, true); };
         return new ContextMenu { Items = { add, next } };
     }
@@ -166,7 +167,7 @@ public partial class LibraryBrowser : UserControl
             ? _allFiles
             : _allFiles.Where(f => f.Name.Contains(filter, StringComparison.CurrentCultureIgnoreCase)).ToList();
         FileList.ItemsSource = shown;
-        FileCount.Text = shown.Count == _allFiles.Count ? $"{shown.Count} files" : $"{shown.Count} / {_allFiles.Count}";
+        FileCount.Text = shown.Count == _allFiles.Count ? L.F("{0} files", shown.Count) : L.F("{0} / {1}", shown.Count, _allFiles.Count);
     }
 
     List<string> SelectedFilePaths() =>

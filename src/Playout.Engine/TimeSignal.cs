@@ -33,7 +33,7 @@ static class TimeSignal
                 length = hourAt = Bass.ChannelBytes2Seconds(h, Bass.ChannelGetLength(h, PositionFlags.Bytes));
                 return h;
             }
-            log($"Time signal: cannot play {Path.GetFileName(file)} ({Bass.LastError}); using the pips");
+            log(L.F("Time signal: cannot play {0} ({1}); using the pips", Path.GetFileName(file), Bass.LastError));
         }
         hourAt = ShortPips;
         length = ShortPips + LongPip;

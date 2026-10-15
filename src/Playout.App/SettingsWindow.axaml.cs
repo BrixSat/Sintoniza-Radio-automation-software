@@ -11,7 +11,7 @@ namespace Playout.App;
 /// <summary>Station, playout and streaming settings. Edits a copy; <see cref="AppSettings"/> is only changed on Save.</summary>
 public partial class SettingsWindow : Window
 {
-    const string DefaultDevice = "System default";
+    static readonly string DefaultDevice = L.T("System default");
 
     readonly AppSettings _settings;
     readonly PlayoutEngine? _engine;
@@ -30,11 +30,12 @@ public partial class SettingsWindow : Window
     public SettingsWindow(AppSettings settings, PlayoutEngine? engine, MainWindow? main = null)
     {
         InitializeComponent();
+        Localization.Apply(this);
         _settings = settings;
         _engine = engine;
         _main = main;
 
-        VersionText.Text = Updates.IsDevBuild ? "Development build (built from source)" : $"Version {Updates.CurrentText}";
+        VersionText.Text = Updates.IsDevBuild ? L.T("Development build (built from source)") : L.F("Version {0}", Updates.CurrentText);
         AutoUpdateBox.IsChecked = settings.CheckForUpdates;
         WebsiteButton.Click += (_, _) => Updates.OpenInBrowser("https://cesararaujo.net");
         SourceButton.Click += (_, _) => Updates.OpenInBrowser(Updates.ReleasesPage);
@@ -46,6 +47,8 @@ public partial class SettingsWindow : Window
         GenreBox.Text = settings.StationGenre;
         UrlBox.Text = settings.StationUrl;
         CurrencyBox.Text = settings.CurrencySign;
+        LanguageBox.ItemsSource = Localization.Languages.Select(l => l.Code == "" ? L.T(l.Name) : l.Name).ToList();
+        LanguageBox.SelectedIndex = Math.Max(0, Array.FindIndex(Localization.Languages, l => l.Code == settings.Language));
         CurrencyBox.PlaceholderText = PlaylistRow.SystemCurrency;
         SetLogo(settings.LogoPath);
 
@@ -57,6 +60,8 @@ public partial class SettingsWindow : Window
         MicDeviceBox.SelectedItem = inputs.Contains(mic.Device) ? mic.Device : DefaultDevice;
         MicGainBox.Value = (decimal)mic.GainDb;
         DuckBox.Value = (decimal)mic.DuckDb;
+        MicToggleRadio.IsChecked = settings.MicToggle;
+        MicHoldRadio.IsChecked = !settings.MicToggle;
         FadeDownBox.Value = (decimal)mic.FadeDown;
         FadeUpBox.Value = (decimal)mic.FadeUp;
         ShowMicPanel();
@@ -93,7 +98,7 @@ public partial class SettingsWindow : Window
         WatchdogBox.IsChecked = settings.RestartAfterCrash;
         AutostartBox.IsChecked = Autostart.IsEnabled;
         AutostartBox.IsEnabled = Autostart.IsSupported;
-        if (!Autostart.IsSupported) ToolTip.SetTip(AutostartBox, "Only in an installed copy of the app");
+        if (!Autostart.IsSupported) ToolTip.SetTip(AutostartBox, L.T("Only in an installed copy of the app"));
         OpenLogsButton.Click += (_, _) =>
         {
             Directory.CreateDirectory(AppLog.Folder);
@@ -181,7 +186,7 @@ public partial class SettingsWindow : Window
         int channels = 2;
         try { channels = _engine?.GetOutputChannelCount(DeviceName(deviceBox)) ?? 2; }
         catch { /* card unavailable: offer the first pair only */ }
-        var pairs = Enumerable.Range(0, Math.Max(1, channels / 2)).Select(p => $"Out {p * 2 + 1}–{p * 2 + 2}").ToList();
+        var pairs = Enumerable.Range(0, Math.Max(1, channels / 2)).Select(p => L.F("Out {0}–{1}", p * 2 + 1, p * 2 + 2)).ToList();
         channelBox.ItemsSource = pairs;
         channelBox.SelectedIndex = Math.Clamp(firstChannel / 2, 0, pairs.Count - 1);
         channelBox.IsEnabled = pairs.Count > 1;
@@ -198,19 +203,19 @@ public partial class SettingsWindow : Window
     async Task CheckNow()
     {
         CheckNowButton.IsEnabled = false;
-        UpdateResultText.Text = "Checking…";
+        UpdateResultText.Text = L.T("Checking…");
         ShowUpdateButton.IsVisible = false;
         try
         {
             _update = await _main!.CheckForUpdate(quiet: false);
-            UpdateResultText.Text = _update != null ? $"Version {_update.Version} is available."
-                : Updates.IsDevBuild ? "Built from source: no version to compare. The latest release is on GitHub."
-                : "You have the latest version.";
+            UpdateResultText.Text = _update != null ? L.F("Version {0} is available.", _update.Version)
+                : Updates.IsDevBuild ? L.T("Built from source: no version to compare. The latest release is on GitHub.")
+                : L.T("You have the latest version.");
             ShowUpdateButton.IsVisible = _update != null;
         }
         catch (Exception ex)
         {
-            UpdateResultText.Text = $"Could not check: {ex.Message}";
+            UpdateResultText.Text = L.F("Could not check: {0}", ex.Message);
         }
         finally
         {
@@ -247,14 +252,14 @@ public partial class SettingsWindow : Window
         var command = Application.Current?.PlatformSettings?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
         if (Shortcuts.Reserved(g, command) is { } use)
         {
-            ShortcutMessage.Text = $"{Shortcuts.Display(g)} is already used for {use}.";
+            ShortcutMessage.Text = L.F("{0} is already used for {1}.", Shortcuts.Display(g), use);
             return false;
         }
         foreach (var (other, box) in _keyBoxes)
         {
             if (other == id || !g.Equals(box.Gesture)) continue;
             box.Gesture = null;
-            ShortcutMessage.Text = $"{Shortcuts.Display(g)} was moved from {Shortcuts.Name(other)} to {Shortcuts.Name(id)}.";
+            ShortcutMessage.Text = L.F("{0} was moved from {1} to {2}.", Shortcuts.Display(g), Shortcuts.Name(other), Shortcuts.Name(id));
         }
         return true;
     }
@@ -273,7 +278,7 @@ public partial class SettingsWindow : Window
         bool mySql = LibraryTypeBox.SelectedIndex == 1;
         SqlitePanel.IsVisible = !mySql;
         MySqlPanel.IsVisible = mySql;
-        LibraryFileText.Text = string.IsNullOrWhiteSpace(_libraryFile) ? $"{LibraryDb.DefaultFile} (default)" : _libraryFile;
+        LibraryFileText.Text = string.IsNullOrWhiteSpace(_libraryFile) ? L.F("{0} (default)", LibraryDb.DefaultFile) : _libraryFile;
         LibraryTestText.Text = "";
     }
 
@@ -295,15 +300,15 @@ public partial class SettingsWindow : Window
     {
         var library = LibraryFromUi();
         TestLibraryButton.IsEnabled = false;
-        LibraryTestText.Text = "Connecting…";
+        LibraryTestText.Text = L.T("Connecting…");
         try
         {
             var stats = await Task.Run(() => LibraryDb.Open(library).Stats());
-            LibraryTestText.Text = $"Works: {stats.Tracks:N0} songs in {library.Describe()}";
+            LibraryTestText.Text = L.F("Works: {0:N0} songs in {1}", stats.Tracks, library.Describe());
         }
         catch (Exception ex)
         {
-            LibraryTestText.Text = $"Failed: {ex.Message}";
+            LibraryTestText.Text = L.F("Failed: {0}", ex.Message);
         }
         finally
         {
@@ -315,7 +320,7 @@ public partial class SettingsWindow : Window
     {
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Library database file (an existing one, or a new one)",
+            Title = L.T("Library database file (an existing one, or a new one)"),
             SuggestedFileName = "library.db",
             DefaultExtension = "db",
             ShowOverwritePrompt = false,
@@ -329,7 +334,7 @@ public partial class SettingsWindow : Window
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Add a music folder to the library",
+            Title = L.T("Add a music folder to the library"),
             AllowMultiple = true,
         });
         foreach (var f in folders)
@@ -396,7 +401,7 @@ public partial class SettingsWindow : Window
         RdsRtPlusPanel.IsVisible = protocol == RdsProtocol.Ascii;
         RdsRtPlusCommandBox.IsEnabled = RdsRtPlusBox.IsChecked == true;
         RdsUecpPanel.IsVisible = protocol == RdsProtocol.Uecp;
-        RdsFileText.Text = _rdsFile.Length > 0 ? _rdsFile : "No file chosen";
+        RdsFileText.Text = _rdsFile.Length > 0 ? _rdsFile : L.T("No file chosen");
         ToolTip.SetTip(RdsFileText, _rdsFile.Length > 0 ? _rdsFile : null);
     }
 
@@ -428,7 +433,7 @@ public partial class SettingsWindow : Window
     {
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "File to write the radio text to",
+            Title = L.T("File to write the radio text to"),
             SuggestedFileName = "nowplaying.txt",
             DefaultExtension = "txt",
             ShowOverwritePrompt = false,
@@ -447,11 +452,11 @@ public partial class SettingsWindow : Window
         var onAir = status is { State: not PlayerState.Stopped } st ? st.Current : null;
         var (ps, rt) = RdsText.Compose(rds, onAir, station);
         RdsTestButton.IsEnabled = false;
-        RdsTestText.Text = "Sending…";
+        RdsTestText.Text = L.T("Sending…");
         using var output = new RdsOutput(rds, station);
         output.Update(onAir);
         string? error = await output.SendNowAsync();
-        RdsTestText.Text = error == null ? $"Sent: PS \"{ps}\", RT \"{rt}\"" : $"Failed: {error}";
+        RdsTestText.Text = error == null ? L.F("Sent: PS \"{0}\", RT \"{1}\"", ps, rt) : L.F("Failed: {0}", error);
         RdsTestButton.IsEnabled = true;
     }
 
@@ -499,11 +504,11 @@ public partial class SettingsWindow : Window
         var status = _engine?.GetStatus();
         var onAir = status is { State: not PlayerState.Stopped } st ? st.Current : null;
         WebTestButton.IsEnabled = false;
-        WebTestText.Text = "Sending…";
+        WebTestText.Text = L.T("Sending…");
         using var output = new WebNowPlaying(web, station);
         output.Update(onAir, null);
         string? error = await output.SendNowAsync();
-        WebTestText.Text = error == null ? $"Sent: {(onAir == null ? "nothing on air" : onAir.Display)}" : $"Failed: {error}";
+        WebTestText.Text = error == null ? L.F("Sent: {0}", (onAir == null ? L.T("nothing on air") : onAir.Display)) : L.F("Failed: {0}", error);
         WebTestButton.IsEnabled = true;
     }
 
@@ -512,7 +517,7 @@ public partial class SettingsWindow : Window
         FillPanel.IsEnabled = FillBox.IsChecked == true;
         FillLibraryPanel.IsEnabled = FillLibraryRadio.IsChecked == true;
         FillFolderText.Text = _fillFolder.Length > 0 ? _fillFolder
-            : FillLibraryRadio.IsChecked == true ? "None (optional: used while the library can't be reached)" : "No folder chosen";
+            : FillLibraryRadio.IsChecked == true ? L.T("None (optional: used while the library can't be reached)") : L.T("No folder chosen");
         ToolTip.SetTip(FillFolderText, _fillFolder.Length > 0 ? _fillFolder : null);
         ClearFillButton.IsEnabled = _fillFolder.Length > 0;
     }
@@ -526,8 +531,8 @@ public partial class SettingsWindow : Window
         _fillCategoriesUnknown = chosen.ToList();
         if (_main?.MusicLibrary.Db is not { } db)
         {
-            FillCategoriesNote.Text = "The library isn't open, so its categories can't be shown. " +
-                (chosen.Count > 0 ? "The categories chosen before are kept." : "None chosen: every music category.");
+            FillCategoriesNote.Text = L.T("The library isn't open, so its categories can't be shown. ") +
+                (chosen.Count > 0 ? L.T("The categories chosen before are kept.") : L.T("None chosen: every music category."));
             return;
         }
         try
@@ -536,7 +541,7 @@ public partial class SettingsWindow : Window
             foreach (var c in categories)
             {
                 var box = new CheckBox { Content = c.Name, IsChecked = chosen.Contains(c.Id) };
-                ToolTip.SetTip(box, c.Kind == "music" ? null : $"A {c.Kind} category");
+                ToolTip.SetTip(box, c.Kind == "music" ? null : L.F("A {0} category", L.T(c.Kind)));
                 _fillCategoryBoxes[c.Id] = box;
                 FillCategoriesPanel.Children.Add(box);
             }
@@ -544,7 +549,7 @@ public partial class SettingsWindow : Window
         }
         catch (Exception ex)
         {
-            FillCategoriesNote.Text = $"The library's categories can't be read: {ex.Message}";
+            FillCategoriesNote.Text = L.F("The library's categories can't be read: {0}", ex.Message);
         }
     }
 
@@ -557,7 +562,7 @@ public partial class SettingsWindow : Window
         var start = Directory.Exists(_fillFolder) ? _fillFolder : _settings.MusicFolder;
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Choose the music to play when the playlist runs out",
+            Title = L.T("Choose the music to play when the playlist runs out"),
             SuggestedStartLocation = Directory.Exists(start) ? await StorageProvider.TryGetFolderFromPathAsync(start) : null,
         });
         if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
@@ -567,7 +572,7 @@ public partial class SettingsWindow : Window
 
     void ShowSignalFile()
     {
-        SignalFileText.Text = _signalFile != null ? Path.GetFileName(_signalFile) : "No file chosen";
+        SignalFileText.Text = _signalFile != null ? Path.GetFileName(_signalFile) : L.T("No file chosen");
         ToolTip.SetTip(SignalFileText, _signalFile);
     }
 
@@ -575,8 +580,8 @@ public partial class SettingsWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Choose time signal",
-            FileTypeFilter = [new FilePickerFileType("Audio") { Patterns = AudioFiles.Patterns }],
+            Title = L.T("Choose time signal"),
+            FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
         _signalFile = path;
@@ -603,8 +608,8 @@ public partial class SettingsWindow : Window
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Choose station logo",
-            FileTypeFilter = [new FilePickerFileType("Images") { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] }],
+            Title = L.T("Choose station logo"),
+            FileTypeFilter = [new FilePickerFileType(L.T("Images")) { Patterns = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp"] }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) SetLogo(path);
     }
@@ -616,9 +621,11 @@ public partial class SettingsWindow : Window
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
         _settings.CurrencySign = CurrencyBox.Text?.Trim() ?? "";
+        _settings.Language = Localization.Languages[Math.Max(0, LanguageBox.SelectedIndex)].Code;
         _settings.LogoPath = _logoPath;
 
         _settings.StationType = StationTypeBox.SelectedIndex == 1 ? StationType.Web : StationType.Fm;
+        _settings.MicToggle = MicToggleRadio.IsChecked == true;
         _settings.Mic = new MicSettings(
             DeviceName(MicDeviceBox),
             (double)(MicGainBox.Value ?? 0),

@@ -169,7 +169,7 @@ sealed class AudioGraph
         lock (_initLock)
         {
             if (!Bass.Init(device, SampleRate) && Bass.LastError != Errors.Already)
-                throw new InvalidOperationException($"Cannot open audio device {device}: {Bass.LastError}");
+                throw new InvalidOperationException(L.F("Cannot open audio device {0}: {1}", device, Bass.LastError));
             _initialised.Add(device);
         }
     }
@@ -252,5 +252,5 @@ sealed class AudioGraph
     }
 
     static int Check(int handle, string what) =>
-        handle != 0 ? handle : throw new InvalidOperationException($"Could not create {what}: {Bass.LastError}");
+        handle != 0 ? handle : throw new InvalidOperationException(L.F("Could not create {0}: {1}", what, Bass.LastError));
 }

@@ -134,7 +134,7 @@ public sealed class WebNowPlaying : IDisposable
             try
             {
                 if (!Uri.TryCreate(_s.Url.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
-                    throw new InvalidOperationException("No website address set (http:// or https://)");
+                    throw new InvalidOperationException(L.T("No website address set (http:// or https://)"));
                 using var request = new HttpRequestMessage(HttpMethod.Post, uri)
                 {
                     Content = new StringContent(JsonSerializer.Serialize(info), Encoding.UTF8, "application/json"),
@@ -142,7 +142,7 @@ public sealed class WebNowPlaying : IDisposable
                 if (_s.Key.Trim().Length > 0) request.Headers.Add("X-Api-Key", _s.Key.Trim());
                 using var response = await _http.SendAsync(request, _stop.Token);
                 if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"the website answered {(int)response.StatusCode} {response.ReasonPhrase}");
+                    throw new HttpRequestException(L.F("the website answered {0} {1}", (int)response.StatusCode, response.ReasonPhrase));
                 lock (_lock)
                 {
                     if (_pending == info) _pending = null;
@@ -155,7 +155,7 @@ public sealed class WebNowPlaying : IDisposable
             }
             catch (Exception ex)
             {
-                error = ex is TaskCanceledException ? "no answer from the website" : ex.Message;
+                error = ex is TaskCanceledException ? L.T("no answer from the website") : ex.Message;
             }
             if (error == Error) return;
             Error = error;
