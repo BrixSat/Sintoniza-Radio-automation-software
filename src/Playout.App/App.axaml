@@ -346,6 +346,27 @@
         <Style Selector="Grid.playing Border.row-marker">
             <Setter Property="Margin" Value="0,-2" />
         </Style>
+        <!-- Ad break rows: their own background, a money sign for the adverts -->
+        <Style Selector="Border.break-bg">
+            <Setter Property="Background" Value="#16271F" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
+        <Style Selector="TextBlock.kind-currency">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#3ECF8E" />
+            <Setter Property="Width" Value="16" />
+            <Setter Property="TextAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Grid.playing TextBlock.kind-currency">
+            <Setter Property="FontSize" Value="18" />
+        </Style>
+        <Style Selector="Border.badge.break">
+            <Setter Property="Background" Value="#1F6F4A" />
+        </Style>
+        <Style Selector="Border.badge.break.soon">
+            <Setter Property="Background" Value="{StaticResource OnAir}" />
+        </Style>
         <Style Selector="Border.row-bg">
             <Setter Property="Background" Value="#211619" />
             <Setter Property="CornerRadius" Value="4" />

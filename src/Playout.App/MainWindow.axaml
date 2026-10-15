@@ -59,6 +59,15 @@
                                 <TextBlock x:Name="SilenceTime" Classes="digits" />
                             </StackPanel>
                         </Border>
+                        <!-- The next ad break, when it is near -->
+                        <Border Grid.Column="2" x:Name="BreakBadge" Classes="badge cue break" HorizontalAlignment="Right" Margin="0,0,10,0" IsVisible="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock x:Name="BreakSign" />
+                                <TextBlock Text="BREAK IN" />
+                                <TextBlock x:Name="BreakTime" Classes="digits" />
+                                <TextBlock x:Name="BreakHowText" Opacity="0.85" />
+                            </StackPanel>
+                        </Border>
                         <ToggleButton Grid.Column="3" x:Name="AutoSwitch" Classes="mode" IsChecked="True">
                             <Panel>
                                 <StackPanel x:Name="AutoContent" Orientation="Horizontal" Spacing="7">
@@ -284,6 +293,7 @@
                                           Classes.next="{Binding IsNext}"
                                           Classes.played="{Binding IsPlayed}"
                                           Classes.preview="{Binding IsPreview}">
+                                        <Border Grid.ColumnSpan="6" Classes="break-bg" IsVisible="{Binding IsAdBreak}" />
                                         <Border Grid.ColumnSpan="6" Classes="row-bg" IsVisible="{Binding IsPlaying}" />
                                         <c:ProgressFill Grid.ColumnSpan="6" Classes="row-progress" Value="{Binding Progress}"
                                                         IsVisible="{Binding IsPlaying}" />
@@ -292,7 +302,7 @@
                                         <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
                                             <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="Music" />
                                             <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="Jingle" />
-                                            <PathIcon Classes="kind commercial" Data="{StaticResource IconCommercial}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="Commercial" />
+                                            <TextBlock Classes="kind-currency" Text="{Binding CurrencySign}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="Advert" />
                                             <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="Internet stream" />
                                             <PathIcon Classes="kind programme" Data="{StaticResource IconMic}" IsVisible="{Binding IsProgramme}" ToolTip.Tip="Programme (news, shows)" />
                                         </Panel>

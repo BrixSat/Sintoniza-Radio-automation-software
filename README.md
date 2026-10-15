@@ -70,8 +70,12 @@ engine for decoding, mixing and streaming.
     (`02 | 0:45`). A click places the selected advert in that break every week, or on that date only. Adverts not
     placed in the calendar play by chosen days and breaks (or every break), in the order of the list.
   - **Shown ahead in the playlist**: the events and breaks coming up appear in the playlist where they will play
-    (tagged SCHEDULED, with their start time), and the start times after them allow for them. They become real
-    playlist items when they are due.
+    (tagged SCHEDULED, with their start time and how they start: hard, can wait N minutes, or ends at its time),
+    and the start times after them allow for them. They become real playlist items when they are due.
+  - **Ad breaks stand out**: a green band behind their rows, the money sign (Settings → Station; empty = this
+    computer's currency) instead of an icon on each advert, and the advertiser under it. When the next break is
+    less than 10 minutes away, a **BREAK IN mm:ss** countdown shows on the deck with how it starts, red in its
+    last minute.
   - Each starts in one of three ways:
     - **soft**: after the item on air ends, optionally at most N minutes late (then what is on air fades out). A
       window such as "between :48 and :55" is a soft break at :48, at most 7 minutes late;

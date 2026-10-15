@@ -73,11 +73,20 @@
                     <TextBlock Classes="note" Text="Name, genre and website are also sent to the streaming server and shown in directory listings." />
 
                     <StackPanel>
-                        <TextBlock Classes="label" Text="Station type" />
-                        <ComboBox x:Name="StationTypeBox" MinWidth="320">
-                            <ComboBoxItem Content="FM radio (mic through the mixing desk)" />
-                            <ComboBoxItem Content="Web radio (mic through this computer)" />
-                        </ComboBox>
+                        <Grid ColumnDefinitions="Auto,24,Auto">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Station type" />
+                                <ComboBox x:Name="StationTypeBox" MinWidth="320">
+                                    <ComboBoxItem Content="FM radio (mic through the mixing desk)" />
+                                    <ComboBoxItem Content="Web radio (mic through this computer)" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Money sign on adverts" />
+                                <TextBox x:Name="CurrencyBox" Width="90" HorizontalAlignment="Left" MaxLength="3"
+                                         ToolTip.Tip="Shown on advert rows and the break countdown. Empty: this computer's currency." />
+                            </StackPanel>
+                        </Grid>
                         <TextBlock Classes="note" Margin="0,4,0,0"
                                    Text="Web radio adds a MIC button: hold it to talk. Set up the microphone on the Microphone tab. The STREAM button shows on web radio, or on FM once a streaming server is set up." />
                     </StackPanel>

@@ -45,6 +45,8 @@ public partial class SettingsWindow : Window
         StationNameBox.Text = settings.StationName;
         GenreBox.Text = settings.StationGenre;
         UrlBox.Text = settings.StationUrl;
+        CurrencyBox.Text = settings.CurrencySign;
+        CurrencyBox.PlaceholderText = PlaylistRow.SystemCurrency;
         SetLogo(settings.LogoPath);
 
         StationTypeBox.SelectedIndex = settings.StationType == StationType.Web ? 1 : 0;
@@ -613,6 +615,7 @@ public partial class SettingsWindow : Window
         _settings.StationName = StationNameBox.Text?.Trim() ?? "";
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
+        _settings.CurrencySign = CurrencyBox.Text?.Trim() ?? "";
         _settings.LogoPath = _logoPath;
 
         _settings.StationType = StationTypeBox.SelectedIndex == 1 ? StationType.Web : StationType.Fm;

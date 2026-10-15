@@ -424,6 +424,7 @@ public partial class MainWindow : Window
         };
 
         UpdateCarts();
+        UpdateBreakCountdown(now);
 
         UpdateStreamStatus(st);
 
@@ -537,11 +538,16 @@ public partial class MainWindow : Window
 
         var order = new List<PlaylistRow>(items.Count + _upcoming.Count);
         var pending = new Queue<UpcomingEvent>(_upcoming.OrderBy(u => u.Start));
+        _nextBreak = null;
         // The hour on air now: the first item starting in a later hour gets a divider, and so on.
         var lastHour = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
         void Show(PlaylistRow row, DateTime t)
         {
             row.StartTime = t.ToString("HH:mm:ss");
+            // The first ad break still to come (shown ahead, or already in the playlist), for the countdown.
+            if (_nextBreak == null && row.IsAdBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
+                _nextBreak = (t, row.IsPreview ? row.Title : row.Track.Event ?? "Ad break",
+                    row.IsPreview ? _upcoming.FirstOrDefault(u => row.Title == u.Label)?.How ?? "" : BreakHow(row.Track));
             var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
             if (hour <= lastHour) return;
             row.HourMark = hour.Date == DateTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
@@ -595,6 +601,30 @@ public partial class MainWindow : Window
         SyncRows(order);
     }
 
+    (DateTime At, string Name, string How)? _nextBreak;
+
+    /// <summary>How a break already in the playlist starts (from its first item).</summary>
+    static string BreakHow(Track first) => first.StartBy is { } by
+        ? first.Backtime ? $"ends on time" : $"can wait until {by.ToLocalTime():HH:mm:ss}"
+        : "after the song";
+
+    /// <summary>
+    /// "€ BREAK IN 04:32 · hard start at 12:20:00" on the deck when the next ad break is less than 10 minutes away;
+    /// red in its last minute.
+    /// </summary>
+    void UpdateBreakCountdown(DateTime now)
+    {
+        var left = _nextBreak is { } b ? b.At - now : TimeSpan.MaxValue;
+        bool show = left > TimeSpan.Zero && left <= TimeSpan.FromMinutes(10);
+        BreakBadge.IsVisible = show;
+        if (!show) return;
+        BreakSign.Text = PlaylistRow.Currency;
+        BreakTime.Text = left.TotalHours >= 1 ? left.ToString(@"h\:mm\:ss") : left.ToString(@"mm\:ss");
+        BreakHowText.Text = _nextBreak!.Value.How.Length > 0 ? "· " + _nextBreak.Value.How.ToUpperInvariant() : "";
+        BreakBadge.Classes.Set("soon", left <= TimeSpan.FromMinutes(1));
+        ToolTip.SetTip(BreakBadge, $"{_nextBreak.Value.Name}: starts about {_nextBreak.Value.At:HH:mm:ss}");
+    }
+
     /// <summary>Puts the playlist's rows in this order, moving as few as it can (keeps the scroll position and selection).</summary>
     void SyncRows(List<PlaylistRow> order)
     {
@@ -646,13 +676,7 @@ public partial class MainWindow : Window
     /// <summary>The row that shows a scheduled event ahead (the same row while it is upcoming).</summary>
     PlaylistRow PreviewRow(UpcomingEvent u)
     {
-        string timing = u.Timing switch
-        {
-            EventStart.Hard => $"hard at {u.Due:HH:mm:ss}",
-            EventStart.EndAt => $"ends at {u.Due:HH:mm:ss}",
-            _ => $"after the item playing at {u.Due:HH:mm:ss}",
-        };
-        var track = new Track(Guid.Empty, "", $"{u.What} · {timing}", u.Label, u.Seconds, u.IsBreak ? TrackKind.Commercial : TrackKind.Programme);
+        var track = new Track(Guid.Empty, "", $"{u.What} · {u.How}", u.Label, u.Seconds, u.IsBreak ? TrackKind.Commercial : TrackKind.Programme);
         if (!_previewRows.TryGetValue((u.EntryId, u.Due), out var row))
             _previewRows[(u.EntryId, u.Due)] = row = new PlaylistRow(track with { Id = Guid.NewGuid() }) { IsPreview = true };
         else row.Track = track with { Id = row.Id };
@@ -1121,6 +1145,8 @@ public partial class MainWindow : Window
 
     void ApplyStationBranding()
     {
+        PlaylistRow.Currency = string.IsNullOrWhiteSpace(_settings.CurrencySign) ? PlaylistRow.SystemCurrency : _settings.CurrencySign.Trim();
+        foreach (var row in _rows) row.RefreshCurrency();
         bool hasName = !string.IsNullOrWhiteSpace(_settings.StationName);
         StationNameText.Text = hasName ? _settings.StationName.ToUpperInvariant() : "";
         StationNameText.IsVisible = hasName;

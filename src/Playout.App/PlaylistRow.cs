@@ -18,7 +18,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
         {
             if (Equals(_track, value)) return;
             _track = value;
-            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip) })
+            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip), nameof(IsAdBreak) })
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
@@ -31,8 +31,24 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     /// </summary>
     public bool IsPreview { get; init; }
     public string Title => Track.Title;
-    /// <summary>The artist; for a stream, its address.</summary>
-    public string Artist => Track.IsStream ? Track.Path : Track.Artist;
+    /// <summary>
+    /// The second line: the artist (a stream: its address). An advert: its advertiser. The first item of a scheduled
+    /// break or event with a latest start: how it starts.
+    /// </summary>
+    public string Artist
+    {
+        get
+        {
+            if (IsPreview) return Track.Artist;
+            string text = Track.IsStream ? Track.Path : Track.Kind == TrackKind.Commercial && Track.Advertiser is { } a ? a : Track.Artist;
+            if (Track.StartBy is { } by)
+            {
+                string how = Track.Backtime ? $"timed to start at {by.ToLocalTime():HH:mm:ss} and end on time" : $"can wait until {by.ToLocalTime():HH:mm:ss}";
+                text = text.Length > 0 ? $"{text} · {how}" : how;
+            }
+            return text;
+        }
+    }
     public bool HasArtist => !string.IsNullOrWhiteSpace(Artist);
     /// <summary>On-air length, Cue In to Cue Out; ∞ for a stream that plays until Stop or Next.</summary>
     public string Length => Track.IsOpenEnded ? "∞" : Format.Duration(Track.PlayLength);
@@ -57,6 +73,20 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     public bool IsJingle => Track.Kind == TrackKind.Jingle;
     public bool IsCommercial => Track.Kind == TrackKind.Commercial;
     public bool IsProgramme => Track.Kind == TrackKind.Programme;
+
+    /// <summary>Part of an ad break: an advert, or the jingles a break opens and closes with. Shown with its own background.</summary>
+    public bool IsAdBreak => Track.Kind == TrackKind.Commercial || (Track.Kind == TrackKind.Jingle && Track.Event != null);
+
+    /// <summary>This computer's currency sign (€, $, £…).</summary>
+    public static string SystemCurrency { get; } =
+        System.Globalization.NumberFormatInfo.CurrentInfo.CurrencySymbol is { Length: > 0 and <= 2 } c && c != "¤" ? c : "€";
+
+    /// <summary>The money sign on advert rows: the one set in Settings, else this computer's.</summary>
+    public static string Currency { get; set; } = SystemCurrency;
+    public string CurrencySign => Currency;
+
+    /// <summary>The money sign changed in Settings.</summary>
+    public void RefreshCurrency() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrencySign)));
     public bool IsStream => Track.IsStream;
 
     double _progress;

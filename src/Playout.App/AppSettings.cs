@@ -14,6 +14,8 @@ public sealed class AppSettings
     public string? LogoPath { get; set; }
     public string StationGenre { get; set; } = "Various";
     public string StationUrl { get; set; } = "";
+    /// <summary>The money sign on advert rows and the break countdown; empty = this computer's currency.</summary>
+    public string CurrencySign { get; set; } = "";
     /// <summary>FM: the mic goes through the mixing desk. Web: the mic goes through this computer (MIC button).</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public StationType StationType { get; set; } = StationType.Fm;

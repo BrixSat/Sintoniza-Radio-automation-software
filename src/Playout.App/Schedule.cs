@@ -249,7 +249,18 @@ public static class ScheduleTimes
 /// <summary>An event or break the schedule will put in the playlist (see <see cref="Scheduler.Upcoming"/>).</summary>
 /// <param name="Start">When it is expected to start (an EndAt one: its length before <paramref name="Due"/>).</param>
 /// <param name="Due">Its time in the schedule.</param>
-public sealed record UpcomingEvent(Guid EntryId, string Label, string What, DateTime Start, DateTime Due, EventStart Timing, double Seconds, bool IsBreak);
+/// <param name="MaxDelayMinutes">Soft: at most this late (0 = it waits for the song on air).</param>
+public sealed record UpcomingEvent(Guid EntryId, string Label, string What, DateTime Start, DateTime Due, EventStart Timing, double Seconds, bool IsBreak,
+    double MaxDelayMinutes = 0)
+{
+    /// <summary>How it starts, for the playlist and the countdown: "hard start at 12:20:00", "can wait 5 min"…</summary>
+    public string How => Timing switch
+    {
+        EventStart.Hard => $"hard start at {Due:HH:mm:ss}",
+        EventStart.EndAt => $"ends at {Due:HH:mm:ss}",
+        _ => MaxDelayMinutes > 0 ? $"from {Due:HH:mm}, can wait {MaxDelayMinutes:0} min" : $"from {Due:HH:mm}, waits for the song",
+    };
+}
 
 /// <summary>
 /// Starts events and ad breaks on time. Runs on its own timer (not the UI's), so a busy window never delays them.
@@ -343,7 +354,7 @@ sealed class Scheduler : IDisposable
                 _ => items[0].StreamName != null ? "stream" : System.IO.Path.GetFileNameWithoutExtension(items[0].Path),
             };
             var start = entry.Start == EventStart.EndAt ? at.AddSeconds(-seconds) : at;
-            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak));
+            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak, entry.MaxDelayMinutes));
         }
         return list;
     }
