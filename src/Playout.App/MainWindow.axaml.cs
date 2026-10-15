@@ -198,12 +198,12 @@ public partial class MainWindow : Window
 
             if (e.DataTransfer.TryGetValue(RowDragFormat) is { } ids)
             {
-                _engine?.Move(ids, insertAt);
+                _engine?.Move(ids, EngineIndex(insertAt));
                 return;
             }
             var paths = e.DataTransfer.TryGetValue(AudioFiles.DragFormat)
                 ?? e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>().ToArray();
-            if (paths is { Length: > 0 }) AddPaths(paths, insertAt >= _rows.Count ? -1 : insertAt);
+            if (paths is { Length: > 0 }) AddPaths(paths, insertAt >= _rows.Count ? -1 : EngineIndex(insertAt));
         });
 
         Library.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1);
@@ -431,6 +431,7 @@ public partial class MainWindow : Window
         if (_slowTick-- > 0) return;
         _slowTick = 30;
         DateText.Text = now.ToString("dddd, d MMMM yyyy");
+        ReadUpcoming(now);
         UpdateStartTimes(st);
         UpdateStationInfo(now);
         _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem());
@@ -512,6 +513,10 @@ public partial class MainWindow : Window
         _nextFlash = DispatcherTimer.RunOnce(() => NextButton.Classes.Set("flash", false), TimeSpan.FromMilliseconds(900));
     }
 
+    /// <summary>
+    /// Start times, hour dividers and the playlist end; and the rows in the order they will play, with the events and
+    /// breaks the schedule will put in among them (previews: they become real items when they are due).
+    /// </summary>
     void UpdateStartTimes(PlayerStatus st)
     {
         _playlistEnds = null;
@@ -530,32 +535,133 @@ public partial class MainWindow : Window
             ? DateTime.Now.AddSeconds(Math.Max(0, st.Current.MixPoint(xfade) - st.Position))
             : null;
 
+        var order = new List<PlaylistRow>(items.Count + _upcoming.Count);
+        var pending = new Queue<UpcomingEvent>(_upcoming.OrderBy(u => u.Start));
         // The hour on air now: the first item starting in a later hour gets a divider, and so on.
         var lastHour = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
+        void Show(PlaylistRow row, DateTime t)
+        {
+            row.StartTime = t.ToString("HH:mm:ss");
+            var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
+            if (hour <= lastHour) return;
+            row.HourMark = hour.Date == DateTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
+            lastHour = hour;
+        }
+        // Scheduled events due by the time the playlist reaches t go in there: a soft one when the item before it
+        // ends (t), a hard one at its time (cutting it), one that ends at its time at its start.
+        DateTime Scheduled(DateTime t)
+        {
+            while (pending.Count > 0 && pending.Peek().Start <= t)
+            {
+                var u = pending.Dequeue();
+                var row = PreviewRow(u);
+                var start = u.Timing == EventStart.Soft ? t : u.Start;
+                Show(row, start);
+                order.Add(row);
+                t = start.AddSeconds(u.Seconds);
+                lastTail = 0;
+            }
+            return t;
+        }
+
         for (int i = 0; i < items.Count; i++)
         {
             if (!_rowsById.TryGetValue(items[i].Id, out var row)) continue;
             row.HourMark = "";
-            // An item with a latest start starts then at the latest (what is on air is faded).
-            if (at is { } late && startFrom >= 0 && i >= startFrom && items[i].StartBy is { } by && by.ToLocalTime() < late) at = by.ToLocalTime();
-            if (at is { } t && startFrom >= 0 && i >= startFrom)
+            if (at != null && startFrom >= 0 && i >= startFrom)
             {
-                row.StartTime = t.ToString("HH:mm:ss");
-                var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
-                if (hour > lastHour)
-                {
-                    row.HourMark = hour.Date == DateTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
-                    lastHour = hour;
-                }
+                at = Scheduled(at.Value);
+                // An item with a latest start starts then at the latest (what is on air is faded).
+                if (items[i].StartBy is { } by && by.ToLocalTime() < at) at = by.ToLocalTime();
+                var t = at.Value;
+                Show(row, t);
                 lastTail = Tail(items[i]);
                 at = items[i].IsOpenEnded ? null : t.AddSeconds(items[i].PlayLength - lastTail);
             }
             else row.StartTime = "";
+            order.Add(row);
         }
 
         // When the last item finishes: the chain above stops at its mix point; with nothing queued it is the current item.
         if (at is { } end) _playlistEnds = end.AddSeconds(lastTail);
+        // What comes after the playlist's end (or with the player stopped): at its own time.
+        while (pending.Count > 0)
+        {
+            var u = pending.Dequeue();
+            var row = PreviewRow(u);
+            Show(row, u.Start);
+            order.Add(row);
+        }
+        SyncRows(order);
     }
+
+    /// <summary>Puts the playlist's rows in this order, moving as few as it can (keeps the scroll position and selection).</summary>
+    void SyncRows(List<PlaylistRow> order)
+    {
+        if (order.Count == _rows.Count && order.SequenceEqual(_rows)) return;
+        var keep = order.ToHashSet();
+        // Drop removed rows first: otherwise every row after them gets moved up one by one, dragging the (selected)
+        // removed row to the bottom, and the list scrolls after it.
+        for (int i = _rows.Count - 1; i >= 0; i--)
+            if (!keep.Contains(_rows[i])) _rows.RemoveAt(i);
+        for (int i = 0; i < order.Count; i++)
+        {
+            if (i < _rows.Count && ReferenceEquals(_rows[i], order[i])) continue;
+            int existing = _rows.IndexOf(order[i]);
+            if (existing >= 0) _rows.Move(existing, i);
+            else _rows.Insert(i, order[i]);
+        }
+        while (_rows.Count > order.Count) _rows.RemoveAt(_rows.Count - 1);
+    }
+
+    // ───────────────────────── Scheduled events ahead ─────────────────────────
+
+    List<UpcomingEvent> _upcoming = new();
+    DateTime _upcomingRead = DateTime.MinValue;
+    bool _upcomingReading;
+    readonly Dictionary<(Guid, DateTime), PlaylistRow> _previewRows = new();
+
+    /// <summary>
+    /// Every 15 seconds: what the schedule will put in the playlist up to an hour after its end (at most six hours
+    /// ahead), read in the background (folders and files are looked at).
+    /// </summary>
+    void ReadUpcoming(DateTime now, bool force = false)
+    {
+        if (_scheduler is not { } scheduler || _upcomingReading || (!force && now - _upcomingRead < TimeSpan.FromSeconds(15))) return;
+        _upcomingReading = true;
+        _upcomingRead = now;
+        var until = (_playlistEnds is { } end && end > now ? end : now).AddHours(1);
+        if (until > now.AddHours(6)) until = now.AddHours(6);
+        Task.Run(() => scheduler.Upcoming(now, until)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        {
+            _upcomingReading = false;
+            if (!t.IsCompletedSuccessfully) return;
+            _upcoming = t.Result;
+            var live = _upcoming.Select(u => (u.EntryId, u.Due)).ToHashSet();
+            foreach (var key in _previewRows.Keys.Where(k => !live.Contains(k)).ToList()) _previewRows.Remove(key);
+            if (_engine != null) UpdateStartTimes(_engine.GetStatus());
+        }));
+    }
+
+    /// <summary>The row that shows a scheduled event ahead (the same row while it is upcoming).</summary>
+    PlaylistRow PreviewRow(UpcomingEvent u)
+    {
+        string timing = u.Timing switch
+        {
+            EventStart.Hard => $"hard at {u.Due:HH:mm:ss}",
+            EventStart.EndAt => $"ends at {u.Due:HH:mm:ss}",
+            _ => $"after the item playing at {u.Due:HH:mm:ss}",
+        };
+        var track = new Track(Guid.Empty, "", $"{u.What} · {timing}", u.Label, u.Seconds, u.IsBreak ? TrackKind.Commercial : TrackKind.Programme);
+        if (!_previewRows.TryGetValue((u.EntryId, u.Due), out var row))
+            _previewRows[(u.EntryId, u.Due)] = row = new PlaylistRow(track with { Id = Guid.NewGuid() }) { IsPreview = true };
+        else row.Track = track with { Id = row.Id };
+        row.HourMark = "";
+        return row;
+    }
+
+    /// <summary>The engine's playlist position for a row position (the schedule's previews aren't in the engine).</summary>
+    int EngineIndex(int rowIndex) => _rows.Take(Math.Clamp(rowIndex, 0, _rows.Count)).Count(r => !r.IsPreview);
 
     void UpdateStreamStatus(PlayerStatus st)
     {
@@ -635,25 +741,15 @@ public partial class MainWindow : Window
         }
         foreach (var dead in _rowsById.Keys.Where(k => !alive.Contains(k)).ToList()) _rowsById.Remove(dead);
 
-        // In-place sync keeps the ListBox scroll position stable. Drop removed rows first: otherwise every row
-        // after them gets moved up one by one, dragging the (selected) removed row to the bottom, and the list scrolls after it.
-        for (int i = _rows.Count - 1; i >= 0; i--)
-            if (!alive.Contains(_rows[i].Id)) _rows.RemoveAt(i);
-        for (int i = 0; i < desired.Count; i++)
-        {
-            if (i < _rows.Count && ReferenceEquals(_rows[i], desired[i])) continue;
-            int existing = _rows.IndexOf(desired[i]);
-            if (existing >= 0) _rows.Move(existing, i);
-            else _rows.Insert(i, desired[i]);
-        }
-        while (_rows.Count > desired.Count) _rows.RemoveAt(_rows.Count - 1);
+        // The rows in their order, with what the schedule will add among them.
+        UpdateStartTimes(_engine?.GetStatus() ?? default);
 
         foreach (var row in _rows.Where(r => selected.Contains(r.Id)))
             if (Playlist.SelectedItems?.Contains(row) == false) Playlist.SelectedItems.Add(row);
 
         EmptyHint.IsVisible = _rows.Count == 0;
         double total = snap.Items.Sum(t => t.PlayLength);
-        PlaylistInfo.Text = _rows.Count == 0 ? "" : $"{_rows.Count} items · {Format.Duration(total)}";
+        PlaylistInfo.Text = snap.Items.Count == 0 ? "" : $"{snap.Items.Count} items · {Format.Duration(total)}";
         NextTitle.Text = snap.NextId is { } n && _rowsById.TryGetValue(n, out var next) ? next.Track.Display : "—";
 
         // Not while the saved playlist is still being added: a save then would lose the rest of it.
@@ -668,11 +764,13 @@ public partial class MainWindow : Window
 
     void MoveSelected(int delta)
     {
-        var selected = Playlist.SelectedItems?.OfType<PlaylistRow>().Select(r => _rows.IndexOf(r)).Where(i => i >= 0).Order().ToList();
+        // In the engine's playlist (the schedule's previews aren't in it).
+        var real = _rows.Where(r => !r.IsPreview).ToList();
+        var selected = Playlist.SelectedItems?.OfType<PlaylistRow>().Select(r => real.IndexOf(r)).Where(i => i >= 0).Order().ToList();
         if (selected is not { Count: > 0 }) return;
         int insertAt = delta < 0 ? selected[0] - 1 : selected[^1] + 2;
-        if (insertAt < 0 || insertAt > _rows.Count) return;
-        _engine?.Move(selected.Select(i => _rows[i].Id).ToList(), insertAt);
+        if (insertAt < 0 || insertAt > real.Count) return;
+        _engine?.Move(selected.Select(i => real[i].Id).ToList(), insertAt);
     }
 
     /// <summary>Playlist row under the pointer, or null over empty space.</summary>
@@ -836,15 +934,15 @@ public partial class MainWindow : Window
     /// <summary>Position right after the on-air item, so "Play next" items go ahead of the rest.</summary>
     int NextInsertIndex()
     {
-        if (_snapshot?.CurrentId is not { } id) return _snapshot?.NextId is { } n ? _rows.IndexOf(_rowsById[n]) : -1;
-        return _rowsById.TryGetValue(id, out var row) ? _rows.IndexOf(row) + 1 : -1;
+        if (_snapshot?.CurrentId is not { } id) return _snapshot?.NextId is { } n ? EngineIndex(_rows.IndexOf(_rowsById[n])) : -1;
+        return _rowsById.TryGetValue(id, out var row) ? EngineIndex(_rows.IndexOf(row)) + 1 : -1;
     }
 
     // ───────────────────────── Cue points ─────────────────────────
 
     async Task EditSelectedCues()
     {
-        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false } row) await EditCues(row.Track.Path, row.Track.Display);
+        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false, IsPreview: false } row) await EditCues(row.Track.Path, row.Track.Display);
     }
 
     bool _editorOpen;
@@ -899,7 +997,7 @@ public partial class MainWindow : Window
 
     async Task EditSelectedTags()
     {
-        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false } row) await EditTags(row.Track.Path);
+        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false, IsPreview: false } row) await EditTags(row.Track.Path);
     }
 
     async Task EditTags(string path)
@@ -1194,6 +1292,7 @@ public partial class MainWindow : Window
             {
                 _scheduler.Update(edited);
                 LastLog.Text = "Schedule saved";
+                ReadUpcoming(DateTime.Now, force: true);
             }
         }
         finally

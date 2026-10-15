@@ -24,6 +24,12 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     }
 
     public Guid Id => Track.Id;
+
+    /// <summary>
+    /// A scheduled event or break shown ahead, where it will play: not in the engine's playlist yet (it is put there
+    /// when it is due), so it can't be played, moved or removed from here.
+    /// </summary>
+    public bool IsPreview { get; init; }
     public string Title => Track.Title;
     /// <summary>The artist; for a stream, its address.</summary>
     public string Artist => Track.IsStream ? Track.Path : Track.Artist;
@@ -58,7 +64,18 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     public double Progress { get => _progress; set => Set(ref _progress, value); }
 
     int _number;
-    public int Number { get => _number; set => Set(ref _number, value); }
+    public int Number
+    {
+        get => _number;
+        set
+        {
+            if (_number == value) return;
+            Set(ref _number, value);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NumberText)));
+        }
+    }
+    /// <summary>The number shown: none for a scheduled preview (it isn't in the playlist yet).</summary>
+    public string NumberText => IsPreview ? "" : _number.ToString();
 
     bool _isPlaying, _isNext, _isPlayed;
     public bool IsPlaying { get => _isPlaying; set => Set(ref _isPlaying, value); }

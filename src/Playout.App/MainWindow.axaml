@@ -282,12 +282,13 @@
                                     <Grid ColumnDefinitions="10,36,28,*,70,70"
                                           Classes.playing="{Binding IsPlaying}"
                                           Classes.next="{Binding IsNext}"
-                                          Classes.played="{Binding IsPlayed}">
+                                          Classes.played="{Binding IsPlayed}"
+                                          Classes.preview="{Binding IsPreview}">
                                         <Border Grid.ColumnSpan="6" Classes="row-bg" IsVisible="{Binding IsPlaying}" />
                                         <c:ProgressFill Grid.ColumnSpan="6" Classes="row-progress" Value="{Binding Progress}"
                                                         IsVisible="{Binding IsPlaying}" />
                                         <Border Classes="row-marker" HorizontalAlignment="Left" />
-                                        <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding Number}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding NumberText}" VerticalAlignment="Center" />
                                         <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
                                             <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="Music" />
                                             <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="Jingle" />
@@ -299,6 +300,10 @@
                                             <DockPanel>
                                                 <Border DockPanel.Dock="Right" Classes="cue-tag" Margin="6,0,0,0" IsVisible="{Binding HasCues}" ToolTip.Tip="Has cue points">
                                                     <TextBlock Text="CUE" />
+                                                </Border>
+                                                <Border DockPanel.Dock="Right" Classes="preview-tag" Margin="6,0,0,0" IsVisible="{Binding IsPreview}"
+                                                        ToolTip.Tip="From the schedule: it goes into the playlist when it is due">
+                                                    <TextBlock Text="SCHEDULED" />
                                                 </Border>
                                                 <PathIcon DockPanel.Dock="Right" Classes="lock" Margin="6,0,0,0" Data="{StaticResource IconLock}"
                                                           IsVisible="{Binding IsLocked}" ToolTip.Tip="{Binding LockTip}" />

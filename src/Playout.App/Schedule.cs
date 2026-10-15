@@ -26,9 +26,7 @@ public sealed class ScheduleData
         data.Breaks ??= new();
         data.Spots ??= new();
         data.LastStarted ??= new();
-        foreach (var e in data.Events) e.Times ??= new();
-        foreach (var b in data.Breaks) b.Times ??= new();
-        foreach (var s in data.Spots) s.Breaks ??= new();
+        data.Normalize();
         return data;
     }
 
@@ -38,7 +36,28 @@ public sealed class ScheduleData
         catch (Exception ex) { AppLog.Write($"Schedule not saved: {ex.Message}"); }
     }
 
-    public ScheduleData Clone() => JsonSerializer.Deserialize<ScheduleData>(JsonSerializer.Serialize(this, Json))!;
+    public ScheduleData Clone()
+    {
+        var copy = JsonSerializer.Deserialize<ScheduleData>(JsonSerializer.Serialize(this, Json))!;
+        copy.Normalize();
+        return copy;
+    }
+
+    /// <summary>Lists that are missing made empty, and schedules saved before the calendar brought into it.</summary>
+    public void Normalize()
+    {
+        Events ??= new();
+        Breaks ??= new();
+        Spots ??= new();
+        LastStarted ??= new();
+        foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks)) e.Normalize();
+        foreach (var s in Spots)
+        {
+            s.Breaks ??= new();
+            s.Days ??= new();
+            s.Placements ??= new();
+        }
+    }
 }
 
 /// <summary>What events and ad breaks have in common: when they happen and how they start.</summary>
@@ -47,10 +66,17 @@ public abstract class ScheduleEntry
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
     public bool Enabled { get; set; } = true;
-    /// <summary>"HH:mm" or "HH:mm:ss"; "*:mm" is every hour at that minute.</summary>
-    public List<string> Times { get; set; } = new();
-    /// <summary>Days of the week it runs (DayOfWeek: 0 = Sunday); empty = every day.</summary>
-    public List<DayOfWeek> Days { get; set; } = new();
+    /// <summary>When it runs: days of the week and times, as placed in the calendar.</summary>
+    public List<WeekTime> Slots { get; set; } = new();
+
+    /// <summary>
+    /// Schedules saved before the calendar, and a quick way to set one up: times ("HH:mm", "HH:mm:ss"; "*:mm" is
+    /// every hour) on <see cref="Days"/> (none = every day). <see cref="Normalize"/> turns them into slots.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Times { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<DayOfWeek>? Days { get; set; }
     /// <summary>
     /// Soft: after the item on air (at most <see cref="MaxDelayMinutes"/> late). Hard: on time, fading out what is on
     /// air. EndAt: its times are when it ends; the playlist before it is adjusted (backtimed) so it does.
@@ -77,22 +103,67 @@ public abstract class ScheduleEntry
         _ => new EventTiming(EventStart.Soft, MaxDelayMinutes > 0 ? TimeSpan.FromMinutes(MaxDelayMinutes) : null),
     };
 
-    public bool RunsOn(DayOfWeek day) => Days.Count == 0 || Days.Contains(day);
-
-    /// <summary>Its times on a day (local), in order; times that can't be read are left out.</summary>
-    public IEnumerable<DateTime> TimesOn(DateTime date)
+    /// <summary>Turns <see cref="Times"/> and <see cref="Days"/> into slots.</summary>
+    public void Normalize()
     {
-        if (!RunsOn(date.DayOfWeek)) yield break;
-        var list = new List<DateTime>();
-        foreach (var text in Times)
+        Slots ??= new();
+        if (Times != null)
         {
-            if (ScheduleTimes.Parse(text) is not { } t) continue;
-            if (t.EveryHour)
-                for (int h = 0; h < 24; h++) list.Add(date.Date.AddHours(h) + t.Time);
-            else list.Add(date.Date + t.Time);
+            var days = Days is { Count: > 0 } d ? d : Enum.GetValues<DayOfWeek>().ToList();
+            foreach (var text in Times)
+            {
+                if (ScheduleTimes.Parse(text) is not { } t) continue;
+                var times = t.EveryHour ? Enumerable.Range(0, 24).Select(h => TimeSpan.FromHours(h) + t.Time) : [t.Time];
+                foreach (var day in days)
+                    foreach (var time in times)
+                        Set(day, time, true);
+            }
         }
-        foreach (var at in list.Distinct().Order()) yield return at;
+        Times = null;
+        Days = null;
     }
+
+    /// <summary>Whether it runs on that day at that time.</summary>
+    public bool Has(DayOfWeek day, TimeSpan time) => Slots.Any(s => s.Day == day && s.At == time);
+
+    public void Set(DayOfWeek day, TimeSpan time, bool on)
+    {
+        Slots.RemoveAll(s => s.Day == day && s.At == time);
+        if (on) Slots.Add(new WeekTime { Day = day, Time = WeekTime.Text(time) });
+    }
+
+    /// <summary>Its times on a day (local), in order.</summary>
+    public IEnumerable<DateTime> TimesOn(DateTime date) =>
+        Slots.Where(s => s.Day == date.DayOfWeek).Select(s => date.Date + s.At).Distinct().Order();
+}
+
+/// <summary>A day of the week and a time of day.</summary>
+public sealed class WeekTime
+{
+    public DayOfWeek Day { get; set; }
+    /// <summary>"HH:mm:ss".</summary>
+    public string Time { get; set; } = "00:00:00";
+
+    [JsonIgnore]
+    public TimeSpan At => ScheduleTimes.Parse(Time)?.Time ?? TimeSpan.Zero;
+
+    public static string Text(TimeSpan time) => time.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture);
+}
+
+/// <summary>Where an advert is placed in the calendar: every week on a day, or on one date; at a break's time.</summary>
+public sealed class AdPlacement
+{
+    /// <summary>Every week on this day (within the advert's dates)…</summary>
+    public DayOfWeek? Day { get; set; }
+    /// <summary>…or only on this date.</summary>
+    public DateTime? Date { get; set; }
+    /// <summary>"HH:mm:ss": the break at this time.</summary>
+    public string Time { get; set; } = "00:00:00";
+
+    [JsonIgnore]
+    public TimeSpan At => ScheduleTimes.Parse(Time)?.Time ?? TimeSpan.Zero;
+
+    public bool On(DateTime at) => At == at.TimeOfDay && (Date is { } d ? d.Date == at.Date : Day == at.DayOfWeek);
 }
 
 /// <summary>Plays a file, the newest file in a folder (news bulletins) or an internet stream at set times.</summary>
@@ -130,12 +201,18 @@ public sealed class AdSpot
     public List<DayOfWeek> Days { get; set; } = new();
     /// <summary>Ad breaks it plays in; empty = every break.</summary>
     public List<Guid> Breaks { get; set; } = new();
+    /// <summary>
+    /// Where it was placed in the calendar. With any, it plays only there (within its dates), and
+    /// <see cref="Days"/> and <see cref="Breaks"/> don't count.
+    /// </summary>
+    public List<AdPlacement> Placements { get; set; } = new();
 
     public bool PlaysIn(AdBreak adBreak, DateTime at) =>
         Enabled && !string.IsNullOrWhiteSpace(Path)
         && (From == null || at.Date >= From.Value.Date) && (To == null || at.Date <= To.Value.Date)
-        && (Days.Count == 0 || Days.Contains(at.DayOfWeek))
-        && (Breaks.Count == 0 || Breaks.Contains(adBreak.Id));
+        && (Placements.Count > 0
+            ? Placements.Any(p => p.On(at))
+            : (Days.Count == 0 || Days.Contains(at.DayOfWeek)) && (Breaks.Count == 0 || Breaks.Contains(adBreak.Id)));
 }
 
 public static class ScheduleTimes
@@ -168,6 +245,11 @@ public static class ScheduleTimes
 
     public static string Join(IEnumerable<string> times) => string.Join(", ", times);
 }
+
+/// <summary>An event or break the schedule will put in the playlist (see <see cref="Scheduler.Upcoming"/>).</summary>
+/// <param name="Start">When it is expected to start (an EndAt one: its length before <paramref name="Due"/>).</param>
+/// <param name="Due">Its time in the schedule.</param>
+public sealed record UpcomingEvent(Guid EntryId, string Label, string What, DateTime Start, DateTime Due, EventStart Timing, double Seconds, bool IsBreak);
 
 /// <summary>
 /// Starts events and ad breaks on time. Runs on its own timer (not the UI's), so a busy window never delays them.
@@ -220,7 +302,8 @@ sealed class Scheduler : IDisposable
         bool Changed(ScheduleEntry entry)
         {
             var old = Entries(_data).FirstOrDefault(e => e.Id == entry.Id);
-            return old == null || !old.Times.SequenceEqual(entry.Times) || !old.Days.SequenceEqual(entry.Days) || old.Enabled != entry.Enabled;
+            return old == null || old.Enabled != entry.Enabled
+                   || !old.Slots.Select(x => (x.Day, x.At)).ToHashSet().SetEquals(entry.Slots.Select(x => (x.Day, x.At)));
         }
     }
 
@@ -231,6 +314,51 @@ sealed class Scheduler : IDisposable
     }
 
     static IEnumerable<ScheduleEntry> Entries(ScheduleData d) => d.Events.Cast<ScheduleEntry>().Concat(d.Breaks);
+
+    /// <summary>
+    /// What the schedule will put in the playlist from now until <paramref name="until"/>, not there yet: each event
+    /// and break that has something to play, when it is due, what it plays and how long that is. For the playlist
+    /// to show ahead. Reads folders and files, so not on the UI thread.
+    /// </summary>
+    public List<UpcomingEvent> Upcoming(DateTime now, DateTime until)
+    {
+        List<(ScheduleEntry Entry, DateTime At)> due;
+        lock (_lock)
+        {
+            due = Entries(_data).Where(e => e.Enabled)
+                .SelectMany(e => e.TimesOn(now.Date).Concat(e.TimesOn(now.Date.AddDays(1))).Select(at => (Entry: e, At: at)))
+                .Where(x => x.At > now && x.At <= until && x.At > _data.LastStarted.GetValueOrDefault(x.Entry.Id, DateTime.MinValue)
+                            && !(x.Entry.Start == EventStart.EndAt && x.At - EndAtLead <= now)) // those are in the playlist already
+                .OrderBy(x => x.At).ToList();
+        }
+        var list = new List<UpcomingEvent>();
+        foreach (var (entry, at) in due)
+        {
+            var items = Items(entry, at, quiet: true);
+            if (items.Count == 0) continue; // a break with no adverts, a missing file: nothing will play
+            double seconds = items.Sum(i => i.StreamName != null ? i.StreamSeconds : Length(i.Path));
+            string what = entry switch
+            {
+                AdBreak => items.Count(i => i.Kind == TrackKind.Commercial) is var n && n == 1 ? "1 advert" : $"{n} adverts",
+                _ => items[0].StreamName != null ? "stream" : System.IO.Path.GetFileNameWithoutExtension(items[0].Path),
+            };
+            var start = entry.Start == EventStart.EndAt ? at.AddSeconds(-seconds) : at;
+            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak));
+        }
+        return list;
+    }
+
+    readonly Dictionary<string, double> _lengths = new();
+
+    double Length(string path)
+    {
+        lock (_lengths)
+        {
+            if (_lengths.TryGetValue(path, out double s)) return s;
+            s = File.Exists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
+            return _lengths[path] = s;
+        }
+    }
 
     /// <summary>The next event or break due after <paramref name="now"/> (within a day), for the station panel.</summary>
     public (DateTime At, string Name)? Next(DateTime now)

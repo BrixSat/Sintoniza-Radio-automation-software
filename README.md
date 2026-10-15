@@ -57,14 +57,21 @@ engine for decoding, mixing and streaming.
   Drop a file on a cart (from the music browser or the file manager) to assign it.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.
-- **Schedule** (the *Schedule* button under the playlist): things that happen at set times, on chosen days of the
-  week. Times are typed as a list (`07:00, 13:00`, or `*:00` for every hour).
+- **Schedule** (the *Schedule* button under the playlist): things that happen at set times, placed on **week
+  calendars** (days across, times down, like a traffic system). Click a cell to put the selected item there, drag
+  to fill many cells, or click a time for every day; rows can be every 5 to 60 minutes from any minute (every hour
+  at :20), and exact times such as 12:59:55 can be added as rows. Other items show faintly in their cells.
   - **Events** play a file, the newest file in a folder (a news bulletin downloaded there; optionally only if it
     is recent) or another station's stream for a set time.
-  - **Ad breaks** play the adverts booked into them that day, between an optional opening and closing jingle. A
-    break with nothing booked is skipped.
-  - **Adverts**: a file and its advertiser, booked between two dates, on chosen days and into chosen breaks (or
-    every break), in the order of the list.
+  - **Ad breaks** play the adverts placed in them that day, between an optional opening and closing jingle. A
+    break with nothing in it is skipped.
+  - **Adverts**: a file and its advertiser, between two dates. The adverts calendar shows a real week (with week
+    navigation): one row per break time, and in each cell how many adverts that break has and how long they run
+    (`02 | 0:45`). A click places the selected advert in that break every week, or on that date only. Adverts not
+    placed in the calendar play by chosen days and breaks (or every break), in the order of the list.
+  - **Shown ahead in the playlist**: the events and breaks coming up appear in the playlist where they will play
+    (tagged SCHEDULED, with their start time), and the start times after them allow for them. They become real
+    playlist items when they are due.
   - Each starts in one of three ways:
     - **soft**: after the item on air ends, optionally at most N minutes late (then what is on air fades out). A
       window such as "between :48 and :55" is a soft break at :48, at most 7 minutes late;

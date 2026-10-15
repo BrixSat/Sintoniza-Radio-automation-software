@@ -270,6 +270,27 @@
             <Setter Property="MinHeight" Value="0" />
             <Setter Property="CornerRadius" Value="4" />
         </Style>
+        <!-- Scheduled events and breaks shown ahead, not in the playlist yet -->
+        <Style Selector="Grid.preview">
+            <Setter Property="Opacity" Value="0.8" />
+        </Style>
+        <Style Selector="Grid.preview TextBlock.title">
+            <Setter Property="FontStyle" Value="Italic" />
+        </Style>
+        <Style Selector="Border.preview-tag">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="4,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="BorderBrush" Value="{StaticResource NextUp}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style Selector="Border.preview-tag > TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource NextUp}" />
+        </Style>
+
         <!-- Hour divider above the first item of a new hour -->
         <Style Selector="Border.hour-tag">
             <Setter Property="CornerRadius" Value="3" />
