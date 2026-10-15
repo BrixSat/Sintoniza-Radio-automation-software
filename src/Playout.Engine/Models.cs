@@ -1,7 +1,11 @@
 namespace Playout.Engine;
 
-/// <summary>Stream: another station's internet stream, played for <see cref="Track.Duration"/> seconds or, with 0, until Stop or Next.</summary>
-public enum TrackKind { Music, Jingle, Commercial, Stream }
+/// <summary>
+/// Stream: another station's internet stream, played for <see cref="Track.Duration"/> seconds or, with 0, until Stop
+/// or Next. Programme: speech and shows put on air by a scheduled event (news bulletins…): not a song for RDS, the
+/// website or music reports.
+/// </summary>
+public enum TrackKind { Music, Jingle, Commercial, Stream, Programme }
 
 /// <summary>
 /// The usual radio markers for a file, in seconds from the start of the file. Null = not set.
@@ -27,6 +31,12 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
 {
     public string Display => string.IsNullOrWhiteSpace(Artist) ? Title : $"{Artist} - {Title}";
 
+    /// <summary>The scheduled event or ad break that put this item in the playlist (e.g. "Ad break 10:30"); null for the rest.</summary>
+    public string? Event { get; init; }
+
+    /// <summary>Who an advert is for, for the proof of broadcast.</summary>
+    public string? Advertiser { get; init; }
+
     public bool IsStream => Kind == TrackKind.Stream;
 
     /// <summary>A stream with no set play time: it stays on air until Stop or Next.</summary>
@@ -48,6 +58,13 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
         return crossfade > 0 && PlayLength > crossfade * 2 ? End - crossfade : End;
     }
 }
+
+/// <summary>
+/// An item a scheduled event puts in the playlist: a file, or (with <see cref="StreamName"/>) an internet stream played
+/// for <see cref="StreamSeconds"/> (0 = until Stop or Next). <see cref="Kind"/> overrides what the file name says
+/// (adverts are adverts wherever they are kept).
+/// </summary>
+public sealed record ScheduledItem(string Path, TrackKind? Kind = null, string? StreamName = null, double StreamSeconds = 0, string? Advertiser = null);
 
 public enum PlayerState { Stopped, Playing, Paused }
 

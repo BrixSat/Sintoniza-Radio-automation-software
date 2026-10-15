@@ -7,8 +7,9 @@ engine for decoding, mixing and streaming.
 ![Main window](docs/screenshot.png)
 
 > **Status:** in development. It plays a playlist on air with crossfades, fires jingles from a cartwall, streams to
-> Icecast/Shoutcast, sends now playing to an RDS encoder, keeps a music library and play history, and guards
-> against dead air. Scheduling (hour templates and rotation) is next (see [Roadmap](#roadmap)).
+> Icecast/Shoutcast, plays events and ad breaks at set times, levels loudness, sends now playing to an RDS encoder
+> and the station's website, keeps a music library, play history and as-run log (music reports and proof of
+> broadcast), and guards against dead air. Hour templates and rotation are next (see [Roadmap](#roadmap)).
 
 ## Features
 
@@ -18,8 +19,9 @@ engine for decoding, mixing and streaming.
   and Next flashes on every track change. The mode button switches between **AUTO**
   (runs through the playlist) and **ASSISTED** (stops after each item until you start the next).
 - **Playlist**: drag and drop from the built-in music browser or your file manager, drag rows to reorder,
-  estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial), and an
-  on-air row that fills from left to right as the track plays. M3U open/save.
+  estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial, stream,
+  programme), a tag on items put there by a scheduled event or ad break, and an on-air row that fills from left
+  to right as the track plays. M3U open/save.
 - **Internet streams in the playlist**: put another station's stream in the playlist (**Stream…**) for a set time
   (it crossfades into the next item when the time is up) or until you press Stop or Next. It connects a few seconds
   before it is due, so there is no dead air, and if the stream drops the playlist moves on. Saved with the playlist
@@ -46,11 +48,40 @@ engine for decoding, mixing and streaming.
 - **Cartwall**: 12 instant buttons that play over the music, with a countdown and a progress fill while playing.
   Drop a file on a cart (from the music browser or the file manager) to assign it.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
-  tracks played today, stream time, and stereo peak meters.
+  tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.
+- **Schedule** (the *Schedule* button under the playlist): things that happen at set times, on chosen days of the
+  week. Times are typed as a list (`07:00, 13:00`, or `*:00` for every hour).
+  - **Events** play a file, the newest file in a folder (a news bulletin downloaded there; optionally only if it
+    is recent) or another station's stream for a set time.
+  - **Ad breaks** play the adverts booked into them that day, between an optional opening and closing jingle. A
+    break with nothing booked is skipped.
+  - **Adverts**: a file and its advertiser, booked between two dates, on chosen days and into chosen breaks (or
+    every break), in the order of the list.
+  - Each starts **soft** (after the item on air ends) or **hard** (on the second, fading out what is on air). Its
+    items go into the playlist after the item on air, tagged with its name, and the playlist carries on after them.
+    With the player stopped they wait as next. An event that fell due while the app was not running (a crash, a
+    restart) still starts if it is at most 2 minutes late; older ones are logged as missed.
+- **As-run log and reports** (the *Reports* button): everything that goes on air, from the playlist, scheduled
+  events, ad breaks and carts, is logged with its start and end time, one CSV file a day in the `as-run` folder
+  next to the settings. The Reports window makes, for any days:
+  - **Music played** and **music totals per song** for the collecting societies (royalties), with album, composer,
+    label and ISRC from the files' tags;
+  - **Adverts (proof of broadcast)**, for all advertisers or one;
+  - the whole log.
+  Save them as CSV (comma or semicolon separated) or as a page to print or save as PDF.
+- **Loudness levelling** (Settings → Audio): every item plays at the same perceived loudness. Each file is measured
+  (EBU R128) in the background when it is added to the playlist, a cart or the schedule, and remembered; loud
+  songs are turned down and quiet ones up (at most 6 dB by default, never past -1 dBFS peaks). The files are not
+  changed. Off by default: switching it on makes the output quieter than most modern masters, so check the desk.
+- **Now playing on the website** (Settings → Website): when what is on air changes, the app posts it as JSON to an
+  address you choose, with a key. [docs/now-playing](docs/now-playing) has the format and a PHP page that keeps it
+  in `nowplaying.txt` and `nowplaying.json` for the website to show.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
   Click the STREAM button to start and stop (also while it is still connecting), or right-click it for Start / Stop;
   after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.
-  One click on the **STREAM** badge next to ON AIR starts or stops it.
+  One click on the **STREAM** badge next to ON AIR starts or stops it. The badge and the stream time show on a web
+  radio, or on an FM station once a streaming server is set up (a source password is entered); otherwise they are
+  hidden.
 - **Separate outputs for the mixing desk**: music and cartwall can each go to their own sound card or output pair
   (Out 1–2, 3–4, …), so they come up on separate desk faders. A test tone helps you find which fader is which.
   The stream always carries music and cartwall together. A third output, **Preview**, is for pre-listening in the
@@ -65,7 +96,8 @@ engine for decoding, mixing and streaming.
   fades out just before the signal and the next playlist item starts right after it (in AUTO). Or turn it off.
   It plays on the Cartwall output and in the stream, and follows the computer's clock.
 - **Settings** (Ctrl/Cmd+,): station name, logo, genre, website and station type, crossfade length, audio outputs,
-  microphone, time signal, keyboard shortcuts and the streaming server.
+  loudness levelling, microphone, time signal, safety, library, keyboard shortcuts, the streaming server, RDS and
+  the website.
 - **Updates**: checks GitHub Releases at start and every 6 hours (can be turned off in Settings → About, which also
   has *Check now*). A new version shows a green *Update available* button; nothing is installed until you click
   it. Installed with the Windows setup or the .deb package, it downloads the package, checks its SHA-256 and
@@ -75,7 +107,8 @@ engine for decoding, mixing and streaming.
   characters) and the station's text during jingles, adverts and when stopped; the PS is fixed. It is sent when
   the item changes and again every minute, so a restarted encoder catches up. Encoders are reached by TCP, UDP or
   a serial port, with **ASCII commands** (`RT=` / `PS=` by default, editable: PIRA32, P232, MRDS, DEVA and most
-  others) or **UECP**; or the text is written to a file. *Send now* tests the connection.
+  others) or **UECP**; or the text is written to a file. *Send now* tests the connection. With ASCII commands it
+  can also send **RT+** tags (where the title and the artist are in the radio text), with an editable command.
 - Remembers the playlist, carts and settings between runs.
 - **Never off air** (Settings → Safety):
   - **Silence detection**: if nothing is heard for a set time (default 15 s under -45 dB) while an item plays, AUTO
@@ -133,7 +166,9 @@ The type icon in the playlist comes from the folders a file is in:
 | anything else | Music |
 
 So `Music/Jingles/Station ID.mp3` is a jingle. This is a first version, and category rules in the music library
-will replace it later.
+will replace it later. Items put in the playlist by the schedule have their own types wherever the files are:
+adverts are commercials, the opening and closing jingles of a break are jingles, and what events play (news,
+shows) is a **programme**, which RDS, the website and the music reports don't treat as a song.
 
 ### Cue points
 
@@ -252,14 +287,15 @@ engine thread, so a frozen window can't cause dead air.
 
 Settings are stored in `settings.json` in the per-user app data folder:
 `%APPDATA%\RadioPlayout` on Windows, `~/.config/RadioPlayout` on Linux, and `~/Library/Application Support/RadioPlayout` on macOS.
+The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), the logs (`logs`), cue points
+(`cues.json`) and measured loudness (`loudness.txt`).
 
 ## Roadmap
 
 - Auto cue (silence trimming) for files without cue points
-- Hour templates, rotation rules (artist and title separation), jingles and IDs on a schedule
-- Reports from the play history (royalties, advertisers)
-- RT+ (artist and title tags in the radio text), live input switching and GPIO, voice tracking
-- Loudness normalisation
+- Hour templates (clocks) and rotation rules for the whole day, not just fill music
+- Live input switching and GPIO, voice tracking
+- RT+ over UECP (it is sent with ASCII commands now)
 - REST API for remote control
 
 ## Licensing

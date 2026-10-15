@@ -25,6 +25,7 @@ public sealed class PlayoutEngine : IDisposable
     const double FillRetrySeconds = 5;     // how often to try again when fill music couldn't be added
     const int FillAttempts = 10;           // files tried at a time (some may be unreadable)
     const int KeepPlayed = 500;            // played items kept above the cursor when fill music grows the playlist
+    const double EventFadeSeconds = 2;     // a hard scheduled event fades out what is on air over this
 
     readonly BlockingCollection<Action> _commands = new();
     readonly List<(DateTime Due, Action Action)> _timers = new();
@@ -34,11 +35,15 @@ public sealed class PlayoutEngine : IDisposable
     readonly SyncProcedure _crossfadeSync;
     readonly SyncProcedure _endSync;
     readonly SyncProcedure _cueOutSync;
+    readonly DSPProcedure _gainDsp;
 
     readonly AudioGraph _graph;
     readonly Microphone _mic;
     readonly WaveformLoader _waveforms = new();
     readonly CueStore _cues;
+    readonly LoudnessStore _loudnessStore;
+    readonly LoudnessWorker _loudnessWorker;
+    volatile LoudnessSettings _loudness = new();
 
     // Engine-thread state.
     readonly List<Track> _playlist = new();
@@ -82,7 +87,9 @@ public sealed class PlayoutEngine : IDisposable
     double _crossfadeSeconds = 5;
 
     /// <param name="MixFade">How the deck fades once the next item starts at the mix point; null = it plays on to Cue Out (Mix marker).</param>
-    sealed record Deck(int Handle, Track Track, double Length, int MixSync, int CueOutSync, double? MixFade);
+    /// <param name="Started">When it went on air (UTC).</param>
+    /// <param name="GainDb">Loudness levelling applied to it.</param>
+    sealed record Deck(int Handle, Track Track, double Length, int MixSync, int CueOutSync, double? MixFade, DateTime Started = default, double GainDb = 0);
 
     public event Action<PlaylistSnapshot>? PlaylistChanged;
     public event Action<string>? Log;
@@ -90,13 +97,22 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>An item went on air (raised on the engine thread: hand slow work, such as writing history, to another thread).</summary>
     public event Action<Track>? OnAir;
 
+    /// <summary>
+    /// An item left the air: the next one took over, or the player stopped. With when it went on air and when it left
+    /// (UTC). Raised on the engine thread, like <see cref="OnAir"/>.
+    /// </summary>
+    public event Action<Track, DateTime, DateTime>? OffAir;
+
     /// <param name="routing">Where the music, cart and preview buses go.</param>
     /// <param name="cues">Cue points per file; applied when files are added.</param>
     /// <param name="forceDevice">Send every bus to this BASS device regardless of routing (0 = "no sound", for testing).</param>
-    public PlayoutEngine(AudioRouting routing, CueStore cues, int? forceDevice = null)
+    /// <param name="loudness">Measured loudness per file (loudness levelling); null = kept in the temp folder.</param>
+    public PlayoutEngine(AudioRouting routing, CueStore cues, int? forceDevice = null, LoudnessStore? loudness = null)
     {
         LoadPlugins();
         _cues = cues;
+        _loudnessStore = loudness ?? new LoudnessStore(Path.Combine(Path.GetTempPath(), "radio-playout-loudness.txt"));
+        _loudnessWorker = new LoudnessWorker(_loudnessStore);
 
         _graph = new AudioGraph(forceDevice);
         _graph.Apply(routing);
@@ -105,6 +121,7 @@ public sealed class PlayoutEngine : IDisposable
         _crossfadeSync = (_, channel, _, _) => _commands.Add(() => OnCrossfadePoint(channel));
         _endSync = (_, channel, _, _) => _commands.Add(() => OnTrackEnd(channel));
         _cueOutSync = (_, channel, _, _) => _commands.Add(() => OnCueOut(channel));
+        _gainDsp = ApplyGain;
 
         _thread = new Thread(Run) { Name = "PlayoutEngine", IsBackground = true, Priority = ThreadPriority.AboveNormal };
         _thread.Start();
@@ -203,7 +220,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             if (deck.MixSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.MixSync);
             if (deck.CueOutSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.CueOutSync);
-            _current = Arm(deck.Handle, deck.Track with { Cues = cues.IsEmpty ? null : cues }, deck.Length);
+            _current = Arm(deck.Handle, deck.Track with { Cues = cues.IsEmpty ? null : cues }, deck.Length) with { Started = deck.Started, GainDb = deck.GainDb };
         }
     }
 
@@ -289,6 +306,87 @@ public sealed class PlayoutEngine : IDisposable
         PlaylistUpdated();
     });
 
+    /// <summary>Sets up loudness levelling. Switched on, the playlist's files are measured in the background.</summary>
+    public void ConfigureLoudness(LoudnessSettings settings) => Post(() =>
+    {
+        _loudness = settings;
+        if (!settings.Enabled) return;
+        foreach (var t in _playlist.Skip(Math.Max(0, _cursorIndex))) if (!t.IsStream) _loudnessWorker.Add(t.Path);
+    });
+
+    /// <summary>Measures these files' loudness in the background (carts, scheduled items), if levelling is on.</summary>
+    public void MeasureLoudness(IEnumerable<string> paths)
+    {
+        var list = paths.ToList();
+        // On the engine thread: after a ConfigureLoudness posted just before.
+        Post(() =>
+        {
+            if (!_loudness.Enabled) return;
+            foreach (var path in list) _loudnessWorker.Add(path);
+        });
+    }
+
+    /// <summary>A file's measured loudness, or null if it hasn't been measured (yet).</summary>
+    public LoudnessInfo? GetLoudness(string path) => _loudnessStore.Get(path);
+
+    /// <summary>
+    /// A scheduled event (or ad break): puts its items in the playlist after the item on air. Hard: the first starts
+    /// now, and what is on air fades out; soft: they follow the item on air. With the player stopped or paused they
+    /// wait as next, for the operator.
+    /// </summary>
+    public void InsertEvent(string label, IReadOnlyList<ScheduledItem> items, bool hard) => Post(() =>
+    {
+        var tracks = Scheduled(label, items);
+        if (tracks.Count == 0)
+        {
+            Emit($"{label}: nothing to play");
+            return;
+        }
+
+        // After the item on air, or after a stream that is about to go on air (still connecting).
+        int at = _cursorIndex + 1;
+        if (_connecting is { } connecting && _playlist.FindIndex(t => t.Id == connecting) is var c and >= 0) at = c + 1;
+        at = Math.Clamp(at, 0, _playlist.Count);
+        // Soft: after other scheduled items still waiting there, so events play in the order they were due.
+        if (!hard)
+            while (at < _playlist.Count && _playlist[at].Event != null && !_played.Contains(_playlist[at].Id)) at++;
+        _playlist.InsertRange(at, tracks);
+        if (at <= _cursorIndex) _cursorIndex += tracks.Count;
+        if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
+
+        bool playing = State == PlayerState.Playing;
+        if (playing && (hard || (_current == null && _connecting == null)))
+        {
+            Emit($"{label}: on air");
+            FadePlayingOut(EventFadeSeconds);
+            StartTrack(tracks[0], _current == null ? 0 : EventFadeSeconds);
+        }
+        else
+        {
+            Emit(playing ? $"{label}: plays next" : $"{label}: waiting as next (the player is {State.ToString().ToLowerInvariant()})");
+            PlaylistUpdated();
+        }
+    });
+
+    /// <summary>Adds items a scheduled event put in the playlist, with their label as it was (a saved playlist).</summary>
+    public void AddScheduled(string label, IReadOnlyList<ScheduledItem> items, int insertAt = -1) => Post(() =>
+        Insert(Scheduled(label, items), insertAt));
+
+    /// <summary>Opens the items of a scheduled event (files that can't be read are left out), labelled with it.</summary>
+    List<Track> Scheduled(string label, IReadOnlyList<ScheduledItem> items)
+    {
+        var tracks = new List<Track>();
+        foreach (var item in items)
+        {
+            Volatile.Write(ref _heartbeat, Environment.TickCount64);
+            var track = item.StreamName != null
+                ? new Track(Guid.NewGuid(), item.Path.Trim(), "", item.StreamName, Math.Max(0, item.StreamSeconds), TrackKind.Stream)
+                : SafeProbe(item.Path);
+            if (track != null) tracks.Add(track with { Kind = item.Kind ?? track.Kind, Event = label, Advertiser = item.Advertiser });
+        }
+        return tracks;
+    }
+
     /// <summary>
     /// After a restart: the items up to <paramref name="index"/> (the one that was on air) count as played, and with
     /// <paramref name="play"/> the one after it starts, so a file that brought the app down isn't played again.
@@ -346,6 +444,7 @@ public sealed class PlayoutEngine : IDisposable
         int at = insertAt < 0 || insertAt > _playlist.Count ? _playlist.Count : insertAt;
         _playlist.InsertRange(at, tracks);
         if (at <= _cursorIndex) _cursorIndex += tracks.Count;
+        if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
         PlaylistUpdated();
     }
 
@@ -429,6 +528,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         int h = OpenStream(path, prescan: false);
         if (h == 0) { Emit($"Cart failed: {Path.GetFileName(path)} ({Bass.LastError})"); return 0; }
+        SetGain(h, GainFor(path, isStream: false));
         BassMix.MixerAddChannel(_graph.CartBus, h, BassFlags.AutoFree);
         _carts[h] = 0;
         return h;
@@ -568,6 +668,7 @@ public sealed class PlayoutEngine : IDisposable
         StopStreaming();
         _commands.CompleteAdding();
         _thread.Join(2000);
+        _loudnessWorker.Dispose();
         _mic.Free();
         _graph.Free();
     }
@@ -666,11 +767,11 @@ public sealed class PlayoutEngine : IDisposable
         if (_current.Track.IsStream) Emit($"Stream ended: {_current.Track.Title}");
         if (_autoAdvance && NextTrack() is { } next)
         {
-            if (next.Id == _connecting) { _current = null; PlaylistUpdated(); return; } // on air as soon as it connects
+            if (next.Id == _connecting) { SetCurrent(null); PlaylistUpdated(); return; } // on air as soon as it connects
             StartTrack(next, 0);
             return;
         }
-        _current = null;
+        SetCurrent(null);
         if (StartFill()) return;
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
@@ -691,7 +792,7 @@ public sealed class PlayoutEngine : IDisposable
             if (next.Id == _connecting)
             {
                 FadeOutAndFree(handle, CueOutFadeSeconds);
-                _current = null;
+                SetCurrent(null);
                 PlaylistUpdated();
                 return;
             }
@@ -699,7 +800,7 @@ public sealed class PlayoutEngine : IDisposable
             return;
         }
         FadeOutAndFree(handle, CueOutFadeSeconds);
-        _current = null;
+        SetCurrent(null);
         if (StartFill()) return;
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
@@ -815,10 +916,12 @@ public sealed class PlayoutEngine : IDisposable
 
         // For a stream, End means the connection dropped.
         BassMix.ChannelSetSync(handle, SyncFlags.End | SyncFlags.Mixtime, 0, _endSync);
-        var deck = track.IsStream ? ArmStream(handle, track) : Arm(handle, track, length);
+        double gainDb = GainFor(track.Path, track.IsStream);
+        SetGain(handle, gainDb);
+        var deck = (track.IsStream ? ArmStream(handle, track) : Arm(handle, track, length)) with { Started = DateTime.UtcNow, GainDb = gainDb };
         BassMix.ChannelFlags(handle, BassFlags.Default, BassFlags.MixerChanPause);
 
-        _current = deck;
+        SetCurrent(deck);
         _state = (int)PlayerState.Playing;
         _waitingForFill = false;
         _silentSince = null; // a new item gets the full time before it counts as silent
@@ -830,6 +933,50 @@ public sealed class PlayoutEngine : IDisposable
         OnAir?.Invoke(track);
 
         PlaylistUpdated();
+    }
+
+    /// <summary>Puts a deck on air (or none), and tells <see cref="OffAir"/> about the one it replaces.</summary>
+    void SetCurrent(Deck? deck)
+    {
+        var old = _current;
+        _current = deck;
+        if (old != null && old.Track.Id != deck?.Track.Id) OffAir?.Invoke(old.Track, old.Started, DateTime.UtcNow);
+    }
+
+    // ───────────────────────── Loudness levelling ─────────────────────────
+
+    /// <summary>
+    /// How much to raise or lower a file (dB) to bring it to the target loudness: 0 when levelling is off, for streams,
+    /// and for files not measured yet (they are queued, for next time).
+    /// </summary>
+    double GainFor(string path, bool isStream)
+    {
+        var s = _loudness;
+        if (!s.Enabled || isStream) return 0;
+        if (_loudnessStore.Get(path) is not { } info)
+        {
+            _loudnessWorker.Add(path);
+            return 0;
+        }
+        double db = s.TargetLufs - info.Lufs;
+        // Raised only as far as the peaks allow (-1 dBFS), and at most by the set amount.
+        if (db > 0) db = Math.Min(db, Math.Max(0, Math.Min(s.MaxBoostDb, -1 - info.PeakDb)));
+        return Math.Round(Math.Max(db, -30), 2);
+    }
+
+    /// <summary>Applies a gain to a channel's samples (a DSP: unlike the volume, it can raise them, and fades still work on top).</summary>
+    void SetGain(int handle, double db)
+    {
+        if (Math.Abs(db) < 0.05) return;
+        float gain = (float)Math.Pow(10, db / 20);
+        Bass.ChannelSetDSP(handle, _gainDsp, BitConverter.SingleToInt32Bits(gain), 1);
+    }
+
+    static unsafe void ApplyGain(int handle, int channel, IntPtr buffer, int length, IntPtr user)
+    {
+        float gain = BitConverter.Int32BitsToSingle((int)user);
+        var samples = new Span<float>((void*)buffer, length / sizeof(float));
+        for (int i = 0; i < samples.Length; i++) samples[i] *= gain;
     }
 
     /// <summary>Sets the Mix and Cue Out syncs on a deck (it must already be a mixer source).</summary>
@@ -880,7 +1027,7 @@ public sealed class PlayoutEngine : IDisposable
         DropConnection();
         FadePlayingOut(StopFadeSeconds);
         if (_current is { } deck) FadeOutAndFree(deck.Handle, State == PlayerState.Paused ? 0 : StopFadeSeconds);
-        _current = null;
+        SetCurrent(null);
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
     }
@@ -1101,7 +1248,7 @@ public sealed class PlayoutEngine : IDisposable
         _connecting = null;
         FadePlayingOut(SignalFadeSeconds);
         if (_current is { } deck) FadeOutAndFree(deck.Handle, SignalFadeSeconds);
-        _current = null;
+        SetCurrent(null);
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
     }

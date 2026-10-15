@@ -57,6 +57,13 @@ public sealed class RdsSettings
     /// <summary>ASCII commands: {ps} and {rt} are replaced; an empty command isn't sent.</summary>
     public string PsCommand { get; set; } = "PS={ps}";
     public string RtCommand { get; set; } = "RT={rt}";
+    /// <summary>
+    /// RT+ (ASCII commands only): tells radios which part of the radio text is the title and which the artist, so
+    /// they can show them apart. Sent after the radio text with <see cref="RtPlusCommand"/>.
+    /// </summary>
+    public bool RtPlus { get; set; }
+    /// <summary>{type1},{start1},{len1},{type2},{start2},{len2}: content type (1 title, 4 artist, 0 none), first character (from 0) and length marker (characters − 1), as in the RT+ standard.</summary>
+    public string RtPlusCommand { get; set; } = "RTP={type1},{start1},{len1},{type2},{start2},{len2}";
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public RdsCharset Charset { get; set; } = RdsCharset.Ascii;
 
@@ -90,6 +97,49 @@ public static class RdsText
         return (ps, Cut(rt, RtLength));
     }
 
+    /// <summary>An RT+ tag: content type (1 = title, 4 = artist), first character and length marker (characters − 1).</summary>
+    public readonly record struct RtPlusTag(int Type, int Start, int Length);
+
+    public const int RtPlusTitle = 1;
+    public const int RtPlusArtist = 4;
+
+    /// <summary>
+    /// RT+ tags for the radio text <paramref name="rt"/> made by <see cref="Compose"/>: where the title and the artist
+    /// are in it. Two tags, unused ones empty (0, 0, 0). Tag 2 can only mark 32 characters, so the longer of the two
+    /// goes first. No song on air, or not found (cut off): empty.
+    /// </summary>
+    public static (RtPlusTag First, RtPlusTag Second) RtPlusTags(RdsSettings s, Track? onAir, string rt)
+    {
+        var none = new RtPlusTag(0, 0, 0);
+        bool song = onAir != null && (onAir.Kind is TrackKind.Music or TrackKind.Stream || !s.DefaultForJingles);
+        if (!song) return (none, none);
+        var tags = new List<RtPlusTag>();
+        int searchFrom = 0;
+        // In the order the template has them, so "{title} by {artist}" finds the right one when they share words.
+        var fields = new[] { (Type: RtPlusTitle, Text: Clean(onAir!.Title)), (Type: RtPlusArtist, Text: Clean(onAir.Artist)) }
+            .OrderBy(f => f.Type == RtPlusTitle ? s.Template.IndexOf("{title}", StringComparison.OrdinalIgnoreCase) : s.Template.IndexOf("{artist}", StringComparison.OrdinalIgnoreCase));
+        foreach (var (type, text) in fields)
+        {
+            if (text.Length == 0) continue;
+            int at = rt.IndexOf(text, searchFrom, StringComparison.Ordinal);
+            if (at < 0) at = rt.IndexOf(text, StringComparison.Ordinal);
+            if (at < 0 || at > 63) continue;
+            tags.Add(new RtPlusTag(type, at, Math.Min(63, text.Length - 1)));
+            searchFrom = at + text.Length;
+        }
+        if (tags.Count == 0) return (none, none);
+        if (tags.Count == 1) return (tags[0], none);
+        // The second tag's length marker has 5 bits (32 characters): the title first when the artist fits there.
+        var title = tags.First(t => t.Type == RtPlusTitle);
+        var artist = tags.First(t => t.Type == RtPlusArtist);
+        if (artist.Length <= 31) return (title, artist);
+        if (title.Length <= 31) return (artist, title);
+        return (title, none);
+    }
+
+    /// <summary>A field as <see cref="Fill"/> puts it in the text: trimmed, runs of spaces made one.</summary>
+    static string Clean(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
     /// <summary>The template with its fields filled in; separators left over by an empty field are dropped.</summary>
     static string Fill(string template, string artist, string title, string station)
     {
@@ -111,11 +161,17 @@ public static class RdsText
 
     // ───────────────────────── ASCII commands ─────────────────────────
 
-    public static byte[] Ascii(RdsSettings s, string ps, string rt)
+    public static byte[] Ascii(RdsSettings s, string ps, string rt, (RtPlusTag First, RtPlusTag Second)? rtPlus = null)
     {
         var text = new StringBuilder();
         if (s.PsCommand.Trim().Length > 0) text.Append(s.PsCommand.Trim().Replace("{ps}", ps)).Append("\r\n");
         if (s.RtCommand.Trim().Length > 0) text.Append(s.RtCommand.Trim().Replace("{rt}", rt)).Append("\r\n");
+        if (s.RtPlus && rtPlus is var (a, b) && s.RtPlusCommand.Trim().Length > 0)
+            text.Append(s.RtPlusCommand.Trim()
+                .Replace("{type1}", a.Type.ToString(CultureInfo.InvariantCulture)).Replace("{start1}", a.Start.ToString(CultureInfo.InvariantCulture))
+                .Replace("{len1}", a.Length.ToString(CultureInfo.InvariantCulture)).Replace("{type2}", b.Type.ToString(CultureInfo.InvariantCulture))
+                .Replace("{start2}", b.Start.ToString(CultureInfo.InvariantCulture)).Replace("{len2}", b.Length.ToString(CultureInfo.InvariantCulture)))
+                .Append("\r\n");
         return Encode(text.ToString(), s.Charset);
     }
 
@@ -237,6 +293,7 @@ public sealed class RdsOutput : IDisposable
     readonly CancellationTokenSource _stop = new();
     readonly object _lock = new();
     (string Ps, string Rt) _text;
+    (RdsText.RtPlusTag, RdsText.RtPlusTag) _tags;
     bool _newText = true;
     string? _key;
     TcpClient? _tcp;
@@ -264,10 +321,12 @@ public sealed class RdsOutput : IDisposable
         if (key == _key) return;
         _key = key;
         var text = RdsText.Compose(_s, onAir, _station);
+        var tags = RdsText.RtPlusTags(_s, onAir, text.Rt);
         lock (_lock)
         {
-            if (text == _text) return;
+            if (text == _text && tags == _tags) return;
             _text = text;
+            _tags = tags;
             _newText = true;
         }
         _wake.Release();
@@ -303,10 +362,12 @@ public sealed class RdsOutput : IDisposable
         lock (_sendLock)
         {
             (string Ps, string Rt) text;
+            (RdsText.RtPlusTag, RdsText.RtPlusTag) tags;
             bool newText;
             lock (_lock)
             {
                 text = _text;
+                tags = _tags;
                 newText = _newText;
                 _newText = false;
             }
@@ -314,7 +375,7 @@ public sealed class RdsOutput : IDisposable
             try
             {
                 if (_s.Protocol == RdsProtocol.TextFile) WriteFile(text.Rt);
-                else Write(_s.Protocol == RdsProtocol.Uecp ? RdsText.Uecp(_s, text.Ps, text.Rt, newText) : RdsText.Ascii(_s, text.Ps, text.Rt));
+                else Write(_s.Protocol == RdsProtocol.Uecp ? RdsText.Uecp(_s, text.Ps, text.Rt, newText) : RdsText.Ascii(_s, text.Ps, text.Rt, tags));
             }
             catch (Exception ex)
             {

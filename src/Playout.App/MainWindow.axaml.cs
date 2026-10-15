@@ -49,7 +49,8 @@ public partial class MainWindow : Window
         try
         {
             var cues = new CueStore(Path.Combine(AppSettings.DataFolder, "cues.json"));
-            _engine = new PlayoutEngine(_settings.Routing, cues, ForcedDeviceFromArgs());
+            _engine = new PlayoutEngine(_settings.Routing, cues, ForcedDeviceFromArgs(),
+                new LoudnessStore(Path.Combine(AppSettings.DataFolder, "loudness.txt")));
             _engine.Log += msg =>
             {
                 AppLog.Write(msg);
@@ -57,6 +58,8 @@ public partial class MainWindow : Window
             };
             Watchdog.Watch(_engine);
             _engine.OnAir += track => _library.RecordPlay(track, "playlist");
+            _engine.OnAir += track => _asRun.Started(track, DateTime.UtcNow);
+            _engine.OffAir += (track, started, ended) => _asRun.Ended(track, started, ended);
             var engine = _engine;
             _library.AttachCues(cues, paths => engine.ReloadCues(paths));
             _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
@@ -90,9 +93,17 @@ public partial class MainWindow : Window
             _engine.ConfigureTimeSignal(_settings.TimeSignal);
             ApplySafety();
             ApplyRds();
+            ApplyLoudness();
             AddEntries(_settings.PlaylistItems);
             _ = CarryOn();
+            _scheduler = new Scheduler(_engine, ScheduleData.Load());
+            _scheduler.Message += message =>
+            {
+                AppLog.Write(message);
+                Dispatcher.UIThread.Post(() => LastLog.Text = message);
+            };
         }
+        ApplyWebNowPlaying();
         AppLog.Write($"Started {AppInfo.Name} {Updates.CurrentText}");
 
         // Saved every few seconds (only when something changed), so a crash or power cut loses next to nothing.
@@ -232,6 +243,8 @@ public partial class MainWindow : Window
         };
         StreamToggle.ContextMenu = streamMenu;
         SettingsButton.Click += async (_, _) => await OpenSettings();
+        ScheduleButton.Click += async (_, _) => await OpenSchedule();
+        ReportsButton.Click += (_, _) => OpenReports();
 
         // Tunnel: the operator's shortcuts come before whatever control has focus (Space on a button, keys in the playlist).
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
@@ -246,6 +259,13 @@ public partial class MainWindow : Window
         };
         Closing += (_, _) => SaveSettings();
         Closed += (_, _) => _rds?.Dispose();
+        Closed += (_, _) => _web?.Dispose();
+        Closed += (_, _) =>
+        {
+            _scheduler?.Dispose();
+            LogCartsOnAir();
+            _asRun.Close();
+        };
         Closed += (_, _) =>
         {
             _engine?.Dispose();
@@ -281,7 +301,7 @@ public partial class MainWindow : Window
             case Shortcuts.Next: _engine?.Next(); break;
             case Shortcuts.Stop: _engine?.Stop(); break;
             case Shortcuts.Mic: _micKeyHeld = true; UpdateMic(); break;
-            case Shortcuts.Stream: ToggleStreaming(); break;
+            case Shortcuts.Stream: if (StreamToggle.IsVisible) ToggleStreaming(); break;
             default:
                 ToggleCart(Array.FindIndex(Shortcuts.Actions, a => a.Id == id) - Array.FindIndex(Shortcuts.Actions, a => a.Id == Shortcuts.Cart(0)));
                 break;
@@ -413,6 +433,7 @@ public partial class MainWindow : Window
         DateText.Text = now.ToString("dddd, d MMMM yyyy");
         UpdateStartTimes(st);
         UpdateStationInfo(now);
+        _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem());
     }
 
     void UpdateWaveforms(PlayerStatus st)
@@ -530,6 +551,7 @@ public partial class MainWindow : Window
         if (st.Stream == _lastStreamState) return;
         if (st.Stream == StreamState.OnAir) _streamSince = DateTime.Now;
         _lastStreamState = st.Stream;
+        ShowStreaming();
 
         (StreamText.Text, StreamDot.Fill) = st.Stream switch
         {
@@ -565,6 +587,12 @@ public partial class MainWindow : Window
         StreamTimeText.Text = _lastStreamState == StreamState.OnAir
             ? Format.Duration((now - _streamSince).TotalSeconds)
             : "Off";
+
+        var next = _scheduler?.Next(now);
+        NextEventPanel.IsVisible = next != null;
+        if (next is { } n)
+            NextEventText.Text = $"{n.At:HH:mm:ss}  {(string.IsNullOrWhiteSpace(n.Name) ? "Event" : n.Name)}"
+                                 + (n.At.Date != now.Date ? " (tomorrow)" : "");
     }
 
     void CountPlayed()
@@ -730,6 +758,13 @@ public partial class MainWindow : Window
         var files = new List<string>();
         foreach (var e in entries)
         {
+            if (e.Event != null)
+            {
+                if (!e.IsStream && !File.Exists(e.Path)) continue;
+                Flush();
+                engine.AddScheduled(e.Event, [e.ToScheduled()]);
+                continue;
+            }
             if (!e.IsStream)
             {
                 if (File.Exists(e.Path)) files.Add(e.Path);
@@ -959,7 +994,9 @@ public partial class MainWindow : Window
                 _engine.ConfigureTimeSignal(_settings.TimeSignal);
                 ApplySafety();
                 ApplyRds();
+                ApplyLoudness();
             }
+            ApplyWebNowPlaying();
             if (_settings.Library.ConnectionKey() != libraryBefore) _ = _library.OpenAsync(_settings.Library);
             ApplyAutoScan();
             ApplyStationBranding();
@@ -1006,6 +1043,18 @@ public partial class MainWindow : Window
     {
         MicButton.IsVisible = _settings.StationType == StationType.Web;
         UpdateMic();
+        ShowStreaming();
+    }
+
+    /// <summary>
+    /// The STREAM button and stream time show on web radio or once a streaming server is set up, and while a stream
+    /// is running (so it can be stopped).
+    /// </summary>
+    void ShowStreaming()
+    {
+        bool stream = _settings.UsesStreaming || _lastStreamState is { } s && s != StreamState.Off;
+        StreamToggle.IsVisible = stream;
+        StreamTimePanel.IsVisible = stream;
     }
 
     void LoadSettingsIntoUi()
@@ -1073,7 +1122,7 @@ public partial class MainWindow : Window
         bool play = _settings.ResumeOnStart && _settings.WasPlaying && _settings.AutoAdvance;
         await _engine!.Resume(index, play);
         _restored = true;
-        if (_settings.ResumeOnStart && _settings.StreamingOn && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();
+        if (_settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();
     }
 
     /// <summary>Dead air detection and fill music, from the settings.</summary>
@@ -1113,6 +1162,71 @@ public partial class MainWindow : Window
             LastLog.Text = message;
         });
         _rds = rds;
+    }
+
+    // ───────────────────────── Schedule, reports, website ─────────────────────────
+
+    readonly AsRunLog _asRun = new(AsRunLog.DefaultFolder);
+    Scheduler? _scheduler;
+    WebNowPlaying? _web;
+    bool _scheduleOpen;
+    ReportsWindow? _reports;
+
+    async Task OpenSchedule()
+    {
+        if (_scheduler == null || _scheduleOpen) return;
+        _scheduleOpen = true;
+        try
+        {
+            if (await new ScheduleWindow(_scheduler.Current, _settings.Library.Folders.FirstOrDefault() ?? _settings.MusicFolder)
+                    .ShowDialog<ScheduleData?>(this) is { } edited)
+            {
+                _scheduler.Update(edited);
+                LastLog.Text = "Schedule saved";
+            }
+        }
+        finally
+        {
+            _scheduleOpen = false;
+        }
+    }
+
+    void OpenReports()
+    {
+        if (_reports != null) { _reports.Activate(); return; }
+        _reports = new ReportsWindow(AsRunLog.DefaultFolder, _settings.StationName);
+        _reports.Closed += (_, _) => _reports = null;
+        _reports.Show(this);
+    }
+
+    /// <summary>The item after the one on air, for the website.</summary>
+    Track? NextItem() =>
+        _snapshot?.NextId is { } id && _rowsById.TryGetValue(id, out var row) ? row.Track : null;
+
+    /// <summary>Starts (or restarts, with new settings) posting now playing to the website.</summary>
+    void ApplyWebNowPlaying()
+    {
+        _web?.Dispose();
+        _web = null;
+        if (_settings.WebNowPlaying is not { Enabled: true } settings) return;
+        string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
+        var web = new WebNowPlaying(settings, station);
+        web.StatusChanged += error => Dispatcher.UIThread.Post(() =>
+        {
+            if (web != _web) return;
+            string message = error == null ? "Website: now playing sent" : $"Website: can't send now playing ({error}); trying again";
+            AppLog.Write(message);
+            LastLog.Text = message;
+        });
+        _web = web;
+    }
+
+    /// <summary>Loudness levelling from the settings; the carts are measured ahead (the playlist is measured by the engine).</summary>
+    void ApplyLoudness()
+    {
+        if (_engine == null) return;
+        _engine.ConfigureLoudness(_settings.Loudness);
+        _engine.MeasureLoudness(_settings.Cartwalls.SelectMany(c => c.Carts).Select(c => c.Path).OfType<string>().Where(File.Exists).Distinct().ToList());
     }
 
     void ShowSilence(PlayerStatus st)

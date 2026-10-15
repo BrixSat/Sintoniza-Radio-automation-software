@@ -123,6 +123,8 @@ public partial class SettingsWindow : Window
             foreach (var f in LibraryFoldersList.SelectedItems?.OfType<string>().ToList() ?? []) _libraryFolders.Remove(f);
         };
 
+        LoadLoudness(settings.Loudness ?? new());
+        LoadWeb(settings.WebNowPlaying ?? new());
         LoadRds(settings.Rds ?? new());
 
         BuildShortcuts(settings.Shortcuts ?? Shortcuts.Defaults());
@@ -358,6 +360,9 @@ public partial class SettingsWindow : Window
         RdsPsCommandBox.Text = rds.PsCommand;
         RdsRtCommandBox.Text = rds.RtCommand;
         RdsCharsetBox.SelectedIndex = (int)rds.Charset;
+        RdsRtPlusBox.IsChecked = rds.RtPlus;
+        RdsRtPlusCommandBox.Text = rds.RtPlusCommand;
+        RdsRtPlusBox.IsCheckedChanged += (_, _) => ShowRds();
         RdsSiteBox.Value = rds.SiteAddress;
         RdsEncoderBox.Value = rds.EncoderAddress;
         RdsResendBox.Value = rds.ResendSeconds;
@@ -386,6 +391,8 @@ public partial class SettingsWindow : Window
         RdsSerialPanel.IsVisible = !file && connection == RdsConnection.Serial;
         RdsFilePanel.IsVisible = file;
         RdsAsciiPanel.IsVisible = protocol == RdsProtocol.Ascii;
+        RdsRtPlusPanel.IsVisible = protocol == RdsProtocol.Ascii;
+        RdsRtPlusCommandBox.IsEnabled = RdsRtPlusBox.IsChecked == true;
         RdsUecpPanel.IsVisible = protocol == RdsProtocol.Uecp;
         RdsFileText.Text = _rdsFile.Length > 0 ? _rdsFile : "No file chosen";
         ToolTip.SetTip(RdsFileText, _rdsFile.Length > 0 ? _rdsFile : null);
@@ -407,6 +414,8 @@ public partial class SettingsWindow : Window
         FilePath = _rdsFile,
         PsCommand = RdsPsCommandBox.Text ?? "",
         RtCommand = RdsRtCommandBox.Text ?? "",
+        RtPlus = RdsRtPlusBox.IsChecked == true,
+        RtPlusCommand = RdsRtPlusCommandBox.Text?.Trim() is { Length: > 0 } rtPlus ? rtPlus : new RdsSettings().RtPlusCommand,
         Charset = (RdsCharset)Math.Max(0, RdsCharsetBox.SelectedIndex),
         SiteAddress = (int)(RdsSiteBox.Value ?? 0),
         EncoderAddress = (int)(RdsEncoderBox.Value ?? 0),
@@ -442,6 +451,58 @@ public partial class SettingsWindow : Window
         string? error = await output.SendNowAsync();
         RdsTestText.Text = error == null ? $"Sent: PS \"{ps}\", RT \"{rt}\"" : $"Failed: {error}";
         RdsTestButton.IsEnabled = true;
+    }
+
+    // ───────────────────────── Loudness ─────────────────────────
+
+    void LoadLoudness(LoudnessSettings loudness)
+    {
+        LoudnessBox.IsChecked = loudness.Enabled;
+        LoudnessTargetBox.Value = (decimal)loudness.TargetLufs;
+        LoudnessBoostBox.Value = (decimal)loudness.MaxBoostDb;
+        LoudnessPanel.IsEnabled = loudness.Enabled;
+        LoudnessBox.IsCheckedChanged += (_, _) => LoudnessPanel.IsEnabled = LoudnessBox.IsChecked == true;
+    }
+
+    LoudnessSettings LoudnessFromUi() => new(LoudnessBox.IsChecked == true,
+        (double)(LoudnessTargetBox.Value ?? -16), (double)(LoudnessBoostBox.Value ?? 6));
+
+    // ───────────────────────── Website ─────────────────────────
+
+    void LoadWeb(WebNowPlayingSettings web)
+    {
+        WebBox.IsChecked = web.Enabled;
+        WebUrlBox.Text = web.Url;
+        WebKeyBox.Text = web.Key;
+        WebSongsOnlyBox.IsChecked = web.SongsOnly;
+        WebPanel.IsEnabled = web.Enabled;
+        WebBox.IsCheckedChanged += (_, _) => WebPanel.IsEnabled = WebBox.IsChecked == true;
+        WebTestButton.Click += async (_, _) => await TestWeb();
+    }
+
+    WebNowPlayingSettings WebFromUi() => new()
+    {
+        Enabled = WebBox.IsChecked == true,
+        Url = WebUrlBox.Text?.Trim() ?? "",
+        Key = WebKeyBox.Text?.Trim() ?? "",
+        SongsOnly = WebSongsOnlyBox.IsChecked == true,
+    };
+
+    /// <summary>Sends what is on air now to the website, with the settings on screen.</summary>
+    async Task TestWeb()
+    {
+        var web = WebFromUi();
+        web.SongsOnly = false; // send whatever is on air
+        string station = StationNameBox.Text?.Trim() is { Length: > 0 } name ? name : AppInfo.Name;
+        var status = _engine?.GetStatus();
+        var onAir = status is { State: not PlayerState.Stopped } st ? st.Current : null;
+        WebTestButton.IsEnabled = false;
+        WebTestText.Text = "Sending…";
+        using var output = new WebNowPlaying(web, station);
+        output.Update(onAir, null);
+        string? error = await output.SendNowAsync();
+        WebTestText.Text = error == null ? $"Sent: {(onAir == null ? "nothing on air" : onAir.Display)}" : $"Failed: {error}";
+        WebTestButton.IsEnabled = true;
     }
 
     void ShowFillFolder()
@@ -568,6 +629,8 @@ public partial class SettingsWindow : Window
 
         _settings.Library = LibraryFromUi();
         _settings.Rds = RdsFromUi();
+        _settings.WebNowPlaying = WebFromUi();
+        _settings.Loudness = LoudnessFromUi();
         _settings.Silence = new SilenceSettings(SilenceBox.IsChecked == true,
             (double)(SilenceLevelBox.Value ?? -45), (double)(SilenceSecondsBox.Value ?? 15));
         _settings.FillSource = FillLibraryRadio.IsChecked == true ? FillSource.Library : FillSource.Folder;

@@ -22,6 +22,9 @@ public sealed class AppSettings
     /// <summary>The microphone setup for the engine, or null when the mic isn't ours to handle (FM).</summary>
     [JsonIgnore]
     public MicSettings? ActiveMic => StationType == StationType.Web ? Mic ?? new() : null;
+    /// <summary>Streaming is shown (STREAM button, stream time): web radio, or a server is set up (it has a source password).</summary>
+    [JsonIgnore]
+    public bool UsesStreaming => StationType == StationType.Web || !string.IsNullOrWhiteSpace(StreamPassword);
     /// <summary>Where the playlist (music) and the cartwall come out: sound card name (empty = default) + channel pair.</summary>
     public OutputRoute MusicOutput { get; set; } = new();
     public OutputRoute CartOutput { get; set; } = new();
@@ -53,6 +56,12 @@ public sealed class AppSettings
 
     /// <summary>Now playing to the FM station's RDS encoder.</summary>
     public RdsSettings Rds { get; set; } = new();
+
+    /// <summary>Now playing posted to the station's website.</summary>
+    public WebNowPlayingSettings WebNowPlaying { get; set; } = new();
+
+    /// <summary>Loudness levelling: every item played at the same perceived loudness.</summary>
+    public LoudnessSettings Loudness { get; set; } = new();
 
     /// <summary>Dead air detection: what counts as silence and how long before AUTO skips.</summary>
     public SilenceSettings Silence { get; set; } = new();
@@ -142,6 +151,8 @@ public sealed class AppSettings
         TimeSignal ??= new();
         Silence ??= new();
         Rds ??= new();
+        WebNowPlaying ??= new();
+        Loudness ??= new();
         Library ??= new();
         Library.Folders ??= new();
         FillFolder ??= "";
@@ -183,11 +194,32 @@ public sealed class PlaylistEntry
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double StreamSeconds { get; set; }
 
+    /// <summary>Put there by a scheduled event or ad break (its label), with the item's type and advertiser.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Event { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Advertiser { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public TrackKind? Kind { get; set; }
+
     [JsonIgnore]
     public bool IsStream => StreamName != null;
 
-    public static PlaylistEntry From(Track t) =>
-        t.IsStream ? new() { Path = t.Path, StreamName = t.Title, StreamSeconds = t.Duration } : new() { Path = t.Path };
+    public static PlaylistEntry From(Track t)
+    {
+        var e = t.IsStream ? new PlaylistEntry { Path = t.Path, StreamName = t.Title, StreamSeconds = t.Duration } : new PlaylistEntry { Path = t.Path };
+        if (t.Event != null)
+        {
+            e.Event = t.Event;
+            e.Advertiser = t.Advertiser;
+            e.Kind = t.Kind;
+        }
+        return e;
+    }
+
+    /// <summary>A scheduled item, as the engine takes it back.</summary>
+    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser);
 }
 
 /// <summary>A named set of <see cref="AppSettings.CartCount"/> carts.</summary>

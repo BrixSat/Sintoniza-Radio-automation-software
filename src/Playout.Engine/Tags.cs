@@ -10,6 +10,9 @@ public sealed record TrackTags(
     uint TrackNumber = 0,
     string Comment = "");
 
+/// <summary>What music reports (royalties) ask for beyond artist and title; empty when the file doesn't say.</summary>
+public sealed record TrackDetails(string Album = "", string Composer = "", string Label = "", string Isrc = "", uint Year = 0);
+
 /// <summary>Reads and writes tags and the cover picture of audio files (TagLib#).</summary>
 public static class Tags
 {
@@ -20,6 +23,27 @@ public static class Tags
         if (file == null) return null;
         var t = file.Tag;
         return new TrackTags(t.Title ?? "", t.FirstPerformer ?? "", t.Album ?? "", t.FirstGenre ?? "", t.Year, t.Track, t.Comment ?? "");
+    }
+
+    /// <summary>Album, composer, record label (publisher), ISRC and year; empty details if the tags can't be read.</summary>
+    public static TrackDetails ReadDetails(string path)
+    {
+        try
+        {
+            using var file = Open(path);
+            if (file == null) return new();
+            var t = file.Tag;
+            string isrc = t.ISRC?.Trim() ?? "";
+            // Some programs write the ISRC as a user text frame (TXXX:ISRC) instead of TSRC.
+            if (isrc.Length == 0 && file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3
+                && TagLib.Id3v2.UserTextInformationFrame.Get(id3, "ISRC", TagLib.StringType.UTF8, false, false) is { } frame)
+                isrc = frame.Text.FirstOrDefault()?.Trim() ?? "";
+            return new TrackDetails(t.Album?.Trim() ?? "", string.Join(" / ", t.Composers ?? []).Trim(), t.Publisher?.Trim() ?? "", isrc, t.Year);
+        }
+        catch
+        {
+            return new();
+        }
     }
 
     /// <summary>The front cover (else the first picture) in the file, as image file bytes; null if it has none or can't be read.</summary>

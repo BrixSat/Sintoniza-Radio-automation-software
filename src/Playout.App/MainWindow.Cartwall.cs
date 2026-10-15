@@ -18,6 +18,7 @@ public partial class MainWindow
 
     /// <summary>Carts on air, by cartwall and button, so a cart keeps playing (and can still be stopped) after switching cartwalls.</summary>
     readonly Dictionary<(CartwallPage Page, int Index), int> _playingCarts = new();
+    readonly Dictionary<int, (string Path, DateTime Started)> _cartsOnAir = new(); // for the as-run log, by handle
 
     CartwallPage _page = null!;
     bool _fillingPicker;
@@ -175,6 +176,7 @@ public partial class MainWindow
         _page.Carts[index].Path = path;
         ShowCart(index);
         _settings.Save();
+        _engine?.MeasureLoudness([path]);
     }
 
     void ClearCart(int index)
@@ -222,13 +224,29 @@ public partial class MainWindow
         else if (_engine.FireCart(path) is var h && h != 0)
         {
             _playingCarts[(_page, index)] = h;
+            _cartsOnAir[h] = (path, DateTime.UtcNow);
             _library.RecordPlay(path, "", Path.GetFileNameWithoutExtension(path), "cart");
         }
     }
 
     void StopCart(CartwallPage page, int index)
     {
-        if (_playingCarts.Remove((page, index), out int handle)) _engine?.StopCart(handle);
+        if (!_playingCarts.Remove((page, index), out int handle)) return;
+        _engine?.StopCart(handle);
+        LogCart(handle);
+    }
+
+    /// <summary>A cart finished or was stopped: into the as-run log, with how long it played.</summary>
+    void LogCart(int handle)
+    {
+        if (!_cartsOnAir.Remove(handle, out var cart)) return;
+        _asRun.Cart(cart.Path, cart.Started, (DateTime.UtcNow - cart.Started).TotalSeconds);
+    }
+
+    /// <summary>Closing: carts still playing go into the as-run log.</summary>
+    void LogCartsOnAir()
+    {
+        foreach (int handle in _cartsOnAir.Keys.ToList()) LogCart(handle);
     }
 
     void UpdateCarts()
@@ -238,7 +256,11 @@ public partial class MainWindow
         foreach (var (key, handle) in _playingCarts.ToList())
         {
             if (_engine?.CartProgress(handle) is { } p) progress[key] = p;
-            else _playingCarts.Remove(key);
+            else
+            {
+                _playingCarts.Remove(key);
+                LogCart(handle);
+            }
         }
 
         for (int i = 0; i < _carts.Length; i++)

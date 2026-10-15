@@ -18,7 +18,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
         {
             if (Equals(_track, value)) return;
             _track = value;
-            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues) })
+            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip) })
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
@@ -31,9 +31,14 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     /// <summary>On-air length, Cue In to Cue Out; ∞ for a stream that plays until Stop or Next.</summary>
     public string Length => Track.IsOpenEnded ? "∞" : Format.Duration(Track.PlayLength);
     public bool HasCues => Track.Cues != null;
+    /// <summary>Put in the playlist by a scheduled event or ad break: its name and time, shown on the row.</summary>
+    public bool HasEvent => Track.Event != null;
+    public string EventTag => Track.Event?.ToUpperInvariant() ?? "";
+    public string EventTip => Track.Advertiser is { } a ? $"{Track.Event} · advertiser: {a}" : $"Scheduled: {Track.Event}";
     public bool IsMusic => Track.Kind == TrackKind.Music;
     public bool IsJingle => Track.Kind == TrackKind.Jingle;
     public bool IsCommercial => Track.Kind == TrackKind.Commercial;
+    public bool IsProgramme => Track.Kind == TrackKind.Programme;
     public bool IsStream => Track.IsStream;
 
     double _progress;

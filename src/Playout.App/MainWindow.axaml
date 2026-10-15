@@ -166,7 +166,7 @@
                         </StackPanel>
                     </Grid>
 
-                    <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,8,Auto" Margin="0,14,0,0">
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,8,Auto,8,Auto" Margin="0,14,0,0">
                         <StackPanel Classes="info">
                             <TextBlock Classes="caption" Text="TOP OF HOUR" />
                             <TextBlock x:Name="TopOfHourText" Classes="digits value" Text="—" />
@@ -179,9 +179,13 @@
                             <TextBlock Classes="caption" Text="PLAYED TODAY" />
                             <TextBlock x:Name="PlayedTodayText" Classes="digits value" Text="0" />
                         </StackPanel>
-                        <StackPanel Grid.Row="2" Grid.Column="1" Classes="info">
+                        <StackPanel Grid.Row="2" Grid.Column="1" x:Name="StreamTimePanel" Classes="info">
                             <TextBlock Classes="caption" Text="STREAM TIME" />
                             <TextBlock x:Name="StreamTimeText" Classes="digits value" Text="—" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Classes="info" x:Name="NextEventPanel" IsVisible="False">
+                            <TextBlock Classes="caption" Text="NEXT EVENT" />
+                            <TextBlock x:Name="NextEventText" Classes="value" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                     </Grid>
 
@@ -198,15 +202,19 @@
         </Grid>
 
         <!-- ═════════ Status bar ═════════ -->
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,*" Margin="2,10,2,0">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
             <Button x:Name="SettingsButton" Classes="tool" ToolTip.Tip="Settings (Ctrl/Cmd+,)">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Width="12" Height="12" Data="{StaticResource IconGear}" />
                     <TextBlock Text="Settings" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="1" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
-            <TextBlock Grid.Column="2" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
+            <Button Grid.Column="1" x:Name="ScheduleButton" Classes="tool" Content="Schedule" Margin="8,0,0,0"
+                    ToolTip.Tip="Events at fixed times (news, programmes), ad breaks and the adverts booked into them" />
+            <Button Grid.Column="2" x:Name="ReportsButton" Classes="tool" Content="Reports" Margin="8,0,0,0"
+                    ToolTip.Tip="Music played (royalties) and proof of broadcast for advertisers" />
+            <Button Grid.Column="3" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
+            <TextBlock Grid.Column="4" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </Grid>
 
@@ -276,11 +284,16 @@
                                             <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="Jingle" />
                                             <PathIcon Classes="kind commercial" Data="{StaticResource IconCommercial}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="Commercial" />
                                             <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="Internet stream" />
+                                            <PathIcon Classes="kind programme" Data="{StaticResource IconMic}" IsVisible="{Binding IsProgramme}" ToolTip.Tip="Programme (news, shows)" />
                                         </Panel>
                                         <StackPanel Grid.Column="3" VerticalAlignment="Center">
                                             <DockPanel>
                                                 <Border DockPanel.Dock="Right" Classes="cue-tag" Margin="6,0,0,0" IsVisible="{Binding HasCues}" ToolTip.Tip="Has cue points">
                                                     <TextBlock Text="CUE" />
+                                                </Border>
+                                                <Border DockPanel.Dock="Right" Classes="event-tag" Margin="6,0,0,0" IsVisible="{Binding HasEvent}"
+                                                        ToolTip.Tip="{Binding EventTip}">
+                                                    <TextBlock Text="{Binding EventTag}" />
                                                 </Border>
                                                 <TextBlock Classes="title" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                                             </DockPanel>

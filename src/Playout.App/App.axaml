@@ -327,6 +327,20 @@
             <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
         </Style>
 
+        <!-- Scheduled event / ad break an item belongs to -->
+        <Style Selector="Border.event-tag">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="4,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="#2A3550" />
+        </Style>
+        <Style Selector="Border.event-tag > TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1" />
+            <Setter Property="Foreground" Value="#AFC4F2" />
+        </Style>
+
         <!-- Item type icons -->
         <Style Selector="PathIcon.kind">
             <Setter Property="Width" Value="15" />
@@ -343,6 +357,9 @@
         </Style>
         <Style Selector="PathIcon.stream">
             <Setter Property="Foreground" Value="#B392F0" />
+        </Style>
+        <Style Selector="PathIcon.programme">
+            <Setter Property="Foreground" Value="#E8B04B" />
         </Style>
         <Style Selector="Grid.playing PathIcon.kind">
             <Setter Property="Width" Value="18" />

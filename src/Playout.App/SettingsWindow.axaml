@@ -4,7 +4,7 @@
         x:Class="Playout.App.SettingsWindow"
         Icon="/Assets/icon.ico"
         Title="Settings"
-        Width="780" Height="580" CanResize="False"
+        Width="860" Height="600" CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
@@ -79,14 +79,15 @@
                             <ComboBoxItem Content="Web radio (mic through this computer)" />
                         </ComboBox>
                         <TextBlock Classes="note" Margin="0,4,0,0"
-                                   Text="Web radio adds a MIC button: hold it to talk. Set up the microphone on the Microphone tab." />
+                                   Text="Web radio adds a MIC button: hold it to talk. Set up the microphone on the Microphone tab. The STREAM button shows on web radio, or on FM once a streaming server is set up." />
                     </StackPanel>
                 </StackPanel>
             </TabItem>
 
             <!-- ───────── Audio ───────── -->
             <TabItem Header="Audio">
-                <StackPanel Spacing="14" Margin="0,12,0,0">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Margin="0,12,16,0">
                     <StackPanel>
                         <TextBlock Classes="label" Text="Crossfade between tracks (seconds)" />
                         <NumericUpDown x:Name="CrossfadeBox" Minimum="0" Maximum="15" Increment="0.5" FormatString="0.0"
@@ -116,7 +117,20 @@
                         <TextBlock Classes="note" Margin="0,6,0,0"
                                    Text="Send music and cartwall to different sound cards or output pairs to get them on separate desk faders. Use Test to find which fader is which. Applies when you click Save. The stream always carries music and cartwall together. Preview (for the cue editor) is never streamed; give it an output that is not on air." />
                     </StackPanel>
+                    <StackPanel Spacing="8">
+                        <CheckBox x:Name="LoudnessBox" Content="Level everything to the same loudness" FontWeight="SemiBold" />
+                        <StackPanel x:Name="LoudnessPanel" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Target" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="LoudnessTargetBox" Minimum="-30" Maximum="-8" Increment="1" FormatString="0" Width="110" />
+                            <TextBlock Text="LUFS, raise quiet items by at most" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="LoudnessBoostBox" Minimum="0" Maximum="20" Increment="1" FormatString="0" Width="110" />
+                            <TextBlock Text="dB" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="Each file's loudness is measured (EBU R128) in the background when it is added to the playlist, a cart or the schedule, and remembered. Loud songs are turned down and quiet ones up, never so far that their peaks go over -1 dBFS; the audio files are not changed. An item that hasn't been measured yet plays as it is. -16 LUFS suits most stations; the output is quieter than most modern masters, so check the desk levels after switching it on." />
+                    </StackPanel>
                 </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <!-- ───────── Microphone ───────── -->
@@ -388,7 +402,7 @@
                             </ComboBox>
                         </StackPanel>
                     </Grid>
-                    <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. Changes here apply the next time the stream starts." />
+                    <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. On FM, the button shows once a source password is set. Changes here apply the next time the stream starts." />
                 </StackPanel>
             </TabItem>
             <!-- ───────── RDS ───────── -->
@@ -412,7 +426,7 @@
                                 <TextBlock Classes="label" Text="Radio text when no song is on air" />
                                 <TextBox x:Name="RdsDefaultBox" PlaceholderText="{}{station}" />
                             </StackPanel>
-                            <CheckBox Grid.Column="2" x:Name="RdsJinglesBox" Content="Also during jingles and adverts" VerticalAlignment="Bottom" />
+                            <CheckBox Grid.Column="2" x:Name="RdsJinglesBox" Content="Also during jingles, adverts and programmes" VerticalAlignment="Bottom" />
                         </Grid>
                         <TextBlock Classes="note"
                                    Text="{}{artist}, {title} and {station} are filled in; up to 64 characters are sent. An empty PS uses the station name. A static PS is the norm: many countries don't allow a scrolling one." />
@@ -484,6 +498,15 @@
                             </StackPanel>
                         </Grid>
 
+                        <StackPanel x:Name="RdsRtPlusPanel" Spacing="6">
+                            <Grid ColumnDefinitions="Auto,12,*">
+                                <CheckBox x:Name="RdsRtPlusBox" Content="Send RT+ (title and artist tags)" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="2" x:Name="RdsRtPlusCommandBox" FontFamily="monospace" />
+                            </Grid>
+                            <TextBlock Classes="note"
+                                       Text="RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent after the radio text: {type1},{start1},{len1} and {type2},{start2},{len2} are the content type (1 title, 4 artist), first character (from 0) and length marker (characters − 1) of each tag. Check the command in the encoder's manual; some need RT+ switched on in their setup too." />
+                        </StackPanel>
+
                         <Grid x:Name="RdsUecpPanel" ColumnDefinitions="*,12,*">
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Site address (0 = all)" />
@@ -507,6 +530,32 @@
                         </StackPanel>
                         <TextBlock Classes="note"
                                    Text="ASCII commands: check the encoder's manual for the command names (RT= and PS= are the most common; some use TEXT= or DPS=). Plain characters show correctly on every radio. The text changes when the next item goes on air and is sent again regularly, so an encoder that restarted catches up." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Website ───────── -->
+            <TabItem Header="Website">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
+                    <CheckBox x:Name="WebBox" Content="Send now playing to the station's website" FontWeight="SemiBold" />
+                    <StackPanel x:Name="WebPanel" Spacing="12">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Address it is sent to" />
+                            <TextBox x:Name="WebUrlBox" PlaceholderText="https://www.example.com/nowplaying/nowplaying.php" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Key (the page only accepts posts with it)" />
+                            <TextBox x:Name="WebKeyBox" PasswordChar="•" RevealPassword="False" />
+                        </StackPanel>
+                        <CheckBox x:Name="WebSongsOnlyBox" Content="Songs only: during jingles, adverts and programmes the website keeps the last song" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="WebTestButton" Content="Send now" ToolTip.Tip="Send what is on air now, with these settings" />
+                            <TextBlock x:Name="WebTestText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="When what is on air (or next) changes, the app sends it as JSON (station, now, next: artist, title, type, duration, start time) in a POST, with the key in the X-Api-Key header. If the website can't be reached it tries again every 30 seconds. The docs/now-playing folder of the project (on GitHub) has an example PHP page that keeps it in nowplaying.txt and nowplaying.json for the website to show." />
                     </StackPanel>
                 </StackPanel>
                 </ScrollViewer>

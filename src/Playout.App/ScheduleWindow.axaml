@@ -1,0 +1,240 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.ScheduleWindow"
+        Icon="/Assets/icon.ico"
+        Title="Schedule"
+        Width="900" Height="640" MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="10,0" />
+        </Style>
+        <Style Selector="ToggleButton.day">
+            <Setter Property="MinWidth" Value="44" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="18">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" Margin="8,0,0,0" />
+            <Button Grid.Column="2" x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" Classes="accent" Margin="8,0,0,0" />
+        </Grid>
+
+        <TabControl x:Name="Tabs">
+            <!-- ───────── Events ───────── -->
+            <TabItem Header="Events">
+                <Grid ColumnDefinitions="280,18,*" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddEventButton" Content="New" />
+                            <Button x:Name="DeleteEventButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="EventList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="2">
+                        <StackPanel x:Name="EventPanel" Spacing="12" Margin="0,0,16,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="EventNameBox" PlaceholderText="News" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="EventEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Play" />
+                                <Grid ColumnDefinitions="*,6,Auto,6,Auto">
+                                    <TextBox x:Name="EventPathBox" PlaceholderText="A file, a folder (its newest file), or a stream address (https://…)" />
+                                    <Button Grid.Column="2" x:Name="EventFileButton" Content="File…" />
+                                    <Button Grid.Column="4" x:Name="EventFolderButton" Content="Folder…" />
+                                </Grid>
+                                <TextBlock x:Name="EventPathNote" Classes="note" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel x:Name="EventFolderPanel" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Skip if the newest file is older than" VerticalAlignment="Center" />
+                                <NumericUpDown x:Name="EventMaxAgeBox" Minimum="0" Maximum="10080" Increment="5" FormatString="0" Width="130" />
+                                <TextBlock Text="minutes (0 = any age)" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel x:Name="EventStreamPanel" Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Play the stream for" VerticalAlignment="Center" />
+                                <NumericUpDown x:Name="EventStreamMinutesBox" Minimum="0" Maximum="1440" Increment="5" FormatString="0" Width="130" />
+                                <TextBlock Text="minutes (0 = until Stop or Next)" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Times" />
+                                <TextBox x:Name="EventTimesBox" PlaceholderText="07:00, 13:00, 19:00   or   *:00 for every hour" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Days (none chosen = every day)" />
+                                <StackPanel x:Name="EventDays" Orientation="Horizontal" Spacing="4" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Start" />
+                                <RadioButton x:Name="EventSoftBox" GroupName="EventStart" Content="Soft: after the item on air ends" />
+                                <RadioButton x:Name="EventHardBox" GroupName="EventStart" Content="Hard: on the second, fading out what is on air" />
+                            </StackPanel>
+                            <TextBlock Classes="note"
+                                       Text="The event's items go into the playlist after the item on air, and the playlist carries on after them. With the player stopped or paused they wait as next. An event due while the app wasn't running starts if it is at most 2 minutes late." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ───────── Ad breaks ───────── -->
+            <TabItem Header="Ad breaks">
+                <Grid ColumnDefinitions="280,18,*" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddBreakButton" Content="New" />
+                            <Button x:Name="DeleteBreakButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="BreakList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="2">
+                        <StackPanel x:Name="BreakPanel" Spacing="12" Margin="0,0,16,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="BreakNameBox" PlaceholderText="Ad break" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="BreakEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Times" />
+                                <TextBox x:Name="BreakTimesBox" PlaceholderText="08:20, 09:20, 12:50   or   *:20 for every hour" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Days (none chosen = every day)" />
+                                <StackPanel x:Name="BreakDays" Orientation="Horizontal" Spacing="4" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Start" />
+                                <RadioButton x:Name="BreakSoftBox" GroupName="BreakStart" Content="Soft: after the item on air ends" />
+                                <RadioButton x:Name="BreakHardBox" GroupName="BreakStart" Content="Hard: on the second, fading out what is on air" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Opening jingle (optional)" />
+                                <Grid ColumnDefinitions="*,6,Auto,6,Auto">
+                                    <TextBox x:Name="BreakIntroBox" />
+                                    <Button Grid.Column="2" x:Name="BreakIntroButton" Content="Choose…" />
+                                    <Button Grid.Column="4" x:Name="BreakIntroClear" Content="Clear" />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Closing jingle (optional)" />
+                                <Grid ColumnDefinitions="*,6,Auto,6,Auto">
+                                    <TextBox x:Name="BreakOutroBox" />
+                                    <Button Grid.Column="2" x:Name="BreakOutroButton" Content="Choose…" />
+                                    <Button Grid.Column="4" x:Name="BreakOutroClear" Content="Clear" />
+                                </Grid>
+                            </StackPanel>
+                            <TextBlock x:Name="BreakBookedText" FontWeight="SemiBold" />
+                            <TextBlock Classes="note"
+                                       Text="A break plays the adverts booked into it that day (Adverts tab), in their order there, between the jingles. A break with no adverts booked is skipped." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ───────── Adverts ───────── -->
+            <TabItem Header="Adverts">
+                <Grid ColumnDefinitions="280,18,*" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddSpotButton" Content="New" />
+                            <Button x:Name="DeleteSpotButton" Content="Delete" />
+                            <Button x:Name="SpotUpButton" Content="▲" ToolTip.Tip="Earlier in the break" />
+                            <Button x:Name="SpotDownButton" Content="▼" ToolTip.Tip="Later in the break" />
+                        </StackPanel>
+                        <ListBox x:Name="SpotList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="2">
+                        <StackPanel x:Name="SpotPanel" Spacing="12" Margin="0,0,16,0">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Advert (audio file)" />
+                                <Grid ColumnDefinitions="*,6,Auto">
+                                    <TextBox x:Name="SpotPathBox" />
+                                    <Button Grid.Column="2" x:Name="SpotFileButton" Content="Choose…" />
+                                </Grid>
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Advertiser (shown on the proof of broadcast)" />
+                                    <TextBox x:Name="SpotAdvertiserBox" MaxLength="100" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="SpotEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <Grid ColumnDefinitions="Auto,12,Auto,12,*">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="First day" />
+                                    <CalendarDatePicker x:Name="SpotFromBox" Width="150" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd"
+                                                        PlaceholderText="No limit" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Classes="label" Text="Last day" />
+                                    <CalendarDatePicker x:Name="SpotToBox" Width="150" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd"
+                                                        PlaceholderText="No limit" />
+                                </StackPanel>
+                                <Button Grid.Column="4" x:Name="SpotClearDatesButton" Content="No limit" VerticalAlignment="Bottom" HorizontalAlignment="Left" />
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Days (none chosen = every day)" />
+                                <StackPanel x:Name="SpotDays" Orientation="Horizontal" Spacing="4" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Ad breaks (none ticked = every break)" />
+                                <WrapPanel x:Name="SpotBreaks" ItemSpacing="12" LineSpacing="4" />
+                                <TextBlock x:Name="SpotNoBreaks" Classes="note" Text="Make ad breaks on the Ad breaks tab first." />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>
