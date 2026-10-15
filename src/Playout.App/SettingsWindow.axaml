@@ -215,6 +215,20 @@
                         </StackPanel>
                         <TextBlock Classes="note" Text="An audio file is started so that it ends exactly on the hour." />
                     </StackPanel>
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Hour announcements (optional)" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:Name="HourFolderText" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseHourFolderButton" Content="Folder…" />
+                            <Button x:Name="ClearHourFolderButton" Content="Clear" />
+                        </StackPanel>
+                        <ComboBox x:Name="HourAtBox" HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="Instead of the time signal: it ends exactly on the hour" />
+                            <ComboBoxItem Content="After the time signal" />
+                        </ComboBox>
+                        <TextBlock x:Name="HourFolderNote" Classes="note" FontWeight="SemiBold" />
+                        <TextBlock Classes="note" Text="A file for each hour, with the hour's number at the end of its name: HRS05.mp3 plays at 05:00, HRS22.mp3 at 22:00 (midnight: 00 or 24). An hour without a file gets the time signal only." />
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button x:Name="ListenSignalButton" Content="Listen" ToolTip.Tip="Play the time signal now on the Preview output (not on air)" />
                         <TextBlock Classes="note" VerticalAlignment="Center" Text="Plays it now on the Preview output, not on air." />

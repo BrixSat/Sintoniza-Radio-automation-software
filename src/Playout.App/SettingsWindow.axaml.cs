@@ -19,6 +19,7 @@ public partial class SettingsWindow : Window
     UpdateInfo? _update;
     string? _logoPath;
     string? _signalFile;
+    string _hourFolder = "";
     string _fillFolder = "";
     string _libraryFile = "";
     readonly System.Collections.ObjectModel.ObservableCollection<string> _libraryFolders = new();
@@ -73,7 +74,22 @@ public partial class SettingsWindow : Window
         PipsRadio.IsChecked = _signalFile == null;
         ShowSignalFile();
         ChooseSignalButton.Click += async (_, _) => await ChooseSignalFile();
-        ListenSignalButton.Click += (_, _) => _engine?.PreviewTimeSignal(SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
+        _hourFolder = signal.HourFolder ?? "";
+        HourAtBox.SelectedIndex = (int)signal.HourAt;
+        ShowHourFolder();
+        ChooseHourFolderButton.Click += async (_, _) =>
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = L.T("Folder with the hour announcements") });
+            if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+            _hourFolder = path;
+            ShowHourFolder();
+        };
+        ClearHourFolderButton.Click += (_, _) =>
+        {
+            _hourFolder = "";
+            ShowHourFolder();
+        };
+        ListenSignalButton.Click += (_, _) => _engine?.PreviewTimeSignal(SignalFromUi());
         ListenSignalButton.IsEnabled = _engine != null;
 
         var silence = settings.Silence ?? new();
@@ -576,6 +592,27 @@ public partial class SettingsWindow : Window
         ToolTip.SetTip(SignalFileText, _signalFile);
     }
 
+    TimeSignalSettings SignalFromUi() => new(
+        (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
+        SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "",
+        _hourFolder,
+        (HourAnnouncement)Math.Max(0, HourAtBox.SelectedIndex));
+
+    /// <summary>The hour announcements folder, and which hours have a file.</summary>
+    void ShowHourFolder()
+    {
+        bool set = _hourFolder.Length > 0;
+        HourFolderText.Text = set ? _hourFolder : L.T("No folder chosen");
+        ToolTip.SetTip(HourFolderText, set ? _hourFolder : null);
+        ClearHourFolderButton.IsEnabled = HourAtBox.IsEnabled = set;
+        if (!set) { HourFolderNote.Text = ""; return; }
+        var missing = Enumerable.Range(0, 24).Where(h => TimeSignal.HourFile(_hourFolder, DateTime.Today.AddHours(h)) == null).ToList();
+        HourFolderNote.Text = !Directory.Exists(_hourFolder) ? L.T("The folder isn't there.")
+            : missing.Count == 0 ? L.T("A file for every hour.")
+            : missing.Count == 24 ? L.T("No hour files found (e.g. HRS05.mp3).")
+            : L.F("No file for: {0}", string.Join(", ", missing.Select(h => h.ToString("00"))));
+    }
+
     async Task ChooseSignalFile()
     {
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -633,9 +670,7 @@ public partial class SettingsWindow : Window
             (double)(FadeDownBox.Value ?? 0.3m),
             (double)(FadeUpBox.Value ?? 1));
 
-        _settings.TimeSignal = new TimeSignalSettings(
-            (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
-            SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "");
+        _settings.TimeSignal = SignalFromUi();
 
         _settings.Library = LibraryFromUi();
         _settings.Rds = RdsFromUi();

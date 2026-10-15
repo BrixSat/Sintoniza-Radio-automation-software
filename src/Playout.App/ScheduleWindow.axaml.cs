@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Globalization;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Platform.Storage;
 using Playout.App.Controls;
 using Playout.Engine;
@@ -44,10 +43,9 @@ public partial class ScheduleWindow : Window
 
     readonly ScheduleData _data;
     readonly string _browseFolder;
-    readonly ToggleButton[] _spotDays;
     readonly EntryCalendar _eventCalendar, _breakCalendar;
     readonly Dictionary<string, double> _lengths = new(); // advert file → seconds
-    List<ScheduleRow> _eventRows = new(), _breakRows = new(), _spotRows = new();
+    List<ScheduleRow> _eventRows = new(), _breakRows = new(), _clientRows = new(), _campaignRows = new();
     DateTime _week = Monday(DateTime.Today);
     List<double> _spotTimes = new();
     List<AdPlacement>? _spotSnapshot;
@@ -64,11 +62,10 @@ public partial class ScheduleWindow : Window
         _data.Normalize();
         _browseFolder = browseFolder;
 
-        _spotDays = DayButtons(SpotDays, () => Edit<AdSpot>(SpotList, s => s.Days = Days(_spotDays!)));
         _eventCalendar = new EntryCalendar(this, EventGrid, EventHeader, EventStepBox, EventOffsetBox, EventAddTimeBox, EventAddTimeButton, EventClearButton,
             () => _data.Events, () => (EventList.SelectedItem as ScheduleRow)?.Item as ScheduledEvent, () => (EventList.SelectedItem as ScheduleRow)?.Refresh());
         _breakCalendar = new EntryCalendar(this, BreakGrid, BreakHeader, BreakStepBox, BreakOffsetBox, BreakAddTimeBox, BreakAddTimeButton, BreakClearButton,
-            () => _data.Breaks, () => (BreakList.SelectedItem as ScheduleRow)?.Item as AdBreak, () =>
+            () => _data.Breaks, () => SelectedBreak, () =>
             {
                 (BreakList.SelectedItem as ScheduleRow)?.Refresh();
                 ShowBooked();
@@ -77,22 +74,23 @@ public partial class ScheduleWindow : Window
 
         WireEvents();
         WireBreaks();
-        WireSpots();
+        WireClients();
         SaveButton.Click += (_, _) => Save();
         CancelButton.Click += (_, _) => Close(null);
 
         _eventRows = data.Events.Select(EventRow).ToList();
         _breakRows = data.Breaks.Select(BreakRow).ToList();
-        _spotRows = data.Spots.Select(SpotRow).ToList();
+        _clientRows = data.Clients.Select(ClientRow).ToList();
         EventList.ItemsSource = _eventRows;
         BreakList.ItemsSource = _breakRows;
-        SpotList.ItemsSource = _spotRows;
+        ClientList.ItemsSource = _clientRows;
+        SectionNameBox.ItemsSource = _data.Sections();
         EventList.SelectedIndex = _eventRows.Count > 0 ? 0 : -1;
         BreakList.SelectedIndex = _breakRows.Count > 0 ? 0 : -1;
-        SpotList.SelectedIndex = _spotRows.Count > 0 ? 0 : -1;
+        ClientList.SelectedIndex = _clientRows.Count > 0 ? 0 : -1;
         ShowEvent();
         ShowBreak();
-        ShowSpot();
+        ShowClient();
         ShowSpotWeek();
         // Open at the morning, where most of the day's schedule is.
         Opened += (_, _) =>
@@ -189,182 +187,350 @@ public partial class ScheduleWindow : Window
         AddBreakButton.Click += (_, _) =>
         {
             var b = new AdBreak { Name = L.T("Ad break") };
+            b.Normalize(); // a section to book adverts into
             _data.Breaks.Add(b);
             _breakRows = _breakRows.Append(BreakRow(b)).ToList();
             BreakList.ItemsSource = _breakRows;
             BreakList.SelectedIndex = _breakRows.Count - 1;
-            ShowSpot(); // the new break is offered to the adverts
+            SectionsChanged();
             BreakNameBox.Focus();
             BreakNameBox.SelectAll();
         };
         DeleteBreakButton.Click += async (_, _) =>
         {
             if (BreakList.SelectedItem is not ScheduleRow { Item: AdBreak b } row) return;
-            // Adverts booked only into this break would otherwise play in every break (none ticked): switched off.
-            int only = _data.Spots.Count(s => s.Placements.Count == 0 && s.Breaks.Count == 1 && s.Breaks[0] == b.Id);
-            string more = only > 0 ? L.F(" {0} booked only into this break will be switched off.", Plural(only, "{0} advert", "{0} adverts")) : "";
-            if (!await Dialogs.Confirm(this, L.T("Delete ad break"), L.F("Delete \"{0}\"?{1}", EntryName(b), more), L.T("Delete"))) return;
+            if (!await Dialogs.Confirm(this, L.T("Delete ad break"), L.F("Delete \"{0}\"?", EntryName(b)), L.T("Delete"))) return;
             _data.Breaks.Remove(b);
-            foreach (var s in _data.Spots)
-                if (s.Breaks.Remove(b.Id) && s.Breaks.Count == 0 && s.Placements.Count == 0) s.Enabled = false;
             int i = _breakRows.IndexOf(row);
             _breakRows = _breakRows.Where(r => r != row).ToList();
             BreakList.ItemsSource = _breakRows;
             BreakList.SelectedIndex = Math.Min(i, _breakRows.Count - 1);
             _breakCalendar.Rebuild();
-            ShowSpot();
+            SectionsChanged();
             ShowSpotWeek();
-            RefreshRows(_spotRows);
         };
         BreakNameBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Name = BreakNameBox.Text?.Trim() ?? "");
         BreakEnabledBox.IsCheckedChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Enabled = BreakEnabledBox.IsChecked == true);
-        BreakIntroBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Intro = BreakIntroBox.Text?.Trim() ?? "");
-        BreakOutroBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Outro = BreakOutroBox.Text?.Trim() ?? "");
-        BreakIntroButton.Click += async (_, _) => { if (await PickFile(L.T("Opening jingle")) is { } p) BreakIntroBox.Text = p; };
-        BreakOutroButton.Click += async (_, _) => { if (await PickFile(L.T("Closing jingle")) is { } p) BreakOutroBox.Text = p; };
-        BreakIntroClear.Click += (_, _) => BreakIntroBox.Text = "";
-        BreakOutroClear.Click += (_, _) => BreakOutroBox.Text = "";
         WireStart(BreakList, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
+
+        // The running order.
+        PartList.SelectionChanged += (_, _) => ShowPart();
+        AddJingleButton.Click += async (_, _) =>
+        {
+            if (SelectedBreak == null || await PickFile(L.T("Jingle")) is not { } path) return;
+            AddPart(new BreakPart { Kind = PartKind.Jingle, Path = path });
+        };
+        AddSectionButton.Click += (_, _) =>
+        {
+            if (SelectedBreak is not { } b) return;
+            string name = SectionNameBox.Text?.Trim() ?? "";
+            if (name.Length == 0)
+            {
+                ErrorText.Text = L.T("Type the section's name, e.g. Before the hour.");
+                return;
+            }
+            if (b.SectionNames.Any(n => n.Equals(name, StringComparison.CurrentCultureIgnoreCase)))
+            {
+                ErrorText.Text = L.F("This break already has the section \"{0}\".", name);
+                return;
+            }
+            // The same name as in other breaks, as it was written there.
+            name = _data.Sections().FirstOrDefault(n => n.Equals(name, StringComparison.CurrentCultureIgnoreCase)) ?? name;
+            AddPart(new BreakPart { Kind = PartKind.Section, Section = name });
+            SectionNameBox.Text = "";
+        };
+        PartUpButton.Click += (_, _) => MovePart(-1);
+        PartDownButton.Click += (_, _) => MovePart(1);
+        RemovePartButton.Click += (_, _) =>
+        {
+            if (SelectedBreak is not { } b || SelectedPart is not { } part) return;
+            int i = b.Parts.IndexOf(part);
+            b.Parts.Remove(part);
+            PartsChanged(Math.Min(i, b.Parts.Count - 1));
+        };
+        PartOnlyBox.IsCheckedChanged += (_, _) =>
+        {
+            if (_loading || SelectedPart is not { Kind: PartKind.Jingle } part) return;
+            part.OnlyWithAdverts = PartOnlyBox.IsChecked == true;
+            (PartList.SelectedItem as ScheduleRow)?.Refresh();
+        };
+    }
+
+    AdBreak? SelectedBreak => (BreakList.SelectedItem as ScheduleRow)?.Item as AdBreak;
+    BreakPart? SelectedPart => (PartList.SelectedItem as ScheduleRow)?.Item as BreakPart;
+
+    /// <summary>Puts a part after the selected one (or at the end).</summary>
+    void AddPart(BreakPart part)
+    {
+        if (SelectedBreak is not { } b) return;
+        int at = SelectedPart is { } sel ? b.Parts.IndexOf(sel) + 1 : b.Parts.Count;
+        b.Parts.Insert(at, part);
+        PartsChanged(at);
+    }
+
+    void MovePart(int delta)
+    {
+        if (SelectedBreak is not { } b || SelectedPart is not { } part) return;
+        int i = b.Parts.IndexOf(part), j = i + delta;
+        if (j < 0 || j >= b.Parts.Count) return;
+        (b.Parts[i], b.Parts[j]) = (b.Parts[j], b.Parts[i]);
+        PartsChanged(j);
+    }
+
+    void PartsChanged(int select)
+    {
+        ShowParts(select);
+        ErrorText.Text = "";
+        (BreakList.SelectedItem as ScheduleRow)?.Refresh();
+        SectionsChanged();
+        ShowBooked();
+        SpotGrid.Refresh();
+    }
+
+    void ShowParts(int select)
+    {
+        var b = SelectedBreak;
+        PartList.ItemsSource = b?.Parts.Select(p => PartRow(b, p)).ToList();
+        PartList.SelectedIndex = b == null ? -1 : Math.Clamp(select, -1, b.Parts.Count - 1);
+        ShowPart();
+    }
+
+    void ShowPart()
+    {
+        var part = SelectedPart;
+        _loading = true;
+        PartOnlyBox.IsEnabled = part?.Kind == PartKind.Jingle;
+        PartOnlyBox.IsChecked = part?.OnlyWithAdverts == true;
+        _loading = false;
+    }
+
+    ScheduleRow PartRow(AdBreak b, BreakPart p) => new(p, () => p.Kind == PartKind.Jingle
+        ? ("♪  " + (Path.GetFileNameWithoutExtension(p.Path) is { Length: > 0 } n ? n : L.T("Jingle")),
+            (p.OnlyWithAdverts ? L.T("jingle · only when the section after it has adverts") : L.T("jingle")) + (File.Exists(p.Path) ? "" : L.T(" · not found")), true)
+        : ("€  " + p.Section, L.F("advert section · {0} today", Plural(b.TimesOn(DateTime.Today).Sum(t => _data.InSection(b, p.Section, t).Count), "{0} advert", "{0} adverts")), true));
+
+    /// <summary>The section names offered when adding a section and booking a campaign, after they changed.</summary>
+    void SectionsChanged()
+    {
+        SectionNameBox.ItemsSource = _data.Sections();
+        ShowCampaign();
+        RefreshRows(_campaignRows);
     }
 
     void ShowBreak()
     {
-        var b = (BreakList.SelectedItem as ScheduleRow)?.Item as AdBreak;
+        var b = SelectedBreak;
         BreakPanel.IsEnabled = b != null;
         _loading = true;
         BreakNameBox.Text = b?.Name ?? "";
         BreakEnabledBox.IsChecked = b?.Enabled ?? true;
         ShowStart(b, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
-        BreakIntroBox.Text = b?.Intro ?? "";
-        BreakOutroBox.Text = b?.Outro ?? "";
         _loading = false;
+        ShowParts(0);
         ShowBooked();
         _breakCalendar.Rebuild();
     }
 
     void ShowBooked()
     {
-        var b = (BreakList.SelectedItem as ScheduleRow)?.Item as AdBreak;
+        var b = SelectedBreak;
         BreakBookedText.Text = b == null ? "" : L.F("Today: {0}", Plural(BookedToday(b), "{0} advert", "{0} adverts"));
+        RefreshRows(PartList.ItemsSource as IEnumerable<ScheduleRow> ?? []);
     }
 
-    int BookedToday(AdBreak b) => _data.Spots.Count(s => b.TimesOn(DateTime.Today).Any(t => s.PlaysIn(b, t)));
+    /// <summary>How many adverts the break plays today, at all its times.</summary>
+    int BookedToday(AdBreak b) => b.TimesOn(DateTime.Today).Sum(t => _data.InBreak(b, t).Count);
 
     ScheduleRow BreakRow(AdBreak b) => new(b, () =>
         (EntryName(b), L.F("{0} · {1} · {2} today", SlotsSummary(b), StartText(b), Plural(BookedToday(b), "{0} advert", "{0} adverts")), b.Enabled));
 
-    // ───────────────────────── Adverts ─────────────────────────
+    // ───────────────────────── Clients ─────────────────────────
 
-    void WireSpots()
+    AdClient? SelectedClient => (ClientList.SelectedItem as ScheduleRow)?.Item as AdClient;
+    AdCampaign? SelectedCampaign => (CampaignList.SelectedItem as ScheduleRow)?.Item as AdCampaign;
+
+    void WireClients()
     {
-        SpotList.SelectionChanged += (_, _) =>
+        ClientList.SelectionChanged += (_, _) => ShowClient();
+        CampaignList.SelectionChanged += (_, _) =>
         {
-            ShowSpot();
+            ShowCampaign();
             SpotGrid.Refresh();
         };
-        AddSpotButton.Click += async (_, _) =>
+        AddClientButton.Click += (_, _) =>
         {
-            if (await PickFile(L.T("Advert")) is not { } path) return;
-            var s = new AdSpot { Path = path, From = DateTime.Today };
-            _data.Spots.Add(s);
-            _spotRows = _spotRows.Append(SpotRow(s)).ToList();
-            SpotList.ItemsSource = _spotRows;
-            SpotList.SelectedIndex = _spotRows.Count - 1;
-            RefreshRows(_breakRows);
-            SpotAdvertiserBox.Focus();
+            var c = new AdClient { Name = L.T("New client") };
+            _data.Clients.Add(c);
+            _clientRows = _clientRows.Append(ClientRow(c)).ToList();
+            ClientList.ItemsSource = _clientRows;
+            ClientList.SelectedIndex = _clientRows.Count - 1;
+            ClientNameBox.Focus();
+            ClientNameBox.SelectAll();
         };
-        DeleteSpotButton.Click += async (_, _) =>
+        DeleteClientButton.Click += async (_, _) =>
         {
-            if (SpotList.SelectedItem is not ScheduleRow { Item: AdSpot s } row) return;
-            if (!await Dialogs.Confirm(this, L.T("Delete advert"), L.F("Delete \"{0}\" from the schedule? The file stays on disk.", SpotName(s)), L.T("Delete"))) return;
-            _data.Spots.Remove(s);
-            int i = _spotRows.IndexOf(row);
-            _spotRows = _spotRows.Where(r => r != row).ToList();
-            SpotList.ItemsSource = _spotRows;
-            SpotList.SelectedIndex = Math.Min(i, _spotRows.Count - 1);
-            RefreshRows(_breakRows);
-            ShowBooked();
-            SpotGrid.Refresh();
+            if (ClientList.SelectedItem is not ScheduleRow { Item: AdClient c } row) return;
+            string more = c.Campaigns.Count > 0 ? L.F(" Its {0} go too.", Plural(c.Campaigns.Count, "{0} campaign", "{0} campaigns")) : "";
+            if (!await Dialogs.Confirm(this, L.T("Delete client"), L.F("Delete \"{0}\"?{1} The files stay on disk.", ClientName(c), more), L.T("Delete"))) return;
+            _data.Clients.Remove(c);
+            int i = _clientRows.IndexOf(row);
+            _clientRows = _clientRows.Where(r => r != row).ToList();
+            ClientList.ItemsSource = _clientRows;
+            ClientList.SelectedIndex = Math.Min(i, _clientRows.Count - 1);
+            AdvertsChanged();
         };
-        SpotUpButton.Click += (_, _) => MoveSpot(-1);
-        SpotDownButton.Click += (_, _) => MoveSpot(1);
-        SpotPathBox.TextChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.Path = SpotPathBox.Text?.Trim() ?? "");
-        SpotFileButton.Click += async (_, _) => { if (await PickFile(L.T("Advert")) is { } p) SpotPathBox.Text = p; };
-        SpotAdvertiserBox.TextChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.Advertiser = SpotAdvertiserBox.Text?.Trim() ?? "");
-        SpotEnabledBox.IsCheckedChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.Enabled = SpotEnabledBox.IsChecked == true);
-        SpotFromBox.SelectedDateChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.From = SpotFromBox.SelectedDate?.Date);
-        SpotToBox.SelectedDateChanged += (_, _) => Edit<AdSpot>(SpotList, s => s.To = SpotToBox.SelectedDate?.Date);
+        AddCampaignButton.Click += async (_, _) =>
+        {
+            if (SelectedClient is not { } c || await PickFile(L.T("Advert")) is not { } path) return;
+            var k = new AdCampaign { Name = Path.GetFileNameWithoutExtension(path), Files = [path], From = DateTime.Today };
+            c.Campaigns.Add(k);
+            _campaignRows = _campaignRows.Append(CampaignRow(k)).ToList();
+            CampaignList.ItemsSource = _campaignRows;
+            CampaignList.SelectedIndex = _campaignRows.Count - 1;
+            (ClientList.SelectedItem as ScheduleRow)?.Refresh();
+            CampaignNameBox.Focus();
+            CampaignNameBox.SelectAll();
+        };
+        DeleteCampaignButton.Click += async (_, _) =>
+        {
+            if (SelectedClient is not { } c || CampaignList.SelectedItem is not ScheduleRow { Item: AdCampaign k } row) return;
+            if (!await Dialogs.Confirm(this, L.T("Delete campaign"), L.F("Delete \"{0}\"? The files stay on disk.", CampaignName(k)), L.T("Delete"))) return;
+            c.Campaigns.Remove(k);
+            int i = _campaignRows.IndexOf(row);
+            _campaignRows = _campaignRows.Where(r => r != row).ToList();
+            CampaignList.ItemsSource = _campaignRows;
+            CampaignList.SelectedIndex = Math.Min(i, _campaignRows.Count - 1);
+            (ClientList.SelectedItem as ScheduleRow)?.Refresh();
+            AdvertsChanged();
+        };
+
+        ClientNameBox.TextChanged += (_, _) => Edit<AdClient>(ClientList, c => c.Name = ClientNameBox.Text?.Trim() ?? "");
+        ClientEnabledBox.IsCheckedChanged += (_, _) => Edit<AdClient>(ClientList, c => c.Enabled = ClientEnabledBox.IsChecked == true);
+        CampaignNameBox.TextChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Name = CampaignNameBox.Text?.Trim() ?? "");
+        CampaignEnabledBox.IsCheckedChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Enabled = CampaignEnabledBox.IsChecked == true);
+        AddFileButton.Click += async (_, _) =>
+        {
+            if (SelectedCampaign == null || await PickFile(L.T("Advert")) is not { } path) return;
+            Edit<AdCampaign>(CampaignList, k => k.Files.Add(path));
+            ShowFiles();
+        };
+        RemoveFileButton.Click += (_, _) =>
+        {
+            if (CampaignFiles.SelectedIndex is not (>= 0 and var i)) return;
+            Edit<AdCampaign>(CampaignList, k => k.Files.RemoveAt(i));
+            ShowFiles();
+        };
+        CampaignPositionBox.ItemsSource = Enumerable.Range(0, 11).Select(n => n switch
+        {
+            0 => L.T("Automatic"),
+            1 => L.T("1 (first)"),
+            10 => L.T("10 (last)"),
+            _ => n.ToString(CultureInfo.CurrentCulture),
+        }).ToList();
+        CampaignPositionBox.SelectionChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Position = Math.Max(0, CampaignPositionBox.SelectedIndex));
+        CampaignSectionBox.SelectionChanged += (_, _) =>
+        {
+            if (CampaignSectionBox.SelectedIndex < 0) return;
+            Edit<AdCampaign>(CampaignList, k => k.Section = CampaignSectionBox.SelectedIndex == 0 ? "" : CampaignSectionBox.SelectedItem as string ?? "");
+            ShowSectionShown();
+        };
+        SpotFromBox.SelectedDateChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.From = SpotFromBox.SelectedDate?.Date);
+        SpotToBox.SelectedDateChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.To = SpotToBox.SelectedDate?.Date);
         SpotClearDatesButton.Click += (_, _) =>
         {
             SpotFromBox.SelectedDate = null;
             SpotToBox.SelectedDate = null;
         };
-        SpotClearPlacesButton.Click += (_, _) => Edit<AdSpot>(SpotList, s => s.Placements.Clear());
+        SpotClearPlacesButton.Click += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Placements.Clear());
 
         // The week calendar of breaks.
         SpotGrid.CellOf = SpotCell;
-        SpotGrid.PaintStarted += () => _spotSnapshot = SelectedSpot?.Placements.Select(Copy).ToList();
+        SpotGrid.PaintStarted += () => _spotSnapshot = SelectedCampaign?.Placements.Select(Copy).ToList();
         SpotGrid.Paint += (cells, on) =>
         {
-            if (SelectedSpot is not { } s || _spotSnapshot == null) return;
-            s.Placements = _spotSnapshot.Select(Copy).ToList();
+            if (SelectedCampaign is not { } k || _spotSnapshot == null) return;
+            k.Placements = _spotSnapshot.Select(Copy).ToList();
             foreach (var (col, row) in cells)
             {
                 var date = _week.AddDays(col);
                 var time = TimeSpan.FromSeconds(_spotTimes[row]);
-                s.Placements.RemoveAll(p => p.At == time && (p.Date is { } d ? d.Date == date : p.Day == date.DayOfWeek));
+                if (!BreaksAt(date + time).Any(b => b.SectionOf(k) != null)) continue; // no break there with its section
+                k.Placements.RemoveAll(p => p.At == time && (p.Date is { } d ? d.Date == date : p.Day == date.DayOfWeek));
                 if (on)
-                    s.Placements.Add(ThatDayBox.IsChecked == true
+                    k.Placements.Add(ThatDayBox.IsChecked == true
                         ? new AdPlacement { Date = date, Time = WeekTime.Text(time) }
                         : new AdPlacement { Day = date.DayOfWeek, Time = WeekTime.Text(time) });
             }
         };
-        SpotGrid.PaintEnded += () => Edit<AdSpot>(SpotList, _ => { });
+        SpotGrid.PaintEnded += () => Edit<AdCampaign>(CampaignList, _ => { });
         WeekBackButton.Click += (_, _) => { _week = _week.AddDays(-7); ShowSpotWeek(); };
         WeekNextButton.Click += (_, _) => { _week = _week.AddDays(7); ShowSpotWeek(); };
         ThisWeekButton.Click += (_, _) => { _week = Monday(DateTime.Today); ShowSpotWeek(); };
     }
 
-    AdSpot? SelectedSpot => (SpotList.SelectedItem as ScheduleRow)?.Item as AdSpot;
-
     static AdPlacement Copy(AdPlacement p) => new() { Day = p.Day, Date = p.Date, Time = p.Time };
 
-    void ShowSpot()
+    void ShowClient()
     {
-        var s = SelectedSpot;
-        SpotPanel.IsEnabled = s != null;
+        var c = SelectedClient;
+        ClientPanel.IsEnabled = c != null;
+        AddCampaignButton.IsEnabled = DeleteCampaignButton.IsEnabled = c != null;
         _loading = true;
-        SpotPathBox.Text = s?.Path ?? "";
-        SpotAdvertiserBox.Text = s?.Advertiser ?? "";
-        SpotEnabledBox.IsChecked = s?.Enabled ?? true;
-        SpotFromBox.SelectedDate = s?.From;
-        SpotToBox.SelectedDate = s?.To;
-        ShowDays(_spotDays, s?.Days);
-        SpotBreaks.Children.Clear();
-        foreach (var b in _data.Breaks)
-        {
-            var box = new CheckBox { Content = EntryName(b), IsChecked = s?.Breaks.Contains(b.Id) == true };
-            box.IsCheckedChanged += (_, _) => Edit<AdSpot>(SpotList, spot =>
-            {
-                spot.Breaks.Remove(b.Id);
-                if (box.IsChecked == true) spot.Breaks.Add(b.Id);
-            });
-            SpotBreaks.Children.Add(box);
-        }
-        SpotNoBreaksNote.IsVisible = _data.Breaks.Count == 0;
+        ClientNameBox.Text = c?.Name ?? "";
+        ClientEnabledBox.IsChecked = c?.Enabled ?? true;
         _loading = false;
-        ShowPlaced();
+        _campaignRows = c?.Campaigns.Select(CampaignRow).ToList() ?? new();
+        CampaignList.ItemsSource = _campaignRows;
+        CampaignList.SelectedIndex = _campaignRows.Count > 0 ? 0 : -1;
+        ShowCampaign();
+        SpotGrid.Refresh();
     }
+
+    void ShowCampaign()
+    {
+        var k = SelectedCampaign;
+        CampaignPanel.IsEnabled = k != null;
+        _loading = true;
+        CampaignNameBox.Text = k?.Name ?? "";
+        CampaignEnabledBox.IsChecked = k?.Enabled ?? true;
+        var sections = _data.Sections();
+        if (k is { Section.Length: > 0 } && !sections.Contains(k.Section, StringComparer.CurrentCultureIgnoreCase)) sections.Add(k.Section);
+        CampaignSectionBox.ItemsSource = sections.Prepend(L.T("The break's first section")).ToList();
+        CampaignSectionBox.SelectedIndex = k == null || k.Section.Length == 0 ? 0
+            : sections.FindIndex(n => n.Equals(k.Section, StringComparison.CurrentCultureIgnoreCase)) + 1;
+        CampaignPositionBox.SelectedIndex = Math.Clamp(k?.Position ?? 0, 0, 10);
+        SpotFromBox.SelectedDate = k?.From;
+        SpotToBox.SelectedDate = k?.To;
+        _loading = false;
+        ShowFiles();
+        ShowPlaced();
+        ShowSectionShown();
+    }
+
+    void ShowFiles() => CampaignFiles.ItemsSource = SelectedCampaign?.Files.Select(f => Path.GetFileName(f) + (File.Exists(f) ? "" : L.T(" · not found"))).ToList();
+
+    void ShowSectionShown() =>
+        SectionShownText.Text = SelectedCampaign is { } k
+            ? L.F("Showing the section: {0}", k.Section.Length > 0 ? k.Section : L.T("the break's first section"))
+            : L.T("Showing every section: choose a campaign to place it");
 
     void ShowPlaced()
     {
-        var s = SelectedSpot;
-        int places = s?.Placements.Count ?? 0;
-        SpotPlacedText.Text = s == null ? "" : places == 0
-            ? L.T("Not placed in the calendar.")
-            : L.F("Placed in {0} of the calendar ({1} every week, {2} on a date).", Plural(places, "{0} break", "{0} breaks"), s.Placements.Count(p => p.Date == null), s.Placements.Count(p => p.Date != null));
+        var k = SelectedCampaign;
+        int places = k?.Placements.Count ?? 0;
+        SpotPlacedText.Text = k == null ? "" : places == 0
+            ? L.T("Not placed in the calendar yet: click the breaks it goes in.")
+            : L.F("Placed in {0} of the calendar ({1} every week, {2} on a date).", Plural(places, "{0} break", "{0} breaks"), k.Placements.Count(p => p.Date == null), k.Placements.Count(p => p.Date != null));
         SpotClearPlacesButton.IsVisible = places > 0;
-        SpotRulesPanel.IsVisible = places == 0;
+    }
+
+    /// <summary>After clients or campaigns changed: the counts in the breaks and the calendar.</summary>
+    void AdvertsChanged()
+    {
+        RefreshRows(_breakRows);
+        ShowBooked();
+        ShowCampaign();
+        SpotGrid.Refresh();
     }
 
     /// <summary>The adverts calendar for <see cref="_week"/>: a row for every break time of the week.</summary>
@@ -382,19 +548,28 @@ public partial class ScheduleWindow : Window
         SpotGrid.Refresh();
     }
 
+    List<AdBreak> BreaksAt(DateTime at) => _data.Breaks.Where(b => b.Enabled && b.TimesOn(at.Date).Contains(at)).ToList();
+
+    /// <summary>
+    /// A break in the adverts calendar: with a campaign chosen, the adverts in its section (where the break has that
+    /// section; elsewhere it can't be clicked), highlighted where the campaign is placed; else all the break's adverts.
+    /// </summary>
     GridCell SpotCell(int col, int row)
     {
-        var date = _week.AddDays(col);
-        var at = date + TimeSpan.FromSeconds(_spotTimes[row]);
-        var breaks = _data.Breaks.Where(b => b.Enabled && b.TimesOn(date).Contains(at)).ToList();
+        var at = _week.AddDays(col) + TimeSpan.FromSeconds(_spotTimes[row]);
+        var breaks = BreaksAt(at);
         if (breaks.Count == 0) return new GridCell("", false, Enabled: false);
-        var spots = _data.Spots.Where(s => breaks.Any(b => s.PlaysIn(b, at))).ToList();
-        double seconds = spots.Sum(s => Length(s.Path));
-        // Highlighted where it is placed; one not placed yet plays by its days and breaks, counted but not
-        // highlighted, so the first click places it.
-        bool on = SelectedSpot is { Placements.Count: > 0 } sel && spots.Contains(sel);
-        string text = spots.Count == 0 ? "" : $"{spots.Count:00} | {TimeSpan.FromSeconds(Math.Round(seconds)):m\\:ss}";
-        return new GridCell(text, on, SelectedSpot != null, spots.Count > 0);
+        var k = SelectedCampaign;
+        var adverts = k == null
+            ? breaks.SelectMany(b => _data.InBreak(b, at)).ToList()
+            : breaks.SelectMany(b => b.SectionOf(k) is { } s ? _data.InSection(b, s, at) : []).ToList();
+        bool usable = k == null || breaks.Any(b => b.SectionOf(k) != null);
+        if (!usable) return new GridCell("—", false, Enabled: false);
+        double seconds = adverts.Sum(a => Length(a.File));
+        bool on = k != null && k.Placements.Any(p => p.On(at)) && adverts.Any(a => a.Campaign == k);
+        bool placedOutside = k != null && !on && k.Placements.Any(p => p.On(at)); // placed, but outside its dates
+        string text = adverts.Count == 0 ? placedOutside ? "·" : "" : $"{adverts.Count:00} | {TimeSpan.FromSeconds(Math.Round(seconds)):m\\:ss}";
+        return new GridCell(text, on || placedOutside, k != null, adverts.Count > 0);
     }
 
     /// <summary>An advert's length (read once from the file).</summary>
@@ -406,33 +581,30 @@ public partial class ScheduleWindow : Window
         return s;
     }
 
-    void MoveSpot(int delta)
+    ScheduleRow ClientRow(AdClient c) => new(c, () =>
     {
-        if (SpotList.SelectedItem is not ScheduleRow { Item: AdSpot s } row) return;
-        int i = _data.Spots.IndexOf(s), j = i + delta;
-        if (j < 0 || j >= _data.Spots.Count) return;
-        (_data.Spots[i], _data.Spots[j]) = (_data.Spots[j], _data.Spots[i]);
-        _spotRows = _data.Spots.Select(x => _spotRows.First(r => r.Item == x)).ToList();
-        SpotList.ItemsSource = _spotRows;
-        SpotList.SelectedItem = row;
-    }
+        int running = c.Campaigns.Count(k => k.Enabled && k.Placements.Count > 0 && !(k.To is { } to && to.Date < DateTime.Today));
+        return (ClientName(c), L.F("{0} · {1} running", Plural(c.Campaigns.Count, "{0} campaign", "{0} campaigns"), running), c.Enabled);
+    });
 
-    ScheduleRow SpotRow(AdSpot s) => new(s, () =>
+    ScheduleRow CampaignRow(AdCampaign k) => new(k, () =>
     {
-        string dates = (s.From, s.To) switch
+        string dates = (k.From, k.To) switch
         {
             (null, null) => L.T("no end date"),
             ({ } f, null) => L.F("from {0:yyyy-MM-dd}", f),
             (null, { } t) => L.F("until {0:yyyy-MM-dd}", t),
             ({ } f, { } t) => L.F("{0:yyyy-MM-dd} to {1:yyyy-MM-dd}", f, t),
         };
-        string where = s.Placements.Count > 0 ? L.F("{0} in the calendar", Plural(s.Placements.Count, "{0} place", "{0} places"))
-            : L.F("{0} · {1}", DaysText(s.Days), (s.Breaks.Count == 0 ? L.T("every break") : string.Join(", ", _data.Breaks.Where(b => s.Breaks.Contains(b.Id)).Select(EntryName))));
-        bool over = s.To is { } to && to.Date < DateTime.Today;
-        return (SpotName(s), L.F("{0} · {1}{2} · {3}", Path.GetFileName(s.Path), dates, (over ? L.T(" (ended)") : ""), where), s.Enabled && !over);
+        bool over = k.To is { } to && to.Date < DateTime.Today;
+        string where = k.Section.Length > 0 ? k.Section : L.T("first section");
+        string position = k.Position == 0 ? "" : L.F(" · position {0}", k.Position);
+        return (CampaignName(k), L.F("{0}{1} · {2}{3} · {4}", dates, (over ? L.T(" (ended)") : ""), where, position, Plural(k.Placements.Count, "{0} place", "{0} places")),
+            k.Enabled && !over);
     });
 
-    static string SpotName(AdSpot s) => s.Advertiser.Length > 0 ? s.Advertiser : Path.GetFileNameWithoutExtension(s.Path);
+    static string ClientName(AdClient c) => c.Name.Length > 0 ? c.Name : L.T("Client");
+    static string CampaignName(AdCampaign k) => k.Name.Length > 0 ? k.Name : k.Files.Select(Path.GetFileNameWithoutExtension).FirstOrDefault() ?? L.T("Campaign");
 
     // ───────────────────────── The events and breaks calendars ─────────────────────────
 
@@ -603,8 +775,9 @@ public partial class ScheduleWindow : Window
         change(item);
         (list.SelectedItem as ScheduleRow)?.Refresh();
         ErrorText.Text = "";
-        if (item is AdSpot)
+        if (item is AdClient or AdCampaign)
         {
+            (ClientList.SelectedItem as ScheduleRow)?.Refresh();
             RefreshRows(_breakRows);
             ShowBooked();
             ShowPlaced();
@@ -612,7 +785,7 @@ public partial class ScheduleWindow : Window
         }
         if (item is AdBreak)
         {
-            RefreshRows(_spotRows);
+            RefreshRows(_campaignRows);
             BreakGrid.Refresh();
             ShowSpotWeek();
         }
@@ -648,26 +821,6 @@ public partial class ScheduleWindow : Window
         return string.Join(" ", Week.Where(set.Contains).Select(DayShort));
     }
 
-    ToggleButton[] DayButtons(Panel panel, Action changed)
-    {
-        var buttons = Week.Select(d => new ToggleButton { Content = DayShort(d), Tag = d }).ToArray();
-        foreach (var b in buttons)
-        {
-            b.Classes.Add("day");
-            b.IsCheckedChanged += (_, _) => changed();
-            panel.Children.Add(b);
-        }
-        return buttons;
-    }
-
-    static void ShowDays(ToggleButton[] buttons, IReadOnlyCollection<DayOfWeek>? days)
-    {
-        foreach (var b in buttons) b.IsChecked = days?.Contains((DayOfWeek)b.Tag!) == true;
-    }
-
-    static List<DayOfWeek> Days(ToggleButton[] buttons) =>
-        buttons.Where(b => b.IsChecked == true).Select(b => (DayOfWeek)b.Tag!).ToList();
-
     async Task<string?> PickFile(string title)
     {
         var start = Directory.Exists(_browseFolder) ? await StorageProvider.TryGetFolderFromPathAsync(_browseFolder) : null;
@@ -699,14 +852,16 @@ public partial class ScheduleWindow : Window
             ErrorText.Text = L.F("{0} isn't in the calendar yet: click the days and times it runs (or switch it off).", EntryName(entry));
             return;
         }
-        foreach (var s in _data.Spots)
-            if (s.From is { } f && s.To is { } t && t < f)
-            {
-                Tabs.SelectedIndex = 2;
-                SpotList.SelectedItem = _spotRows.FirstOrDefault(r => r.Item == s);
-                ErrorText.Text = L.F("{0}: the last day is before the first.", SpotName(s));
-                return;
-            }
+        foreach (var c in _data.Clients)
+            foreach (var k in c.Campaigns)
+                if (k.From is { } f && k.To is { } t && t < f)
+                {
+                    Tabs.SelectedIndex = 2;
+                    ClientList.SelectedItem = _clientRows.FirstOrDefault(r => r.Item == c);
+                    CampaignList.SelectedItem = _campaignRows.FirstOrDefault(r => r.Item == k);
+                    ErrorText.Text = L.F("{0}: the last day is before the first.", CampaignName(k));
+                    return;
+                }
         Close(_data);
     }
 }

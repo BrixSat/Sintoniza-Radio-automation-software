@@ -63,12 +63,18 @@ engine for decoding, mixing and streaming.
   at :20), and exact times such as 12:59:55 can be added as rows. Other items show faintly in their cells.
   - **Events** play a file, the newest file in a folder (a news bulletin downloaded there; optionally only if it
     is recent) or another station's stream for a set time.
-  - **Ad breaks** play the adverts placed in them that day, between an optional opening and closing jingle. A
-    break with nothing in it is skipped.
-  - **Adverts**: a file and its advertiser, between two dates. The adverts calendar shows a real week (with week
-    navigation): one row per break time, and in each cell how many adverts that break has and how long they run
-    (`02 | 0:45`). A click places the selected advert in that break every week, or on that date only. Adverts not
-    placed in the calendar play by chosen days and breaks (or every break), in the order of the list.
+  - **Ad breaks** have a **running order**, built like a small playlist: jingles and named **advert sections**
+    (for example *Antes do SH*, *Depois do SH*, *Promos*). A section plays the adverts booked into it that day; a
+    jingle can be set to play only when the section after it has adverts (a section opener). A break with no
+    adverts at all is skipped.
+  - **Clients** (as in AVAPLAYER): each client has campaigns. A campaign has its dates, one or more audio files
+    (they take turns), the **section** it goes in and its **position**: automatic, 1–5 from the start of the
+    section or 6–10 at its end (10 = last); automatic ones never put the same client twice in a row where that can
+    be helped. The campaigns calendar shows a real week (with week navigation): one row per break time, and in
+    each cell how many adverts the campaign's section has there and how long they run (`02 | 0:45`). A click places
+    the selected campaign in that break every week, or on that date only; only breaks that have its section can be
+    clicked. The client's name goes on the proof of broadcast. Adverts made with earlier versions become a client
+    and a campaign each.
   - **Shown ahead in the playlist**: the events and breaks coming up appear in the playlist where they will play
     (tagged SCHEDULED, with their start time and how they start: hard, can wait N minutes, or ends at its time),
     and the start times after them allow for them. They become real playlist items when they are due.
@@ -126,7 +132,10 @@ engine for decoding, mixing and streaming.
 - **Top of the hour time signal** (Settings → Time signal): the pips (five short, the long one on the hour) or your own
   audio file, timed to end on the hour. Either play it **over** whatever is on air, or **stop** what is on air: it
   fades out just before the signal and the next playlist item starts right after it (in AUTO). Or turn it off.
-  It plays on the Cartwall output and in the stream, and follows the computer's clock.
+  It plays on the Cartwall output and in the stream, and follows the computer's clock. **Hour announcements**: a
+  folder with a file for each hour, the hour's number at the end of the name (`HRS05.mp3` at 05:00, `HRS22.mp3`
+  at 22:00; midnight 00 or 24), played instead of the signal (ending on the hour) or right after it; an hour
+  without a file gets the signal only.
 - **Languages**: English, Português and Français (Settings → Station → Language, from the next start; automatic
   follows the computer). Every window and message is translated; dates and day names follow the language. The
   translations are in `src/Playout.App/i18n/`; `python3 scripts/i18n-check.py` lists texts that have none.
@@ -202,7 +211,7 @@ The type icon in the playlist comes from the folders a file is in:
 
 So `Music/Jingles/Station ID.mp3` is a jingle. This is a first version, and category rules in the music library
 will replace it later. Items put in the playlist by the schedule have their own types wherever the files are:
-adverts are commercials, the opening and closing jingles of a break are jingles, and what events play (news,
+adverts are commercials, the jingles in a break's running order are jingles, and what events play (news,
 shows) is a **programme**, which RDS, the website and the music reports don't treat as a song.
 
 ### Cue points

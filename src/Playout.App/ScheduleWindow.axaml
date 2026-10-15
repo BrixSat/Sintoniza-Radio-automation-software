@@ -220,41 +220,44 @@
                                     <ComboBoxItem Content="Neither: they are locked" />
                                 </ComboBox>
                             </StackPanel>
-                            <StackPanel>
-                                <TextBlock Classes="label" Text="Opening jingle (optional)" />
-                                <TextBox x:Name="BreakIntroBox" />
-                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
-                                    <Button x:Name="BreakIntroButton" Content="Choose…" />
-                                    <Button x:Name="BreakIntroClear" Content="Clear" />
-                                </StackPanel>
-                            </StackPanel>
-                            <StackPanel>
-                                <TextBlock Classes="label" Text="Closing jingle (optional)" />
-                                <TextBox x:Name="BreakOutroBox" />
-                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
-                                    <Button x:Name="BreakOutroButton" Content="Choose…" />
-                                    <Button x:Name="BreakOutroClear" Content="Clear" />
-                                </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Running order" />
+                                <ListBox x:Name="PartList" Height="190" Background="#13161C">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="app:ScheduleRow">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button x:Name="AddJingleButton" Content="Jingle…" ToolTip.Tip="Add a jingle to the running order" />
+                                    <Button x:Name="PartUpButton" Content="▲" ToolTip.Tip="Earlier in the break" />
+                                    <Button x:Name="PartDownButton" Content="▼" ToolTip.Tip="Later in the break" />
+                                    <Button x:Name="RemovePartButton" Content="Remove" />
+                                </WrapPanel>
+                                <Grid ColumnDefinitions="*,6,Auto">
+                                    <AutoCompleteBox x:Name="SectionNameBox" PlaceholderText="Section, e.g. Before the hour" FilterMode="StartsWith" MinimumPrefixLength="0" />
+                                    <Button Grid.Column="2" x:Name="AddSectionButton" Content="Add section" />
+                                </Grid>
+                                <CheckBox x:Name="PartOnlyBox" Content="Play this jingle only when the section after it has adverts" />
                             </StackPanel>
                             <TextBlock x:Name="BreakBookedText" FontWeight="SemiBold" />
                             <TextBlock Classes="note"
-                                       Text="A break plays the adverts placed in it that day (Adverts tab), between the jingles; one with none is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before: songs that wouldn't fit move after it and a gap is filled with a fill song." />
+                                       Text="A break plays its running order: jingles, and in each section the adverts booked into it that day (Clients tab). A break with no adverts is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before: songs that wouldn't fit move after it and a gap is filled with a fill song." />
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
             </TabItem>
 
-            <!-- ───────── Adverts ───────── -->
-            <TabItem Header="Adverts">
+            <!-- ───────── Clients ───────── -->
+            <TabItem Header="Clients">
                 <Grid ColumnDefinitions="220,14,*,14,330" Margin="0,12,0,0">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
-                            <Button x:Name="AddSpotButton" Content="New" />
-                            <Button x:Name="DeleteSpotButton" Content="Delete" />
-                            <Button x:Name="SpotUpButton" Content="▲" ToolTip.Tip="Earlier in the break" />
-                            <Button x:Name="SpotDownButton" Content="▼" ToolTip.Tip="Later in the break" />
-                        </StackPanel>
-                        <ListBox x:Name="SpotList" Background="#13161C">
+                    <Grid RowDefinitions="Auto,*,Auto,Auto,*,Auto">
+                        <TextBlock Classes="label" Text="Clients" />
+                        <ListBox Grid.Row="1" x:Name="ClientList" Background="#13161C">
                             <ListBox.ItemTemplate>
                                 <DataTemplate x:DataType="app:ScheduleRow">
                                     <StackPanel Opacity="{Binding Opacity}">
@@ -264,7 +267,26 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </DockPanel>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddClientButton" Content="New" />
+                            <Button x:Name="DeleteClientButton" Content="Delete" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Classes="label" Text="Campaigns" Margin="0,14,0,4" />
+                        <ListBox Grid.Row="4" x:Name="CampaignList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddCampaignButton" Content="New" />
+                            <Button x:Name="DeleteCampaignButton" Content="Delete" />
+                        </StackPanel>
+                    </Grid>
 
                     <DockPanel Grid.Column="2">
                         <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8">
@@ -276,8 +298,9 @@
                             <RadioButton x:Name="EveryWeekBox" GroupName="PlaceMode" Content="every week" IsChecked="True" />
                             <RadioButton x:Name="ThatDayBox" GroupName="PlaceMode" Content="on that date only" />
                         </WrapPanel>
+                        <TextBlock DockPanel.Dock="Top" x:Name="SectionShownText" FontWeight="SemiBold" Foreground="{StaticResource NextUp}" Margin="0,0,0,8" />
                         <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
-                                   Text="Each cell is an ad break: how many adverts it has and how long they run. Click to put the selected advert in it (or take it out); drag to do many. Every week: within the advert's first and last day." />
+                                   Text="Each cell is an ad break: how many adverts its section has and how long they run. Click to put the selected campaign in it (or take it out); drag to do many. Only breaks that have the campaign's section can be clicked. Every week: within the campaign's first and last day." />
                         <Border Classes="calendar">
                             <DockPanel>
                                 <Grid DockPanel.Dock="Top" x:Name="SpotHeader" Height="28" Background="#1A1D24" />
@@ -293,43 +316,55 @@
                     </DockPanel>
 
                     <ScrollViewer Grid.Column="4">
-                        <StackPanel x:Name="SpotPanel" Spacing="12" Margin="0,0,14,0">
-                            <StackPanel>
-                                <TextBlock Classes="label" Text="Advert (audio file)" />
-                                <TextBox x:Name="SpotPathBox" />
-                                <Button x:Name="SpotFileButton" Content="Choose…" Margin="0,6,0,0" />
-                            </StackPanel>
-                            <Grid ColumnDefinitions="*,12,Auto">
+                        <StackPanel Spacing="12" Margin="0,0,14,0">
+                            <Grid x:Name="ClientPanel" ColumnDefinitions="*,12,Auto">
                                 <StackPanel>
-                                    <TextBlock Classes="label" Text="Advertiser (on the proof of broadcast)" />
-                                    <TextBox x:Name="SpotAdvertiserBox" MaxLength="100" />
+                                    <TextBlock Classes="label" Text="Client (on the proof of broadcast)" />
+                                    <TextBox x:Name="ClientNameBox" MaxLength="100" />
                                 </StackPanel>
-                                <CheckBox Grid.Column="2" x:Name="SpotEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                                <CheckBox Grid.Column="2" x:Name="ClientEnabledBox" Content="On" VerticalAlignment="Bottom" />
                             </Grid>
-                            <Grid ColumnDefinitions="*,8,*">
-                                <StackPanel>
-                                    <TextBlock Classes="label" Text="First day" />
-                                    <CalendarDatePicker x:Name="SpotFromBox" HorizontalAlignment="Stretch" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd" PlaceholderText="No limit" />
+                            <Separator />
+                            <StackPanel x:Name="CampaignPanel" Spacing="12">
+                                <Grid ColumnDefinitions="*,12,Auto">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Campaign" />
+                                        <TextBox x:Name="CampaignNameBox" MaxLength="100" PlaceholderText="e.g. Summer sale" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="2" x:Name="CampaignEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                                </Grid>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="label" Text="Adverts (audio files; several take turns)" />
+                                    <ListBox x:Name="CampaignFiles" Height="96" Background="#13161C" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Button x:Name="AddFileButton" Content="Add…" />
+                                        <Button x:Name="RemoveFileButton" Content="Remove" />
+                                    </StackPanel>
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Classes="label" Text="Last day" />
-                                    <CalendarDatePicker x:Name="SpotToBox" HorizontalAlignment="Stretch" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd" PlaceholderText="No limit" />
-                                </StackPanel>
-                            </Grid>
-                            <Button x:Name="SpotClearDatesButton" Content="No date limit" HorizontalAlignment="Left" />
-                            <TextBlock x:Name="SpotPlacedText" FontWeight="SemiBold" TextWrapping="Wrap" />
-                            <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" HorizontalAlignment="Left" />
-                            <StackPanel x:Name="SpotRulesPanel" Spacing="8">
-                                <TextBlock Classes="note" Text="Not placed in the calendar, it plays by these instead:" />
-                                <StackPanel>
-                                    <TextBlock Classes="label" Text="Days (none chosen = every day)" />
-                                    <WrapPanel x:Name="SpotDays" ItemSpacing="4" LineSpacing="4" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Classes="label" Text="Ad breaks (none ticked = every break)" />
-                                    <WrapPanel x:Name="SpotBreaks" ItemSpacing="12" LineSpacing="4" />
-                                    <TextBlock x:Name="SpotNoBreaksNote" Classes="note" Text="Make ad breaks on the Ad breaks tab first." />
-                                </StackPanel>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Section" />
+                                        <ComboBox x:Name="CampaignSectionBox" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="label" Text="Position" />
+                                        <ComboBox x:Name="CampaignPositionBox" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Classes="note" Text="Automatic: after positions 1–5 and before 6–10, never the same client twice in a row where it can be helped. 1 is the first in the section, 10 the last." />
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="First day" />
+                                        <CalendarDatePicker x:Name="SpotFromBox" HorizontalAlignment="Stretch" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd" PlaceholderText="No limit" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="label" Text="Last day" />
+                                        <CalendarDatePicker x:Name="SpotToBox" HorizontalAlignment="Stretch" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd" PlaceholderText="No limit" />
+                                    </StackPanel>
+                                </Grid>
+                                <Button x:Name="SpotClearDatesButton" Content="No date limit" HorizontalAlignment="Left" />
+                                <TextBlock x:Name="SpotPlacedText" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" HorizontalAlignment="Left" />
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

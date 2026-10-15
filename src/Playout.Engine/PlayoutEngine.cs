@@ -61,7 +61,7 @@ public sealed class PlayoutEngine : IDisposable
     readonly HashSet<string> _tagWriting = new(); // files whose tags are being written: not opened ahead of time meanwhile
     readonly ConcurrentDictionary<int, byte> _carts = new(); // carts fired and not stopped (some may have ended)
     TimeSignalSettings _timeSignal = new();
-    double _signalHourAt;    // where the hour falls in the signal (seconds)
+    (DateTime Hour, double Seconds)? _signalLead; // where the hour falls in that hour's signal (seconds)
     DateTime? _signalHour;   // the next top of the hour that gets the signal (local time)
     bool _resumeAfterSignal; // Stop mode took the item off air: start the next one when the signal ends
     SilenceSettings _silence = new();
@@ -162,15 +162,44 @@ public sealed class PlayoutEngine : IDisposable
     {
         _timeSignal = settings;
         _signalHour = null;
-        if (settings.Mode == TimeSignalMode.Off) return;
-        Bass.StreamFree(TimeSignal.Open(settings.File, Emit, out _signalHourAt, out _));
+        _signalLead = null;
     });
 
-    /// <summary>Plays the time signal (file, or empty for the pips) on the Preview output, to check it off air.</summary>
-    public void PreviewTimeSignal(string file)
+    /// <summary>
+    /// Plays the time signal on the Preview output, to check it off air: as it will sound at the next top of the
+    /// hour, with that hour's announcement.
+    /// </summary>
+    public void PreviewTimeSignal(TimeSignalSettings settings)
     {
-        int h = TimeSignal.Open(file, Emit, out _, out _);
-        if (h != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.AutoFree)) Bass.StreamFree(h);
+        var hour = TopOfHour(DateTime.Now);
+        var (signal, announcement) = SignalFiles(settings, hour);
+        int h = signal == null ? 0 : TimeSignal.Open(signal, Emit, out _, out double length);
+        if (h != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.AutoFree)) { Bass.StreamFree(h); return; }
+        double after = h != 0 ? Bass.ChannelBytes2Seconds(h, Bass.ChannelGetLength(h, PositionFlags.Bytes)) : 0;
+        if (announcement == null) return;
+        int a = Bass.CreateStream(announcement, 0, 0, BassFlags.Decode | BassFlags.Float);
+        if (a != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, a, BassFlags.AutoFree, Bass.ChannelSeconds2Bytes(_graph.PreviewBus, after), 0)) Bass.StreamFree(a);
+    }
+
+    /// <summary>
+    /// What plays at <paramref name="hour"/>: the signal (a file or "" for the pips; null = none, the announcement
+    /// takes its place and ends on the hour) and the announcement after it (or null).
+    /// </summary>
+    static (string? Signal, string? After) SignalFiles(TimeSignalSettings settings, DateTime hour)
+    {
+        var file = TimeSignal.HourFile(settings.HourFolder, hour);
+        if (file == null) return (settings.File, null);
+        return settings.HourAt == HourAnnouncement.Instead ? (file, null) : (settings.File, file);
+    }
+
+    /// <summary>Where the hour falls in what plays at <paramref name="hour"/> (seconds from its start), so it can start in time.</summary>
+    double LeadFor(DateTime hour)
+    {
+        if (_signalLead is { } known && known.Hour == hour) return known.Seconds;
+        var (signal, _) = SignalFiles(_timeSignal, hour);
+        Bass.StreamFree(TimeSignal.Open(signal ?? "", Emit, out double hourAt, out _));
+        _signalLead = (hour, hourAt);
+        return hourAt;
     }
 
     /// <summary>Short 1 kHz tone on a card/channel pair, to find the right desk fader.</summary>
@@ -1466,21 +1495,31 @@ public sealed class PlayoutEngine : IDisposable
     {
         if (_timeSignal.Mode == TimeSignalMode.Off) return;
         var now = DateTime.Now;
-        // The first hour that still leaves time to prepare (switched on at 59:58, it starts with the next hour).
-        _signalHour ??= TopOfHour(now.AddSeconds(_signalHourAt + SignalPrepSeconds));
+        // The first hour that still leaves time to prepare (switched on at 59:58, it starts with the next hour). How
+        // early it starts depends on that hour's sound (an hour announcement in place of the signal has its own length).
+        if (_signalHour == null)
+        {
+            var next = TopOfHour(now);
+            if ((next - now).TotalSeconds < LeadFor(next) + SignalPrepSeconds) next = next.AddHours(1);
+            _signalHour = next;
+        }
+        double lead = LeadFor(_signalHour.Value);
         double untilHour = (_signalHour.Value - now).TotalSeconds;
-        if (untilHour > _signalHourAt + SignalPrepSeconds) return;
+        if (untilHour > lead + SignalPrepSeconds) return;
         var hour = _signalHour.Value;
+        bool late = untilHour < lead; // too late for this one (the computer was asleep, the clock jumped)
         _signalHour = hour.AddHours(1);
-        if (untilHour < _signalHourAt) return; // too late for this one (the computer was asleep, the clock jumped)
-        StartTimeSignal(hour, untilHour);
+        if (!late) StartTimeSignal(hour, untilHour);
     }
 
     static DateTime TopOfHour(DateTime after) => new DateTime(after.Year, after.Month, after.Day, after.Hour, 0, 0, after.Kind).AddHours(1);
 
     void StartTimeSignal(DateTime hour, double untilHour)
     {
-        int h = TimeSignal.Open(_timeSignal.File, Emit, out double hourAt, out double length);
+        var (signal, announcement) = SignalFiles(_timeSignal, hour);
+        if (!string.IsNullOrWhiteSpace(_timeSignal.HourFolder) && TimeSignal.HourFile(_timeSignal.HourFolder, hour) == null)
+            Emit(L.F("Hour announcement: no file for {0:HH} in {1}", hour, _timeSignal.HourFolder));
+        int h = TimeSignal.Open(signal ?? "", Emit, out double hourAt, out double length);
         if (h == 0) { Emit(L.F("Time signal: {0}", Bass.LastError)); return; }
 
         // Mixed in with a delay so it is heard, after what is still queued on the card, exactly on time.
@@ -1492,7 +1531,22 @@ public sealed class PlayoutEngine : IDisposable
             Bass.StreamFree(h);
             return;
         }
-        Emit(L.F("Time signal for {0:HH:mm}", hour));
+        // The hour announcement right after the signal.
+        if (announcement != null)
+        {
+            int a = Bass.CreateStream(announcement, 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
+            if (a != 0 && BassMix.MixerAddChannel(_graph.CartBus, a, BassFlags.AutoFree, Bass.ChannelSeconds2Bytes(_graph.CartBus, startIn + length), 0))
+                length += Bass.ChannelBytes2Seconds(a, Bass.ChannelGetLength(a, PositionFlags.Bytes));
+            else
+            {
+                Emit(L.F("Hour announcement: cannot play {0} ({1})", Path.GetFileName(announcement), Bass.LastError));
+                if (a != 0) Bass.StreamFree(a);
+            }
+        }
+        Emit(signal != null && announcement == null && signal != (_timeSignal.File ?? "")
+            ? L.F("Hour announcement for {0:HH:mm}: {1}", hour, Path.GetFileName(signal))
+            : announcement != null ? L.F("Time signal and hour announcement for {0:HH:mm}: {1}", hour, Path.GetFileName(announcement))
+            : L.F("Time signal for {0:HH:mm}", hour));
         if (_timeSignal.Mode != TimeSignalMode.Stop) return;
 
         double musicLatency = Bass.ChannelBytes2Seconds(_graph.MusicBus, _graph.MusicDelay);

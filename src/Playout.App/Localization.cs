@@ -61,6 +61,7 @@ static class Localization
                 case ContentControl c when c.Content is string content && L.TryTranslate(content, out var tr): c.Content = tr; break;
                 case TextBox box when box.PlaceholderText is { } placeholder && L.TryTranslate(placeholder, out var tr): box.PlaceholderText = tr; break;
                 case CalendarDatePicker date when date.PlaceholderText is { } placeholder && L.TryTranslate(placeholder, out var tr): date.PlaceholderText = tr; break;
+                case AutoCompleteBox auto when auto.PlaceholderText is { } placeholder && L.TryTranslate(placeholder, out var tr): auto.PlaceholderText = tr; break;
             }
             if (element is Window w && w.Title is { } title && L.TryTranslate(title, out var t2)) w.Title = t2;
             if (element is Control control && ToolTip.GetTip(control) is string tip && L.TryTranslate(tip, out var t3)) ToolTip.SetTip(control, t3);

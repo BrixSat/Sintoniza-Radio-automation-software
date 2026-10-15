@@ -6,13 +6,16 @@ using Playout.Engine;
 namespace Playout.App;
 
 /// <summary>
-/// Fixed-time events, ad breaks and the adverts booked into them; kept in schedule.json next to the settings.
+/// Fixed-time events, ad breaks and the clients' campaigns booked into them; kept in schedule.json next to the settings.
 /// </summary>
 public sealed class ScheduleData
 {
     public List<ScheduledEvent> Events { get; set; } = new();
     public List<AdBreak> Breaks { get; set; } = new();
-    public List<AdSpot> Spots { get; set; } = new();
+    public List<AdClient> Clients { get; set; } = new();
+    /// <summary>Adverts as saved before clients and campaigns: <see cref="Normalize"/> turns them into those.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<AdSpot>? Spots { get; set; }
     /// <summary>The last time each event and break was started (local time), so a restart doesn't start it again.</summary>
     public Dictionary<Guid, DateTime> LastStarted { get; set; } = new();
 
@@ -22,10 +25,6 @@ public sealed class ScheduleData
     public static ScheduleData Load()
     {
         var data = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<ScheduleData>(json)) ?? new();
-        data.Events ??= new();
-        data.Breaks ??= new();
-        data.Spots ??= new();
-        data.LastStarted ??= new();
         data.Normalize();
         return data;
     }
@@ -43,22 +42,104 @@ public sealed class ScheduleData
         return copy;
     }
 
-    /// <summary>Lists that are missing made empty, and schedules saved before the calendar brought into it.</summary>
+    /// <summary>
+    /// Lists that are missing made empty, and schedules saved before brought up to date: times into the calendar,
+    /// opening and closing jingles into the break's running order, adverts into clients and campaigns.
+    /// </summary>
     public void Normalize()
     {
         Events ??= new();
         Breaks ??= new();
-        Spots ??= new();
+        Clients ??= new();
         LastStarted ??= new();
         foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks)) e.Normalize();
-        foreach (var s in Spots)
+        foreach (var c in Clients)
         {
-            s.Breaks ??= new();
-            s.Days ??= new();
-            s.Placements ??= new();
+            c.Campaigns ??= new();
+            foreach (var k in c.Campaigns)
+            {
+                k.Files ??= new();
+                k.Placements ??= new();
+                k.Section ??= "";
+            }
+        }
+        if (Spots != null) FromSpots(Spots);
+        Spots = null;
+    }
+
+    /// <summary>
+    /// Adverts saved before clients and campaigns: a client for each advertiser, a campaign for each advert, in the
+    /// first section of the breaks. One that played by days and breaks is placed in the calendar there instead.
+    /// </summary>
+    void FromSpots(List<AdSpot> spots)
+    {
+        foreach (var spot in spots)
+        {
+            if (spot == null) continue;
+            string name = string.IsNullOrWhiteSpace(spot.Advertiser) ? Path.GetFileNameWithoutExtension(spot.Path ?? "") : spot.Advertiser.Trim();
+            var client = Clients.FirstOrDefault(c => c.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
+            if (client == null) Clients.Add(client = new AdClient { Name = name });
+            var placements = spot.Placements ?? new();
+            if (placements.Count == 0)
+            {
+                var days = spot.Days ?? new();
+                var breaks = spot.Breaks ?? new();
+                foreach (var b in Breaks.Where(b => breaks.Count == 0 || breaks.Contains(b.Id)))
+                    foreach (var slot in b.Slots.Where(s => days.Count == 0 || days.Contains(s.Day)))
+                        if (!placements.Any(p => p.Day == slot.Day && p.At == slot.At))
+                            placements.Add(new AdPlacement { Day = slot.Day, Time = slot.Time });
+            }
+            client.Campaigns.Add(new AdCampaign
+            {
+                Id = spot.Id,
+                Name = Path.GetFileNameWithoutExtension(spot.Path ?? ""),
+                Enabled = spot.Enabled,
+                From = spot.From,
+                To = spot.To,
+                Files = string.IsNullOrWhiteSpace(spot.Path) ? new() : [spot.Path],
+                Placements = placements,
+            });
         }
     }
+
+    /// <summary>The section names used in the breaks, in the order they first appear.</summary>
+    public List<string> Sections() =>
+        Breaks.SelectMany(b => b.Parts).Where(p => p.Kind == PartKind.Section && p.Section.Trim().Length > 0)
+            .Select(p => p.Section.Trim()).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
+
+    /// <summary>
+    /// The adverts in a section of a break at <paramref name="at"/>, in the order they play: positions 1–5 first, then
+    /// the automatic ones (the same client not twice in a row where it can be helped), then positions 6–10.
+    /// </summary>
+    public List<BookedAdvert> InSection(AdBreak b, string section, DateTime at)
+    {
+        var booked = new List<BookedAdvert>();
+        foreach (var client in Clients.Where(c => c.Enabled))
+            foreach (var k in client.Campaigns)
+                if (k.PlaysAt(at) && b.SectionOf(k) is { } s && s.Equals(section.Trim(), StringComparison.CurrentCultureIgnoreCase)
+                    && k.FileFor(at) is { } file)
+                    booked.Add(new BookedAdvert(client, k, file));
+
+        var auto = booked.Where(a => a.Campaign.Position == 0).ToList();
+        for (int i = 1; i < auto.Count; i++)
+        {
+            if (auto[i].Client != auto[i - 1].Client) continue;
+            int j = auto.FindIndex(i + 1, a => a.Client != auto[i - 1].Client);
+            if (j > 0) (auto[i], auto[j]) = (auto[j], auto[i]);
+        }
+        return booked.Where(a => a.Campaign.Position is >= 1 and <= 5).OrderBy(a => a.Campaign.Position)
+            .Concat(auto)
+            .Concat(booked.Where(a => a.Campaign.Position >= 6).OrderBy(a => a.Campaign.Position)).ToList();
+    }
+
+    /// <summary>All the adverts in a break at <paramref name="at"/>, section by section.</summary>
+    public List<BookedAdvert> InBreak(AdBreak b, DateTime at) =>
+        b.Parts.Where(p => p.Kind == PartKind.Section).Select(p => p.Section.Trim()).Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .SelectMany(s => InSection(b, s, at)).ToList();
 }
+
+/// <summary>An advert going out in a break: whose, from which campaign, and the file (campaigns with several take turns).</summary>
+public sealed record BookedAdvert(AdClient Client, AdCampaign Campaign, string File);
 
 /// <summary>What events and ad breaks have in common: when they happen and how they start.</summary>
 public abstract class ScheduleEntry
@@ -104,7 +185,7 @@ public abstract class ScheduleEntry
     };
 
     /// <summary>Turns <see cref="Times"/> and <see cref="Days"/> into slots.</summary>
-    public void Normalize()
+    public virtual void Normalize()
     {
         Slots ??= new();
         if (Times != null)
@@ -179,40 +260,124 @@ public sealed class ScheduledEvent : ScheduleEntry
     public int MaxAgeMinutes { get; set; }
 }
 
-/// <summary>An ad break: the adverts booked into it that day, between an optional opening and closing jingle.</summary>
+/// <summary>
+/// An ad break: its running order of jingles and advert sections. A section plays the adverts booked into it that day;
+/// a break with none in any section is skipped.
+/// </summary>
 public sealed class AdBreak : ScheduleEntry
 {
     public AdBreak() => Lock = ItemLock.Locked;
 
-    public string Intro { get; set; } = "";
-    public string Outro { get; set; } = "";
+    public List<BreakPart> Parts { get; set; } = new();
+
+    /// <summary>Breaks saved before the running order: <see cref="Normalize"/> puts these jingles in it.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Intro { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Outro { get; set; }
+
+    public override void Normalize()
+    {
+        base.Normalize();
+        Parts ??= new();
+        if (Parts.Count == 0)
+        {
+            if (!string.IsNullOrWhiteSpace(Intro)) Parts.Add(new BreakPart { Kind = PartKind.Jingle, Path = Intro });
+            Parts.Add(new BreakPart { Kind = PartKind.Section, Section = DefaultSection });
+            if (!string.IsNullOrWhiteSpace(Outro)) Parts.Add(new BreakPart { Kind = PartKind.Jingle, Path = Outro });
+        }
+        foreach (var p in Parts)
+        {
+            p.Path ??= "";
+            p.Section ??= "";
+        }
+        Intro = Outro = null;
+    }
+
+    /// <summary>The section a new break has, and old adverts were put in.</summary>
+    public static string DefaultSection => L.T("Adverts");
+
+    public IEnumerable<string> SectionNames => Parts.Where(p => p.Kind == PartKind.Section).Select(p => p.Section.Trim());
+
+    /// <summary>The section of this break a campaign's adverts go in (no section chosen: the first); null if it hasn't that one.</summary>
+    public string? SectionOf(AdCampaign k)
+    {
+        var names = SectionNames.ToList();
+        if (k.Section.Trim().Length == 0) return names.FirstOrDefault();
+        return names.FirstOrDefault(n => n.Equals(k.Section.Trim(), StringComparison.CurrentCultureIgnoreCase));
+    }
 }
 
-/// <summary>An advert, booked into ad breaks between two dates.</summary>
+public enum PartKind { Jingle, Section }
+
+/// <summary>A step in a break's running order: a jingle, or a section where adverts go.</summary>
+public sealed class BreakPart
+{
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public PartKind Kind { get; set; }
+    /// <summary>A jingle's file.</summary>
+    public string Path { get; set; } = "";
+    /// <summary>A section's name ("Before the hour", "Promos"…): campaigns are booked into it by name.</summary>
+    public string Section { get; set; } = "";
+    /// <summary>A jingle that only plays when the section after it has adverts (a section opener).</summary>
+    public bool OnlyWithAdverts { get; set; }
+}
+
+/// <summary>An advertiser, with its campaigns. Its name goes on the proof of broadcast.</summary>
+public sealed class AdClient
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public bool Enabled { get; set; } = true;
+    public List<AdCampaign> Campaigns { get; set; } = new();
+}
+
+/// <summary>A client's campaign: its adverts, the section and place in the break they go in, and the breaks they are placed in.</summary>
+public sealed class AdCampaign
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    public bool Enabled { get; set; } = true;
+    /// <summary>First and last day it plays (inclusive); null = no limit.</summary>
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+    /// <summary>Its audio files; with several they take turns.</summary>
+    public List<string> Files { get; set; } = new();
+    /// <summary>The section of the break it goes in ("" = the break's first).</summary>
+    public string Section { get; set; } = "";
+    /// <summary>0 = automatic; 1–5 = that place from the start of the section; 6–10 at its end (10 = last).</summary>
+    public int Position { get; set; }
+    /// <summary>The breaks it goes in, as placed in the calendar.</summary>
+    public List<AdPlacement> Placements { get; set; } = new();
+
+    public bool PlaysAt(DateTime at) =>
+        Enabled && Files.Count > 0
+        && (From == null || at.Date >= From.Value.Date) && (To == null || at.Date <= To.Value.Date)
+        && Placements.Any(p => p.On(at));
+
+    /// <summary>Which of its files plays at <paramref name="at"/>: they take turns, through the day and from one day to the next.</summary>
+    public string? FileFor(DateTime at)
+    {
+        var files = Files.Where(f => !string.IsNullOrWhiteSpace(f)).ToList();
+        if (files.Count == 0) return null;
+        int earlier = Placements.Where(p => p.At < at.TimeOfDay && p.On(at.Date + p.At)).Select(p => p.At).Distinct().Count();
+        int day = (at.Date - new DateTime(2000, 1, 1)).Days;
+        return files[(day + earlier) % files.Count];
+    }
+}
+
+/// <summary>An advert as saved before clients and campaigns (read, then turned into a campaign).</summary>
 public sealed class AdSpot
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Path { get; set; } = "";
     public string Advertiser { get; set; } = "";
     public bool Enabled { get; set; } = true;
-    /// <summary>First and last day it plays (inclusive); null = no limit.</summary>
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }
-    public List<DayOfWeek> Days { get; set; } = new();
-    /// <summary>Ad breaks it plays in; empty = every break.</summary>
-    public List<Guid> Breaks { get; set; } = new();
-    /// <summary>
-    /// Where it was placed in the calendar. With any, it plays only there (within its dates), and
-    /// <see cref="Days"/> and <see cref="Breaks"/> don't count.
-    /// </summary>
-    public List<AdPlacement> Placements { get; set; } = new();
-
-    public bool PlaysIn(AdBreak adBreak, DateTime at) =>
-        Enabled && !string.IsNullOrWhiteSpace(Path)
-        && (From == null || at.Date >= From.Value.Date) && (To == null || at.Date <= To.Value.Date)
-        && (Placements.Count > 0
-            ? Placements.Any(p => p.On(at))
-            : (Days.Count == 0 || Days.Contains(at.DayOfWeek)) && (Breaks.Count == 0 || Breaks.Contains(adBreak.Id)));
+    public List<DayOfWeek>? Days { get; set; }
+    public List<Guid>? Breaks { get; set; }
+    public List<AdPlacement>? Placements { get; set; }
 }
 
 public static class ScheduleTimes
@@ -290,6 +455,7 @@ sealed class Scheduler : IDisposable
     public Scheduler(PlayoutEngine engine, ScheduleData data)
     {
         _engine = engine;
+        data.Normalize();
         _data = data;
         _timer = new Timer(_ => Check(DateTime.Now), null, TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(250));
     }
@@ -479,21 +645,33 @@ sealed class Scheduler : IDisposable
                 break;
 
             case AdBreak b:
-                List<AdSpot> spots;
-                lock (_lock) spots = _data.Spots.Where(s => s.PlaysIn(b, at)).ToList();
-                foreach (var spot in spots)
-                {
-                    if (File.Exists(spot.Path))
-                        items.Add(new ScheduledItem(spot.Path, TrackKind.Commercial, Advertiser: string.IsNullOrWhiteSpace(spot.Advertiser) ? null : spot.Advertiser.Trim()));
-                    else if (!quiet) Say(L.F("{0}: advert not found, left out: {1}", label, spot.Path));
-                }
-                if (items.Count == 0)
+                Dictionary<string, List<BookedAdvert>> sections;
+                lock (_lock)
+                    sections = b.SectionNames.Distinct(StringComparer.CurrentCultureIgnoreCase)
+                        .ToDictionary(n => n, n => _data.InSection(b, n, at), StringComparer.CurrentCultureIgnoreCase);
+                var missing = sections.Values.SelectMany(v => v).Where(a => !File.Exists(a.File)).ToList();
+                if (!quiet) foreach (var a in missing) Say(L.F("{0}: advert not found, left out: {1}", label, a.File));
+                foreach (var list in sections.Values) list.RemoveAll(missing.Contains);
+                if (sections.Values.All(v => v.Count == 0))
                 {
                     if (!quiet) Say(L.F("{0}: no adverts booked, skipped", label));
                     break;
                 }
-                if (File.Exists(b.Intro)) items.Insert(0, new ScheduledItem(b.Intro, TrackKind.Jingle));
-                if (File.Exists(b.Outro)) items.Add(new ScheduledItem(b.Outro, TrackKind.Jingle));
+                for (int i = 0; i < b.Parts.Count; i++)
+                {
+                    var part = b.Parts[i];
+                    if (part.Kind == PartKind.Section)
+                    {
+                        foreach (var a in sections.GetValueOrDefault(part.Section.Trim()) ?? [])
+                            items.Add(new ScheduledItem(a.File, TrackKind.Commercial, Advertiser: a.Client.Name.Trim() is { Length: > 0 } n ? n : null));
+                        continue;
+                    }
+                    // A section opener: only when the section after it has adverts.
+                    if (part.OnlyWithAdverts && b.Parts.Skip(i + 1).FirstOrDefault(x => x.Kind == PartKind.Section) is { } next
+                        && (sections.GetValueOrDefault(next.Section.Trim())?.Count ?? 0) == 0) continue;
+                    if (File.Exists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle));
+                    else if (!quiet && part.Path.Length > 0) Say(L.F("{0}: jingle not found, left out: {1}", label, part.Path));
+                }
                 break;
         }
         return items;

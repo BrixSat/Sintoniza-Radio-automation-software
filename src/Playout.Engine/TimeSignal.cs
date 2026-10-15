@@ -10,11 +10,19 @@ namespace Playout.Engine;
 [JsonConverter(typeof(JsonStringEnumConverter<TimeSignalMode>))]
 public enum TimeSignalMode { Off, Over, Stop }
 
-/// <summary>Top of the hour time signal. File: an audio file timed to end exactly on the hour; empty = the built-in pips.</summary>
-public sealed record TimeSignalSettings(TimeSignalMode Mode = TimeSignalMode.Off, string File = "");
+/// <summary>Where an hour announcement (HRS05.mp3 at 05:00) goes: instead of the time signal, ending on the hour, or right after it.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<HourAnnouncement>))]
+public enum HourAnnouncement { Instead, After }
+
+/// <summary>
+/// Top of the hour time signal. File: an audio file timed to end exactly on the hour; empty = the built-in pips.
+/// HourFolder: a file for each hour, its number at the end of the name (HRS05.mp3 at 05:00); empty = none.
+/// </summary>
+public sealed record TimeSignalSettings(TimeSignalMode Mode = TimeSignalMode.Off, string File = "", string HourFolder = "",
+    HourAnnouncement HourAt = HourAnnouncement.Instead);
 
 /// <summary>The sound of the time signal, and where the hour falls in it.</summary>
-static class TimeSignal
+public static class TimeSignal
 {
     const double PipHz = 1000;
     const double ShortPip = 0.1;
@@ -22,8 +30,35 @@ static class TimeSignal
     const int ShortPips = 5; // one a second before the hour; the long one starts on the hour
     const float PipLevel = 0.35f; // about -9 dBFS
 
+    static readonly string[] AudioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma", ".opus", ".mp2", ".aiff", ".aif"];
+
+    /// <summary>
+    /// The announcement for the hour that starts at <paramref name="hour"/>: the audio file in the folder whose name
+    /// ends in that number (HRS05.mp3, "05 horas.wav"; midnight 00 or 24). Null if there is none.
+    /// </summary>
+    public static string? HourFile(string folder, DateTime hour)
+    {
+        if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return null;
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(folder).Order(StringComparer.OrdinalIgnoreCase))
+            {
+                if (!AudioExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())) continue;
+                var name = Path.GetFileNameWithoutExtension(file);
+                int end = name.Length;
+                while (end > 0 && !char.IsAsciiDigit(name[end - 1])) end--;
+                int start = end;
+                while (start > 0 && char.IsAsciiDigit(name[start - 1])) start--;
+                if (start == end || !int.TryParse(name[start..end], out int n)) continue;
+                if (n == hour.Hour || (hour.Hour == 0 && n == 24)) return file;
+            }
+        }
+        catch (Exception) { /* folder unreadable: no announcement */ }
+        return null;
+    }
+
     /// <summary>Opens the signal as a decode stream (the pips if the file can't be played). HourAt: seconds into it where the hour is.</summary>
-    public static int Open(string file, Action<string> log, out double hourAt, out double length)
+    internal static int Open(string file, Action<string> log, out double hourAt, out double length)
     {
         if (!string.IsNullOrEmpty(file))
         {
