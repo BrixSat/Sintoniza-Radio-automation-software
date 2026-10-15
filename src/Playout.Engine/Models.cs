@@ -37,6 +37,21 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
     /// <summary>Who an advert is for, for the proof of broadcast.</summary>
     public string? Advertiser { get; init; }
 
+    /// <summary>What the operator may do with it (set by the schedule): anything, move it, or nothing.</summary>
+    public ItemLock Lock { get; init; }
+
+    /// <summary>
+    /// The latest it may start (UTC): if it hasn't started by then, what is on air fades out and it starts. Set on the
+    /// first item of a scheduled event or break with a time limit; null for the rest.
+    /// </summary>
+    public DateTime? StartBy { get; init; }
+
+    /// <summary>
+    /// The playlist before it is adjusted (backtimed) so it starts at <see cref="StartBy"/>: songs that wouldn't fit
+    /// are moved after it, and a gap is filled with a song that fits.
+    /// </summary>
+    public bool Backtime { get; init; }
+
     public bool IsStream => Kind == TrackKind.Stream;
 
     /// <summary>A stream with no set play time: it stays on air until Stop or Next.</summary>
@@ -64,7 +79,34 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
 /// for <see cref="StreamSeconds"/> (0 = until Stop or Next). <see cref="Kind"/> overrides what the file name says
 /// (adverts are adverts wherever they are kept).
 /// </summary>
-public sealed record ScheduledItem(string Path, TrackKind? Kind = null, string? StreamName = null, double StreamSeconds = 0, string? Advertiser = null);
+/// <param name="StartBy">Restoring a saved playlist: the item's latest start (UTC), see <see cref="Track.StartBy"/>.</param>
+/// <param name="Backtime">Restoring a saved playlist: see <see cref="Track.Backtime"/>.</param>
+public sealed record ScheduledItem(string Path, TrackKind? Kind = null, string? StreamName = null, double StreamSeconds = 0, string? Advertiser = null,
+    ItemLock Lock = ItemLock.Free, DateTime? StartBy = null, bool Backtime = false);
+
+/// <summary>What the operator may do with a playlist item put there by the schedule.</summary>
+public enum ItemLock
+{
+    /// <summary>Anything: remove, move, replace.</summary>
+    Free,
+    /// <summary>Move it, but not remove it.</summary>
+    Movable,
+    /// <summary>Neither move nor remove it (adverts, legal IDs).</summary>
+    Locked,
+}
+
+/// <summary>
+/// How a scheduled event or break starts. Soft: after the item on air ends (with <see cref="EventTiming.MaxDelay"/>,
+/// at most that late: then what is on air fades out). Hard: at once, fading out what is on air. EndAt: it finishes
+/// at <see cref="EventTiming.EndsAt"/>: it starts that much earlier, and the playlist before it is adjusted.
+/// </summary>
+public enum EventStart { Soft, Hard, EndAt }
+
+public sealed record EventTiming(EventStart Start, TimeSpan? MaxDelay = null, DateTime? EndsAt = null)
+{
+    public static readonly EventTiming Soft = new(EventStart.Soft);
+    public static readonly EventTiming Hard = new(EventStart.Hard);
+}
 
 public enum PlayerState { Stopped, Playing, Paused }
 

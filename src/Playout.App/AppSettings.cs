@@ -202,6 +202,14 @@ public sealed class PlaylistEntry
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public TrackKind? Kind { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ItemLock Lock { get; set; }
+    /// <summary>The latest it may start (UTC), and whether the playlist before it is backtimed.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTime? StartBy { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Backtime { get; set; }
 
     [JsonIgnore]
     public bool IsStream => StreamName != null;
@@ -214,12 +222,15 @@ public sealed class PlaylistEntry
             e.Event = t.Event;
             e.Advertiser = t.Advertiser;
             e.Kind = t.Kind;
+            e.Lock = t.Lock;
+            e.StartBy = t.StartBy;
+            e.Backtime = t.Backtime;
         }
         return e;
     }
 
     /// <summary>A scheduled item, as the engine takes it back.</summary>
-    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser);
+    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser, Lock, StartBy, Backtime);
 }
 
 /// <summary>A named set of <see cref="AppSettings.CartCount"/> carts.</summary>

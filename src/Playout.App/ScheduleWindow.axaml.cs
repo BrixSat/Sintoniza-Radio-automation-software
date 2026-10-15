@@ -120,7 +120,7 @@ public partial class ScheduleWindow : Window
         EventMaxAgeBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.MaxAgeMinutes = (int)(EventMaxAgeBox.Value ?? 0));
         EventStreamMinutesBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.StreamMinutes = (double)(EventStreamMinutesBox.Value ?? 0));
         EventTimesBox.TextChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => SetTimes(e, EventTimesBox.Text));
-        EventHardBox.IsCheckedChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.Hard = EventHardBox.IsChecked == true);
+        WireStart(EventList, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel, EventTimesLabel);
     }
 
     void ShowEvent()
@@ -135,8 +135,7 @@ public partial class ScheduleWindow : Window
         EventStreamMinutesBox.Value = (decimal)(e?.StreamMinutes ?? 0);
         EventTimesBox.Text = e != null ? _timesText.GetValueOrDefault(e, "") : "";
         ShowDays(_eventDays, e?.Days);
-        EventHardBox.IsChecked = e?.Hard == true;
-        EventSoftBox.IsChecked = e?.Hard != true;
+        ShowStart(e, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel, EventTimesLabel);
         _loading = false;
         ShowEventPathKind();
     }
@@ -158,7 +157,7 @@ public partial class ScheduleWindow : Window
     ScheduleRow EventRow(ScheduledEvent e) => new(e, () =>
     {
         string what = PlayoutEngine.IsUrl(e.Path) ? "stream" : Directory.Exists(e.Path) ? "newest in folder" : Path.GetFileName(e.Path);
-        return (EntryName(e), $"{TimesSummary(e)} · {DaysText(e.Days)} · {(e.Hard ? "hard" : "soft")}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
+        return (EntryName(e), $"{TimesSummary(e)} · {DaysText(e.Days)} · {StartText(e)}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
     });
 
     // ───────────────────────── Ad breaks ─────────────────────────
@@ -198,7 +197,7 @@ public partial class ScheduleWindow : Window
         BreakNameBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Name = BreakNameBox.Text?.Trim() ?? "");
         BreakEnabledBox.IsCheckedChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Enabled = BreakEnabledBox.IsChecked == true);
         BreakTimesBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => SetTimes(b, BreakTimesBox.Text));
-        BreakHardBox.IsCheckedChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Hard = BreakHardBox.IsChecked == true);
+        WireStart(BreakList, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel, BreakTimesLabel);
         BreakIntroBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Intro = BreakIntroBox.Text?.Trim() ?? "");
         BreakOutroBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Outro = BreakOutroBox.Text?.Trim() ?? "");
         BreakIntroButton.Click += async (_, _) => { if (await PickFile("Opening jingle") is { } p) BreakIntroBox.Text = p; };
@@ -216,8 +215,7 @@ public partial class ScheduleWindow : Window
         BreakEnabledBox.IsChecked = b?.Enabled ?? true;
         BreakTimesBox.Text = b != null ? _timesText.GetValueOrDefault(b, "") : "";
         ShowDays(_breakDays, b?.Days);
-        BreakHardBox.IsChecked = b?.Hard == true;
-        BreakSoftBox.IsChecked = b?.Hard != true;
+        ShowStart(b, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel, BreakTimesLabel);
         BreakIntroBox.Text = b?.Intro ?? "";
         BreakOutroBox.Text = b?.Outro ?? "";
         _loading = false;
@@ -233,7 +231,7 @@ public partial class ScheduleWindow : Window
     int BookedToday(AdBreak b) => _data.Spots.Count(s => s.PlaysIn(b, DateTime.Today));
 
     ScheduleRow BreakRow(AdBreak b) => new(b, () =>
-        (EntryName(b), $"{TimesSummary(b)} · {DaysText(b.Days)} · {(b.Hard ? "hard" : "soft")} · {Plural(BookedToday(b), "advert")} today", b.Enabled));
+        (EntryName(b), $"{TimesSummary(b)} · {DaysText(b.Days)} · {StartText(b)} · {Plural(BookedToday(b), "advert")} today", b.Enabled));
 
     // ───────────────────────── Adverts ─────────────────────────
 
@@ -332,6 +330,49 @@ public partial class ScheduleWindow : Window
     static string SpotName(AdSpot s) => s.Advertiser.Length > 0 ? s.Advertiser : Path.GetFileNameWithoutExtension(s.Path);
 
     // ───────────────────────── Shared ─────────────────────────
+
+    /// <summary>The start choices and the lock of an event or break, wired to the selected one.</summary>
+    void WireStart(ListBox list, RadioButton soft, RadioButton hard, RadioButton end, NumericUpDown delay, ComboBox lockBox, Control delayPanel, TextBlock timesLabel)
+    {
+        void Changed()
+        {
+            Edit<ScheduleEntry>(list, e =>
+            {
+                e.Start = hard.IsChecked == true ? EventStart.Hard : end.IsChecked == true ? EventStart.EndAt : EventStart.Soft;
+                e.MaxDelayMinutes = (double)(delay.Value ?? 0);
+                e.Lock = (ItemLock)Math.Max(0, lockBox.SelectedIndex);
+            });
+            delayPanel.IsEnabled = soft.IsChecked == true;
+            timesLabel.Text = end.IsChecked == true ? "Times (when it ends)" : "Times";
+        }
+        foreach (var r in new[] { soft, hard, end }) r.IsCheckedChanged += (_, _) => Changed();
+        delay.ValueChanged += (_, _) => Changed();
+        lockBox.SelectionChanged += (_, _) => Changed();
+    }
+
+    static void ShowStart(ScheduleEntry? e, RadioButton soft, RadioButton hard, RadioButton end, NumericUpDown delay, ComboBox lockBox, Control delayPanel, TextBlock timesLabel)
+    {
+        var start = e?.Start ?? EventStart.Soft;
+        soft.IsChecked = start == EventStart.Soft;
+        hard.IsChecked = start == EventStart.Hard;
+        end.IsChecked = start == EventStart.EndAt;
+        delay.Value = (decimal)(e?.MaxDelayMinutes ?? 0);
+        lockBox.SelectedIndex = (int)(e?.Lock ?? ItemLock.Free);
+        delayPanel.IsEnabled = start == EventStart.Soft;
+        timesLabel.Text = start == EventStart.EndAt ? "Times (when it ends)" : "Times";
+    }
+
+    static string StartText(ScheduleEntry e) => (e.Start switch
+    {
+        EventStart.Hard => "hard",
+        EventStart.EndAt => "ends at its time",
+        _ => e.MaxDelayMinutes > 0 ? $"soft, ≤ {e.MaxDelayMinutes:0} min late" : "soft",
+    }) + e.Lock switch
+    {
+        ItemLock.Locked => " · locked",
+        ItemLock.Movable => " · movable",
+        _ => "",
+    };
 
     /// <summary>Applies an edit to the selected item of a list (not while the editor is being filled) and updates the lists.</summary>
     void Edit<T>(ListBox list, Action<T> change) where T : class

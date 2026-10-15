@@ -26,6 +26,9 @@ public sealed class PlayoutEngine : IDisposable
     const int FillAttempts = 10;           // files tried at a time (some may be unreadable)
     const int KeepPlayed = 500;            // played items kept above the cursor when fill music grows the playlist
     const double EventFadeSeconds = 2;     // a hard scheduled event fades out what is on air over this
+    const double BacktimeTolerance = 5;    // backtiming leaves an item this many seconds early or late alone
+    const double BacktimeMinGap = 15;      // a smaller gap before a backtimed break isn't filled: it starts that much early
+    const int BacktimeFillTries = 8;       // fill songs looked at for one that fits a gap
 
     readonly BlockingCollection<Action> _commands = new();
     readonly List<(DateTime Due, Action Action)> _timers = new();
@@ -69,6 +72,10 @@ public sealed class PlayoutEngine : IDisposable
     readonly HashSet<string> _badFill = new(); // fill files that couldn't be opened: not tried again
     bool _waitingForFill;    // AUTO ran out with nothing to fill yet: start something as soon as there is
     DateTime _nextFillTry;
+    DateTime _nextTimedCheck;      // items with a latest start are looked at twice a second
+    DateTime _nextBacktimeFill;    // looking for a song to fill a gap before a backtimed break: not too often
+    bool _backtimeFilling;         // that search is running (off the engine thread)
+    Guid? _backtimeReported;       // the backtimed item whose unfillable gap has been reported
 
     // Shared with polling readers; written only on the engine thread.
     volatile Deck? _current;
@@ -330,11 +337,13 @@ public sealed class PlayoutEngine : IDisposable
     public LoudnessInfo? GetLoudness(string path) => _loudnessStore.Get(path);
 
     /// <summary>
-    /// A scheduled event (or ad break): puts its items in the playlist after the item on air. Hard: the first starts
-    /// now, and what is on air fades out; soft: they follow the item on air. With the player stopped or paused they
-    /// wait as next, for the operator.
+    /// A scheduled event (or ad break): puts its items in the playlist. Hard: after the item on air, and the first
+    /// starts now (what is on air fades out). Soft: they follow the item on air (after other events still waiting),
+    /// with a <see cref="EventTiming.MaxDelay"/> at most that late. EndAt: placed where the playlist will be when it
+    /// has to start to end on time, and the playlist before it is backtimed (see <see cref="Backtime"/>). With the
+    /// player stopped or paused they wait as next, for the operator.
     /// </summary>
-    public void InsertEvent(string label, IReadOnlyList<ScheduledItem> items, bool hard) => Post(() =>
+    public void InsertEvent(string label, IReadOnlyList<ScheduledItem> items, EventTiming timing) => Post(() =>
     {
         var tracks = Scheduled(label, items);
         if (tracks.Count == 0)
@@ -342,19 +351,39 @@ public sealed class PlayoutEngine : IDisposable
             Emit($"{label}: nothing to play");
             return;
         }
-
-        // After the item on air, or after a stream that is about to go on air (still connecting).
-        int at = _cursorIndex + 1;
-        if (_connecting is { } connecting && _playlist.FindIndex(t => t.Id == connecting) is var c and >= 0) at = c + 1;
-        at = Math.Clamp(at, 0, _playlist.Count);
-        // Soft: after other scheduled items still waiting there, so events play in the order they were due.
-        if (!hard)
-            while (at < _playlist.Count && _playlist[at].Event != null && !_played.Contains(_playlist[at].Id)) at++;
-        _playlist.InsertRange(at, tracks);
-        if (at <= _cursorIndex) _cursorIndex += tracks.Count;
         if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
-
         bool playing = State == PlayerState.Playing;
+
+        if (timing is { Start: EventStart.EndAt, EndsAt: { } endsAt })
+        {
+            var startAt = endsAt - TimeSpan.FromSeconds(ChainLength(tracks));
+            tracks[0] = tracks[0] with { StartBy = startAt, Backtime = true };
+            double left = (startAt - DateTime.UtcNow).TotalSeconds;
+            if (playing && left <= BacktimeTolerance)
+            {
+                // Already due (the app started late): now, ending late by as much.
+                InsertAfterOnAir(tracks, afterWaiting: false);
+                Emit($"{label}: on air ({-left:0} s late to end on time)");
+                FadePlayingOut(EventFadeSeconds);
+                StartTrack(tracks[0], _current == null ? 0 : EventFadeSeconds);
+                return;
+            }
+            int at = playing && _autoAdvance ? BacktimePosition(left, startAt) : -1;
+            if (at < 0) InsertAfterOnAir(tracks, afterWaiting: true);
+            else
+            {
+                _playlist.InsertRange(at, tracks);
+                if (at <= _cursorIndex) _cursorIndex += tracks.Count;
+            }
+            Emit($"{label}: starts at {startAt.ToLocalTime():HH:mm:ss} to end at {endsAt.ToLocalTime():HH:mm:ss}");
+            PlaylistUpdated();
+            return;
+        }
+
+        bool hard = timing.Start == EventStart.Hard;
+        if (!hard && timing.MaxDelay is { } delay && delay > TimeSpan.Zero)
+            tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow + delay };
+        InsertAfterOnAir(tracks, afterWaiting: !hard);
         if (playing && (hard || (_current == null && _connecting == null)))
         {
             Emit($"{label}: on air");
@@ -367,6 +396,22 @@ public sealed class PlayoutEngine : IDisposable
             PlaylistUpdated();
         }
     });
+
+    /// <summary>
+    /// Inserts items after the item on air (or after a stream that is about to go on air); with
+    /// <paramref name="afterWaiting"/>, also after scheduled items still waiting there, so events play in the order
+    /// they were due.
+    /// </summary>
+    void InsertAfterOnAir(List<Track> tracks, bool afterWaiting)
+    {
+        int at = _cursorIndex + 1;
+        if (_connecting is { } connecting && _playlist.FindIndex(t => t.Id == connecting) is var c and >= 0) at = c + 1;
+        at = Math.Clamp(at, 0, _playlist.Count);
+        if (afterWaiting)
+            while (at < _playlist.Count && _playlist[at].Event != null && !_played.Contains(_playlist[at].Id)) at++;
+        _playlist.InsertRange(at, tracks);
+        if (at <= _cursorIndex) _cursorIndex += tracks.Count;
+    }
 
     /// <summary>Adds items a scheduled event put in the playlist, with their label as it was (a saved playlist).</summary>
     public void AddScheduled(string label, IReadOnlyList<ScheduledItem> items, int insertAt = -1) => Post(() =>
@@ -382,7 +427,12 @@ public sealed class PlayoutEngine : IDisposable
             var track = item.StreamName != null
                 ? new Track(Guid.NewGuid(), item.Path.Trim(), "", item.StreamName, Math.Max(0, item.StreamSeconds), TrackKind.Stream)
                 : SafeProbe(item.Path);
-            if (track != null) tracks.Add(track with { Kind = item.Kind ?? track.Kind, Event = label, Advertiser = item.Advertiser });
+            if (track != null)
+                tracks.Add(track with
+                {
+                    Kind = item.Kind ?? track.Kind, Event = label, Advertiser = item.Advertiser,
+                    Lock = item.Lock, StartBy = item.StartBy, Backtime = item.Backtime,
+                });
         }
         return tracks;
     }
@@ -452,6 +502,11 @@ public sealed class PlayoutEngine : IDisposable
     {
         int i = _playlist.FindIndex(t => t.Id == id);
         if (i < 0) return;
+        if (IsKept(_playlist[i]))
+        {
+            Emit($"{_playlist[i].Display} can't be removed: the schedule {(_playlist[i].Lock == ItemLock.Locked ? "locked it" : "only lets it be moved")} ({_playlist[i].Event})");
+            return;
+        }
         _playlist.RemoveAt(i);
         // Keep the cursor pointing "between" items so Next still means the following track.
         if (i <= _cursorIndex) _cursorIndex--;
@@ -465,6 +520,11 @@ public sealed class PlayoutEngine : IDisposable
     public void Move(IReadOnlyCollection<Guid> ids, int insertAt) => Post(() =>
     {
         var moving = ids.ToHashSet();
+        foreach (var locked in _playlist.Where(t => moving.Contains(t.Id) && t.Lock == ItemLock.Locked && !_played.Contains(t.Id)).ToList())
+        {
+            Emit($"{locked.Display} can't be moved: the schedule locked it ({locked.Event})");
+            moving.Remove(locked.Id);
+        }
         var block = _playlist.Where(t => moving.Contains(t.Id)).ToList();
         if (block.Count == 0) return;
 
@@ -480,15 +540,22 @@ public sealed class PlayoutEngine : IDisposable
         PlaylistUpdated();
     });
 
+    /// <summary>Empties the playlist, except the item on air and scheduled items the operator may not remove.</summary>
     public void Clear() => Post(() =>
     {
         var current = _current?.Track;
+        var kept = _playlist.Where(IsKept).ToList();
         _playlist.Clear();
         _played.Clear();
         if (current != null) { _playlist.Add(current); _played.Add(current.Id); _cursorIndex = 0; }
         else _cursorIndex = -1;
+        _playlist.AddRange(kept.Where(t => t.Id != current?.Id));
+        if (kept.Count > 0) Emit($"Playlist cleared; {kept.Count} scheduled items the schedule keeps are still there");
         PlaylistUpdated();
     });
+
+    /// <summary>An item still to play that the schedule doesn't let the operator remove (locked or movable only).</summary>
+    bool IsKept(Track t) => t.Lock != ItemLock.Free && !_played.Contains(t.Id);
 
     /// <summary>Start playback. With an id, crossfade into that item now; otherwise resume or start the next item.</summary>
     public void Play(Guid? id = null) => Post(() =>
@@ -497,6 +564,8 @@ public sealed class PlayoutEngine : IDisposable
         {
             var t = _playlist.FirstOrDefault(x => x.Id == target);
             if (t == null) return;
+            CutShort("started another item");
+            KeepSkipped(t);
             FadePlayingOut(ManualFade);
             StartTrack(t, ManualFade);
             return;
@@ -510,12 +579,41 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Crossfade into the next playlist item immediately.</summary>
     public void Next() => Post(() =>
     {
+        CutShort("pressed Next");
         if (NextTrack() is not { } next) { StopInternal(); return; }
         FadePlayingOut(ManualFade);
         StartTrack(next, ManualFade);
     });
 
-    public void Stop() => Post(StopInternal);
+    public void Stop() => Post(() =>
+    {
+        CutShort("stopped the player");
+        StopInternal();
+    });
+
+    /// <summary>The operator takes a locked item off air early: said in the log (the as-run log has how long it played).</summary>
+    void CutShort(string how)
+    {
+        if (_current?.Track is { Lock: ItemLock.Locked } t) Emit($"The operator {how} during {t.Display}, which the schedule locked ({t.Event})");
+    }
+
+    /// <summary>
+    /// Before jumping to <paramref name="target"/>: the items still to play that it jumps over and the operator may
+    /// not remove (locked, movable) are moved after it (and the rest of its event), so they still play.
+    /// </summary>
+    void KeepSkipped(Track target)
+    {
+        int ti = _playlist.FindIndex(t => t.Id == target.Id);
+        if (ti <= _cursorIndex + 1) return;
+        var skipped = _playlist.GetRange(_cursorIndex + 1, ti - _cursorIndex - 1).Where(IsKept).ToList();
+        if (skipped.Count == 0) return;
+        var ids = skipped.Select(t => t.Id).ToHashSet();
+        _playlist.RemoveAll(t => ids.Contains(t.Id));
+        int at = _playlist.FindIndex(t => t.Id == target.Id) + 1;
+        while (at < _playlist.Count && target.Event != null && _playlist[at].Event == target.Event && !_played.Contains(_playlist[at].Id)) at++;
+        _playlist.InsertRange(at, skipped);
+        Emit($"{skipped.Count} scheduled items jumped over stay in the playlist, after {target.Display}");
+    }
 
     public void TogglePause() => Post(() =>
     {
@@ -693,6 +791,7 @@ public sealed class PlayoutEngine : IDisposable
             WatchStream();
             Safe(PreconnectStream);
             Safe(CheckTimeSignal);
+            Safe(CheckTimed);
         }
     }
 
@@ -1193,6 +1292,167 @@ public sealed class PlayoutEngine : IDisposable
         _playlist.RemoveRange(0, extra);
         foreach (var t in gone) _played.Remove(t.Id);
         _cursorIndex -= extra;
+    }
+
+    // ───────────────────────── Timed items and backtiming ─────────────────────────
+
+    /// <summary>
+    /// Twice a second while playing: the first upcoming item with a latest start (<see cref="Track.StartBy"/>). Once
+    /// that time comes, what is on air fades out and it starts. Before that, in AUTO, a backtimed item gets the
+    /// playlist before it adjusted so it starts on time.
+    /// </summary>
+    void CheckTimed()
+    {
+        var now = DateTime.UtcNow;
+        if (now < _nextTimedCheck) return;
+        _nextTimedCheck = now.AddSeconds(0.5);
+        if (State != PlayerState.Playing) return;
+        int ti = -1;
+        for (int i = Math.Max(0, _cursorIndex + 1); i < _playlist.Count; i++)
+            if (_playlist[i].StartBy != null && !_played.Contains(_playlist[i].Id)) { ti = i; break; }
+        if (ti < 0) return;
+        var timed = _playlist[ti];
+        if (timed.Id == _connecting) return; // on its way
+        double left = (timed.StartBy!.Value - now).TotalSeconds;
+        if (left <= 0)
+        {
+            Emit($"{timed.Event ?? timed.Display}: on air (its latest start time)");
+            KeepSkipped(timed);
+            FadePlayingOut(EventFadeSeconds);
+            StartTrack(timed, _current == null ? 0 : EventFadeSeconds);
+            return;
+        }
+        if (timed.Backtime && _autoAdvance && _connecting == null) Backtime(ti, left);
+    }
+
+    /// <summary>
+    /// Backtiming: the item at <paramref name="ti"/> has to start in <paramref name="left"/> seconds. If the playlist
+    /// would get there late, the last song before it that the operator may change goes after it (when that brings it
+    /// closer); what is left over is faded at the time. If it would get there early, a fill song that fits the gap is
+    /// put before it; a gap under <see cref="BacktimeMinGap"/> s is left (it starts that much early).
+    /// </summary>
+    void Backtime(int ti, double left)
+    {
+        if (Upcoming() is not { } upcoming) return;
+        var timed = _playlist[ti];
+        double error = upcoming.First(u => u.Index == ti).At - left; // > 0: late, < 0: early
+        if (error > BacktimeTolerance)
+        {
+            for (int j = ti - 1; j > _cursorIndex; j--)
+            {
+                var song = _playlist[j];
+                if (song.Lock != ItemLock.Free || song.Event != null || song.Kind != TrackKind.Music) continue;
+                if (Math.Abs(error - Step(song)) >= error) continue; // wouldn't help
+                _playlist.RemoveAt(j);
+                int after = _playlist.FindIndex(t => t.Id == timed.Id) + 1;
+                while (after < _playlist.Count && _playlist[after].Event == timed.Event && !_played.Contains(_playlist[after].Id)) after++;
+                _playlist.Insert(after, song);
+                Emit($"Backtiming {timed.Event}: {song.Display} moved after it ({error:0} s too long)");
+                PlaylistUpdated();
+                return;
+            }
+            return; // what is on air then is faded at the time
+        }
+        if (error >= -BacktimeMinGap || _fill == null || _backtimeFilling || DateTime.UtcNow < _nextBacktimeFill) return;
+        _nextBacktimeFill = DateTime.UtcNow.AddSeconds(10);
+        double gap = -error;
+        // Fill songs, then the one that fits best, opened off the engine thread (files can be slow to open).
+        var candidates = new List<string>();
+        for (int i = 0; i < BacktimeFillTries; i++)
+        {
+            string? path;
+            try { path = _fill(); } catch { break; }
+            if (path == null) break;
+            if (!_badFill.Contains(path) && !candidates.Contains(path)) candidates.Add(path);
+        }
+        if (candidates.Count == 0) return;
+        _backtimeFilling = true;
+        var timedId = timed.Id;
+        Task.Run(() => candidates.Select(SafeProbe).OfType<Track>().ToList()).ContinueWith(probed => Post(() =>
+        {
+            _backtimeFilling = false;
+            int index = _playlist.FindIndex(t => t.Id == timedId);
+            if (!probed.IsCompletedSuccessfully || index <= _cursorIndex || Upcoming() is not { } now) return;
+            double stillLeft = (_playlist[index].StartBy!.Value - DateTime.UtcNow).TotalSeconds;
+            double stillGap = stillLeft - now.First(u => u.Index == index).At;
+            var best = probed.Result.Where(t => Step(t) <= stillGap + BacktimeTolerance).MaxBy(Step);
+            if (best == null)
+            {
+                if (_backtimeReported != timedId)
+                    Emit($"Backtiming {_playlist[index].Event}: no fill song short enough for {stillGap:0} s; it starts that much early");
+                _backtimeReported = timedId;
+                return;
+            }
+            _playlist.Insert(index, best);
+            if (_loudness.Enabled) _loudnessWorker.Add(best.Path);
+            Emit($"Backtiming {_playlist[index + 1].Event}: added {best.Display} to fill {stillGap:0} s");
+            PlaylistUpdated();
+        }));
+    }
+
+    /// <summary>How long after an item starts the next one does (in AUTO): its play length less its overlap with the next.</summary>
+    double Step(Track t) => t.PlayLength - (t.End - t.MixPoint(CrossfadeSeconds));
+
+    /// <summary>
+    /// When each item after the one on air will start (seconds from now) if nothing changes, as the playlist's start
+    /// times show; the last entry (index = count) is when the playlist runs out. Null when it can't be known: nothing
+    /// on air, a stream connecting, or a stream that plays until Stop on air.
+    /// </summary>
+    List<(int Index, double At)>? Upcoming()
+    {
+        if (_current is not { } deck || deck.Track.IsOpenEnded || _connecting != null) return null;
+        double position = deck.Track.IsStream
+            ? (DateTime.UtcNow - deck.Started).TotalSeconds
+            : Bass.ChannelBytes2Seconds(deck.Handle, Math.Max(0, BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes)));
+        double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeSeconds), deck.Track.IsStream ? deck.Track.End : deck.Length);
+        double at = Math.Max(0, mixAt - position);
+        var list = new List<(int, double)>();
+        int first = _playlist.FindIndex(t => t.Id == deck.Track.Id) + 1;
+        for (int i = first; i < _playlist.Count; i++)
+        {
+            list.Add((i, at));
+            if (_playlist[i].IsOpenEnded) return list; // nothing after it has a time
+            at += Step(_playlist[i]);
+        }
+        list.Add((_playlist.Count, at));
+        return list;
+    }
+
+    /// <summary>How long items played one after another take, from the first starting to the last ending.</summary>
+    double ChainLength(IReadOnlyList<Track> tracks) =>
+        tracks.Take(tracks.Count - 1).Sum(Step) + tracks[^1].PlayLength;
+
+    /// <summary>
+    /// Where a backtimed event goes: before the upcoming item whose start is nearest to when it has to start (in
+    /// <paramref name="left"/> seconds), but not inside another event's items nor before an earlier timed item.
+    /// Late means fading the end of a song, so a gap a fill song can close counts for less than the same time late.
+    /// -1 when there is nothing to go by.
+    /// </summary>
+    int BacktimePosition(double left, DateTime startAt)
+    {
+        if (Upcoming() is not { } upcoming) return -1;
+        int best = -1;
+        double bestError = double.MaxValue;
+        foreach (var (index, at) in upcoming)
+        {
+            if (index < _playlist.Count && _playlist[index].StartBy is { } other && other > startAt) break; // keep timed items in order
+            bool insideEvent = index > 0 && index < _playlist.Count && _playlist[index].Event != null && _playlist[index].Event == _playlist[index - 1].Event;
+            if (insideEvent) continue;
+            double error = at > left ? at - left
+                : left - at >= BacktimeMinGap && _fill != null ? (left - at) / 4
+                : left - at;
+            if (error < bestError) { best = index; bestError = error; }
+        }
+        // Not before an earlier timed item.
+        int lastTimed = -1;
+        for (int i = _cursorIndex + 1; i < _playlist.Count; i++)
+            if (_playlist[i].StartBy is { } t && t <= startAt && !_played.Contains(_playlist[i].Id)) lastTimed = i;
+        if (lastTimed >= 0 && best <= lastTimed)
+        {
+            best = lastTimed + 1;
+            while (best < _playlist.Count && _playlist[best].Event != null && _playlist[best].Event == _playlist[lastTimed].Event) best++;
+        }
+        return best;
     }
 
     // ───────────────────────── Time signal ─────────────────────────

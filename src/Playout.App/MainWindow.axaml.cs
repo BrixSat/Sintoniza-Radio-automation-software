@@ -533,6 +533,8 @@ public partial class MainWindow : Window
         for (int i = 0; i < items.Count; i++)
         {
             if (!_rowsById.TryGetValue(items[i].Id, out var row)) continue;
+            // An item with a latest start starts then at the latest (what is on air is faded).
+            if (at is { } late && startFrom >= 0 && i >= startFrom && items[i].StartBy is { } by && by.ToLocalTime() < late) at = by.ToLocalTime();
             if (at is { } t && startFrom >= 0 && i >= startFrom)
             {
                 row.StartTime = t.ToString("HH:mm:ss");

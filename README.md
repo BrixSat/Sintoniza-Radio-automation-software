@@ -57,10 +57,22 @@ engine for decoding, mixing and streaming.
     break with nothing booked is skipped.
   - **Adverts**: a file and its advertiser, booked between two dates, on chosen days and into chosen breaks (or
     every break), in the order of the list.
-  - Each starts **soft** (after the item on air ends) or **hard** (on the second, fading out what is on air). Its
-    items go into the playlist after the item on air, tagged with its name, and the playlist carries on after them.
-    With the player stopped they wait as next. An event that fell due while the app was not running (a crash, a
-    restart) still starts if it is at most 2 minutes late; older ones are logged as missed.
+  - Each starts in one of three ways:
+    - **soft**: after the item on air ends, optionally at most N minutes late (then what is on air fades out). A
+      window such as "between :48 and :55" is a soft break at :48, at most 7 minutes late;
+    - **hard**: on the second, fading out what is on air;
+    - **ends at its time** (backtimed): for a break that has to finish before the news, e.g. at 59:55. It goes into
+      the playlist 15 minutes before, where it will fit best, and the songs before it are adjusted as the hour goes
+      on: a song that wouldn't fit moves after the break, a gap is filled with a fill song that fits
+      (Settings → Safety), and whatever is still on air when the break has to start fades out. Gaps under 15 s
+      are left, so the break starts that much early.
+  - Its items go into the playlist tagged with its name, and the playlist carries on after them. With the player
+    stopped they wait as next. An event that fell due while the app was not running (a crash, a restart) still
+    starts if it is at most 2 minutes late; older ones are logged as missed.
+  - **What the host may change**: each event and break sets whether its items can be removed and moved, moved
+    only, or neither (locked, the default for ad breaks). Locked items show a padlock; Remove, drag and Clear leave
+    them, and starting a later item by hand keeps them in the playlist after it. A host can still press Next or
+    Stop in an emergency; that is noted in the log, and the as-run log shows how long the item played.
 - **As-run log and reports** (the *Reports* button): everything that goes on air, from the playlist, scheduled
   events, ad breaks and carts, is logged with its start and end time, one CSV file a day in the `as-run` folder
   next to the settings. The Reports window makes, for any days:
@@ -293,7 +305,8 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 ## Roadmap
 
 - Auto cue (silence trimming) for files without cue points
-- Hour templates (clocks) and rotation rules for the whole day, not just fill music
+- A separate scheduling program: hour templates (clocks), rotation rules and commercial traffic, making each
+  day's logs in the shared database for the playout to load
 - Live input switching and GPIO, voice tracking
 - RT+ over UECP (it is sent with ASCII commands now)
 - REST API for remote control

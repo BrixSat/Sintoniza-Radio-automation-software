@@ -18,7 +18,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
         {
             if (Equals(_track, value)) return;
             _track = value;
-            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip) })
+            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip) })
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
@@ -35,6 +35,18 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     public bool HasEvent => Track.Event != null;
     public string EventTag => Track.Event?.ToUpperInvariant() ?? "";
     public string EventTip => Track.Advertiser is { } a ? $"{Track.Event} · advertiser: {a}" : $"Scheduled: {Track.Event}";
+    /// <summary>The schedule doesn't let the operator remove it (and, locked, not move it either).</summary>
+    public bool IsLocked => Track.Lock != ItemLock.Free;
+    public string LockTip => Track.Lock == ItemLock.Locked
+        ? "Locked by the schedule: it can't be removed or moved"
+        : "The schedule lets it be moved, but not removed";
+    /// <summary>Has a latest start time: its start time is shown in colour.</summary>
+    public bool IsTimed => Track.StartBy != null;
+    public string? TimedTip => Track.StartBy is { } at
+        ? Track.Backtime
+            ? $"Starts at {at.ToLocalTime():HH:mm:ss} to end on time: the songs before it are adjusted, and what is on air then fades out"
+            : $"Starts by {at.ToLocalTime():HH:mm:ss} at the latest: what is on air then fades out"
+        : null;
     public bool IsMusic => Track.Kind == TrackKind.Music;
     public bool IsJingle => Track.Kind == TrackKind.Jingle;
     public bool IsCommercial => Track.Kind == TrackKind.Commercial;

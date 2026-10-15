@@ -341,6 +341,16 @@
             <Setter Property="Foreground" Value="#AFC4F2" />
         </Style>
 
+        <Style Selector="PathIcon.lock">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Height" Value="11" />
+            <Setter Property="Foreground" Value="#AFC4F2" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.timed">
+            <Setter Property="Foreground" Value="{StaticResource NextUp}" />
+        </Style>
+
         <!-- Item type icons -->
         <Style Selector="PathIcon.kind">
             <Setter Property="Width" Value="15" />

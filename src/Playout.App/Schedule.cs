@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Playout.Engine;
 
 namespace Playout.App;
@@ -50,8 +51,31 @@ public abstract class ScheduleEntry
     public List<string> Times { get; set; } = new();
     /// <summary>Days of the week it runs (DayOfWeek: 0 = Sunday); empty = every day.</summary>
     public List<DayOfWeek> Days { get; set; } = new();
-    /// <summary>Hard: starts on time, fading out what is on air. Soft: waits for the item on air to finish.</summary>
-    public bool Hard { get; set; }
+    /// <summary>
+    /// Soft: after the item on air (at most <see cref="MaxDelayMinutes"/> late). Hard: on time, fading out what is on
+    /// air. EndAt: its times are when it ends; the playlist before it is adjusted (backtimed) so it does.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EventStart Start { get; set; }
+
+    /// <summary>Schedules saved before <see cref="Start"/>: true read as Hard.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Hard { get => false; set { if (value) Start = EventStart.Hard; } }
+
+    /// <summary>Soft: if the item on air hasn't ended this many minutes after the time, it fades out (0 = no limit).</summary>
+    public double MaxDelayMinutes { get; set; }
+
+    /// <summary>What the operator may do with its items in the playlist.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public ItemLock Lock { get; set; }
+
+    /// <summary>How it starts, for the engine; <paramref name="at"/> is the time it is for (local).</summary>
+    public EventTiming Timing(DateTime at) => Start switch
+    {
+        EventStart.Hard => EventTiming.Hard,
+        EventStart.EndAt => new EventTiming(EventStart.EndAt, EndsAt: at.ToUniversalTime()),
+        _ => new EventTiming(EventStart.Soft, MaxDelayMinutes > 0 ? TimeSpan.FromMinutes(MaxDelayMinutes) : null),
+    };
 
     public bool RunsOn(DayOfWeek day) => Days.Count == 0 || Days.Contains(day);
 
@@ -74,6 +98,8 @@ public abstract class ScheduleEntry
 /// <summary>Plays a file, the newest file in a folder (news bulletins) or an internet stream at set times.</summary>
 public sealed class ScheduledEvent : ScheduleEntry
 {
+    public ScheduledEvent() => Lock = ItemLock.Movable;
+
     /// <summary>A file, a folder (its newest audio file) or an http(s) stream address.</summary>
     public string Path { get; set; } = "";
     /// <summary>A stream plays this long (0 = until Stop or Next).</summary>
@@ -85,6 +111,8 @@ public sealed class ScheduledEvent : ScheduleEntry
 /// <summary>An ad break: the adverts booked into it that day, between an optional opening and closing jingle.</summary>
 public sealed class AdBreak : ScheduleEntry
 {
+    public AdBreak() => Lock = ItemLock.Locked;
+
     public string Intro { get; set; } = "";
     public string Outro { get; set; } = "";
 }
@@ -149,6 +177,11 @@ public static class ScheduleTimes
 sealed class Scheduler : IDisposable
 {
     public static readonly TimeSpan Grace = TimeSpan.FromMinutes(2);
+    /// <summary>
+    /// What ends at a time goes into the playlist this long before, so there is time to adjust the songs before it.
+    /// Its files are chosen then (a folder's newest file then).
+    /// </summary>
+    public static readonly TimeSpan EndAtLead = TimeSpan.FromMinutes(15);
     /// <summary>Files of events coming up this soon are measured for loudness levelling ahead of time.</summary>
     static readonly TimeSpan Prepare = TimeSpan.FromMinutes(10);
 
@@ -234,12 +267,15 @@ sealed class Scheduler : IDisposable
             foreach (var entry in Entries(_data).Where(e => e.Enabled))
             {
                 var last = _data.LastStarted.GetValueOrDefault(entry.Id, DateTime.MinValue);
-                // Today's and (just after midnight) yesterday's times that are due and not started yet: the latest one.
-                var at = entry.TimesOn(now.Date.AddDays(-1)).Concat(entry.TimesOn(now.Date))
-                    .Where(t => t <= now && t > last).DefaultIfEmpty(DateTime.MinValue).Max();
+                // Today's and (around midnight) yesterday's and tomorrow's times that are due and not started yet: the
+                // latest one. What ends at a time is due EndAtLead before it.
+                var lead = entry.Start == EventStart.EndAt ? EndAtLead : TimeSpan.Zero;
+                var at = entry.TimesOn(now.Date.AddDays(-1)).Concat(entry.TimesOn(now.Date)).Concat(entry.TimesOn(now.Date.AddDays(1)))
+                    .Where(t => t - lead <= now && t > last).DefaultIfEmpty(DateTime.MinValue).Max();
                 if (at == DateTime.MinValue) continue;
                 _data.LastStarted[entry.Id] = at;
-                if (now - at > Grace) Say($"{Label(entry, at)}: missed (it was due {(now - at).TotalMinutes:0} minutes ago)");
+                bool missed = entry.Start == EventStart.EndAt ? now > at : now - at > Grace;
+                if (missed) Say($"{Label(entry, at)}: missed (it was due {(now - at).TotalMinutes:0} minutes ago)");
                 else due.Add((entry, at));
             }
             if (now - _prepared > TimeSpan.FromMinutes(1)) PrepareSoon(now);
@@ -267,7 +303,7 @@ sealed class Scheduler : IDisposable
         {
             var items = Items(entry, at, quiet: false);
             if (items.Count == 0) return;
-            _engine.InsertEvent(Label(entry, at), items, entry.Hard);
+            _engine.InsertEvent(Label(entry, at), items.Select(i => i with { Lock = entry.Lock }).ToList(), entry.Timing(at));
         }
         catch (Exception ex)
         {

@@ -86,7 +86,7 @@
                                 <TextBlock Text="minutes (0 = until Stop or Next)" VerticalAlignment="Center" />
                             </StackPanel>
                             <StackPanel>
-                                <TextBlock Classes="label" Text="Times" />
+                                <TextBlock Classes="label" x:Name="EventTimesLabel" Text="Times" />
                                 <TextBox x:Name="EventTimesBox" PlaceholderText="07:00, 13:00, 19:00   or   *:00 for every hour" />
                             </StackPanel>
                             <StackPanel>
@@ -96,10 +96,25 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="EventSoftBox" GroupName="EventStart" Content="Soft: after the item on air ends" />
+                                <StackPanel x:Name="EventDelayPanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,6">
+                                    <TextBlock Text="at most" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="EventDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="110" />
+                                    <TextBlock Text="minutes late, then it fades out what is on air (0 = no limit)" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" />
+                                </StackPanel>
                                 <RadioButton x:Name="EventHardBox" GroupName="EventStart" Content="Hard: on the second, fading out what is on air" />
+                                <RadioButton x:Name="EventEndBox" GroupName="EventStart"
+                                             Content="Ends at its time: the songs before it are adjusted to fit" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="In the playlist, the host may" />
+                                <ComboBox x:Name="EventLockBox" Width="320">
+                                    <ComboBoxItem Content="Remove and move its items" />
+                                    <ComboBoxItem Content="Move its items, but not remove them" />
+                                    <ComboBoxItem Content="Neither: they are locked" />
+                                </ComboBox>
                             </StackPanel>
                             <TextBlock Classes="note"
-                                       Text="The event's items go into the playlist after the item on air, and the playlist carries on after them. With the player stopped or paused they wait as next. An event due while the app wasn't running starts if it is at most 2 minutes late." />
+                                       Text="The event's items go into the playlist after the item on air, and the playlist carries on after them. With the player stopped or paused they wait as next. An event due while the app wasn't running starts if it is at most 2 minutes late. One that ends at its time goes into the playlist 15 minutes before, where it will fit; a folder's newest file is chosen then." />
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
@@ -135,7 +150,7 @@
                                 <CheckBox Grid.Column="2" x:Name="BreakEnabledBox" Content="On" VerticalAlignment="Bottom" />
                             </Grid>
                             <StackPanel>
-                                <TextBlock Classes="label" Text="Times" />
+                                <TextBlock Classes="label" x:Name="BreakTimesLabel" Text="Times" />
                                 <TextBox x:Name="BreakTimesBox" PlaceholderText="08:20, 09:20, 12:50   or   *:20 for every hour" />
                             </StackPanel>
                             <StackPanel>
@@ -145,7 +160,22 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="BreakSoftBox" GroupName="BreakStart" Content="Soft: after the item on air ends" />
+                                <StackPanel x:Name="BreakDelayPanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,6">
+                                    <TextBlock Text="at most" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="BreakDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="110" />
+                                    <TextBlock Text="minutes late, then it fades out what is on air (0 = no limit)" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="300" />
+                                </StackPanel>
                                 <RadioButton x:Name="BreakHardBox" GroupName="BreakStart" Content="Hard: on the second, fading out what is on air" />
+                                <RadioButton x:Name="BreakEndBox" GroupName="BreakStart"
+                                             Content="Ends at its time: the songs before it are adjusted to fit" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="In the playlist, the host may" />
+                                <ComboBox x:Name="BreakLockBox" Width="320">
+                                    <ComboBoxItem Content="Remove and move its items" />
+                                    <ComboBoxItem Content="Move its items, but not remove them" />
+                                    <ComboBoxItem Content="Neither: they are locked" />
+                                </ComboBox>
                             </StackPanel>
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Opening jingle (optional)" />
@@ -165,7 +195,7 @@
                             </StackPanel>
                             <TextBlock x:Name="BreakBookedText" FontWeight="SemiBold" />
                             <TextBlock Classes="note"
-                                       Text="A break plays the adverts booked into it that day (Adverts tab), in their order there, between the jingles. A break with no adverts booked is skipped." />
+                                       Text="A break plays the adverts booked into it that day (Adverts tab), in their order there, between the jingles. A break with no adverts booked is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before: songs that wouldn't fit move after it, a gap is filled with a fill song (Settings → Safety), and what is still on air at its start fades out." />
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
