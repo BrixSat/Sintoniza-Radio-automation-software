@@ -474,7 +474,7 @@ public sealed class PlayoutEngine : IDisposable
                 tracks.Add(track with
                 {
                     Kind = item.Kind ?? track.Kind, Event = label, Advertiser = item.Advertiser,
-                    Lock = item.Lock, StartBy = item.StartBy, Backtime = item.Backtime,
+                    Lock = item.Lock, StartBy = item.StartBy, Backtime = item.Backtime, PlayedAt = item.PlayedAt, InBreak = item.InBreak,
                 });
         }
         return tracks;
@@ -1089,6 +1089,7 @@ public sealed class PlayoutEngine : IDisposable
         _silentSince = null; // a new item gets the full time before it counts as silent
         _played.Add(track.Id);
         _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
+        if (_cursorIndex >= 0) _playlist[_cursorIndex] = _playlist[_cursorIndex] with { PlayedAt = DateTime.UtcNow }; // for the playlist's times
 
         if (_encoder is var enc and not 0) BassEnc.CastSetTitle(enc, track.Display, null);
         Emit(L.F("On air: {0}", track.Display));

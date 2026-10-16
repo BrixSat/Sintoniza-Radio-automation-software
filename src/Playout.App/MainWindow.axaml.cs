@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         };
         _library.Changed += () => ScanButton.Content = _library.IsScanning ? L.T("Stop") : L.T("Scan");
         Tracks.Attach(_library);
+        _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
         _ = _library.OpenAsync(_settings.Library);
         ApplyAutoScan();
 
@@ -232,6 +233,13 @@ public partial class MainWindow : Window
             else await _library.ScanAsync(_settings.Library.Folders);
         };
         Library.RootChanged += root => _settings.MusicFolder = root;
+        Library.Categories = () =>
+        {
+            try { return _library.Db?.Categories().Select(c => (c.Id, c.Name)).ToList() ?? []; }
+            catch { return []; }
+        };
+        Library.CategoryOf = folder => _settings.Library.FolderCategories.TryGetValue(folder, out long id) ? id : null;
+        Library.FolderCategoryRequested += async (folder, id) => await SetFolderCategory(folder, id);
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
         Library.EditTagsRequested += async path => await EditTags(path);
 
@@ -575,15 +583,29 @@ public partial class MainWindow : Window
         var order = new List<PlaylistRow>(items.Count + _upcoming.Count);
         var pending = new Queue<UpcomingEvent>(_upcoming.OrderBy(u => u.Start));
         _nextBreak = null;
-        // The hour on air now: the first item starting in a later hour gets a divider, and so on.
-        var lastHour = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
+        // Played items (and the one on air) show when they went on air, with a divider where a new hour started; then
+        // the first item starting in a later hour than that gets one, and so on.
+        DateTime? pastHour = null;
+        bool PlayedRow(int i) => items[i].PlayedAt != null && (i <= current || _snapshot.Played.Contains(items[i].Id));
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (!PlayedRow(i) || !_rowsById.TryGetValue(items[i].Id, out var row)) continue;
+            row.HourMark = "";
+            var played = items[i].PlayedAt!.Value;
+            var local = played.ToLocalTime();
+            row.StartTime = local.Date == DateTime.Today ? local.ToString("HH:mm:ss") : local.ToString("ddd HH:mm");
+            var h = new DateTime(local.Year, local.Month, local.Day, local.Hour, 0, 0);
+            if (pastHour is { } ph && h > ph) row.HourMark = h.Date == DateTime.Today ? h.ToString("HH:mm") : h.ToString("HH:mm  ddd");
+            if (pastHour == null || h > pastHour) pastHour = h;
+        }
+        var lastHour = pastHour ?? new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
         void Show(PlaylistRow row, DateTime t)
         {
             row.StartTime = t.ToString("HH:mm:ss");
             // The first ad break still to come (shown ahead, or already in the playlist), for the countdown.
             if (_nextBreak == null && row.IsAdBreak && !row.IsEmptyBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
-                _nextBreak = (t, row.IsPreview ? row.Title : row.Track.Event ?? L.T("Ad break"),
-                    row.IsPreview ? _upcoming.FirstOrDefault(u => row.Title == u.Label)?.How ?? "" : BreakHow(row.Track));
+                _nextBreak = (t, row.Track.Event ?? (row.IsPreview ? row.Title : L.T("Ad break")),
+                    row.IsPreview ? _upcoming.FirstOrDefault(u => u.Label == (row.Track.Event ?? row.Title))?.How ?? "" : BreakHow(row.Track));
             var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
             if (hour <= lastHour) return;
             row.HourMark = hour.Date == DateTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
@@ -596,10 +618,14 @@ public partial class MainWindow : Window
             while (pending.Count > 0 && pending.Peek().Start <= t)
             {
                 var u = pending.Dequeue();
-                var row = PreviewRow(u);
                 var start = u.Timing == EventStart.Soft ? t : u.Start;
-                Show(row, start);
-                order.Add(row);
+                var itemAt = start;
+                foreach (var row in PreviewRows(u))
+                {
+                    Show(row, itemAt);
+                    order.Add(row);
+                    itemAt = itemAt.AddSeconds(row.Track.Duration);
+                }
                 t = start.AddSeconds(u.Seconds);
                 lastTail = 0;
             }
@@ -609,6 +635,11 @@ public partial class MainWindow : Window
         for (int i = 0; i < items.Count; i++)
         {
             if (!_rowsById.TryGetValue(items[i].Id, out var row)) continue;
+            if (PlayedRow(i))
+            {
+                order.Add(row); // shown above, with when it played
+                continue;
+            }
             row.HourMark = "";
             if (at != null && startFrom >= 0 && i >= startFrom)
             {
@@ -630,9 +661,13 @@ public partial class MainWindow : Window
         while (pending.Count > 0)
         {
             var u = pending.Dequeue();
-            var row = PreviewRow(u);
-            Show(row, u.Start);
-            order.Add(row);
+            var itemAt = u.Start;
+            foreach (var row in PreviewRows(u))
+            {
+                Show(row, itemAt);
+                order.Add(row);
+                itemAt = itemAt.AddSeconds(row.Track.Duration);
+            }
         }
         SyncRows(order);
     }
@@ -685,7 +720,7 @@ public partial class MainWindow : Window
     List<UpcomingEvent> _upcoming = new();
     DateTime _upcomingRead = DateTime.MinValue;
     bool _upcomingReading;
-    readonly Dictionary<(Guid, DateTime), PlaylistRow> _previewRows = new();
+    readonly Dictionary<(Guid, DateTime, int), PlaylistRow> _previewRows = new();
 
     /// <summary>
     /// Every 15 seconds: what the schedule will put in the playlist up to an hour after its end (at most six hours
@@ -704,21 +739,43 @@ public partial class MainWindow : Window
             if (!t.IsCompletedSuccessfully) return;
             _upcoming = t.Result;
             var live = _upcoming.Select(u => (u.EntryId, u.Due)).ToHashSet();
-            foreach (var key in _previewRows.Keys.Where(k => !live.Contains(k)).ToList()) _previewRows.Remove(key);
+            foreach (var key in _previewRows.Keys.Where(k => !live.Contains((k.Item1, k.Item2))).ToList()) _previewRows.Remove(key);
             if (_engine != null) UpdateStartTimes(_engine.GetStatus());
         }));
     }
 
-    /// <summary>The row that shows a scheduled event ahead (the same row while it is upcoming).</summary>
-    PlaylistRow PreviewRow(UpcomingEvent u)
+    /// <summary>
+    /// The rows that show a scheduled event or break ahead, one for each item it will play (the same rows while it is
+    /// upcoming); a break with no adverts, one greyed row saying so.
+    /// </summary>
+    List<PlaylistRow> PreviewRows(UpcomingEvent u)
     {
-        var track = new Track(Guid.Empty, "", $"{u.What} · {u.How}", u.Label, u.Seconds, u.IsBreak ? TrackKind.Commercial : TrackKind.Programme);
-        if (!_previewRows.TryGetValue((u.EntryId, u.Due), out var row))
-            _previewRows[(u.EntryId, u.Due)] = row = new PlaylistRow(track with { Id = Guid.NewGuid() }) { IsPreview = true };
-        else row.Track = track with { Id = row.Id };
-        row.IsEmptyBreak = u.Empty;
-        row.HourMark = "";
-        return row;
+        var rows = new List<PlaylistRow>();
+        if (u.Empty || u.Items is not { Count: > 0 } items)
+        {
+            rows.Add(Preview(0, new Track(Guid.Empty, "", $"{u.What} · {u.How}", u.Label, u.Seconds, u.IsBreak ? TrackKind.Commercial : TrackKind.Programme)));
+            rows[0].IsEmptyBreak = u.Empty;
+            return rows;
+        }
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            // The second line: the advertiser of an advert; on the first item, how it starts.
+            string line = string.Join(" · ", new[] { item.Advertiser, i == 0 ? u.How : null }.Where(x => !string.IsNullOrEmpty(x)));
+            rows.Add(Preview(i, new Track(Guid.Empty, item.Path, line, item.Title, item.Seconds, item.Kind)
+                { Event = u.Label, Advertiser = item.Advertiser, InBreak = item.InBreak }));
+        }
+        return rows;
+
+        PlaylistRow Preview(int index, Track track)
+        {
+            if (!_previewRows.TryGetValue((u.EntryId, u.Due, index), out var row))
+                _previewRows[(u.EntryId, u.Due, index)] = row = new PlaylistRow(track with { Id = Guid.NewGuid() }) { IsPreview = true };
+            else row.Track = track with { Id = row.Id };
+            row.IsEmptyBreak = false;
+            row.HourMark = "";
+            return row;
+        }
     }
 
     /// <summary>The engine's playlist position for a row position (the schedule's previews aren't in the engine).</summary>
@@ -933,6 +990,13 @@ public partial class MainWindow : Window
                 if (!e.IsStream && !File.Exists(e.Path)) continue;
                 Flush();
                 engine.AddScheduled(e.Event, [e.ToScheduled()]);
+                continue;
+            }
+            if (e.HasDetails)
+            {
+                if (!e.IsStream && !File.Exists(e.Path)) continue;
+                Flush();
+                engine.AddItems([e.ToScheduled()]);
                 continue;
             }
             if (!e.IsStream)
@@ -1156,6 +1220,7 @@ public partial class MainWindow : Window
             var micBefore = _settings.ActiveMic;
             bool saved = await new SettingsWindow(_settings, _engine, this).ShowDialog<bool>(this);
             if (!saved) return;
+            PlaylistLook.Apply(_settings.PlaylistColors);
             if (_engine != null)
             {
                 _engine.CrossfadeSeconds = _settings.Crossfade;
@@ -1268,6 +1333,37 @@ public partial class MainWindow : Window
         var library = _settings.Library;
         _library.ConfigureAutoScan(library.Folders, library.ScanEveryMinutes, library.WatchFolders);
     }
+
+    /// <summary>
+    /// Puts a folder's songs in a library category (null = none), and remembers it: new songs found there by a scan
+    /// get it too.
+    /// </summary>
+    async Task SetFolderCategory(string folder, long? id)
+    {
+        if (_library.Db is not { } db) return;
+        string name = Path.GetFileName(folder.TrimEnd('/', '\\'));
+        try
+        {
+            int count = await Task.Run(() => db.SetFolderCategory(folder, id));
+            if (id is { } set) _settings.Library.FolderCategories[folder] = set;
+            else _settings.Library.FolderCategories.Remove(folder);
+            _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
+            _settings.Save();
+            string category = id is { } c ? db.Categories().FirstOrDefault(x => x.Id == c)?.Name ?? "" : "";
+            LastLog.Text = count == 0
+                ? L.F("No songs from {0} are in the library yet: add the folder in Settings → Library and scan. New songs found there will go in the category.", name)
+                : id == null ? L.F("{0}: {1} taken out of their category", name, Plural(count, "{0} song", "{0} songs"))
+                : L.F("{0}: {1} put in {2}", name, Plural(count, "{0} song", "{0} songs"), category);
+            AppLog.Write(LastLog.Text);
+            _library.NotifyChanged();
+        }
+        catch (Exception ex)
+        {
+            LastLog.Text = L.F("Category not set: {0}", ex.Message);
+        }
+    }
+
+    static string Plural(int n, string one, string many) => L.F(n == 1 ? one : many, n);
 
     /// <summary>The library (search) or the folders on disk in the left panel.</summary>
     void ShowMusicTab(bool library)

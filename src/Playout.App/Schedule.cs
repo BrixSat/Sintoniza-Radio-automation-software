@@ -491,8 +491,9 @@ public static class ScheduleTimes
 /// <param name="Due">Its time in the schedule.</param>
 /// <param name="MaxDelayMinutes">Soft: at most this late (0 = it waits for the song on air).</param>
 /// <param name="Empty">A break with no adverts booked: shown, so it can be seen, but nothing will play.</param>
+/// <param name="Items">What it plays, each item with its length: shown one by one in the playlist.</param>
 public sealed record UpcomingEvent(Guid EntryId, string Label, string What, DateTime Start, DateTime Due, EventStart Timing, double Seconds, bool IsBreak,
-    double MaxDelayMinutes = 0, bool Empty = false)
+    double MaxDelayMinutes = 0, bool Empty = false, IReadOnlyList<UpcomingItem>? Items = null)
 {
     /// <summary>How it starts, for the playlist and the countdown: "hard start at 12:20:00", "can wait 5 min"…</summary>
     public string How => Timing switch
@@ -502,6 +503,9 @@ public sealed record UpcomingEvent(Guid EntryId, string Label, string What, Date
         _ => MaxDelayMinutes > 0 ? L.F("from {0:HH:mm}, can wait {1:0} min", Due, MaxDelayMinutes) : L.F("from {0:HH:mm}, waits for the song", Due),
     };
 }
+
+/// <summary>An item of an event or break coming up: its file (or stream), type, advertiser and length.</summary>
+public sealed record UpcomingItem(string Path, TrackKind Kind, string Title, string? Advertiser, double Seconds, bool InBreak);
 
 /// <summary>
 /// Starts events and ad breaks on time. Runs on its own timer (not the UI's), so a busy window never delays them.
@@ -601,14 +605,17 @@ sealed class Scheduler : IDisposable
                     list.Add(new UpcomingEvent(entry.Id, Label(entry, at), L.T("no adverts booked: it will be skipped"), at, at, entry.Start, 0, true, entry.MaxDelayMinutes, Empty: true));
                 continue; // a missing file: nothing will play
             }
-            double seconds = items.Sum(i => i.StreamName != null ? i.StreamSeconds : Length(i.Path));
+            var parts = items.Select(i => i.StreamName != null
+                ? new UpcomingItem(i.Path, TrackKind.Stream, i.StreamName, null, i.StreamSeconds, i.InBreak)
+                : new UpcomingItem(i.Path, i.Kind ?? TrackClassifier.Classify(i.Path), System.IO.Path.GetFileNameWithoutExtension(i.Path), i.Advertiser, Length(i.Path), i.InBreak)).ToList();
+            double seconds = parts.Sum(p => p.Seconds);
             string what = entry switch
             {
                 AdBreak => items.Count(i => i.Kind == TrackKind.Commercial) is var n && n == 1 ? L.T("1 advert") : L.F("{0} adverts", n),
                 _ => items[0].StreamName != null ? L.T("stream") : System.IO.Path.GetFileNameWithoutExtension(items[0].Path),
             };
             var start = entry.Start == EventStart.EndAt ? at.AddSeconds(-seconds) : at;
-            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak, entry.MaxDelayMinutes));
+            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak, entry.MaxDelayMinutes, Items: parts));
         }
         return list;
     }
@@ -747,9 +754,9 @@ sealed class Scheduler : IDisposable
                     {
                         if (!quiet) Say(L.F("{0}: skipped, the newest file ({1}) is older than {2} minutes", label, newest.Name, e.MaxAgeMinutes));
                     }
-                    else items.Add(new ScheduledItem(newest.FullName, TrackKind.Programme));
+                    else items.Add(new ScheduledItem(newest.FullName, EventKind(newest.FullName)));
                 }
-                else if (File.Exists(e.Path)) items.Add(new ScheduledItem(e.Path, TrackKind.Programme));
+                else if (File.Exists(e.Path)) items.Add(new ScheduledItem(e.Path, EventKind(e.Path)));
                 else if (!quiet) Say(string.IsNullOrWhiteSpace(e.Path) ? L.F("{0}: nothing chosen to play", label) : L.F("{0}: not found: {1}", label, e.Path));
                 break;
 
@@ -772,19 +779,25 @@ sealed class Scheduler : IDisposable
                     if (part.Kind == PartKind.Section)
                     {
                         foreach (var a in sections.GetValueOrDefault(part.Section.Trim()) ?? [])
-                            items.Add(new ScheduledItem(a.File, TrackKind.Commercial, Advertiser: a.Client.Name.Trim() is { Length: > 0 } n ? n : null));
+                            items.Add(new ScheduledItem(a.File, TrackKind.Commercial, Advertiser: a.Client.Name.Trim() is { Length: > 0 } n ? n : null, InBreak: true));
                         continue;
                     }
                     // A section opener: only when the section after it has adverts.
                     if (part.OnlyWithAdverts && b.Parts.Skip(i + 1).FirstOrDefault(x => x.Kind == PartKind.Section) is { } next
                         && (sections.GetValueOrDefault(next.Section.Trim())?.Count ?? 0) == 0) continue;
-                    if (File.Exists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle));
+                    if (File.Exists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
                     else if (!quiet && part.Path.Length > 0) Say(L.F("{0}: jingle not found, left out: {1}", label, part.Path));
                 }
                 break;
         }
         return items;
     }
+
+    /// <summary>
+    /// What an event's file is in the playlist: a jingle or an advert by where it is kept (a Jingles folder…); the rest
+    /// (news, shows) a programme, which RDS, the website and the music reports don't take for a song.
+    /// </summary>
+    static TrackKind EventKind(string path) => TrackClassifier.Classify(path) is var k && k is TrackKind.Jingle or TrackKind.Commercial ? k : TrackKind.Programme;
 
     void Say(string message) => Message?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
 

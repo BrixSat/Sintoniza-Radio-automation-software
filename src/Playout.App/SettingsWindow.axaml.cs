@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Playout.Engine;
@@ -160,6 +161,12 @@ public partial class SettingsWindow : Window
 
         CrossfadeBox.Value = (decimal)settings.Crossfade;
         OtherCrossfadeBox.Value = (decimal)settings.OtherCrossfade;
+        _colors = new PlaylistColors
+        {
+            AdBreak = settings.PlaylistColors?.AdBreak, Jingle = settings.PlaylistColors?.Jingle, Programme = settings.PlaylistColors?.Programme,
+            Stream = settings.PlaylistColors?.Stream, Music = settings.PlaylistColors?.Music, OnAir = settings.PlaylistColors?.OnAir,
+        };
+        BuildColourRows();
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
         SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
         SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
@@ -311,6 +318,7 @@ public partial class SettingsWindow : Window
         Folders = _libraryFolders.ToList(),
         ScanEveryMinutes = AutoScanBox.IsChecked == true ? (int)(AutoScanMinutesBox.Value ?? 60) : 0,
         WatchFolders = WatchFoldersBox.IsChecked == true,
+        FolderCategories = new(_settings.Library?.FolderCategories ?? new()), // set from the Folders tab
     };
 
     async Task TestLibrary()
@@ -593,6 +601,60 @@ public partial class SettingsWindow : Window
         ToolTip.SetTip(SignalFileText, _signalFile);
     }
 
+    // ───────────────────────── Colours ─────────────────────────
+
+    PlaylistColors _colors = new();
+
+    /// <summary>Dark tints that keep the playlist's text readable.</summary>
+    static readonly string[] Tints =
+        ["#16271F", "#1E2A12", "#132A2D", "#18213A", "#1D1A3A", "#261C33", "#2A1B2A", "#2D1A1A", "#2E2414", "#211619", "#1A1D24", "#00000000"];
+
+    /// <summary>A row for each type of playlist item: its colour, presets, a hex box and Default.</summary>
+    void BuildColourRows()
+    {
+        ColourRows.Children.Clear();
+        foreach (var kind in PlaylistLook.Kinds)
+        {
+            var swatch = new Border { Width = 34, Height = 24, CornerRadius = new CornerRadius(4), BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1) };
+            var hex = new TextBox { Width = 110 };
+            void Show()
+            {
+                string value = kind.Get(_colors) ?? kind.Default;
+                swatch.Background = new SolidColorBrush(PlaylistLook.Parse(value) ?? Colors.Transparent);
+                if (hex.Text != value) hex.Text = value;
+            }
+            hex.TextChanged += (_, _) =>
+            {
+                if (PlaylistLook.Parse(hex.Text) is not { }) return;
+                kind.Set(_colors, hex.Text!.Trim().Equals(kind.Default, StringComparison.OrdinalIgnoreCase) ? null : hex.Text.Trim());
+                Show();
+            };
+            var presets = new WrapPanel { ItemSpacing = 4, LineSpacing = 4 };
+            foreach (var tint in Tints)
+            {
+                var b = new Button { Width = 22, Height = 22, Padding = new Thickness(0), Background = new SolidColorBrush(Color.Parse(tint)),
+                    BorderBrush = Brushes.DimGray, BorderThickness = new Thickness(1) };
+                ToolTip.SetTip(b, tint == "#00000000" ? L.T("None") : tint);
+                b.Click += (_, _) => { kind.Set(_colors, tint.Equals(kind.Default, StringComparison.OrdinalIgnoreCase) ? null : tint); Show(); };
+                presets.Children.Add(b);
+            }
+            var reset = new Button { Content = L.T("Default") };
+            reset.Click += (_, _) => { kind.Set(_colors, null); Show(); };
+            var line = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
+            line.Children.Add(swatch);
+            line.Children.Add(hex);
+            line.Children.Add(reset);
+            line.Children.Add(presets);
+            var row = new StackPanel { Spacing = 4 };
+            var label = new TextBlock { Text = L.T(kind.Label) };
+            label.Classes.Add("label");
+            row.Children.Add(label);
+            row.Children.Add(line);
+            ColourRows.Children.Add(row);
+            Show();
+        }
+    }
+
     TimeSignalSettings SignalFromUi() => new(
         (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
         SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "",
@@ -697,6 +759,7 @@ public partial class SettingsWindow : Window
 
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
         _settings.OtherCrossfade = (double)(OtherCrossfadeBox.Value ?? 0);
+        _settings.PlaylistColors = _colors;
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
         _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
         _settings.PreviewOutput = RouteFrom(PreviewDeviceBox, PreviewChannelBox);

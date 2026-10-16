@@ -303,6 +303,21 @@ public sealed class LibraryDb
 
     // ───────────────────────── Editing ─────────────────────────
 
+    /// <summary>
+    /// Puts the songs of a folder (and its subfolders) in a category (null = none); with <paramref name="onlyWithout"/>,
+    /// only those that have none yet (new songs found by a scan). Returns how many changed.
+    /// </summary>
+    public int SetFolderCategory(string folder, long? categoryId, bool onlyWithout = false)
+    {
+        string prefix = folder.TrimEnd('/', '\\');
+        string like = prefix.Replace("!", "!!").Replace("%", "!%").Replace("_", "!_");
+        using var c = Connect();
+        return c.Execute(
+            $"UPDATE tracks SET category_id = @categoryId WHERE (path LIKE @slash ESCAPE '!' OR path LIKE @backslash ESCAPE '!')"
+            + (onlyWithout ? " AND category_id IS NULL" : ""),
+            new { categoryId, slash = like + "/%", backslash = like + "\\%" });
+    }
+
     public void SetCategory(IEnumerable<long> trackIds, long? categoryId)
     {
         using var c = Connect();

@@ -75,7 +75,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     public bool IsProgramme => Track.Kind == TrackKind.Programme;
 
     /// <summary>Part of an ad break: an advert, or the jingles a break opens and closes with. Shown with its own background.</summary>
-    public bool IsAdBreak => Track.Kind == TrackKind.Commercial || (Track.Kind == TrackKind.Jingle && Track.Event != null);
+    public bool IsAdBreak => Track.Kind == TrackKind.Commercial || Track.InBreak;
 
     // Everything that isn't a song has its own background, so it stands out in the list.
     /// <summary>A jingle, promo or ID (not one of an ad break's).</summary>

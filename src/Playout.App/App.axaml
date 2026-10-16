@@ -6,6 +6,13 @@
 
     <Application.Resources>
         <SolidColorBrush x:Key="WindowBg" Color="#111318" />
+        <!-- Playlist row backgrounds by type (Settings → Colours sets them; see PlaylistLook) -->
+        <SolidColorBrush x:Key="BreakRowBg" Color="#16271F" />
+        <SolidColorBrush x:Key="JingleRowBg" Color="#261C33" />
+        <SolidColorBrush x:Key="ProgrammeRowBg" Color="#18213A" />
+        <SolidColorBrush x:Key="StreamRowBg" Color="#132A2D" />
+        <SolidColorBrush x:Key="MusicRowBg" Color="#00000000" />
+        <SolidColorBrush x:Key="OnAirRowBg" Color="#211619" />
         <SolidColorBrush x:Key="PanelBg" Color="#1A1D24" />
         <SolidColorBrush x:Key="PanelBorder" Color="#2A2F3A" />
         <SolidColorBrush x:Key="RowAlt" Color="#1E222A" />
@@ -351,20 +358,24 @@
         </Style>
         <!-- Ad break rows: their own background, a money sign for the adverts -->
         <Style Selector="Border.break-bg">
-            <Setter Property="Background" Value="#16271F" />
+            <Setter Property="Background" Value="{DynamicResource BreakRowBg}" />
             <Setter Property="Margin" Value="-8,-5" />
         </Style>
         <!-- The other kinds that aren't songs: jingles and promos, programmes and news, streams -->
+        <Style Selector="Border.music-bg">
+            <Setter Property="Background" Value="{DynamicResource MusicRowBg}" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
         <Style Selector="Border.jingle-bg">
-            <Setter Property="Background" Value="#261C33" />
+            <Setter Property="Background" Value="{DynamicResource JingleRowBg}" />
             <Setter Property="Margin" Value="-8,-5" />
         </Style>
         <Style Selector="Border.programme-bg">
-            <Setter Property="Background" Value="#18213A" />
+            <Setter Property="Background" Value="{DynamicResource ProgrammeRowBg}" />
             <Setter Property="Margin" Value="-8,-5" />
         </Style>
         <Style Selector="Border.stream-bg">
-            <Setter Property="Background" Value="#132A2D" />
+            <Setter Property="Background" Value="{DynamicResource StreamRowBg}" />
             <Setter Property="Margin" Value="-8,-5" />
         </Style>
         <Style Selector="TextBlock.kind-currency">
@@ -384,7 +395,7 @@
             <Setter Property="Background" Value="{StaticResource OnAir}" />
         </Style>
         <Style Selector="Border.row-bg">
-            <Setter Property="Background" Value="#211619" />
+            <Setter Property="Background" Value="{DynamicResource OnAirRowBg}" />
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Margin" Value="-8,-5" />
         </Style>

@@ -12,6 +12,7 @@ public partial class App : Application
     {
         var settings = AppSettings.Load();
         Localization.Load(settings.Language);
+        PlaylistLook.Apply(settings.PlaylistColors);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             // The schedule program (its own menu entry): events, ad breaks, clients. Not part of the on-air screen.
             desktop.MainWindow = desktop.Args?.Contains(AppInfo.ScheduleArg) == true

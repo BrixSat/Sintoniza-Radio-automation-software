@@ -65,6 +65,28 @@ public partial class LibraryBrowser : UserControl
         FileList.ContextMenu.Items.Add(editTags);
         FolderTree.ContextMenu = BuildMenu(() =>
             FolderTree.SelectedItem is FolderNode n ? [n.Path] : []);
+        // A folder's songs in a library category (and the new ones found there later).
+        var category = new MenuItem { Header = L.T("Category") };
+        FolderTree.ContextMenu.Items.Add(new Separator());
+        FolderTree.ContextMenu.Items.Add(category);
+        FolderTree.ContextMenu.Opening += (_, _) =>
+        {
+            category.Items.Clear();
+            if (FolderTree.SelectedItem is not FolderNode node) { category.IsEnabled = false; return; }
+            var categories = Categories?.Invoke() ?? [];
+            category.IsEnabled = categories.Count > 0;
+            long? current = CategoryOf?.Invoke(node.Path);
+            foreach (var (id, name) in categories)
+            {
+                var item = new MenuItem { Header = (current == id ? "✓ " : "") + name };
+                item.Click += (_, _) => FolderCategoryRequested?.Invoke(node.Path, id);
+                category.Items.Add(item);
+            }
+            category.Items.Add(new Separator());
+            var none = new MenuItem { Header = (current == null ? "✓ " : "") + L.T("None") };
+            none.Click += (_, _) => FolderCategoryRequested?.Invoke(node.Path, null);
+            category.Items.Add(none);
+        };
 
         DragHelper.Attach(FileList,
             () => FileList.SelectedItems?.OfType<FileEntry>().ToList() ?? new(),
@@ -73,6 +95,13 @@ public partial class LibraryBrowser : UserControl
             () => FolderTree.SelectedItem is FolderNode n ? [n] : new List<FolderNode>(),
             nodes => DragHelper.Data(AudioFiles.DragFormat, nodes.Select(n => n.Path).ToArray()));
     }
+
+    /// <summary>The library's categories (id, name), for a folder's Category menu; empty if the library isn't there.</summary>
+    public Func<IReadOnlyList<(long Id, string Name)>>? Categories { get; set; }
+    /// <summary>The category a folder was put in (null: none).</summary>
+    public Func<string, long?>? CategoryOf { get; set; }
+    /// <summary>Put a folder's songs in a category (null = none).</summary>
+    public event Action<string, long?>? FolderCategoryRequested;
 
     public void SetRoot(string folder)
     {

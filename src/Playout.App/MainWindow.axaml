@@ -292,6 +292,7 @@
                                           Classes.played="{Binding IsPlayed}"
                                           Classes.preview="{Binding IsPreview}"
                                           Classes.empty="{Binding IsEmptyBreak}">
+                                        <Border Grid.ColumnSpan="6" Classes="music-bg" IsVisible="{Binding IsMusic}" />
                                         <Border Grid.ColumnSpan="6" Classes="break-bg" IsVisible="{Binding IsAdBreak}" />
                                         <Border Grid.ColumnSpan="6" Classes="jingle-bg" IsVisible="{Binding IsJingleRow}" />
                                         <Border Grid.ColumnSpan="6" Classes="programme-bg" IsVisible="{Binding IsProgramme}" />

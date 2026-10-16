@@ -22,7 +22,9 @@ engine for decoding, mixing and streaming.
   estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial, stream,
   programme), a tag on items put there by a scheduled event or ad break, and an on-air row that fills from left
   to right as the track plays. Everything that isn't a song has its own background: ad breaks green, jingles and
-  promos purple, programmes and news blue, streams teal. M3U open/save.
+  promos purple, programmes and news blue, streams teal; each can be changed in Settings → Colours. Played items
+  show when they went on air (kept across a restart), and a line marks where each hour starts, before and after
+  the item on air. M3U open/save.
 - **Internet streams in the playlist**: put another station's stream in the playlist (**Stream…**) for a set time
   (it crossfades into the next item when the time is up) or until you press Stop or Next. It connects a few seconds
   before it is due, so there is no dead air, and if the stream drops the playlist moves on. Saved with the playlist
@@ -31,7 +33,9 @@ engine for decoding, mixing and streaming.
   (Settings → Library). The **LIBRARY** panel searches artist, title, album and file name as you type, ignoring
   case and accents, and filters by category: Current, Recurrent, Gold, Jingles, IDs, Promos, Ads, or your own
   (the ✎ button next to the filter adds, renames, recolours, orders and deletes categories).
-  Right-click sets the category, tempo, voice and language of one or many songs. **Scan** adds new music and
+  Right-click sets the category, tempo, voice and language of one or many songs. On the **Folders** tab, right-click
+  a folder → Category puts all its songs (subfolders too) in a category, and new songs found there by a scan get it
+  as well. **Scan** adds new music and
   follows moved or renamed files, keeping their category, cue points and history. The app also scans by itself:
   a minute after it starts, every hour, and shortly after files in the music folders change (all adjustable in
   Settings → Library). Every item that goes on air is written to the play history. Studios sharing a MySQL
@@ -79,7 +83,8 @@ engine for decoding, mixing and streaming.
     the selected campaign in that break every week, or on that date only; only breaks that have its section can be
     clicked. The client's name goes on the proof of broadcast. Adverts made with earlier versions become a client
     and a campaign each.
-  - **Shown ahead in the playlist**: the events and breaks coming up appear in the playlist where they will play
+  - **Shown ahead in the playlist**, item by item (a break's jingles and each advert with its advertiser, each with
+    its start time): the events and breaks coming up appear in the playlist where they will play
     (tagged SCHEDULED, with their start time and how they start: hard, can wait N minutes, or ends at its time),
     and the start times after them allow for them. They become real playlist items when they are due.
   - **Playlists** (smart playlists, like AVAPLAYER's schemes): hour templates whose lines play in order — a song

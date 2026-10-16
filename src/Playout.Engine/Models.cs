@@ -52,6 +52,12 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
     /// </summary>
     public bool Backtime { get; init; }
 
+    /// <summary>When it went on air (UTC); null while it hasn't.</summary>
+    public DateTime? PlayedAt { get; init; }
+
+    /// <summary>Part of an ad break (its adverts and the jingles of its running order), not of another event.</summary>
+    public bool InBreak { get; init; }
+
     public bool IsStream => Kind == TrackKind.Stream;
 
     /// <summary>A stream with no set play time: it stays on air until Stop or Next.</summary>
@@ -81,8 +87,10 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
 /// </summary>
 /// <param name="StartBy">Restoring a saved playlist: the item's latest start (UTC), see <see cref="Track.StartBy"/>.</param>
 /// <param name="Backtime">Restoring a saved playlist: see <see cref="Track.Backtime"/>.</param>
+/// <param name="PlayedAt">Restoring a saved playlist: when it went on air (UTC).</param>
+/// <param name="InBreak">Part of an ad break, see <see cref="Track.InBreak"/>.</param>
 public sealed record ScheduledItem(string Path, TrackKind? Kind = null, string? StreamName = null, double StreamSeconds = 0, string? Advertiser = null,
-    ItemLock Lock = ItemLock.Free, DateTime? StartBy = null, bool Backtime = false);
+    ItemLock Lock = ItemLock.Free, DateTime? StartBy = null, bool Backtime = false, DateTime? PlayedAt = null, bool InBreak = false);
 
 /// <summary>What the operator may do with a playlist item put there by the schedule.</summary>
 public enum ItemLock

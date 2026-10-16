@@ -19,6 +19,8 @@ public sealed class LibrarySettings
     public string Password { get; set; } = "";
     /// <summary>Music folders scanned into the library ("Scan now", radio-import without folders).</summary>
     public List<string> Folders { get; set; } = new();
+    /// <summary>Folders whose songs go in a category (folder → category id): new songs found there get it after each scan.</summary>
+    public Dictionary<string, long> FolderCategories { get; set; } = new();
     /// <summary>The app scans the folders this often (minutes; 0 = only when asked). Each scan only reads what changed.</summary>
     public int ScanEveryMinutes { get; set; } = 60;
     /// <summary>The app also scans shortly after files in the folders are added, changed or deleted.</summary>

@@ -50,6 +50,8 @@ public sealed class AppSettings
     public double Crossfade { get; set; } = 5;
     /// <summary>Crossfade into or out of jingles, adverts and programmes (song to song is <see cref="Crossfade"/>).</summary>
     public double OtherCrossfade { get; set; }
+    /// <summary>The playlist's row backgrounds by type (Settings → Colours).</summary>
+    public PlaylistColors PlaylistColors { get; set; } = new();
     /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
     public TimeSignalSettings TimeSignal { get; set; } = new();
     /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>
@@ -163,8 +165,10 @@ public sealed class AppSettings
         Loudness ??= new();
         Library ??= new();
         Library.Folders ??= new();
+        Library.FolderCategories ??= new();
         FillFolder ??= "";
         FillCategories ??= new();
+        PlaylistColors ??= new();
         Shortcuts ??= new();
         // Actions added since the file was saved get their default.
         foreach (var (id, key) in global::Playout.App.Shortcuts.Defaults()) Shortcuts.TryAdd(id, key);
@@ -218,13 +222,26 @@ public sealed class PlaylistEntry
     public DateTime? StartBy { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Backtime { get; set; }
+    /// <summary>When it went on air (UTC), and whether it is part of an ad break.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTime? PlayedAt { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool InBreak { get; set; }
 
     [JsonIgnore]
     public bool IsStream => StreamName != null;
 
+    /// <summary>Restored as it was (the engine's type, when it went on air), not opened as a plain file.</summary>
+    [JsonIgnore]
+    public bool HasDetails => PlayedAt != null || Kind != null;
+
     public static PlaylistEntry From(Track t)
     {
         var e = t.IsStream ? new PlaylistEntry { Path = t.Path, StreamName = t.Title, StreamSeconds = t.Duration } : new PlaylistEntry { Path = t.Path };
+        e.PlayedAt = t.PlayedAt;
+        e.InBreak = t.InBreak;
+        // A jingle from a smart playlist's jingle category stays a jingle wherever the file is.
+        if (t.Kind is not (TrackKind.Music or TrackKind.Stream)) e.Kind = t.Kind;
         if (t.Event != null)
         {
             e.Event = t.Event;
@@ -238,7 +255,7 @@ public sealed class PlaylistEntry
     }
 
     /// <summary>A scheduled item, as the engine takes it back.</summary>
-    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser, Lock, StartBy, Backtime);
+    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser, Lock, StartBy, Backtime, PlayedAt, InBreak);
 }
 
 /// <summary>A named set of <see cref="AppSettings.CartCount"/> carts.</summary>
