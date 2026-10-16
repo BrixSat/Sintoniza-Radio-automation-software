@@ -43,14 +43,12 @@ engine for decoding, mixing and streaming.
   Settings → Library). Every item that goes on air is written to the play history. Studios sharing a MySQL
   library share categories, cue points and history. `radio-import` does the scanning from the command line. The
   tables are documented for other programs in [docs/library-database.md](docs/library-database.md).
-- **Daily logs (scheduling)**: the library also holds each station's clocks (the plan of each hour), rotation
-  rules, advertisers, campaigns and bookings. `radio-schedule make`, run every night, makes the next days' logs from
-  them: songs by the rotation rules (song, artist and title rest times, longest-rested first), the booked adverts
-  placed in the breaks (spread over their hours or in named breaks, competitors kept apart, breaks within their
-  length, versions in turn), timed breaks and events, and gaps before them filled. Late bookings and cancellations
-  are put into logs already made. Several stations can share one database. See
-  [docs/scheduling-design.md](docs/scheduling-design.md); the playout loading the logs, and a program with screens to
-  edit clocks and campaigns, come next.
+- **Everything in the database**: the schedule (events, ad breaks, smart playlists, clients and campaigns), the
+  folders of each category and the as-run log are in the library database, with the music. With MySQL, Sintoniza
+  Schedule can run on another computer (the commercial department) and the studio picks up a save within seconds.
+  If the database can't be reached, the playout carries on with its copy of the last schedule and its own as-run
+  files, and puts in what the database missed when it is back. The first start with this version moves an older
+  `schedule.json` into the database. The tables are in [docs/library-database.md](docs/library-database.md).
 - **Folders**: folder tree plus a filterable file list. Double-click to add, or right-click → *Play next*.
 - **Cue points**: mark the usual radio markers on any file: **Cue In** (start), **Intro** (talk-over until the
   vocals), **Outro** (start of the ending), **Mix** (where the next item starts while this one finishes) and
@@ -148,6 +146,15 @@ engine for decoding, mixing and streaming.
   goes into the stream only, not to the audio outputs, so you don't hear yourself with a delay; use headphones.
   The input, mic level, music level while talking and fade times are on the Microphone tab. With *FM radio* the
   mic goes through the mixing desk and there is no MIC button.
+- **Backups** (Settings → Safety): every day at a set time (and *Back up now*), one zip with the database (MySQL:
+  an SQL file that puts every table back with `mysql name < file`, made by the app, so it works on Windows too;
+  SQLite: a copy) and the station's files; kept for 14 days (the newest three always).
+- **Alerts** (Settings → Alerts): by Telegram, email and/or a web address (JSON POST), when there is silence on air,
+  the stream is down, the engine stops responding, the app had to be started again after a crash or a freeze, the
+  database is unavailable, a disk is nearly full, the computer's clock is off (checked against a time server) or a
+  backup fails; and again when it is fixed. *Send a test alert* checks the setup.
+- **Graphics on Linux with NVIDIA**: the app tells the driver to sleep instead of spinning a CPU core while it waits
+  for the screen (`__GL_YIELD=USLEEP`, unless set already).
 - **Top of the hour time signal** (Settings → Time signal): the pips (five short, the long one on the hour) or your own
   audio file, timed to end on the hour. Either play it **over** whatever is on air, or **stop** what is on air: it
   fades out just before the signal and the next playlist item starts right after it (in AUTO). Or turn it off.
@@ -340,9 +347,8 @@ Then start the app:
 ```
 src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
                      Runs on its own thread; the UI only calls its public API.
-src/Playout.Library  Music library database (SQLite / MySQL), the folder scanner and the log maker.
+src/Playout.Library  The database (SQLite / MySQL): music library, schema, backups, and the folder scanner.
 src/Playout.Import   radio-import: command-line library scanner.
-src/Playout.Schedule radio-schedule: makes the daily logs (clocks, rotation, traffic).
 src/Playout.App      Avalonia desktop UI (deck, playlist, music browser, cartwall, settings).
 scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
 native/<platform>/   BASS libraries (downloaded, not committed).

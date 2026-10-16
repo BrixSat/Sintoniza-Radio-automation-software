@@ -1,7 +1,9 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Dapper;
 using Playout.Engine;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -28,11 +30,17 @@ public sealed record AsRunEntry(
 
 /// <summary>
 /// The as-run log: every item that went on air on this computer (playlist and carts), with when it started and
-/// ended, one CSV file a day in the as-run folder. It is what the reports (music for royalties, proof of broadcast
-/// for advertisers) are made from, and it is kept even when there is no music library.
+/// ended. Each goes into the library database (the as_run table, what the reports are made from) and into one CSV file
+/// a day in the as-run folder, kept as this computer's own record: what the database missed while it couldn't be
+/// reached is put in later from there.
 /// </summary>
 sealed class AsRunLog
 {
+    /// <summary>The library database, when it is open (set by the main window).</summary>
+    public Func<LibraryDb?> Database { get; set; } = () => null;
+    bool _historySynced;
+    DateTime _nextSync = DateTime.MinValue;
+
     public static readonly string[] Header =
         ["Date", "Start", "End", "Seconds", "Type", "Source", "Event", "Advertiser", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "File"];
 
@@ -138,8 +146,36 @@ sealed class AsRunLog
         _ => "Music",
     };
 
+    /// <summary>
+    /// Puts what the database is missing from the CSV files into it: the whole history the first time the database is
+    /// there, then the last two days every ten minutes (the database ignores what it has already).
+    /// </summary>
+    public void Sync(bool now = false)
+    {
+        if (Database() is not { } db || (!now && DateTime.UtcNow < _nextSync)) return;
+        _nextSync = DateTime.UtcNow.AddMinutes(10);
+        Queue(() =>
+        {
+            DateTime from = _historySynced ? DateTime.Today.AddDays(-2) : FirstDay() ?? DateTime.Today;
+            int added = AsRunDb.Add(db, Read(_folder, from, DateTime.Today));
+            _historySynced = true;
+            if (added > 0) AppLog.Write($"As-run: {added} put in the database from the files");
+        });
+    }
+
+    DateTime? FirstDay()
+    {
+        if (!Directory.Exists(_folder)) return null;
+        return Directory.GetFiles(_folder, "*.csv").Select(f => DateTime.TryParseExact(Path.GetFileNameWithoutExtension(f), "yyyy-MM-dd",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d : (DateTime?)null)
+            .Where(d => d != null).DefaultIfEmpty(null).Min();
+    }
+
     void Append(AsRunEntry e)
     {
+        if (Database() is { } db)
+            try { AsRunDb.Add(db, [e]); }
+            catch (Exception ex) { AppLog.Write($"As-run not put in the database (it will be later): {ex.Message}"); }
         Directory.CreateDirectory(_folder);
         string file = Path.Combine(_folder, $"{e.Start:yyyy-MM-dd}.csv");
         bool header = !File.Exists(file);
@@ -258,4 +294,96 @@ static class Csv
     /// <summary>The value written with <see cref="Line"/>, as it was (the formula guard removed).</summary>
     public static string Unguard(string field) =>
         field.Length > 1 && field[0] == '\'' && "=+-@".Contains(field[1]) ? field[1..] : field;
+}
+
+/// <summary>The as-run log in the library database (as_run), for the station.</summary>
+static class AsRunDb
+{
+    const string Columns = "station_id, started_at, ended_at, type, source, event, advertiser, artist, title, album, composer, label, isrc, year, file";
+
+    /// <summary>Adds entries, leaving out those already there (same start and file); returns how many were new.</summary>
+    public static int Add(LibraryDb db, IEnumerable<AsRunEntry> entries)
+    {
+        var rows = entries.Select(e => new
+        {
+            station = ScheduleStore.Station,
+            start = e.Start.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            end = e.End?.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            e.Type, e.Source, e.Event, e.Advertiser, e.Artist, e.Title, e.Album, e.Composer, e.Label, e.Isrc, e.Year,
+            File = e.File.Length > 760 ? e.File[..760] : e.File,
+        }).ToList();
+        if (rows.Count == 0) return 0;
+        using var c = db.Connect();
+        using var tx = c.BeginTransaction();
+        int added = c.Execute(
+            $"INSERT {(db.IsMySql ? "IGNORE" : "OR IGNORE")} INTO as_run ({Columns}) VALUES (@station, @start, @end, @Type, @Source, @Event, @Advertiser, @Artist, @Title, @Album, @Composer, @Label, @Isrc, @Year, @File)",
+            rows, tx);
+        tx.Commit();
+        return added;
+    }
+
+    sealed class Row
+    {
+        public string StartedAt { get; set; } = "";
+        public string? EndedAt { get; set; }
+        public string Type { get; set; } = "";
+        public string Source { get; set; } = "";
+        public string Event { get; set; } = "";
+        public string Advertiser { get; set; } = "";
+        public string Artist { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Album { get; set; } = "";
+        public string Composer { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string Isrc { get; set; } = "";
+        public string Year { get; set; } = "";
+        public string File { get; set; } = "";
+    }
+
+    /// <summary>Everything that went on air between two days (inclusive, local dates), in time order.</summary>
+    public static List<AsRunEntry> Read(LibraryDb db, DateTime from, DateTime to)
+    {
+        using var c = db.Connect();
+        var rows = c.Query<Row>(
+            """
+            SELECT started_at AS StartedAt, ended_at AS EndedAt, type AS Type, source AS Source, event AS Event, advertiser AS Advertiser,
+                   artist AS Artist, title AS Title, album AS Album, composer AS Composer, label AS Label, isrc AS Isrc, year AS Year, file AS File
+            FROM as_run WHERE station_id = @station AND started_at >= @from AND started_at < @to ORDER BY started_at
+            """,
+            new
+            {
+                station = ScheduleStore.Station,
+                from = from.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                to = to.Date.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            });
+        var list = new List<AsRunEntry>();
+        foreach (var r in rows)
+        {
+            if (!DateTime.TryParseExact(r.StartedAt, "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start)) continue;
+            DateTime? end = DateTime.TryParseExact(r.EndedAt, "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out var e) ? e : null;
+            list.Add(new AsRunEntry(start, end, r.Type, r.Source, r.Event, r.Advertiser, r.Artist, r.Title, r.Album, r.Composer, r.Label, r.Isrc, r.Year, r.File));
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// For the reports: the database's entries, with this computer's files for what the database doesn't have yet (or
+    /// only the files, without the database).
+    /// </summary>
+    public static List<AsRunEntry> ReadAll(LibraryDb? db, string folder, DateTime from, DateTime to)
+    {
+        var files = AsRunLog.Read(folder, from, to);
+        if (db == null) return files;
+        List<AsRunEntry> stored;
+        try { stored = Read(db, from, to); }
+        catch (Exception ex)
+        {
+            AppLog.Write($"As-run not read from the database, the files are used: {ex.Message}");
+            return files;
+        }
+        var known = stored.Select(Key).ToHashSet();
+        return stored.Concat(files.Where(e => !known.Contains(Key(e)))).OrderBy(e => e.Start).ToList();
+
+        static (string, string) Key(AsRunEntry e) => (e.Start.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture), e.File.Length > 760 ? e.File[..760] : e.File);
+    }
 }

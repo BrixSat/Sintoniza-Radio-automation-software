@@ -69,13 +69,29 @@ public partial class ScheduleWindow : Window
     // Parameterless constructor for the XAML previewer.
     public ScheduleWindow() : this(new ScheduleData(), "") { }
 
-    public ScheduleWindow(ScheduleData data, string browseFolder)
+    public ScheduleWindow(ScheduleData data, string browseFolder) : this(data, browseFolder, null, 0, null) { }
+
+    readonly ScheduleStore? _store;
+    long _version;
+    readonly string? _offline;
+
+    /// <param name="store">The database the schedule is saved to; null: it can't be saved (<paramref name="offline"/> says why).</param>
+    /// <param name="version">The version <paramref name="data"/> was read at: a save over a newer one asks first.</param>
+    internal ScheduleWindow(ScheduleData data, string browseFolder, ScheduleStore? store, long version, string? offline)
     {
         InitializeComponent();
         Localization.Apply(this);
         _data = data;
         _data.Normalize();
         _browseFolder = browseFolder;
+        _store = store;
+        _version = version;
+        _offline = offline;
+        if (offline != null)
+        {
+            ErrorText.Text = offline;
+            SaveButton.IsEnabled = false;
+        }
 
         _eventCalendar = new EntryCalendar(this, EventGrid, EventHeader, EventStepBox, EventOffsetBox, EventAddTimeBox, EventAddTimeButton, EventClearButton,
             () => _data.Events, () => (EventList.SelectedItem as ScheduleRow)?.Item as ScheduledEvent, () => (EventList.SelectedItem as ScheduleRow)?.Refresh());
@@ -1091,16 +1107,45 @@ public partial class ScheduleWindow : Window
                     ErrorText.Text = L.F("{0}: the last day is before the first.", CampaignName(k));
                     return;
                 }
+        if (_store == null)
+        {
+            ErrorText.Text = _offline ?? L.T("Not connected to the database: the schedule can't be saved.");
+            return;
+        }
+        Store(_version);
+    }
+
+    /// <summary>Who saved, for the next one who finds the schedule changed.</summary>
+    static string Who => $"{Environment.UserName}@{Environment.MachineName}";
+
+    /// <summary>Saves to the database; <paramref name="expected"/> null: over whatever is there.</summary>
+    void Store(long? expected)
+    {
         try
         {
-            _data.Save();
+            _version = _store!.Save(_data, expected, Who);
             _saved = Snapshot();
             ErrorText.Text = "";
             SavedText.Text = L.F("Saved at {0:HH:mm:ss}. The playout takes it within a few seconds.", DateTime.Now);
+        }
+        catch (ScheduleStore.ChangedException ex)
+        {
+            _ = AskOverwrite(ex);
         }
         catch (Exception ex)
         {
             ErrorText.Text = L.F("Not saved: {0}", ex.Message);
         }
+    }
+
+    /// <summary>Someone else saved the schedule since it was opened here: theirs is replaced only if asked to.</summary>
+    async Task AskOverwrite(ScheduleStore.ChangedException ex)
+    {
+        string by = ex.By.Length > 0 ? ex.By : L.T("another computer");
+        if (await Dialogs.Confirm(this, L.T("Schedule changed"),
+                L.F("The schedule was saved by {0} at {1:HH:mm} after you opened it. Save yours over it? Their changes would be lost (close and open the schedule again to see them).", by, ex.At),
+                L.T("Save mine")))
+            Store(null);
+        else ErrorText.Text = L.T("Not saved: the schedule was changed elsewhere.");
     }
 }

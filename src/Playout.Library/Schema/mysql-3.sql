@@ -1,6 +1,6 @@
 -- Sintoniza library, schema version 3 (MySQL / MariaDB): scheduling. Stations, clocks (hour plans), rotation
 -- rules, commercial traffic (advertisers, campaigns, bookings) and the daily logs the playout plays.
--- Same tables as sqlite-3.sql; documented in docs/scheduling-design.md.
+-- Same tables as sqlite-3.sql. Replaced by the schedule tables of version 4 (their empty tables are removed then).
 -- Safe to run again: MySQL commits each change as it goes, so what a stopped run already made is skipped.
 -- Dates are local to the station, 'yyyy-MM-dd'; times of day 'HH:mm:ss'; lengths and offsets in seconds.
 

@@ -1,17 +1,24 @@
 # Library database
 
-The music library is a SQL database: an SQLite file on the studio computer, or a MySQL / MariaDB server that
-several studios share (Settings → Library). The app reads and edits it, and `radio-import` fills it from the music
-folders. Other programs may read it and write to it too. This page is the contract they rely on.
+The station's database: an SQLite file on the studio computer, or a MySQL / MariaDB server that several studios
+(and the schedule program on another computer) share (Settings → Library). It holds the music library, the
+schedule and advertising traffic, the folders of each category, and the as-run log. The app reads and edits it, and
+`radio-import` fills the library from the music folders. Other programs may read it and write to it too. This page
+is the contract they rely on.
 
-Schema version **3**. The scripts that create the tables are
+What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
+when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
+
+Schema version **4**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
 [`mysql-2.sql`](../src/Playout.Library/Schema/mysql-2.sql) (cue points), then
 [`sqlite-3.sql`](../src/Playout.Library/Schema/sqlite-3.sql) and
-[`mysql-3.sql`](../src/Playout.Library/Schema/mysql-3.sql) (scheduling: stations, clocks, rotation, traffic and
-daily logs, documented in [scheduling-design.md](scheduling-design.md)). The app creates the tables itself the
+[`mysql-3.sql`](../src/Playout.Library/Schema/mysql-3.sql) (stations, and the tables of an earlier log-based design),
+then [`sqlite-4.sql`](../src/Playout.Library/Schema/sqlite-4.sql) and
+[`mysql-4.sql`](../src/Playout.Library/Schema/mysql-4.sql) (the schedule, traffic, category folders and as-run log;
+the earlier design's tables are removed if they are empty). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -86,7 +93,53 @@ Every item that went on air: the as-run history. Rotation rules (artist and titl
 | `path`, `artist`, `title` | text | as played, so the history stays readable if the track is deleted |
 | `started_at` | time | when it went on air |
 | `source` | text | `playlist` or `cart` |
-| `station_id`, `log_item_id`, `ended_at`, `kind` | | from schema 3, see [scheduling-design.md](scheduling-design.md) |
+| `station_id`, `log_item_id`, `ended_at`, `kind` | | from schema 3, not used |
+
+### `category_folders`
+
+The folders given to a category (Settings → Library → Categories…, or right-click a folder): their songs are in it,
+and new songs found there by a scan get it too.
+
+| Column | Type | |
+| --- | --- | --- |
+| `path` | text, key | the folder, as the studio computers see it |
+| `category_id` | integer | → `categories.id` |
+
+### `as_run`
+
+What went on air, with its start and end: what the reports (music for royalties, proof of broadcast for
+advertisers) are made from. Each studio also keeps its own CSV files and puts in later what the database missed.
+
+| Column | Type | |
+| --- | --- | --- |
+| `id` | integer | |
+| `station_id` | integer | → `stations.id` |
+| `started_at`, `ended_at` | text | local time, `yyyy-MM-ddTHH:mm:ss`; `ended_at` null if the app stopped while it played |
+| `type` | text | `Music`, `Jingle`, `Advert`, `Stream`, `Programme` |
+| `source` | text | `playlist` or `cart` |
+| `event`, `advertiser` | text | the scheduled event or ad break (`Anuncios 10:59`), and whose advert it is |
+| `artist`, `title`, `album`, `composer`, `label`, `isrc`, `year` | text | from the file's tags |
+| `file` | text | the file played; `station_id`, `started_at` and `file` together are unique |
+
+## The schedule
+
+What the schedule program (Sintoniza Schedule) edits, for each station (`station_id`; one station, 1, for now).
+It saves everything at once, as a new version in `schedule_versions`; the playout reads it again when the version
+changes. Ids are text (`CHAR(36)`, a GUID). Days: `weekday` 0 = Sunday … 6 = Saturday; times `HH:mm:ss`; dates
+`yyyy-MM-dd`.
+
+| Table | |
+| --- | --- |
+| `schedule_entries` | `type` `event` (a file, the newest file in a folder, or a stream at set times), `break` (an ad break) or `playlist` (an hour template); `name`, `enabled`, `start_mode` (`Soft`, `Hard`, `EndAt`), `max_delay_minutes`, `lock_level` (`Free`, `Movable`, `Locked`); for events `path`, `stream_minutes`, `max_age_minutes`; `position` keeps the order of the lists |
+| `schedule_slots` | `entry_id`, `weekday`, `time`: when each entry runs, every week (for an `EndAt` break, when it ends) |
+| `break_parts` | a break's running order: `position`, `kind` (`Jingle`, `Section`), `path` of a jingle, `section` name, `only_with_adverts` (a section opener) |
+| `playlist_lines` | an hour template's lines, in `position` order: `source` `Category` (`category_id`, `category_name`, `kind`) or `Folder` (`folder`) |
+| `ad_clients` | advertisers: `name` (on the proof of broadcast), `enabled` |
+| `ad_campaigns` | a client's campaigns: `name`, `enabled`, `starts_on` and `ends_on` (null = no limit), `section` of the break they go in (`''` = its first), `place` (0 automatic, 1–5 from the start of the section, 6–10 at its end) |
+| `ad_campaign_files` | a campaign's adverts (they take turns): `position`, `path` |
+| `ad_placements` | where a campaign plays: the break at `time`, every week on `weekday`, or only on `date` |
+| `schedule_state` | `entry_id`, `last_started`: when the playout last started each event and break (local time), so a restart doesn't start it again; not touched by a save |
+| `schedule_versions` | `station_id`, `version`, `updated_at` (UTC), `updated_by`: a save over a newer version is asked about first |
 
 ## Adding music from another program
 

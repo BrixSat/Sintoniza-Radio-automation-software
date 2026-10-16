@@ -66,9 +66,9 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// own pooled connection, so it can be used from any thread, and another program (radio-import, or your own) can
 /// write to it at the same time. The tables are documented in docs/library-database.md.
 /// </summary>
-public sealed class LibraryDb
+public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 3;
+    public const int SchemaVersion = 4;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -103,6 +103,7 @@ public sealed class LibraryDb
                 UserID = settings.User,
                 Password = settings.Password,
                 CharacterSet = "utf8mb4",
+                GuidFormat = MySqlGuidFormat.None, // ids in CHAR(36) columns are read as text
                 ConnectionTimeout = 10,
                 DefaultCommandTimeout = 60,
             }.ToString()
@@ -158,8 +159,28 @@ public sealed class LibraryDb
                 tx.Commit();
             }
         }
+        if (version < 4) DropEmptyOldTables(c, db._mySql);
         db.FillSearchText(c);
         return db;
+    }
+
+    /// <summary>
+    /// The tables of the earlier design (daily logs made from clocks, its own advertisers and campaigns), replaced by
+    /// the schedule tables of version 4: removed if nothing was ever put in them, else left alone.
+    /// </summary>
+    static void DropEmptyOldTables(DbConnection c, bool mySql)
+    {
+        string[] old = ["log_items", "logs", "bookings", "campaign_spots", "campaigns", "advertisers", "rotation_rules",
+                        "clock_overrides", "clock_grid", "clock_slots", "clocks", "schedule_settings"];
+        foreach (var table in old)
+        {
+            bool exists = mySql
+                ? c.ExecuteScalar<long>("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = @table", new { table }) > 0
+                : c.ExecuteScalar<long>("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = @table", new { table }) > 0;
+            if (!exists || c.ExecuteScalar<long>($"SELECT COUNT(*) FROM {table}") > 0) continue;
+            try { c.Execute($"DROP TABLE {table}"); }
+            catch (DbException) { /* still referenced by a table that has rows: left */ }
+        }
     }
 
     static string Script(string name)
@@ -185,9 +206,10 @@ public sealed class LibraryDb
         if (current.ToString().Trim() is { Length: > 0 } rest) yield return rest;
     }
 
-    internal bool IsMySql => _mySql;
+    public bool IsMySql => _mySql;
 
-    internal DbConnection Connect()
+    /// <summary>A connection to the library, open (for the app's own tables: schedule, as-run).</summary>
+    public DbConnection Connect()
     {
         DbConnection c = _mySql ? new MySqlConnection(_connectionString) : new SqliteConnection(_connectionString);
         c.Open();
@@ -316,6 +338,22 @@ public sealed class LibraryDb
             $"UPDATE tracks SET category_id = @categoryId WHERE (path LIKE @slash ESCAPE '!' OR path LIKE @backslash ESCAPE '!')"
             + (onlyWithout ? " AND category_id IS NULL" : ""),
             new { categoryId, slash = like + "/%", backslash = like + "\\%" });
+    }
+
+    /// <summary>The folders given to a category (folder → category id): their songs go in it, new ones after each scan too.</summary>
+    public Dictionary<string, long> FolderCategories()
+    {
+        using var c = Connect();
+        return c.Query<(string Path, long CategoryId)>("SELECT path AS Path, category_id AS CategoryId FROM category_folders")
+            .ToDictionary(r => r.Path, r => r.CategoryId);
+    }
+
+    /// <summary>Gives a folder to a category, or (null) takes it away.</summary>
+    public void SetFolderRule(string folder, long? categoryId)
+    {
+        using var c = Connect();
+        c.Execute("DELETE FROM category_folders WHERE path = @folder", new { folder });
+        if (categoryId is { } id) c.Execute("INSERT INTO category_folders (path, category_id) VALUES (@folder, @id)", new { folder, id });
     }
 
     public void SetCategory(IEnumerable<long> trackIds, long? categoryId)

@@ -240,9 +240,7 @@ sealed class LibraryService
         {
             var r = await Task.Run(() => LibraryScanner.Scan(db, folders, progress, token));
             // Folders given a category: the songs found there that have none yet get it.
-            var rules = FolderCategories;
-            if (rules.Count > 0)
-                await Task.Run(() => { foreach (var (folder, id) in rules) db.SetFolderCategory(folder, id, onlyWithout: true); });
+            await Task.Run(() => { foreach (var (folder, id) in db.FolderCategories()) db.SetFolderCategory(folder, id, onlyWithout: true); });
             var parts = new List<string> { L.F("{0:N0} added", r.Added), L.F("{0:N0} updated", r.Updated) };
             if (r.Moved > 0) parts.Add(L.F("{0:N0} moved", r.Moved));
             if (r.Missing > 0) parts.Add(L.F("{0:N0} missing", r.Missing));
@@ -270,8 +268,6 @@ sealed class LibraryService
 
     public void CancelScan() => _scan?.Cancel();
 
-    /// <summary>Folders whose songs go in a category (from the settings), applied to new songs after each scan.</summary>
-    public IReadOnlyDictionary<string, long> FolderCategories { get; set; } = new Dictionary<string, long>();
 
     // ───────────────────────── Cue points ─────────────────────────
 

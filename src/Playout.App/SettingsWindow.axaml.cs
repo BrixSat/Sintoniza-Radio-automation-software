@@ -112,6 +112,37 @@ public partial class SettingsWindow : Window
         ClearFillButton.Click += (_, _) => { _fillFolder = ""; ShowFillFolder(); };
         _ = LoadFillCategories(settings.FillCategories ?? new());
         ResumeBox.IsChecked = settings.ResumeOnStart;
+        var backup = settings.Backup ?? new();
+        BackupBox.IsChecked = backup.Enabled;
+        BackupTimeBox.Text = backup.Time;
+        BackupKeepBox.Value = Math.Clamp(backup.KeepDays, 1, 365);
+        _backupFolder = backup.Folder ?? "";
+        ShowBackupFolder();
+        ChooseBackupFolderButton.Click += async (_, _) =>
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = L.T("Folder for the backups") });
+            if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+            _backupFolder = path;
+            ShowBackupFolder();
+        };
+        DefaultBackupFolderButton.Click += (_, _) => { _backupFolder = ""; ShowBackupFolder(); };
+        OpenBackupsButton.Click += (_, _) =>
+        {
+            string folder = BackupFromUi().FolderOrDefault;
+            Directory.CreateDirectory(folder);
+            Updates.OpenInBrowser(folder);
+        };
+        BackupNowButton.IsEnabled = _main != null;
+        BackupNowButton.Click += async (_, _) =>
+        {
+            if (_main == null) return;
+            BackupNowButton.IsEnabled = false;
+            BackupStatusText.Text = L.T("Making a backup…");
+            _settings.Backup = BackupFromUi(); // the folder chosen here
+            string? zip = await _main.BackupNow();
+            BackupStatusText.Text = zip != null ? L.F("Made: {0}", Path.GetFileName(zip)) : L.T("The backup failed: see the status line and the log.");
+            BackupNowButton.IsEnabled = true;
+        };
         WatchdogBox.IsChecked = settings.RestartAfterCrash;
         AutostartBox.IsChecked = Autostart.IsEnabled;
         AutostartBox.IsEnabled = Autostart.IsSupported;
@@ -173,6 +204,7 @@ public partial class SettingsWindow : Window
             Stream = settings.PlaylistColors?.Stream, Music = settings.PlaylistColors?.Music, OnAir = settings.PlaylistColors?.OnAir,
         };
         BuildColourRows();
+        ShowAlerts(settings.Alerts ?? new());
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
         SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
         SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
@@ -607,6 +639,77 @@ public partial class SettingsWindow : Window
         ToolTip.SetTip(SignalFileText, _signalFile);
     }
 
+    // ───────────────────────── Alerts ─────────────────────────
+
+    void ShowAlerts(AlertSettings a)
+    {
+        AlertsBox.IsChecked = a.Enabled;
+        AlertsPanel.IsEnabled = a.Enabled;
+        AlertsBox.IsCheckedChanged += (_, _) => AlertsPanel.IsEnabled = AlertsBox.IsChecked == true;
+        AlertSilenceBox.IsChecked = a.Silence;
+        AlertStreamBox.IsChecked = a.Stream;
+        AlertEngineBox.IsChecked = a.Engine;
+        AlertRestartBox.IsChecked = a.Restart;
+        AlertDatabaseBox.IsChecked = a.Database;
+        AlertDiskBox.IsChecked = a.Disk;
+        AlertDiskGbBox.Value = (decimal)a.DiskGb;
+        AlertClockBox.IsChecked = a.Clock;
+        AlertClockSecondsBox.Value = (decimal)a.ClockSeconds;
+        AlertTimeServerBox.Text = a.TimeServer;
+        AlertBackupBox.IsChecked = a.Backup;
+        TelegramTokenBox.Text = a.TelegramToken;
+        TelegramChatBox.Text = a.TelegramChat;
+        SmtpServerBox.Text = a.SmtpServer;
+        SmtpPortBox.Text = a.SmtpPort.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        SmtpSslBox.IsChecked = a.SmtpSsl;
+        SmtpUserBox.Text = a.SmtpUser;
+        SmtpPasswordBox.Text = a.SmtpPassword;
+        MailFromBox.Text = a.MailFrom;
+        MailToBox.Text = a.MailTo;
+        WebhookBox.Text = a.WebhookUrl;
+        TestAlertButton.Click += async (_, _) =>
+        {
+            var test = AlertsFromUi();
+            if (!test.HasChannel)
+            {
+                TestAlertText.Text = L.T("Fill in Telegram, email or a web address first.");
+                return;
+            }
+            TestAlertButton.IsEnabled = false;
+            TestAlertText.Text = L.T("Sending…");
+            string station = string.IsNullOrWhiteSpace(StationNameBox.Text) ? AppInfo.Name : StationNameBox.Text.Trim();
+            string problems = await AlertSender.SendAsync(test, station, "test", true, L.T("Test alert: alerts reach you"));
+            TestAlertText.Text = problems.Length == 0 ? L.T("Sent: check that it arrived.") : L.F("Not sent: {0}", problems);
+            TestAlertButton.IsEnabled = true;
+        };
+    }
+
+    AlertSettings AlertsFromUi() => new()
+    {
+        Enabled = AlertsBox.IsChecked == true,
+        Silence = AlertSilenceBox.IsChecked == true,
+        Stream = AlertStreamBox.IsChecked == true,
+        Engine = AlertEngineBox.IsChecked == true,
+        Restart = AlertRestartBox.IsChecked == true,
+        Database = AlertDatabaseBox.IsChecked == true,
+        Disk = AlertDiskBox.IsChecked == true,
+        DiskGb = (double)(AlertDiskGbBox.Value ?? 2),
+        Clock = AlertClockBox.IsChecked == true,
+        ClockSeconds = (double)(AlertClockSecondsBox.Value ?? 2),
+        TimeServer = AlertTimeServerBox.Text?.Trim() is { Length: > 0 } server ? server : "pool.ntp.org",
+        Backup = AlertBackupBox.IsChecked == true,
+        TelegramToken = TelegramTokenBox.Text?.Trim() ?? "",
+        TelegramChat = TelegramChatBox.Text?.Trim() ?? "",
+        SmtpServer = SmtpServerBox.Text?.Trim() ?? "",
+        SmtpPort = int.TryParse(SmtpPortBox.Text, out int port) && port > 0 ? port : 587,
+        SmtpSsl = SmtpSslBox.IsChecked == true,
+        SmtpUser = SmtpUserBox.Text?.Trim() ?? "",
+        SmtpPassword = SmtpPasswordBox.Text ?? "",
+        MailFrom = MailFromBox.Text?.Trim() ?? "",
+        MailTo = MailToBox.Text?.Trim() ?? "",
+        WebhookUrl = WebhookBox.Text?.Trim() ?? "",
+    };
+
     // ───────────────────────── Colours ─────────────────────────
 
     PlaylistColors _colors = new();
@@ -659,6 +762,23 @@ public partial class SettingsWindow : Window
             ColourRows.Children.Add(row);
             Show();
         }
+    }
+
+    string _backupFolder = "";
+
+    BackupSettings BackupFromUi() => new()
+    {
+        Enabled = BackupBox.IsChecked == true,
+        Time = ScheduleTimes.Parse(BackupTimeBox.Text) is { EveryHour: false } t ? t.Time.ToString(@"hh\:mm") : "04:00",
+        KeepDays = (int)(BackupKeepBox.Value ?? 14),
+        Folder = _backupFolder,
+    };
+
+    void ShowBackupFolder()
+    {
+        BackupFolderText.Text = _backupFolder.Length > 0 ? _backupFolder : L.F("{0} (default)", Backups.DefaultFolder);
+        DefaultBackupFolderButton.IsEnabled = _backupFolder.Length > 0;
+        if (_main?.LastBackup is { } last) BackupStatusText.Text = L.F("Last: {0:yyyy-MM-dd HH:mm}", last.LastWriteTime);
     }
 
     TimeSignalSettings SignalFromUi() => new(
@@ -754,6 +874,7 @@ public partial class SettingsWindow : Window
         _settings.FillSongHours = (double)(FillSongHoursBox.Value ?? 3);
         _settings.FillArtistMinutes = (int)(FillArtistMinutesBox.Value ?? 60);
         _settings.ResumeOnStart = ResumeBox.IsChecked == true;
+        _settings.Backup = BackupFromUi();
         _settings.RestartAfterCrash = WatchdogBox.IsChecked == true;
         if (Autostart.IsSupported)
         {
@@ -766,6 +887,7 @@ public partial class SettingsWindow : Window
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
         _settings.OtherCrossfade = (double)(OtherCrossfadeBox.Value ?? 0);
         _settings.PlaylistColors = _colors;
+        _settings.Alerts = AlertsFromUi();
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
         _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
         _settings.PreviewOutput = RouteFrom(PreviewDeviceBox, PreviewChannelBox);

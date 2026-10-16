@@ -1,6 +1,7 @@
 using System.Text;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -18,6 +19,9 @@ public partial class ReportsWindow : Window
 
     // Parameterless constructor for the XAML previewer.
     public ReportsWindow() : this(AsRunLog.DefaultFolder, "") { }
+
+    /// <summary>The library database the as-run log is read from (with this computer's files for what it lacks).</summary>
+    internal Func<LibraryDb?> Database { get; init; } = () => null;
 
     public ReportsWindow(string folder, string station)
     {
@@ -48,7 +52,7 @@ public partial class ReportsWindow : Window
         if (to < from) (from, to) = (to, from);
         int version = ++_loadVersion;
         SummaryText.Text = L.T("Reading…");
-        var entries = await Task.Run(() => AsRunLog.Read(_folder, from, to));
+        var entries = await Task.Run(() => AsRunDb.ReadAll(Database(), _folder, from, to));
         if (version != _loadVersion) return;
         _entries = entries;
 

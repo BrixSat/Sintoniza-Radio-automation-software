@@ -88,6 +88,8 @@ static class Watchdog
             AppLog.Write((hung ? $"Watchdog: the app has not responded for {HungSeconds:0} s"
                              : $"Watchdog: the app stopped unexpectedly (exit code {child.ExitCode})") +
                          $"; starting it again{(looping ? " in 30 s" : "")}");
+            AlertSender.SendFromWatchdog(hung ? L.F("The playout stopped responding for {0:0} s: it is being started again", HungSeconds)
+                : L.F("The playout stopped unexpectedly (exit code {0}): it is being started again", child.ExitCode));
             if (stop.Wait(looping ? 30_000 : 1000)) return 0;
         }
     }
@@ -97,6 +99,7 @@ static class Watchdog
     {
         string exe = Environment.ProcessPath!;
         var info = new ProcessStartInfo(exe) { UseShellExecute = false };
+        foreach (var (name, value) in GraphicsDriver.Environment) info.Environment.TryAdd(name, value);
         // Run with "dotnet RadioPlayout.dll" (e.g. dotnet run): pass the dll too.
         if (Path.GetFileNameWithoutExtension(exe).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
             info.ArgumentList.Add(Assembly.GetEntryAssembly()!.Location);

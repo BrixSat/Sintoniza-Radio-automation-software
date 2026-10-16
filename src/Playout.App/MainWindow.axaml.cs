@@ -79,7 +79,9 @@ public partial class MainWindow : Window
         _library.Changed += () => ScanButton.Content = _library.IsScanning ? L.T("Stop") : L.T("Scan");
         Tracks.Attach(_library);
         Tracks.CategoryFolders = () => CategoryFolders();
-        _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
+        _library.Changed += MoveFolderCategories;
+        _asRun.Database = () => _library.Db;
+        _library.Changed += () => _asRun.Sync(now: true); // the history in the files, once the database is open
         _ = _library.OpenAsync(_settings.Library);
         ApplyAutoScan();
 
@@ -101,7 +103,7 @@ public partial class MainWindow : Window
             FillPlayedTimes(_settings.PlaylistItems, _settings.OnAirIndex);
             AddEntries(_settings.PlaylistItems);
             _ = CarryOn();
-            _scheduler = new Scheduler(_engine, ScheduleData.Load());
+            _scheduler = new Scheduler(_engine, ScheduleSource.LoadLocal(), new ScheduleSource(() => _library.Db));
             _scheduler.Message += message =>
             {
                 AppLog.Write(message);
@@ -119,6 +121,7 @@ public partial class MainWindow : Window
             ApplySafety();
         }
         ApplyWebNowPlaying();
+        StartBackups();
         AppLog.Write($"Started {AppInfo.Name} {Updates.CurrentText}");
 
         // Saved every few seconds (only when something changed), so a crash or power cut loses next to nothing.
@@ -240,7 +243,11 @@ public partial class MainWindow : Window
             try { return _library.Db?.Categories().Select(c => (c.Id, c.Name)).ToList() ?? []; }
             catch { return []; }
         };
-        Library.CategoryOf = folder => _settings.Library.FolderCategories.TryGetValue(folder, out long id) ? id : null;
+        Library.CategoryOf = folder =>
+        {
+            try { return _library.Db?.FolderCategories().TryGetValue(folder, out long id) == true ? id : null; }
+            catch { return null; }
+        };
         Library.FolderCategoryRequested += async (folder, id) => await SetFolderCategory(folder, id);
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
         Library.EditTagsRequested += async path => await EditTags(path);
@@ -476,6 +483,7 @@ public partial class MainWindow : Window
         _slowTick = 30;
         DateText.Text = now.ToString("dddd, d MMMM yyyy");
         ReadUpcoming(now);
+        _asRun.Sync(); // every ten minutes: what the database missed
         UpdateStartTimes(st);
         _smart?.Check(_playlistEnds, st.State == PlayerState.Playing && _engine.AutoAdvance);
         UpdateStationInfo(now);
@@ -1364,13 +1372,45 @@ public partial class MainWindow : Window
     /// <summary>The music library (for the settings window).</summary>
     internal LibraryService MusicLibrary => _library;
 
+    // ───────────────────────── Backups ─────────────────────────
+
+    Backups? _backups;
+
+    HealthMonitor? _health;
+
+    void StartBackups()
+    {
+        if (_engine != null)
+        {
+            _health = new HealthMonitor(_engine, _library, () => _settings);
+            _health.Message += message =>
+            {
+                AppLog.Write(message);
+                Dispatcher.UIThread.Post(() => LastLog.Text = message);
+            };
+        }
+        _backups = new Backups(() => _settings.Backup, () => _library.Db);
+        _backups.Failed += error => _health?.Report("backup", L.F("The backup failed: {0}", error));
+        _backups.Message += message =>
+        {
+            AppLog.Write(message);
+            Dispatcher.UIThread.Post(() => LastLog.Text = message);
+        };
+    }
+
+    /// <summary>A backup now (Settings → Safety): its file, or null if it failed.</summary>
+    internal Task<string?> BackupNow() => _backups?.RunAsync() ?? Task.FromResult<string?>(null);
+
+    internal FileInfo? LastBackup => _backups?.Last;
+
     /// <summary>
     /// The categories' folders for the editor: a folder added is put in the library's scan list (if no folder there
     /// covers it already; <paramref name="alsoAdd"/> tells an open Settings window too), and after a change the
     /// settings are saved and the library scans.
     /// </summary>
     internal CategoryFolders CategoryFolders(Action<string>? alsoAdd = null) => new(
-        _settings.Library.FolderCategories,
+        () => _library.Db?.FolderCategories() ?? new(),
+        (folder, id) => _library.Db?.SetFolderRule(folder, id),
         folder =>
         {
             bool covered = _settings.Library.Folders.Any(f => Under(folder, f));
@@ -1380,10 +1420,40 @@ public partial class MainWindow : Window
         () =>
         {
             _settings.Save();
-            _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
             ApplyAutoScan();
             _ = _library.ScanAsync(_settings.Library.Folders, automatic: true);
         });
+
+    /// <summary>
+    /// Folders given to categories in this computer's settings (before they were kept in the database): moved into the
+    /// database once it is open.
+    /// </summary>
+    bool _movingFolders;
+
+    void MoveFolderCategories()
+    {
+        if (_library.Db is not { } db || _settings.Library.FolderCategories.Count == 0) return;
+        var rules = new Dictionary<string, long>(_settings.Library.FolderCategories);
+        if (_movingFolders) return;
+        _movingFolders = true;
+        Task.Run(() =>
+        {
+            try
+            {
+                var known = db.FolderCategories();
+                foreach (var (folder, id) in rules) if (!known.ContainsKey(folder)) db.SetFolderRule(folder, id);
+                AppLog.Write($"Category folders moved into the library database: {rules.Count}");
+                // Only once they are in the database are they taken out of the settings.
+                Dispatcher.UIThread.Post(() =>
+                {
+                    foreach (var folder in rules.Keys) _settings.Library.FolderCategories.Remove(folder);
+                    _settings.Save();
+                });
+            }
+            catch (Exception ex) { AppLog.Write($"Category folders not moved into the database: {ex.Message}"); }
+            finally { _movingFolders = false; }
+        });
+    }
 
     /// <summary>Whether <paramref name="folder"/> is <paramref name="root"/> or inside it.</summary>
     static bool Under(string folder, string root)
@@ -1409,10 +1479,7 @@ public partial class MainWindow : Window
         try
         {
             int count = await Task.Run(() => db.SetFolderCategory(folder, id));
-            if (id is { } set) _settings.Library.FolderCategories[folder] = set;
-            else _settings.Library.FolderCategories.Remove(folder);
-            _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
-            _settings.Save();
+            await Task.Run(() => db.SetFolderRule(folder, id));
             string category = id is { } c ? db.Categories().FirstOrDefault(x => x.Id == c)?.Name ?? "" : "";
             LastLog.Text = count == 0
                 ? L.F("No songs from {0} are in the library yet: add the folder in Settings → Library and scan. New songs found there will go in the category.", name)
@@ -1509,7 +1576,7 @@ public partial class MainWindow : Window
     void OpenReports()
     {
         if (_reports != null) { _reports.Activate(); return; }
-        _reports = new ReportsWindow(AsRunLog.DefaultFolder, _settings.StationName);
+        _reports = new ReportsWindow(AsRunLog.DefaultFolder, _settings.StationName) { Database = () => _library.Db };
         _reports.Closed += (_, _) => _reports = null;
         _reports.Show(this);
     }

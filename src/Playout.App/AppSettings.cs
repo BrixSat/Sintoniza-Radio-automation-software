@@ -52,6 +52,10 @@ public sealed class AppSettings
     public double OtherCrossfade { get; set; }
     /// <summary>The playlist's row backgrounds by type (Settings → Colours).</summary>
     public PlaylistColors PlaylistColors { get; set; } = new();
+    /// <summary>The daily backup of the database and the station's files.</summary>
+    public BackupSettings Backup { get; set; } = new();
+    /// <summary>Alerts by Telegram, email or a web address when something goes wrong on air.</summary>
+    public AlertSettings Alerts { get; set; } = new();
     /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
     public TimeSignalSettings TimeSignal { get; set; } = new();
     /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>
@@ -169,6 +173,8 @@ public sealed class AppSettings
         FillFolder ??= "";
         FillCategories ??= new();
         PlaylistColors ??= new();
+        Backup ??= new();
+        Alerts ??= new();
         Shortcuts ??= new();
         // Actions added since the file was saved get their default.
         foreach (var (id, key) in global::Playout.App.Shortcuts.Defaults()) Shortcuts.TryAdd(id, key);

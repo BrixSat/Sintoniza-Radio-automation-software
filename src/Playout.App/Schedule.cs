@@ -18,47 +18,46 @@ public sealed class ScheduleData
     /// <summary>Adverts as saved before clients and campaigns: <see cref="Normalize"/> turns them into those.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<AdSpot>? Spots { get; set; }
-    /// <summary>
-    /// The last time each event and break was started (local time), so a restart doesn't start it again. Kept by the
-    /// playout in its own file (<see cref="SaveState"/>): the schedule program writes schedule.json, the playout only this.
-    /// </summary>
+    /// <summary>The last time each event and break was started (local time), so a restart doesn't start it again.</summary>
     public Dictionary<Guid, DateTime> LastStarted { get; set; } = new();
 
-    public static string FilePath => Path.Combine(AppSettings.DataFolder, "schedule.json");
-    static string StatePath => Path.Combine(AppSettings.DataFolder, "schedule-state.json");
+    /// <summary>Where the schedule was kept before it moved into the database: imported from there once.</summary>
+    public static string LegacyFile => Path.Combine(AppSettings.DataFolder, "schedule.json");
+    static string LegacyStateFile => Path.Combine(AppSettings.DataFolder, "schedule-state.json");
     static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    public static ScheduleData Load()
+    /// <summary>The schedule as kept in files before the database (schedule.json and when each started); null if none.</summary>
+    public static ScheduleData? LoadLegacy()
     {
-        var data = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<ScheduleData>(json)) ?? new();
-        // Schedules saved before the state file kept it in schedule.json.
-        if (SafeFile.Read(StatePath, json => JsonSerializer.Deserialize<Dictionary<Guid, DateTime>>(json)) is { } state) data.LastStarted = state;
+        if (!File.Exists(LegacyFile)) return null;
+        var data = SafeFile.Read(LegacyFile, json => JsonSerializer.Deserialize<ScheduleData>(json)) ?? new();
+        if (SafeFile.Read(LegacyStateFile, json => JsonSerializer.Deserialize<Dictionary<Guid, DateTime>>(json)) is { } state)
+            foreach (var (id, at) in state) data.LastStarted[id] = at;
         data.Normalize();
         return data;
     }
 
-    /// <summary>Saves the schedule as edited (the schedule program).</summary>
-    public void Save()
+    /// <summary>After the import: the old files renamed, so it is clear they are no longer used.</summary>
+    public static void RetireLegacy()
     {
-        var state = LastStarted;
-        try
-        {
-            LastStarted = new();
-            SafeFile.WriteAllText(FilePath, JsonSerializer.Serialize(this, Json));
-        }
-        catch (Exception ex) { AppLog.Write($"Schedule not saved: {ex.Message}"); throw; }
-        finally { LastStarted = state; }
+        foreach (var file in new[] { LegacyFile, LegacyStateFile, LegacyFile + ".bak", LegacyStateFile + ".bak" })
+            try { if (File.Exists(file)) File.Move(file, file + ".imported", true); }
+            catch (Exception ex) { AppLog.Write($"{Path.GetFileName(file)} not renamed: {ex.Message}"); }
     }
 
-    /// <summary>Saves when each event and break was last started (the playout).</summary>
-    public void SaveState()
+    /// <summary>A file with the whole schedule and when each started (the playout's local copy); null if none.</summary>
+    public static ScheduleData? ReadFile(string path)
     {
-        try { SafeFile.WriteAllText(StatePath, JsonSerializer.Serialize(LastStarted, Json)); }
-        catch (Exception ex) { AppLog.Write($"Schedule state not saved: {ex.Message}"); }
+        var data = SafeFile.Read(path, json => JsonSerializer.Deserialize<ScheduleData>(json));
+        data?.Normalize();
+        return data;
     }
 
-    /// <summary>When schedule.json was last written (MinValue if there is none): the playout reloads it when it changes.</summary>
-    public static DateTime FileTime => File.Exists(FilePath) ? File.GetLastWriteTimeUtc(FilePath) : DateTime.MinValue;
+    public void WriteFile(string path)
+    {
+        try { SafeFile.WriteAllText(path, JsonSerializer.Serialize(this, Json)); }
+        catch (Exception ex) { AppLog.Write($"{Path.GetFileName(path)} not saved: {ex.Message}"); }
+    }
 
     public ScheduleData Clone()
     {
@@ -534,31 +533,53 @@ sealed class Scheduler : IDisposable
     /// <summary>The schedule program saved a new schedule and it was loaded (raised on the timer thread).</summary>
     public event Action? Reloaded;
 
-    DateTime _fileTime;
-    long _nextFileCheck;
+    readonly ScheduleSource? _source;
+    readonly Timer? _reloadTimer;
+    long _version = -1;
+    int _reloading;
 
-    public Scheduler(PlayoutEngine engine, ScheduleData data)
+    /// <param name="source">The database (and the local copy) the schedule comes from; null: only <paramref name="data"/>.</param>
+    public Scheduler(PlayoutEngine engine, ScheduleData data, ScheduleSource? source = null)
     {
         _engine = engine;
         data.Normalize();
         _data = data;
-        _fileTime = ScheduleData.FileTime;
+        _source = source;
         _timer = new Timer(_ => Check(DateTime.Now), null, TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(250));
+        // The database is read on its own timer: a slow or unreachable server never holds up an event that is due.
+        if (source != null) _reloadTimer = new Timer(_ => ReloadIfSaved(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
     }
 
-    /// <summary>The schedule as edited (a copy is kept). Entries that were due before now don't start because of the edit.</summary>
-    public void Update(ScheduleData data)
+    /// <summary>When each started, kept: in the database (off this thread) and in the local copy.</summary>
+    void SaveState()
+    {
+        if (_source == null) return;
+        var copy = _data.Clone();
+        Task.Run(() => _source.SaveState(copy));
+    }
+
+    /// <summary>
+    /// The schedule as edited (a copy is kept). Entries that were due before now don't start because of the edit. With
+    /// <paramref name="trustState"/> (the first read from the database, at start-up), when each started as kept there
+    /// counts too, so one due just before a restart still starts.
+    /// </summary>
+    public void Update(ScheduleData data, bool trustState = false)
     {
         lock (_lock)
         {
             var now = DateTime.Now;
             var copy = data.Clone();
             foreach (var entry in Entries(copy))
-                if (!_data.LastStarted.ContainsKey(entry.Id) || Changed(entry)) copy.LastStarted[entry.Id] = now;
-                else copy.LastStarted[entry.Id] = _data.LastStarted[entry.Id];
+            {
+                DateTime? stored = trustState && data.LastStarted.TryGetValue(entry.Id, out var s) ? s : null;
+                DateTime? known = _data.LastStarted.TryGetValue(entry.Id, out var k) ? k : null;
+                if (stored != null || (known != null && !Changed(entry)))
+                    copy.LastStarted[entry.Id] = new[] { stored, known != null && !Changed(entry) ? known : null }.Max()!.Value;
+                else copy.LastStarted[entry.Id] = now;
+            }
             foreach (var id in copy.LastStarted.Keys.Where(id => Entries(copy).All(e => e.Id != id)).ToList()) copy.LastStarted.Remove(id);
             _data = copy;
-            _data.SaveState();
+            SaveState();
             _prepared = DateTime.MinValue;
         }
 
@@ -655,29 +676,40 @@ sealed class Scheduler : IDisposable
     {
         // Timer callbacks can overlap when one takes long (a slow network folder): one at a time.
         if (Interlocked.Exchange(ref _checking, 1) == 1) return;
-        try
-        {
-            ReloadIfSaved();
-            CheckDue(now);
-        }
+        try { CheckDue(now); }
         finally { Volatile.Write(ref _checking, 0); }
     }
 
-    /// <summary>Every couple of seconds: if the schedule program saved schedule.json, the new schedule takes over.</summary>
+    /// <summary>
+    /// Every couple of seconds (its own timer): when the schedule in the database has a new version (the schedule program
+    /// saved it), it takes over. While the database can't be reached, the schedule already loaded carries on.
+    /// </summary>
     void ReloadIfSaved()
     {
-        if (Environment.TickCount64 < _nextFileCheck) return;
-        _nextFileCheck = Environment.TickCount64 + 2000;
-        var time = ScheduleData.FileTime;
-        if (time == _fileTime) return;
-        _fileTime = time;
+        if (_source == null || Interlocked.Exchange(ref _reloading, 1) == 1) return;
         try
         {
-            Update(ScheduleData.Load());
-            Say(L.T("Schedule updated"));
+            if (_source.Version() is not { } version || version == _version) return;
+            bool first = _version < 0;
+            if (_source.Load() is not { } data) return;
+            _version = version;
+            // The first time, the local copy (or the old files) may already have been loaded: only a real change is news.
+            bool changed = !Same(data);
+            Update(data, trustState: first);
+            if (changed && !first) Say(L.T("Schedule updated"));
             Reloaded?.Invoke();
         }
         catch (Exception ex) { Say(L.F("Schedule not loaded: {0}", ex.Message)); }
+        finally { Volatile.Write(ref _reloading, 0); }
+    }
+
+    bool Same(ScheduleData data)
+    {
+        lock (_lock)
+        {
+            static string Text(ScheduleData d) { var c = d.Clone(); c.LastStarted.Clear(); return JsonSerializer.Serialize(c); }
+            return Text(_data) == Text(data);
+        }
     }
 
     void CheckDue(DateTime now)
@@ -700,7 +732,7 @@ sealed class Scheduler : IDisposable
                 else due.Add((entry, at));
             }
             if (now - _prepared > TimeSpan.FromMinutes(1)) PrepareSoon(now);
-            if (due.Count > 0) _data.SaveState();
+            if (due.Count > 0) SaveState();
         }
         // Breaks first when several are due at once: they are booked to the second, events can wait.
         foreach (var (entry, at) in due.OrderBy(d => d.At).ThenBy(d => d.Entry is AdBreak ? 0 : 1))
@@ -801,5 +833,9 @@ sealed class Scheduler : IDisposable
 
     void Say(string message) => Message?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
 
-    public void Dispose() => _timer.Dispose();
+    public void Dispose()
+    {
+        _timer.Dispose();
+        _reloadTimer?.Dispose();
+    }
 }

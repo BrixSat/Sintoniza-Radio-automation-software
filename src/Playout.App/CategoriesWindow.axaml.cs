@@ -85,8 +85,8 @@ public partial class CategoriesWindow : Window
         }
         try
         {
-            var (categories, counts) = await Task.Run(() => (db.Categories(), db.CategoryCounts()));
-            _rows = categories.Select(c => new CategoryRow(c, counts.GetValueOrDefault(c.Id), _folders?.Rules.Count(r => r.Value == c.Id) ?? 0)).ToList();
+            var (categories, counts, rules) = await Task.Run(() => (db.Categories(), db.CategoryCounts(), _folders?.Rules() ?? new()));
+            _rows = categories.Select(c => new CategoryRow(c, counts.GetValueOrDefault(c.Id), rules.Count(r => r.Value == c.Id))).ToList();
             long? keep = selectId ?? Selected?.Category.Id;
             CategoryList.ItemsSource = _rows;
             CategoryList.SelectedItem = _rows.FirstOrDefault(r => r.Category.Id == keep) ?? _rows.FirstOrDefault();
@@ -121,7 +121,7 @@ public partial class CategoriesWindow : Window
     {
         if (_folders == null) return;
         FolderList.ItemsSource = Selected is { } row
-            ? _folders.Rules.Where(r => r.Value == row.Category.Id).Select(r => r.Key).Order(StringComparer.CurrentCultureIgnoreCase).ToList()
+            ? _folders.Rules().Where(r => r.Value == row.Category.Id).Select(r => r.Key).Order(StringComparer.CurrentCultureIgnoreCase).ToList()
             : null;
     }
 
@@ -143,7 +143,7 @@ public partial class CategoriesWindow : Window
         {
             foreach (var path in paths)
             {
-                _folders.Rules[path] = row.Category.Id;
+                _folders.Set(path, row.Category.Id);
                 _folders.EnsureScanned(path);
                 count += await Task.Run(() => db.SetFolderCategory(path, row.Category.Id));
             }
@@ -165,7 +165,7 @@ public partial class CategoriesWindow : Window
         int count;
         try
         {
-            _folders.Rules.Remove(path);
+            _folders.Set(path, null);
             count = await Task.Run(() => db.SetFolderCategory(path, null));
             _folders.Saved();
         }
@@ -281,12 +281,14 @@ public partial class CategoriesWindow : Window
 }
 
 /// <summary>
-/// The folders whose songs go in a category (folder → category id, kept in this computer's settings), and how the
-/// editor makes sure the library scans a folder it adds, saves, and starts a scan.
+/// The folders whose songs go in a category (folder → category id, in the library database), and how the editor makes
+/// sure the library scans a folder it adds, saves, and starts a scan.
 /// </summary>
-sealed class CategoryFolders(Dictionary<string, long> rules, Action<string> ensureScanned, Action saved)
+sealed class CategoryFolders(Func<Dictionary<string, long>> rules, Action<string, long?> set, Action<string> ensureScanned, Action saved)
 {
-    public Dictionary<string, long> Rules { get; } = rules;
+    public Func<Dictionary<string, long>> Rules { get; } = rules;
+    /// <summary>Gives a folder to a category, or (null) takes it away.</summary>
+    public Action<string, long?> Set { get; } = set;
     public Action<string> EnsureScanned { get; } = ensureScanned;
     public Action Saved { get; } = saved;
 }

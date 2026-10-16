@@ -1,6 +1,6 @@
 -- Sintoniza library, schema version 3 (SQLite): scheduling. Stations, clocks (hour plans), rotation rules,
 -- commercial traffic (advertisers, campaigns, bookings) and the daily logs the playout plays.
--- Documented in docs/scheduling-design.md. Runs in one transaction: all of it or nothing.
+-- Replaced by the schedule tables of version 4 (their empty tables are removed then). Runs in one transaction.
 -- Dates are local to the station, 'yyyy-MM-dd'; times of day 'HH:mm:ss'; lengths and offsets in seconds.
 
 CREATE TABLE IF NOT EXISTS stations (

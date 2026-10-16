@@ -4,7 +4,7 @@
         x:Class="Playout.App.SettingsWindow"
         Icon="/Assets/icon.ico"
         Title="Settings"
-        Width="960" Height="600" CanResize="False"
+        Width="1100" Height="600" CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
@@ -302,6 +302,30 @@
                         <CheckBox x:Name="AutostartBox" Content="Start the app when I log in to this computer" />
                         <TextBlock Classes="note"
                                    Text="Carries on with the item after the one that was on air, and turns streaming back on. The watchdog applies from the next start. On an unattended studio computer, also turn on automatic login and turn off sleep." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Backups" />
+                        <WrapPanel ItemSpacing="8" LineSpacing="6">
+                            <CheckBox x:Name="BackupBox" Content="Every day at" VerticalAlignment="Center" />
+                            <TextBox x:Name="BackupTimeBox" Width="80" PlaceholderText="04:00" />
+                            <TextBlock Text="keep" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="BackupKeepBox" Minimum="1" Maximum="365" Increment="1" FormatString="0" Width="120" />
+                            <TextBlock Text="days" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Folder:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="BackupFolderText" VerticalAlignment="Center" MaxWidth="420" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseBackupFolderButton" Content="Choose…" />
+                            <Button x:Name="DefaultBackupFolderButton" Content="Default" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="BackupNowButton" Content="Back up now" />
+                            <Button x:Name="OpenBackupsButton" Content="Open folder" />
+                            <TextBlock x:Name="BackupStatusText" Classes="note" VerticalAlignment="Center" MaxWidth="460" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="One zip a day with the database (MySQL: an SQL file that puts every table back with mysql name &lt; file; SQLite: a copy) and the station's files: settings, schedule, cue points, as-run logs. Older ones are removed after the days to keep; the newest three always stay. Best on another disk or a network folder." />
                     </StackPanel>
                 </StackPanel>
                 </ScrollViewer>
@@ -607,6 +631,68 @@
             </TabItem>
 
             <!-- ───────── About ───────── -->
+            <!-- ───────── Alerts ───────── -->
+            <TabItem Header="Alerts">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="14" Margin="0,12,16,0">
+                        <CheckBox x:Name="AlertsBox" Content="Send an alert when something goes wrong on air, and another when it is fixed" />
+                        <StackPanel x:Name="AlertsPanel" Spacing="14">
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="label" Text="When" />
+                                <CheckBox x:Name="AlertSilenceBox" Content="Silence on air (as long as set in Safety)" />
+                                <CheckBox x:Name="AlertStreamBox" Content="The stream is down for a minute" />
+                                <CheckBox x:Name="AlertEngineBox" Content="The audio engine stops responding" />
+                                <CheckBox x:Name="AlertRestartBox" Content="The app was started again after a crash or a freeze" />
+                                <CheckBox x:Name="AlertDatabaseBox" Content="The library database is unavailable for a minute" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                    <CheckBox x:Name="AlertDiskBox" Content="A disk has less than" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="AlertDiskGbBox" Minimum="0.5" Maximum="1000" Increment="0.5" FormatString="0.0" Width="120" />
+                                    <TextBlock Text="GB free" VerticalAlignment="Center" />
+                                </WrapPanel>
+                                <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                    <CheckBox x:Name="AlertClockBox" Content="The clock is off by more than" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="AlertClockSecondsBox" Minimum="0.5" Maximum="60" Increment="0.5" FormatString="0.0" Width="120" />
+                                    <TextBlock Text="s from" VerticalAlignment="Center" />
+                                    <TextBox x:Name="AlertTimeServerBox" Width="180" PlaceholderText="pool.ntp.org" />
+                                </WrapPanel>
+                                <CheckBox x:Name="AlertBackupBox" Content="A backup fails" />
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Telegram (a bot: its token, and the chat or group id)" />
+                                <Grid ColumnDefinitions="*,8,200">
+                                    <TextBox x:Name="TelegramTokenBox" PlaceholderText="123456:ABC… (from @BotFather)" />
+                                    <TextBox Grid.Column="2" x:Name="TelegramChatBox" PlaceholderText="chat id" />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Email" />
+                                <Grid ColumnDefinitions="*,8,90,8,Auto">
+                                    <TextBox x:Name="SmtpServerBox" PlaceholderText="SMTP server, e.g. smtp.gmail.com" />
+                                    <TextBox Grid.Column="2" x:Name="SmtpPortBox" PlaceholderText="587" />
+                                    <CheckBox Grid.Column="4" x:Name="SmtpSslBox" Content="TLS" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <TextBox x:Name="SmtpUserBox" PlaceholderText="user" />
+                                    <TextBox Grid.Column="2" x:Name="SmtpPasswordBox" PasswordChar="•" PlaceholderText="password" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <TextBox x:Name="MailFromBox" PlaceholderText="from (empty = the user)" />
+                                    <TextBox Grid.Column="2" x:Name="MailToBox" PlaceholderText="to (several: separated by commas)" />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Web address (gets a JSON POST: station, kind, ok, message, time)" />
+                                <TextBox x:Name="WebhookBox" PlaceholderText="https://…" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="TestAlertButton" Content="Send a test alert" />
+                                <TextBlock x:Name="TestAlertText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ───────── Colours ───────── -->
             <TabItem Header="Colours">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">

@@ -8,6 +8,7 @@ static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        GraphicsDriver.Prepare(); // before any graphics library is loaded
         if (Watchdog.ShouldSupervise(args)) return Watchdog.Supervise(args);
 
         AppLog.CleanUp();

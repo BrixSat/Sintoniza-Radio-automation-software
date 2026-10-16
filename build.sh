@@ -39,8 +39,8 @@ build() { # $1 = win|linux
   rm -rf "$out"
 
   echo "▶ Publishing $rid"
-  # The app, radio-import (library scanner) and radio-schedule (log maker) share one folder and one .NET runtime.
-  for project in "$PROJECT" "$ROOT/src/Playout.Import" "$ROOT/src/Playout.Schedule"; do
+  # The app and radio-import (library scanner) share one folder and one .NET runtime.
+  for project in "$PROJECT" "$ROOT/src/Playout.Import"; do
     dotnet publish "$project" -c Release -r "$rid" --self-contained \
       -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
   done
@@ -62,7 +62,7 @@ build() { # $1 = win|linux
       installer "$out" "$DIST/$pkg-setup.exe"
       ;;
     linux)
-      chmod +x "$out/$NAME" "$out/radio-import" "$out/radio-schedule"
+      chmod +x "$out/$NAME" "$out/radio-import"
       tar -C "$DIST" -czf "$DIST/$pkg.tar.gz" "$pkg"
       echo "→ $DIST/$pkg.tar.gz"
       deb "$out"
@@ -97,7 +97,7 @@ deb() { # $1 = publish dir
 #!/bin/sh
 exec /opt/$pkg/$NAME "\$@"
 SH
-  for tool in radio-import radio-schedule; do
+  for tool in radio-import; do
     cat > "$root/usr/bin/$tool" <<SH
 #!/bin/sh
 exec /opt/$pkg/$tool "\$@"
@@ -110,8 +110,7 @@ SH
 
   find "$root" -type d -exec chmod 755 {} +
   find "$root" -type f -exec chmod 644 {} +
-  chmod 755 "$root/opt/$pkg/$NAME" "$root/opt/$pkg/radio-import" "$root/opt/$pkg/radio-schedule" "$root/usr/bin/$pkg" \
-    "$root/usr/bin/radio-import" "$root/usr/bin/radio-schedule"
+  chmod 755 "$root/opt/$pkg/$NAME" "$root/opt/$pkg/radio-import" "$root/usr/bin/$pkg" "$root/usr/bin/radio-import"
 
   cat > "$root/DEBIAN/control" <<CTL
 Package: $pkg
