@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         };
         _library.Changed += () => ScanButton.Content = _library.IsScanning ? L.T("Stop") : L.T("Scan");
         Tracks.Attach(_library);
+        Tracks.CategoryFolders = () => CategoryFolders();
         _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
         _ = _library.OpenAsync(_settings.Library);
         ApplyAutoScan();
@@ -97,6 +98,7 @@ public partial class MainWindow : Window
             ApplySafety();
             ApplyRds();
             ApplyLoudness();
+            FillPlayedTimes(_settings.PlaylistItems, _settings.OnAirIndex);
             AddEntries(_settings.PlaylistItems);
             _ = CarryOn();
             _scheduler = new Scheduler(_engine, ScheduleData.Load());
@@ -978,6 +980,40 @@ public partial class MainWindow : Window
         AddEntries(entries);
     }
 
+    /// <summary>
+    /// Played items saved without when they went on air (by a version before that was kept) get it from the as-run
+    /// log: going back from the item that was on air, each takes the latest play of its file before the item after it
+    /// (one played out of order: its latest play not taken by another row).
+    /// </summary>
+    static void FillPlayedTimes(List<PlaylistEntry> items, int onAirIndex)
+    {
+        int last = Math.Min(onAirIndex, items.Count - 1);
+        if (last < 0 || items.Take(last + 1).All(e => e.PlayedAt != null)) return;
+        List<AsRunEntry> log;
+        try { log = AsRunLog.Read(AsRunLog.DefaultFolder, DateTime.Today.AddDays(-7), DateTime.Today).Where(e => e.Source != "cart").ToList(); }
+        catch { return; }
+        var before = DateTime.MaxValue;
+        var used = new HashSet<AsRunEntry>();
+        for (int i = last; i >= 0; i--)
+        {
+            var e = items[i];
+            if (e.PlayedAt is { } known)
+            {
+                before = known.ToLocalTime();
+                continue;
+            }
+            if (log.LastOrDefault(x => x.Start < before && x.File == e.Path && !used.Contains(x)) is { } play)
+            {
+                before = play.Start;
+            }
+            // Played out of order (the host went ahead and came back): its latest play not taken by another row.
+            else if (log.LastOrDefault(x => x.File == e.Path && !used.Contains(x)) is not { } other) continue;
+            else play = other;
+            used.Add(play);
+            e.PlayedAt = play.Start.ToUniversalTime();
+        }
+    }
+
     /// <summary>Adds saved or loaded playlist items in order: files that still exist, and streams.</summary>
     void AddEntries(IEnumerable<PlaylistEntry> entries)
     {
@@ -1327,6 +1363,34 @@ public partial class MainWindow : Window
 
     /// <summary>The music library (for the settings window).</summary>
     internal LibraryService MusicLibrary => _library;
+
+    /// <summary>
+    /// The categories' folders for the editor: a folder added is put in the library's scan list (if no folder there
+    /// covers it already; <paramref name="alsoAdd"/> tells an open Settings window too), and after a change the
+    /// settings are saved and the library scans.
+    /// </summary>
+    internal CategoryFolders CategoryFolders(Action<string>? alsoAdd = null) => new(
+        _settings.Library.FolderCategories,
+        folder =>
+        {
+            bool covered = _settings.Library.Folders.Any(f => Under(folder, f));
+            if (!covered) _settings.Library.Folders.Add(folder);
+            if (!covered) alsoAdd?.Invoke(folder);
+        },
+        () =>
+        {
+            _settings.Save();
+            _library.FolderCategories = new Dictionary<string, long>(_settings.Library.FolderCategories);
+            ApplyAutoScan();
+            _ = _library.ScanAsync(_settings.Library.Folders, automatic: true);
+        });
+
+    /// <summary>Whether <paramref name="folder"/> is <paramref name="root"/> or inside it.</summary>
+    static bool Under(string folder, string root)
+    {
+        string f = folder.TrimEnd('/', '\\'), r = root.TrimEnd('/', '\\');
+        return f.Equals(r, StringComparison.Ordinal) || f.StartsWith(r + "/", StringComparison.Ordinal) || f.StartsWith(r + "\\", StringComparison.Ordinal);
+    }
 
     void ApplyAutoScan()
     {

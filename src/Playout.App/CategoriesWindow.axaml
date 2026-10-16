@@ -4,7 +4,7 @@
         x:Class="Playout.App.CategoriesWindow"
         Icon="/Assets/icon.ico"
         Title="Categories"
-        Width="640" Height="460" CanResize="False"
+        Width="780" Height="620" CanResize="False"
         WindowStartupLocation="CenterOwner">
 
     <Window.Styles>
@@ -80,6 +80,16 @@
                 <StackPanel>
                     <TextBlock Classes="label" Text="Colour" />
                     <WrapPanel x:Name="Swatches" ItemSpacing="6" LineSpacing="6" />
+                </StackPanel>
+                <StackPanel x:Name="FoldersPanel" Spacing="6">
+                    <TextBlock Classes="label" Text="Folders: their songs are in this category" />
+                    <ListBox x:Name="FolderList" Height="110" Background="#13161C" />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Button x:Name="AddFolderButton" Content="Add folder…" />
+                        <Button x:Name="RemoveFolderButton" Content="Remove" />
+                    </StackPanel>
+                    <TextBlock Classes="note"
+                               Text="The songs in the folder (and its subfolders) go in this category, and so do new songs put there later: the library scans the folder by itself. Remove takes the folder's songs out of the category." />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Button x:Name="ApplyButton" Content="Save changes" Classes="accent" IsDefault="True" />

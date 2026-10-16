@@ -142,6 +142,12 @@ public partial class SettingsWindow : Window
         ChooseLibraryFileButton.Click += async (_, _) => await ChooseLibraryFile();
         TestLibraryButton.Click += async (_, _) => await TestLibrary();
         AddLibraryFolderButton.Click += async (_, _) => await AddLibraryFolder();
+        CategoriesButton.IsEnabled = _main != null;
+        CategoriesButton.Click += async (_, _) =>
+        {
+            if (_main == null) return;
+            await new CategoriesWindow(_main.MusicLibrary, _main.CategoryFolders(folder => { if (!_libraryFolders.Contains(folder)) _libraryFolders.Add(folder); })).ShowDialog(this);
+        };
         RemoveLibraryFolderButton.Click += (_, _) =>
         {
             foreach (var f in LibraryFoldersList.SelectedItems?.OfType<string>().ToList() ?? []) _libraryFolders.Remove(f);

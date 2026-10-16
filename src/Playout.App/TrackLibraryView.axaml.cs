@@ -210,10 +210,13 @@ public partial class TrackLibraryView : UserControl
         }
     }
 
+    /// <summary>The folders of each category, for the editor (set by the main window).</summary>
+    internal Func<CategoryFolders>? CategoryFolders { get; set; }
+
     async Task EditCategories()
     {
         if (TopLevel.GetTopLevel(this) is not Window owner || _service == null) return;
-        await new CategoriesWindow(_service).ShowDialog(owner);
+        await new CategoriesWindow(_service, CategoryFolders?.Invoke()).ShowDialog(owner);
     }
 
     static string Mark(string label, bool on) => on ? $"{label}  ✓" : label;

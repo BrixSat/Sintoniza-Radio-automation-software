@@ -32,7 +32,9 @@ engine for decoding, mixing and streaming.
 - **Music library**: a database of the station's music, an SQLite file or a shared MySQL / MariaDB server
   (Settings → Library). The **LIBRARY** panel searches artist, title, album and file name as you type, ignoring
   case and accents, and filters by category: Current, Recurrent, Gold, Jingles, IDs, Promos, Ads, or your own
-  (the ✎ button next to the filter adds, renames, recolours, orders and deletes categories).
+  (the ✎ button next to the filter, or Settings → Library → Categories…, adds, renames, recolours, orders and
+  deletes categories). **Each category can have folders**: their songs (subfolders too) go in it, and so do new
+  songs put there later; a folder added there is scanned by the library by itself.
   Right-click sets the category, tempo, voice and language of one or many songs. On the **Folders** tab, right-click
   a folder → Category puts all its songs (subfolders too) in a category, and new songs found there by a scan get it
   as well. **Scan** adds new music and

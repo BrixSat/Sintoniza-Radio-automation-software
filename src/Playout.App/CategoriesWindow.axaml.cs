@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Playout.Library;
 
@@ -20,18 +21,23 @@ public partial class CategoriesWindow : Window
     ];
 
     readonly LibraryService? _service;
+    readonly CategoryFolders? _folders;
     List<CategoryRow> _rows = new();
     string _color = Palette[0];
     readonly Dictionary<string, Button> _swatches = new();
 
     // Parameterless constructor for the XAML previewer.
-    public CategoriesWindow() : this(null) { }
+    public CategoriesWindow() : this(null, null) { }
 
-    internal CategoriesWindow(LibraryService? service)
+    internal CategoriesWindow(LibraryService? service, CategoryFolders? folders)
     {
         InitializeComponent();
         Localization.Apply(this);
         _service = service;
+        _folders = folders;
+        FoldersPanel.IsVisible = folders != null;
+        AddFolderButton.Click += async (_, _) => await AddFolder();
+        RemoveFolderButton.Click += async (_, _) => await RemoveFolder();
 
         foreach (var color in Palette)
         {
@@ -50,6 +56,20 @@ public partial class CategoriesWindow : Window
         ApplyButton.Click += async (_, _) => await SaveSelected();
         CloseButton.Click += (_, _) => Close();
         Opened += async (_, _) => await Load(null);
+        // A scan started by adding a folder: the songs counts follow when it ends.
+        if (service != null)
+        {
+            bool wasScanning = service.IsScanning;
+            void Changed()
+            {
+                // Raised on the UI thread: the scan's state as of this change.
+                bool scanning = service.IsScanning;
+                if (wasScanning && !scanning) Dispatcher.UIThread.Post(async () => await Load(Selected?.Category.Id));
+                wasScanning = scanning;
+            }
+            service.Changed += Changed;
+            Closed += (_, _) => service.Changed -= Changed;
+        }
     }
 
     CategoryRow? Selected => CategoryList.SelectedItem as CategoryRow;
@@ -66,7 +86,7 @@ public partial class CategoriesWindow : Window
         try
         {
             var (categories, counts) = await Task.Run(() => (db.Categories(), db.CategoryCounts()));
-            _rows = categories.Select(c => new CategoryRow(c, counts.GetValueOrDefault(c.Id))).ToList();
+            _rows = categories.Select(c => new CategoryRow(c, counts.GetValueOrDefault(c.Id), _folders?.Rules.Count(r => r.Value == c.Id) ?? 0)).ToList();
             long? keep = selectId ?? Selected?.Category.Id;
             CategoryList.ItemsSource = _rows;
             CategoryList.SelectedItem = _rows.FirstOrDefault(r => r.Category.Id == keep) ?? _rows.FirstOrDefault();
@@ -92,7 +112,74 @@ public partial class CategoriesWindow : Window
         NameBox.Text = row.Category.Name;
         KindBox.SelectedIndex = Math.Max(0, Array.IndexOf(Kinds, row.Category.Kind));
         ShowColor(row.Category.Color ?? Palette[0]);
+        ShowFolders();
     }
+
+    // ───────────────────────── Folders ─────────────────────────
+
+    void ShowFolders()
+    {
+        if (_folders == null) return;
+        FolderList.ItemsSource = Selected is { } row
+            ? _folders.Rules.Where(r => r.Value == row.Category.Id).Select(r => r.Key).Order(StringComparer.CurrentCultureIgnoreCase).ToList()
+            : null;
+    }
+
+    /// <summary>A folder whose songs go in the selected category (now, and the new ones a scan finds there).</summary>
+    async Task AddFolder()
+    {
+        if (_folders == null || Selected is not { } row || _service?.Db is not { } db) return;
+        var picked = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            { Title = L.F("Folder for {0}", row.Category.Name), AllowMultiple = true });
+        var paths = picked.Select(f => f.TryGetLocalPath()).OfType<string>().Select(p => p.TrimEnd('/', '\\')).ToList();
+        if (paths.Count > 0) await AddFolders(row, db, paths);
+    }
+
+    async Task AddFolders(CategoryRow row, LibraryDb db, List<string> paths)
+    {
+        if (_folders == null || _service == null) return;
+        int count = 0;
+        try
+        {
+            foreach (var path in paths)
+            {
+                _folders.Rules[path] = row.Category.Id;
+                _folders.EnsureScanned(path);
+                count += await Task.Run(() => db.SetFolderCategory(path, row.Category.Id));
+            }
+            _folders.Saved();
+        }
+        catch (Exception ex)
+        {
+            ErrorText.Text = L.F("Not saved: {0}", ex.Message);
+            return;
+        }
+        await Load(row.Category.Id);
+        _service.NotifyChanged();
+        StatusText.Text = L.F("{0}: {1} in it now; the library is scanning the folder for the rest.", row.Category.Name, Plural(count, "{0} song", "{0} songs"));
+    }
+
+    async Task RemoveFolder()
+    {
+        if (_folders == null || Selected is not { } row || FolderList.SelectedItem is not string path || _service?.Db is not { } db) return;
+        int count;
+        try
+        {
+            _folders.Rules.Remove(path);
+            count = await Task.Run(() => db.SetFolderCategory(path, null));
+            _folders.Saved();
+        }
+        catch (Exception ex)
+        {
+            ErrorText.Text = L.F("Not saved: {0}", ex.Message);
+            return;
+        }
+        await Load(row.Category.Id);
+        _service.NotifyChanged();
+        StatusText.Text = L.F("{0}: {1} taken out of the category", Path.GetFileName(path), Plural(count, "{0} song", "{0} songs"));
+    }
+
+    static string Plural(int n, string one, string many) => L.F(n == 1 ? one : many, n);
 
     void ShowColor(string color)
     {
@@ -193,19 +280,30 @@ public partial class CategoriesWindow : Window
     }
 }
 
+/// <summary>
+/// The folders whose songs go in a category (folder → category id, kept in this computer's settings), and how the
+/// editor makes sure the library scans a folder it adds, saves, and starts a scan.
+/// </summary>
+sealed class CategoryFolders(Dictionary<string, long> rules, Action<string> ensureScanned, Action saved)
+{
+    public Dictionary<string, long> Rules { get; } = rules;
+    public Action<string> EnsureScanned { get; } = ensureScanned;
+    public Action Saved { get; } = saved;
+}
+
 /// <summary>A category in the editor's list.</summary>
-public sealed class CategoryRow(LibraryCategory category, int count)
+public sealed class CategoryRow(LibraryCategory category, int count, int folders = 0)
 {
     public LibraryCategory Category { get; } = category;
     public int Count { get; } = count;
     public string Name => Category.Name;
-    public string KindText => Category.Kind switch
+    public string KindText => (Category.Kind switch
     {
         "jingle" => L.T("Jingle"),
         "commercial" => L.T("Commercial"),
         "other" => L.T("Other"),
         _ => L.T("Music"),
-    };
+    }) + (folders == 0 ? "" : " · " + (folders == 1 ? L.T("1 folder") : L.F("{0} folders", folders)));
     public string CountText => Count == 1 ? L.T("1 song") : L.F("{0:N0} songs", Count);
     public IBrush Brush { get; } = Color.TryParse(category.Color, out var c) ? new SolidColorBrush(c) : new SolidColorBrush(Color.Parse("#4A5160"));
 }

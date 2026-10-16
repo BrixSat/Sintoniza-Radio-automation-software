@@ -361,6 +361,11 @@
                             </StackPanel>
                         </Grid>
                     </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="CategoriesButton" Content="Categories…" ToolTip.Tip="Add, rename and colour categories, and give each its folders" />
+                        <TextBlock Classes="note" VerticalAlignment="Center" MaxWidth="560"
+                                   Text="Each category can have folders: their songs go in it, and new ones put there later too." />
+                    </StackPanel>
 
                     <StackPanel Spacing="6">
                         <StackPanel Orientation="Horizontal" Spacing="8">
