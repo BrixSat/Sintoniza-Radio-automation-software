@@ -89,6 +89,7 @@ public partial class MainWindow : Window
         if (_engine != null)
         {
             _engine.CrossfadeSeconds = _settings.Crossfade;
+            _engine.OtherCrossfadeSeconds = _settings.OtherCrossfade;
             _engine.AutoAdvance = _settings.AutoAdvance;
             _engine.ConfigureMic(_settings.ActiveMic);
             _engine.ConfigureTimeSignal(_settings.TimeSignal);
@@ -105,6 +106,14 @@ public partial class MainWindow : Window
             };
             // Saved in the schedule program: show what is coming up now.
             _scheduler.Reloaded += () => Dispatcher.UIThread.Post(() => ReadUpcoming(DateTime.Now, force: true));
+            var scheduler = _scheduler;
+            _smart = new SmartPlaylist(_engine, _library, () => scheduler.Current);
+            _smart.Message += message =>
+            {
+                AppLog.Write(message);
+                Dispatcher.UIThread.Post(() => LastLog.Text = message);
+            };
+            ApplySafety();
         }
         ApplyWebNowPlaying();
         AppLog.Write($"Started {AppInfo.Name} {Updates.CurrentText}");
@@ -458,6 +467,7 @@ public partial class MainWindow : Window
         DateText.Text = now.ToString("dddd, d MMMM yyyy");
         ReadUpcoming(now);
         UpdateStartTimes(st);
+        _smart?.Check(_playlistEnds, st.State == PlayerState.Playing && _engine.AutoAdvance);
         UpdateStationInfo(now);
         _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem());
     }
@@ -487,7 +497,7 @@ public partial class MainWindow : Window
         }
 
         bool playing = st.State == PlayerState.Playing;
-        var markers = st.Current is { } t ? CueMarkers.For(t, _engine?.CrossfadeSeconds ?? 0) : (CueMarkers?)null;
+        var markers = st.Current is { } t ? CueMarkers.For(t, _engine?.CrossfadeBetween(t, NextItem()) ?? 0) : (CueMarkers?)null;
         WaveMain.SetMarkers(markers);
         WaveOverview.SetMarkers(markers);
         WaveMain.UpdatePosition(st.Position, playing);
@@ -546,18 +556,20 @@ public partial class MainWindow : Window
     {
         _playlistEnds = null;
         if (_snapshot == null) return;
-        double xfade = _engine?.CrossfadeSeconds ?? 0;
         var items = _snapshot.Items;
         int current = _snapshot.CurrentId is { } cid ? items.ToList().FindIndex(t => t.Id == cid) : -1;
         int startFrom = _snapshot.NextId is { } nid ? items.ToList().FindIndex(t => t.Id == nid) : -1;
 
         // Mirrors the engine: each item starts at the previous one's mix point, and that one carries on to its Cue Out.
-        double Tail(Track t) => t.End - t.MixPoint(xfade);
-        double lastTail = st.Current is { } cur ? Tail(cur) : 0;
+        // The crossfade is song to song; with a jingle or advert on either side, the other one.
+        double Fade(Track t, Track? next) => _engine?.CrossfadeBetween(t, next) ?? 0;
+        double Tail(Track t, Track? next) => t.End - t.MixPoint(Fade(t, next));
+        var nextUp = startFrom >= 0 ? items[startFrom] : null;
+        double lastTail = st.Current is { } cur ? Tail(cur, nextUp) : 0;
 
         // A stream that plays until Stop has no end, so nothing after it has a start time.
         DateTime? at = st.State == PlayerState.Playing && current >= 0 && st.Current is { IsOpenEnded: false }
-            ? DateTime.Now.AddSeconds(Math.Max(0, st.Current.MixPoint(xfade) - st.Position))
+            ? DateTime.Now.AddSeconds(Math.Max(0, st.Current.MixPoint(Fade(st.Current, nextUp)) - st.Position))
             : null;
 
         var order = new List<PlaylistRow>(items.Count + _upcoming.Count);
@@ -605,7 +617,7 @@ public partial class MainWindow : Window
                 if (items[i].StartBy is { } by && by.ToLocalTime() < at) at = by.ToLocalTime();
                 var t = at.Value;
                 Show(row, t);
-                lastTail = Tail(items[i]);
+                lastTail = Tail(items[i], i + 1 < items.Count ? items[i + 1] : null);
                 at = items[i].IsOpenEnded ? null : t.AddSeconds(items[i].PlayLength - lastTail);
             }
             else row.StartTime = "";
@@ -1146,6 +1158,7 @@ public partial class MainWindow : Window
             if (_engine != null)
             {
                 _engine.CrossfadeSeconds = _settings.Crossfade;
+                _engine.OtherCrossfadeSeconds = _settings.OtherCrossfade;
                 if (_settings.Routing != routingBefore) _engine.ApplyRouting(_settings.Routing);
                 if (_settings.ActiveMic != micBefore) _engine.ConfigureMic(_settings.ActiveMic);
                 _engine.ConfigureTimeSignal(_settings.TimeSignal);
@@ -1299,6 +1312,7 @@ public partial class MainWindow : Window
                 : folder == null ? null : folder.Next;
         }
         _engine.ConfigureFill(fill);
+        _smart?.Configure(TimeSpan.FromHours(_settings.FillSongHours), TimeSpan.FromMinutes(_settings.FillArtistMinutes));
     }
 
     // ───────────────────────── RDS ─────────────────────────
@@ -1327,6 +1341,7 @@ public partial class MainWindow : Window
 
     readonly AsRunLog _asRun = new(AsRunLog.DefaultFolder);
     Scheduler? _scheduler;
+    SmartPlaylist? _smart;
     WebNowPlaying? _web;
     ReportsWindow? _reports;
 

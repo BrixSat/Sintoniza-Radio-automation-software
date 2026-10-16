@@ -159,6 +159,7 @@ public partial class SettingsWindow : Window
         };
 
         CrossfadeBox.Value = (decimal)settings.Crossfade;
+        OtherCrossfadeBox.Value = (decimal)settings.OtherCrossfade;
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
         SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
         SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
@@ -695,6 +696,7 @@ public partial class SettingsWindow : Window
         _settings.Shortcuts = _keyBoxes.ToDictionary(kv => kv.Key, kv => kv.Value.Gesture?.ToString() ?? "");
 
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
+        _settings.OtherCrossfade = (double)(OtherCrossfadeBox.Value ?? 0);
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
         _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
         _settings.PreviewOutput = RouteFrom(PreviewDeviceBox, PreviewChannelBox);

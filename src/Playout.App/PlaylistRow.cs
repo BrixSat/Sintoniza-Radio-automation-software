@@ -18,7 +18,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
         {
             if (Equals(_track, value)) return;
             _track = value;
-            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip), nameof(IsAdBreak) })
+            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip), nameof(IsAdBreak), nameof(IsJingleRow), nameof(IsProgramme), nameof(IsStreamRow) })
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
@@ -76,6 +76,12 @@ public sealed class PlaylistRow : INotifyPropertyChanged
 
     /// <summary>Part of an ad break: an advert, or the jingles a break opens and closes with. Shown with its own background.</summary>
     public bool IsAdBreak => Track.Kind == TrackKind.Commercial || (Track.Kind == TrackKind.Jingle && Track.Event != null);
+
+    // Everything that isn't a song has its own background, so it stands out in the list.
+    /// <summary>A jingle, promo or ID (not one of an ad break's).</summary>
+    public bool IsJingleRow => Track.Kind == TrackKind.Jingle && !IsAdBreak;
+    /// <summary>Another station's stream.</summary>
+    public bool IsStreamRow => Track.IsStream;
 
     /// <summary>This computer's currency sign (€, $, £…).</summary>
     public static string SystemCurrency { get; } =

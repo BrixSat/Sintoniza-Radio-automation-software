@@ -8,4 +8,6 @@ public static class AppInfo
     public const string ScheduleName = "Sintoniza Schedule";
     /// <summary>Starts the app as the schedule program.</summary>
     public const string ScheduleArg = "--schedule";
+    /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
+    public const string ScheduleWmClass = "SintonizaSchedule";
 }

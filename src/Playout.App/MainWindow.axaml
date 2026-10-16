@@ -292,6 +292,9 @@
                                           Classes.played="{Binding IsPlayed}"
                                           Classes.preview="{Binding IsPreview}">
                                         <Border Grid.ColumnSpan="6" Classes="break-bg" IsVisible="{Binding IsAdBreak}" />
+                                        <Border Grid.ColumnSpan="6" Classes="jingle-bg" IsVisible="{Binding IsJingleRow}" />
+                                        <Border Grid.ColumnSpan="6" Classes="programme-bg" IsVisible="{Binding IsProgramme}" />
+                                        <Border Grid.ColumnSpan="6" Classes="stream-bg" IsVisible="{Binding IsStreamRow}" />
                                         <Border Grid.ColumnSpan="6" Classes="row-bg" IsVisible="{Binding IsPlaying}" />
                                         <c:ProgressFill Grid.ColumnSpan="6" Classes="row-progress" Value="{Binding Progress}"
                                                         IsVisible="{Binding IsPlaying}" />

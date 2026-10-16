@@ -7,7 +7,7 @@ Unicode true
 !define APPNAME "Sintoniza Radio Broadcast system"
 !define OLDNAME "Radio Playout" ; shortcuts made by versions before the rename
 !define EXENAME "RadioPlayout.exe"
-!define SCHEDNAME "Sintoniza Schedule" ; the schedule program: the same exe with --schedule, Start menu only
+!define SCHEDNAME "Sintoniza Schedule" ; the schedule program: the same exe with --schedule, its own icon
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\RadioPlayout"
 
 Name "${APPNAME}"
@@ -48,13 +48,15 @@ Section "Install"
 
   SetOutPath "$INSTDIR"
   File /r "${SRCDIR}/*.*"
+  File "${__FILEDIR__}/../../src/Playout.App/Assets/schedule.ico"
 
   Delete "$SMPROGRAMS\${OLDNAME}.lnk"
   Delete "$DESKTOP\${OLDNAME}.lnk"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateShortcut "$SMPROGRAMS\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
   CreateShortcut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
-  CreateShortcut "$SMPROGRAMS\${SCHEDNAME}.lnk" "$INSTDIR\${EXENAME}" "--schedule"
+  CreateShortcut "$SMPROGRAMS\${SCHEDNAME}.lnk" "$INSTDIR\${EXENAME}" "--schedule" "$INSTDIR\schedule.ico" 0
+  CreateShortcut "$DESKTOP\${SCHEDNAME}.lnk" "$INSTDIR\${EXENAME}" "--schedule" "$INSTDIR\schedule.ico" 0
 
   WriteRegStr HKLM "Software\RadioPlayout" "InstallDir" "$INSTDIR"
   WriteRegStr HKLM "${UNINSTKEY}" "DisplayName" "${APPNAME}"
@@ -81,6 +83,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APPNAME}.lnk"
   Delete "$DESKTOP\${APPNAME}.lnk"
   Delete "$SMPROGRAMS\${SCHEDNAME}.lnk"
+  Delete "$DESKTOP\${SCHEDNAME}.lnk"
   RMDir /r "$INSTDIR"
   DeleteRegKey HKLM "${UNINSTKEY}"
   DeleteRegKey HKLM "Software\RadioPlayout"

@@ -21,7 +21,8 @@ engine for decoding, mixing and streaming.
 - **Playlist**: drag and drop from the built-in music browser or your file manager, drag rows to reorder,
   estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial, stream,
   programme), a tag on items put there by a scheduled event or ad break, and an on-air row that fills from left
-  to right as the track plays. M3U open/save.
+  to right as the track plays. Everything that isn't a song has its own background: ad breaks green, jingles and
+  promos purple, programmes and news blue, streams teal. M3U open/save.
 - **Internet streams in the playlist**: put another station's stream in the playlist (**Stream…**) for a set time
   (it crossfades into the next item when the time is up) or until you press Stop or Next. It connects a few seconds
   before it is due, so there is no dead air, and if the stream drops the playlist moves on. Saved with the playlist
@@ -81,6 +82,14 @@ engine for decoding, mixing and streaming.
   - **Shown ahead in the playlist**: the events and breaks coming up appear in the playlist where they will play
     (tagged SCHEDULED, with their start time and how they start: hard, can wait N minutes, or ends at its time),
     and the start times after them allow for them. They become real playlist items when they are due.
+  - **Playlists** (smart playlists, like AVAPLAYER's schemes): hour templates whose lines play in order — a song
+    (or jingle, advert…) from a music library category, or a file from a folder — placed on the week calendar by
+    hour. While playing in AUTO the playout keeps the playlist at least an hour long: from where it ends it adds
+    that hour's template up to the end of the hour, keeping songs and artists apart (the rest times of fill
+    music). What it adds are ordinary items the host can change.
+  - **Missed while stopped**: scheduled items whose time passed more than 2 minutes ago while the player wasn't
+    playing (stopped overnight, after a restart) are left out, with a line in the log, not played late one after
+    the other.
   - **Ad breaks stand out**: a green band behind their rows, the money sign (Settings → Station; empty = this
     computer's currency) instead of an icon on each advert, and the advertiser under it. When the next break is
     less than 10 minutes away, a **BREAK IN mm:ss** countdown shows on the deck with how it starts, red in its
@@ -142,6 +151,8 @@ engine for decoding, mixing and streaming.
 - **Languages**: English, Português and Français (Settings → Station → Language, from the next start; automatic
   follows the computer). Every window and message is translated; dates and day names follow the language. The
   translations are in `src/Playout.App/i18n/`; `python3 scripts/i18n-check.py` lists texts that have none.
+- **Crossfade**: song to song as set in Settings → Audio; into or out of a jingle, promo, advert or programme its
+  own value, 0 by default (the song ends, the jingle starts clean and plays to its end).
 - **Settings** (Ctrl/Cmd+,): station name, logo, genre, website and station type, crossfade length, audio outputs,
   loudness levelling, microphone, time signal, safety, library, keyboard shortcuts, the streaming server, RDS and
   the website.

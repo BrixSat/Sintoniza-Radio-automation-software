@@ -48,6 +48,8 @@ public sealed class AppSettings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string?[]? Carts { get; set; }
     public double Crossfade { get; set; } = 5;
+    /// <summary>Crossfade into or out of jingles, adverts and programmes (song to song is <see cref="Crossfade"/>).</summary>
+    public double OtherCrossfade { get; set; }
     /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
     public TimeSignalSettings TimeSignal { get; set; } = new();
     /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>

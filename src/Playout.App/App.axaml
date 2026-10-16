@@ -351,6 +351,19 @@
             <Setter Property="Background" Value="#16271F" />
             <Setter Property="Margin" Value="-8,-5" />
         </Style>
+        <!-- The other kinds that aren't songs: jingles and promos, programmes and news, streams -->
+        <Style Selector="Border.jingle-bg">
+            <Setter Property="Background" Value="#261C33" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
+        <Style Selector="Border.programme-bg">
+            <Setter Property="Background" Value="#18213A" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
+        <Style Selector="Border.stream-bg">
+            <Setter Property="Background" Value="#132A2D" />
+            <Setter Property="Margin" Value="-8,-5" />
+        </Style>
         <Style Selector="TextBlock.kind-currency">
             <Setter Property="FontSize" Value="15" />
             <Setter Property="FontWeight" Value="Bold" />

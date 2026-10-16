@@ -20,6 +20,8 @@ static class Program
         if (args.Contains(Watchdog.ChildArg)) Watchdog.StartHeartbeat();
 
         var builder = BuildAvaloniaApp();
+        // The schedule program groups apart from the playout in the Linux taskbar, under its own icon.
+        if (args.Contains(AppInfo.ScheduleArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.ScheduleWmClass });
         // A mistake in a window must not take the station off air: the engine runs on, so log it and carry on.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {

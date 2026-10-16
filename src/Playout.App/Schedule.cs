@@ -13,6 +13,8 @@ public sealed class ScheduleData
     public List<ScheduledEvent> Events { get; set; } = new();
     public List<AdBreak> Breaks { get; set; } = new();
     public List<AdClient> Clients { get; set; } = new();
+    /// <summary>Smart playlists: hour templates the playout keeps the playlist topped up from.</summary>
+    public List<PlaylistTemplate> Templates { get; set; } = new();
     /// <summary>Adverts as saved before clients and campaigns: <see cref="Normalize"/> turns them into those.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<AdSpot>? Spots { get; set; }
@@ -74,8 +76,9 @@ public sealed class ScheduleData
         Events ??= new();
         Breaks ??= new();
         Clients ??= new();
+        Templates ??= new();
         LastStarted ??= new();
-        foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks)) e.Normalize();
+        foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks).Concat(Templates)) e.Normalize();
         foreach (var c in Clients)
         {
             c.Campaigns ??= new();
@@ -124,6 +127,10 @@ public sealed class ScheduleData
             });
         }
     }
+
+    /// <summary>The template for the hour that starts at <paramref name="hour"/> (null if none is placed there).</summary>
+    public PlaylistTemplate? TemplateAt(DateTime hour) =>
+        Templates.FirstOrDefault(t => t.Enabled && t.Lines.Count > 0 && t.Slots.Any(s => s.Day == hour.DayOfWeek && s.At.Hours == hour.Hour));
 
     /// <summary>The section names used in the breaks, in the order they first appear.</summary>
     public List<string> Sections() =>
@@ -332,6 +339,51 @@ public sealed class AdBreak : ScheduleEntry
 }
 
 public enum PartKind { Jingle, Section }
+
+/// <summary>
+/// A smart playlist: an hour template, its lines played in order (a song from a library category, a file from a
+/// folder), placed on the week calendar by hour. The playout keeps the playlist topped up from it, so music never stops.
+/// </summary>
+public sealed class PlaylistTemplate : ScheduleEntry
+{
+    public List<TemplateLine> Lines { get; set; } = new();
+
+    public override void Normalize()
+    {
+        base.Normalize();
+        Lines ??= new();
+        foreach (var l in Lines)
+        {
+            l.Folder ??= "";
+            l.CategoryName ??= "";
+            l.Kind ??= "music";
+        }
+    }
+}
+
+public enum LineSource { Category, Folder }
+
+/// <summary>A line of an hour template: one item, from a library category or a folder.</summary>
+public sealed class TemplateLine
+{
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public LineSource Source { get; set; }
+    public long CategoryId { get; set; }
+    /// <summary>The category's name and kind (music, jingle, commercial, other) when it was chosen, to show and to tag what it plays.</summary>
+    public string CategoryName { get; set; } = "";
+    public string Kind { get; set; } = "music";
+    public string Folder { get; set; } = "";
+
+    /// <summary>What the playlist calls what it plays: a jingle category's files are jingles wherever they are kept; a folder's go by the folder.</summary>
+    [JsonIgnore]
+    public TrackKind? TrackKind => Source == LineSource.Folder ? null : Kind switch
+    {
+        "jingle" => Playout.Engine.TrackKind.Jingle,
+        "commercial" => Playout.Engine.TrackKind.Commercial,
+        "other" => Playout.Engine.TrackKind.Programme,
+        _ => Playout.Engine.TrackKind.Music,
+    };
+}
 
 /// <summary>A step in a break's running order: a jingle, or a section where adverts go.</summary>
 public sealed class BreakPart

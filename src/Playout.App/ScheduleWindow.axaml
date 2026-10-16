@@ -3,7 +3,7 @@
         xmlns:app="using:Playout.App"
         xmlns:c="using:Playout.App.Controls"
         x:Class="Playout.App.ScheduleWindow"
-        Icon="/Assets/icon.ico"
+        Icon="/Assets/schedule.ico"
         Title="Sintoniza Schedule"
         Width="1320" Height="820" MinWidth="1060" MinHeight="620"
         WindowStartupLocation="CenterScreen">
@@ -369,6 +369,93 @@
                                 <TextBlock x:Name="SpotPlacedText" FontWeight="SemiBold" TextWrapping="Wrap" />
                                 <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" HorizontalAlignment="Left" />
                             </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <!-- ───────── Playlists (smart playlists: hour templates) ───────── -->
+            <TabItem Header="Playlists">
+                <Grid ColumnDefinitions="220,14,*,14,330" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddTemplateButton" Content="New" />
+                            <Button x:Name="DeleteTemplateButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="TemplateList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8" IsVisible="False">
+                            <ComboBox x:Name="TemplateStepBox" Width="100" />
+                            <NumericUpDown x:Name="TemplateOffsetBox" Minimum="0" Maximum="59" />
+                            <TextBox x:Name="TemplateAddTimeBox" />
+                            <Button x:Name="TemplateAddTimeButton" />
+                        </WrapPanel>
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                            <TextBlock Classes="note" VerticalAlignment="Center"
+                                       Text="Each row is an hour. Click the hours the selected template plays (drag to do many; click an hour for every day)." />
+                            <Button Grid.Column="1" x:Name="TemplateClearButton" Content="Clear" ToolTip.Tip="Take this template out of every day and hour" />
+                        </Grid>
+                        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
+                                   Text="While playing in AUTO, the playout keeps the playlist at least an hour long: from where it ends, it adds that hour's template, line by line, up to the end of the hour. Hours without a template: nothing is added (fill music, if on, still covers a playlist that runs out)." />
+                        <Border Classes="calendar">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Top" x:Name="TemplateHeader" Height="28" Background="#1A1D24" />
+                                <ScrollViewer x:Name="TemplateScroll">
+                                    <c:WeekGrid x:Name="TemplateGrid" />
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="4">
+                        <StackPanel x:Name="TemplatePanel" Spacing="12" Margin="0,0,14,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="TemplateNameBox" PlaceholderText="e.g. Weekday mornings" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="TemplateEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Lines, played in order (then from the top again until the hour is full)" />
+                                <ListBox x:Name="LineList" Height="260" Background="#13161C">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="app:ScheduleRow">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button x:Name="LineUpButton" Content="▲" ToolTip.Tip="Earlier in the hour" />
+                                    <Button x:Name="LineDownButton" Content="▼" ToolTip.Tip="Later in the hour" />
+                                    <Button x:Name="LineCopyButton" Content="Copy" ToolTip.Tip="The same line again, after it" />
+                                    <Button x:Name="RemoveLineButton" Content="Remove" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Add a line" />
+                                <Grid ColumnDefinitions="*,6,Auto">
+                                    <ComboBox x:Name="LineCategoryBox" HorizontalAlignment="Stretch" PlaceholderText="Library category" />
+                                    <Button Grid.Column="2" x:Name="AddCategoryLineButton" Content="Add" />
+                                </Grid>
+                                <Button x:Name="AddFolderLineButton" Content="A folder…" ToolTip.Tip="A file from a folder (and its subfolders)" />
+                                <TextBlock x:Name="LibraryNote" Classes="note" />
+                            </StackPanel>
+                            <TextBlock Classes="note"
+                                       Text="Songs and artists are kept apart by the rest times of fill music (Settings → Safety). A library category's jingles and adverts are tagged as such; a folder's files go by the folder (Jingles, Ads…)." />
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

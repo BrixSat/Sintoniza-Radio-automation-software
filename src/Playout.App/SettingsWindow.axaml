@@ -107,7 +107,14 @@
                         <NumericUpDown x:Name="CrossfadeBox" Minimum="0" Maximum="15" Increment="0.5" FormatString="0.0"
                                        Width="160" HorizontalAlignment="Left" />
                         <TextBlock Classes="note" Margin="0,4,0,0"
-                                   Text="The outgoing track fades out over this time while the next one starts. 0 = back-to-back. Applies from the next track." />
+                                   Text="Song to song: the outgoing song fades out over this time while the next one starts. 0 = back-to-back. Applies from the next track." />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Crossfade with jingles, adverts and programmes (seconds)" />
+                        <NumericUpDown x:Name="OtherCrossfadeBox" Minimum="0" Maximum="15" Increment="0.5" FormatString="0.0"
+                                       Width="160" HorizontalAlignment="Left" />
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="Into or out of a jingle, promo, advert or programme. 0 (the default) = no fade: the song ends and the jingle starts clean, and the jingle plays to its end." />
                     </StackPanel>
                     <StackPanel>
                         <TextBlock Classes="label" Text="Outputs (one desk channel each)" />

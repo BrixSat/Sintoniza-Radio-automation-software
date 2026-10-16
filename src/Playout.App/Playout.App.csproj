@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\icon.ico" />
+    <AvaloniaResource Include="Assets\schedule.ico" />
     <EmbeddedResource Include="i18n\*.json" LogicalName="i18n.%(Filename).json" />
   </ItemGroup>
 

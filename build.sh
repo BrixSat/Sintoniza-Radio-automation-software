@@ -104,8 +104,9 @@ exec /opt/$pkg/$tool "\$@"
 SH
   done
   cp "$ROOT/packaging/linux/$pkg.desktop" "$ROOT/packaging/linux/$pkg-schedule.desktop" "$root/usr/share/applications/"
-  cp "$ROOT/packaging/linux/$pkg.png" "$root/usr/share/icons/hicolor/256x256/apps/"
+  cp "$ROOT/packaging/linux/$pkg.png" "$ROOT/packaging/linux/$pkg-schedule.png" "$root/usr/share/icons/hicolor/256x256/apps/"
   cp "$ROOT/packaging/icon.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg.svg"
+  cp "$ROOT/packaging/icon-schedule.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg-schedule.svg"
 
   find "$root" -type d -exec chmod 755 {} +
   find "$root" -type f -exec chmod 644 {} +

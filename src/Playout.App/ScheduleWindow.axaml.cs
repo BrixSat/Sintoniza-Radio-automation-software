@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Playout.App.Controls;
 using Playout.Engine;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -44,9 +45,10 @@ public partial class ScheduleWindow : Window
 
     readonly ScheduleData _data;
     readonly string _browseFolder;
-    readonly EntryCalendar _eventCalendar, _breakCalendar;
+    readonly EntryCalendar _eventCalendar, _breakCalendar, _templateCalendar;
     readonly Dictionary<string, double> _lengths = new(); // advert file → seconds
-    List<ScheduleRow> _eventRows = new(), _breakRows = new(), _clientRows = new(), _campaignRows = new();
+    List<ScheduleRow> _eventRows = new(), _breakRows = new(), _clientRows = new(), _campaignRows = new(), _templateRows = new();
+    List<LibraryCategory> _categories = new();
     DateTime _week = Monday(DateTime.Today);
     List<double> _spotTimes = new();
     List<AdPlacement>? _spotSnapshot;
@@ -85,7 +87,12 @@ public partial class ScheduleWindow : Window
                 ShowSpotWeek();
             });
 
+        _templateCalendar = new EntryCalendar(this, TemplateGrid, TemplateHeader, TemplateStepBox, TemplateOffsetBox, TemplateAddTimeBox, TemplateAddTimeButton, TemplateClearButton,
+            () => _data.Templates, () => SelectedTemplate, () => (TemplateList.SelectedItem as ScheduleRow)?.Refresh());
+        TemplateStepBox.SelectedIndex = Steps.Length - 1; // a row an hour
+
         WireEvents();
+        WireTemplates();
         WireBreaks();
         WireClients();
         SaveButton.Click += (_, _) => Save();
@@ -103,6 +110,11 @@ public partial class ScheduleWindow : Window
         _eventRows = data.Events.Select(EventRow).ToList();
         _breakRows = data.Breaks.Select(BreakRow).ToList();
         _clientRows = data.Clients.Select(ClientRow).ToList();
+        _templateRows = data.Templates.Select(TemplateRow).ToList();
+        TemplateList.ItemsSource = _templateRows;
+        TemplateList.SelectedIndex = _templateRows.Count > 0 ? 0 : -1;
+        ShowTemplate();
+        _ = LoadCategories();
         EventList.ItemsSource = _eventRows;
         BreakList.ItemsSource = _breakRows;
         ClientList.ItemsSource = _clientRows;
@@ -117,7 +129,7 @@ public partial class ScheduleWindow : Window
         // Open at the morning, where most of the day's schedule is.
         Opened += (_, _) =>
         {
-            foreach (var (scroll, grid) in new[] { (EventScroll, EventGrid), (BreakScroll, BreakGrid) })
+            foreach (var (scroll, grid) in new[] { (EventScroll, EventGrid), (BreakScroll, BreakGrid), (TemplateScroll, TemplateGrid) })
             {
                 int row = grid.Times.ToList().FindIndex(t => t >= 6 * 3600);
                 scroll.Offset = scroll.Offset.WithY(Math.Max(0, row) * WeekGrid.RowHeight);
@@ -200,6 +212,164 @@ public partial class ScheduleWindow : Window
         string what = PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : Directory.Exists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
         return (EntryName(e), $"{SlotsSummary(e)} · {StartText(e)}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
     });
+
+    // ───────────────────────── Playlists (smart playlists) ─────────────────────────
+
+    PlaylistTemplate? SelectedTemplate => (TemplateList.SelectedItem as ScheduleRow)?.Item as PlaylistTemplate;
+    TemplateLine? SelectedLine => (LineList.SelectedItem as ScheduleRow)?.Item as TemplateLine;
+
+    void WireTemplates()
+    {
+        TemplateList.SelectionChanged += (_, _) => ShowTemplate();
+        AddTemplateButton.Click += (_, _) =>
+        {
+            var t = new PlaylistTemplate { Name = L.T("New playlist") };
+            _data.Templates.Add(t);
+            _templateRows = _templateRows.Append(TemplateRow(t)).ToList();
+            TemplateList.ItemsSource = _templateRows;
+            TemplateList.SelectedIndex = _templateRows.Count - 1;
+            TemplateNameBox.Focus();
+            TemplateNameBox.SelectAll();
+        };
+        DeleteTemplateButton.Click += async (_, _) =>
+        {
+            if (TemplateList.SelectedItem is not ScheduleRow { Item: PlaylistTemplate t } row) return;
+            if (!await Dialogs.Confirm(this, L.T("Delete playlist"), L.F("Delete \"{0}\"?", TemplateName(t)), L.T("Delete"))) return;
+            _data.Templates.Remove(t);
+            int i = _templateRows.IndexOf(row);
+            _templateRows = _templateRows.Where(r => r != row).ToList();
+            TemplateList.ItemsSource = _templateRows;
+            TemplateList.SelectedIndex = Math.Min(i, _templateRows.Count - 1);
+            _templateCalendar.Rebuild();
+        };
+        TemplateNameBox.TextChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.Name = TemplateNameBox.Text?.Trim() ?? "");
+        TemplateEnabledBox.IsCheckedChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.Enabled = TemplateEnabledBox.IsChecked == true);
+
+        AddCategoryLineButton.Click += (_, _) =>
+        {
+            if (LineCategoryBox.SelectedIndex is not (>= 0 and var i) || i >= _categories.Count) return;
+            var c = _categories[i];
+            AddLine(new TemplateLine { Source = LineSource.Category, CategoryId = c.Id, CategoryName = c.Name, Kind = c.Kind });
+        };
+        AddFolderLineButton.Click += async (_, _) =>
+        {
+            if (SelectedTemplate == null || await PickFolder(L.T("Folder for this line")) is not { } folder) return;
+            AddLine(new TemplateLine { Source = LineSource.Folder, Folder = folder });
+        };
+        LineUpButton.Click += (_, _) => MoveLine(-1);
+        LineDownButton.Click += (_, _) => MoveLine(1);
+        LineCopyButton.Click += (_, _) =>
+        {
+            if (SelectedLine is not { } l) return;
+            AddLine(new TemplateLine { Source = l.Source, CategoryId = l.CategoryId, CategoryName = l.CategoryName, Kind = l.Kind, Folder = l.Folder });
+        };
+        RemoveLineButton.Click += (_, _) =>
+        {
+            if (SelectedTemplate is not { } t || SelectedLine is not { } l) return;
+            int i = t.Lines.IndexOf(l);
+            Edit<PlaylistTemplate>(TemplateList, _ => t.Lines.Remove(l));
+            ShowLines(Math.Min(i, t.Lines.Count - 1));
+        };
+    }
+
+    /// <summary>Puts a line after the selected one (or at the end).</summary>
+    void AddLine(TemplateLine line)
+    {
+        if (SelectedTemplate is not { } t) return;
+        int at = SelectedLine is { } sel ? t.Lines.IndexOf(sel) + 1 : t.Lines.Count;
+        Edit<PlaylistTemplate>(TemplateList, _ => t.Lines.Insert(at, line));
+        ShowLines(at);
+    }
+
+    void MoveLine(int delta)
+    {
+        if (SelectedTemplate is not { } t || SelectedLine is not { } l) return;
+        int i = t.Lines.IndexOf(l), j = i + delta;
+        if (j < 0 || j >= t.Lines.Count) return;
+        Edit<PlaylistTemplate>(TemplateList, _ => (t.Lines[i], t.Lines[j]) = (t.Lines[j], t.Lines[i]));
+        ShowLines(j);
+    }
+
+    void ShowTemplate()
+    {
+        var t = SelectedTemplate;
+        TemplatePanel.IsEnabled = t != null;
+        _loading = true;
+        TemplateNameBox.Text = t?.Name ?? "";
+        TemplateEnabledBox.IsChecked = t?.Enabled ?? true;
+        _loading = false;
+        ShowLines(0);
+        _templateCalendar.Rebuild();
+    }
+
+    void ShowLines(int select)
+    {
+        var t = SelectedTemplate;
+        LineList.ItemsSource = t?.Lines.Select((l, i) => LineRow(l, i)).ToList();
+        LineList.SelectedIndex = t == null || t.Lines.Count == 0 ? -1 : Math.Clamp(select, 0, t.Lines.Count - 1);
+    }
+
+    ScheduleRow LineRow(TemplateLine l, int index) => new(l, () => l.Source == LineSource.Folder
+        ? ($"{index + 1}.  📁  {Path.GetFileName(l.Folder.TrimEnd('/', '\\'))}", L.F("a file from the folder {0}", l.Folder) + (Directory.Exists(l.Folder) ? "" : L.T(" · not found")), true)
+        : ($"{index + 1}.  {KindIcon(l.Kind)}  {CategoryLabel(l)}", FromCategory(l.Kind), true));
+
+    string CategoryLabel(TemplateLine l) => _categories.FirstOrDefault(c => c.Id == l.CategoryId)?.Name ?? l.CategoryName;
+
+    static string KindIcon(string kind) => kind switch { "jingle" => "✦", "commercial" => "€", "other" => "◆", _ => "♫" };
+
+    static string FromCategory(string kind) => kind switch
+    {
+        "jingle" => L.T("a jingle from the library category"),
+        "commercial" => L.T("an advert from the library category"),
+        "other" => L.T("an item from the library category"),
+        _ => L.T("a song from the library category"),
+    };
+
+    ScheduleRow TemplateRow(PlaylistTemplate t) => new(t, () =>
+        (TemplateName(t), L.F("{0} · {1}", L.F(t.Lines.Count == 1 ? "{0} line" : "{0} lines", t.Lines.Count), HoursSummary(t)), t.Enabled));
+
+    static string TemplateName(PlaylistTemplate t) => string.IsNullOrWhiteSpace(t.Name) ? L.T("Playlist") : t.Name.Trim();
+
+    /// <summary>"07–10 · Mon–Fri" for one block of hours on the same days; else how many hours a week.</summary>
+    static string HoursSummary(PlaylistTemplate t)
+    {
+        if (t.Slots.Count == 0) return L.T("not in the calendar yet");
+        var byHour = t.Slots.GroupBy(s => s.At.Hours).OrderBy(g => g.Key).ToList();
+        var days = byHour[0].Select(s => s.Day).ToHashSet();
+        bool sameDays = byHour.All(g => g.Select(s => s.Day).ToHashSet().SetEquals(days));
+        bool block = byHour[^1].Key - byHour[0].Key == byHour.Count - 1;
+        if (!sameDays || !block) return L.F("{0} hours a week", t.Slots.Count);
+        string hours = byHour.Count == 1 ? $"{byHour[0].Key:00}:00" : $"{byHour[0].Key:00}–{byHour[^1].Key + 1:00}";
+        return $"{hours} · {DaysText(days)}";
+    }
+
+    /// <summary>The music library's categories, for the lines (read in the background; the library may be on a server).</summary>
+    async Task LoadCategories()
+    {
+        LibraryNote.Text = L.T("Reading the music library…");
+        AddCategoryLineButton.IsEnabled = false;
+        try
+        {
+            var settings = AppSettings.Load();
+            var library = new LibraryService();
+            await library.OpenAsync(settings.Library);
+            if (library.Db is not { } db)
+            {
+                LibraryNote.Text = L.F("The music library isn't available ({0}); folders can still be used.", library.Error ?? L.T("not set up"));
+                return;
+            }
+            var (categories, counts) = await Task.Run(() => (db.Categories().ToList(), db.CategoryCounts()));
+            _categories = categories;
+            LineCategoryBox.ItemsSource = categories.Select(c => $"{KindIcon(c.Kind)}  {c.Name}  ({counts.GetValueOrDefault(c.Id)})").ToList();
+            AddCategoryLineButton.IsEnabled = categories.Count > 0;
+            LibraryNote.Text = categories.Count == 0 ? L.T("The music library has no categories yet; folders can still be used.") : "";
+            ShowLines(LineList.SelectedIndex);
+        }
+        catch (Exception ex)
+        {
+            LibraryNote.Text = L.F("The music library isn't available ({0}); folders can still be used.", ex.Message);
+        }
+    }
 
     // ───────────────────────── Ad breaks ─────────────────────────
 
@@ -812,6 +982,7 @@ public partial class ScheduleWindow : Window
             ShowSpotWeek();
         }
         if (item is ScheduledEvent) EventGrid.Refresh();
+        if (item is PlaylistTemplate) TemplateGrid.Refresh();
     }
 
     static void RefreshRows(IEnumerable<ScheduleRow> rows)
@@ -866,13 +1037,15 @@ public partial class ScheduleWindow : Window
     void Save()
     {
         SavedText.Text = "";
-        foreach (var (entry, list, tab) in _data.Events.Select(e => ((ScheduleEntry)e, EventList, 0))
-                     .Concat(_data.Breaks.Select(b => ((ScheduleEntry)b, BreakList, 1))))
+        foreach (var (entry, list, rows, tab) in _data.Events.Select(e => ((ScheduleEntry)e, EventList, _eventRows, 0))
+                     .Concat(_data.Breaks.Select(b => ((ScheduleEntry)b, BreakList, _breakRows, 1)))
+                     .Concat(_data.Templates.Select(t => ((ScheduleEntry)t, TemplateList, _templateRows, 3))))
         {
             if (!entry.Enabled || entry.Slots.Count > 0) continue;
             Tabs.SelectedIndex = tab;
-            list.SelectedItem = (tab == 0 ? _eventRows : _breakRows).FirstOrDefault(r => r.Item == entry);
-            ErrorText.Text = L.F("{0} isn't in the calendar yet: click the days and times it runs (or switch it off).", EntryName(entry));
+            list.SelectedItem = rows.FirstOrDefault(r => r.Item == entry);
+            ErrorText.Text = L.F("{0} isn't in the calendar yet: click the days and times it runs (or switch it off).",
+                entry is PlaylistTemplate t ? TemplateName(t) : EntryName(entry));
             return;
         }
         foreach (var c in _data.Clients)

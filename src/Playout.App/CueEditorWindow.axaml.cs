@@ -222,7 +222,7 @@ public partial class CueEditorWindow : Window
                 _boxes[i].Text = _values[i] is { } v ? Format.CueTime(v) : "";
 
         var preview = new Track(Guid.Empty, _path, "", "", _length, Cues: Current());
-        var markers = CueMarkers.For(preview, _engine.CrossfadeSeconds);
+        var markers = CueMarkers.For(preview, _engine.CrossfadeBetween(preview, null));
         WaveZoom.SetMarkers(markers);
         WaveFull.SetMarkers(markers);
 

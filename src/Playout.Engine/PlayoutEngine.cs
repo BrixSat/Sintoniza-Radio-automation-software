@@ -26,6 +26,7 @@ public sealed class PlayoutEngine : IDisposable
     const int FillAttempts = 10;           // files tried at a time (some may be unreadable)
     const int KeepPlayed = 500;            // played items kept above the cursor when fill music grows the playlist
     const double EventFadeSeconds = 2;     // a hard scheduled event fades out what is on air over this
+    static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(2); // a scheduled item this far past its latest start is left out
     const double BacktimeTolerance = 5;    // backtiming leaves an item this many seconds early or late alone
     const double BacktimeMinGap = 15;      // a smaller gap before a backtimed break isn't filled: it starts that much early
     const int BacktimeFillTries = 8;       // fill songs looked at for one that fits a gap
@@ -92,11 +93,13 @@ public sealed class PlayoutEngine : IDisposable
 
     volatile bool _autoAdvance = true;
     double _crossfadeSeconds = 5;
+    double _otherCrossfadeSeconds;
 
     /// <param name="MixFade">How the deck fades once the next item starts at the mix point; null = it plays on to Cue Out (Mix marker).</param>
     /// <param name="Started">When it went on air (UTC).</param>
     /// <param name="GainDb">Loudness levelling applied to it.</param>
-    sealed record Deck(int Handle, Track Track, double Length, int MixSync, int CueOutSync, double? MixFade, DateTime Started = default, double GainDb = 0);
+    sealed record Deck(int Handle, Track Track, double Length, int MixSync, int CueOutSync, double? MixFade, DateTime Started = default, double GainDb = 0,
+        double MixAt = 0);
 
     public event Action<PlaylistSnapshot>? PlaylistChanged;
     public event Action<string>? Log;
@@ -382,6 +385,7 @@ public sealed class PlayoutEngine : IDisposable
         }
         if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
         bool playing = State == PlayerState.Playing;
+        if (!playing) DropStale(); // what came due earlier while stopped doesn't pile up
 
         if (timing is { Start: EventStart.EndAt, EndsAt: { } endsAt })
         {
@@ -412,6 +416,8 @@ public sealed class PlayoutEngine : IDisposable
         bool hard = timing.Start == EventStart.Hard;
         if (!hard && timing.MaxDelay is { } delay && delay > TimeSpan.Zero)
             tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow + delay };
+        // A hard one waiting while the player is stopped is due now: started at Play soon after, left out if much later.
+        if (hard && !playing) tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow };
         InsertAfterOnAir(tracks, afterWaiting: !hard);
         if (playing && (hard || (_current == null && _connecting == null)))
         {
@@ -448,8 +454,14 @@ public sealed class PlayoutEngine : IDisposable
     public void AddScheduled(string label, IReadOnlyList<ScheduledItem> items, int insertAt = -1) => Post(() =>
         Insert(Scheduled(label, items), insertAt));
 
+    /// <summary>
+    /// Adds items at the end of the playlist, not part of an event, each with its kind (a smart playlist's songs and
+    /// jingles: a jingle category's files are jingles wherever they are kept).
+    /// </summary>
+    public void AddItems(IReadOnlyList<ScheduledItem> items) => Post(() => Insert(Scheduled(null, items), -1));
+
     /// <summary>Opens the items of a scheduled event (files that can't be read are left out), labelled with it.</summary>
-    List<Track> Scheduled(string label, IReadOnlyList<ScheduledItem> items)
+    List<Track> Scheduled(string? label, IReadOnlyList<ScheduledItem> items)
     {
         var tracks = new List<Track>();
         foreach (var item in items)
@@ -490,6 +502,7 @@ public sealed class PlayoutEngine : IDisposable
         for (int i = 0; i <= index; i++) _played.Add(_playlist[i].Id);
         _cursorIndex = index;
         PlaylistUpdated();
+        if (DropStale()) PlaylistUpdated();
         if (!play || _current != null) return;
         Emit(L.T("Carrying on after a restart"));
         if (NextTrack() is { } next) StartTrack(next, 0);
@@ -505,6 +518,22 @@ public sealed class PlayoutEngine : IDisposable
         get => Volatile.Read(ref _crossfadeSeconds);
         set => Volatile.Write(ref _crossfadeSeconds, Math.Clamp(value, 0, 15));
     }
+
+    /// <summary>Crossfade into or out of jingles, adverts and programmes (0 = they start and end cleanly).</summary>
+    public double OtherCrossfadeSeconds
+    {
+        get => Volatile.Read(ref _otherCrossfadeSeconds);
+        set => Volatile.Write(ref _otherCrossfadeSeconds, Math.Clamp(value, 0, 15));
+    }
+
+    static bool IsSong(Track t) => t.Kind is TrackKind.Music or TrackKind.Stream;
+
+    /// <summary>
+    /// The crossfade from <paramref name="from"/> into <paramref name="to"/> (null: not known yet): song to song the
+    /// crossfade, anything with a jingle, advert or programme on either side the other one.
+    /// </summary>
+    public double CrossfadeBetween(Track from, Track? to) =>
+        IsSong(from) && (to == null || IsSong(to)) ? CrossfadeSeconds : OtherCrossfadeSeconds;
 
     public void AddFiles(IEnumerable<string> paths, int insertAt = -1)
     {
@@ -605,6 +634,7 @@ public sealed class PlayoutEngine : IDisposable
         }
         if (_current != null && State == PlayerState.Paused) { SetPaused(false); return; }
         if (_current != null) return;
+        if (DropStale()) PlaylistUpdated();
         // At the end of the list, Play starts again from the top.
         if ((NextTrack() ?? _playlist.FirstOrDefault()) is { } next) StartTrack(next, ManualFade);
     });
@@ -1022,7 +1052,7 @@ public sealed class PlayoutEngine : IDisposable
         if (_current is not { } deck || deck.Track.IsOpenEnded || NextTrack() is not { IsStream: true } next) return;
         long bytes = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes);
         if (bytes < 0) return;
-        double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeSeconds), deck.Track.IsStream ? deck.Track.End : deck.Length);
+        double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeBetween(deck.Track, next)), deck.Track.IsStream ? deck.Track.End : deck.Length);
         if (mixAt - Bass.ChannelBytes2Seconds(deck.Handle, bytes) <= StreamConnectLeadSeconds) Connection(next);
     }
 
@@ -1115,7 +1145,7 @@ public sealed class PlayoutEngine : IDisposable
     Deck Arm(int handle, Track track, double length)
     {
         double end = Math.Min(track.End, length);
-        double mixAt = Math.Min(track.MixPoint(CrossfadeSeconds), end);
+        double mixAt = Math.Min(track.MixPoint(CrossfadeBetween(track, null)), end); // set again for what follows (RearmMix)
 
         int mixSync = 0, cueOutSync = 0;
         // With the mix point at the end there is no overlap: Cue Out (or the end of the file) starts the next item.
@@ -1126,7 +1156,26 @@ public sealed class PlayoutEngine : IDisposable
 
         // A Mix marker means "start the next one here, let this one finish"; the default crossfade fades it out by Cue Out.
         double? mixFade = track.Cues?.Mix != null ? null : end - mixAt;
-        return new Deck(handle, track, length, mixSync, cueOutSync, mixFade);
+        return new Deck(handle, track, length, mixSync, cueOutSync, mixFade, MixAt: mixAt);
+    }
+
+    /// <summary>
+    /// The crossfade depends on what follows the item on air (song to song, or a jingle or advert on either side): when
+    /// that changes, its mix point moves (while it hasn't been reached).
+    /// </summary>
+    void RearmMix()
+    {
+        if (_current is not { } deck || deck.Track.IsStream || deck.Track.Cues?.Mix != null) return;
+        double end = Math.Min(deck.Track.End, deck.Length);
+        double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeBetween(deck.Track, NextTrack())), end);
+        if (Math.Abs(mixAt - deck.MixAt) < 0.01) return;
+        double position = Bass.ChannelBytes2Seconds(deck.Handle, Math.Max(0, BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes)));
+        if (position >= Math.Min(mixAt, deck.MixAt) - 0.05) return; // too late to move it
+        if (deck.MixSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.MixSync);
+        int mixSync = mixAt < end - 0.01
+            ? BassMix.ChannelSetSync(deck.Handle, SyncFlags.Position | SyncFlags.Mixtime, Bass.ChannelSeconds2Bytes(deck.Handle, mixAt), _crossfadeSync)
+            : 0;
+        _current = deck with { MixSync = mixSync, MixFade = end - mixAt, MixAt = mixAt };
     }
 
     /// <summary>
@@ -1136,7 +1185,7 @@ public sealed class PlayoutEngine : IDisposable
     Deck ArmStream(int handle, Track track)
     {
         if (track.IsOpenEnded) return new Deck(handle, track, 0, 0, 0, CrossfadeSeconds);
-        double mixAt = track.MixPoint(CrossfadeSeconds);
+        double mixAt = track.MixPoint(CrossfadeBetween(track, null));
         if (mixAt < track.End) After(mixAt, () => OnCrossfadePoint(handle));
         // Only while still on air: once the next item has started, its crossfade fades this one out.
         After(track.End, () => { if (_current?.Handle == handle) OnCueOut(handle); });
@@ -1340,6 +1389,7 @@ public sealed class PlayoutEngine : IDisposable
         if (now < _nextTimedCheck) return;
         _nextTimedCheck = now.AddSeconds(0.5);
         if (State != PlayerState.Playing) return;
+        if (DropStale()) PlaylistUpdated();
         int ti = -1;
         for (int i = Math.Max(0, _cursorIndex + 1); i < _playlist.Count; i++)
             if (_playlist[i].StartBy != null && !_played.Contains(_playlist[i].Id)) { ti = i; break; }
@@ -1356,6 +1406,30 @@ public sealed class PlayoutEngine : IDisposable
             return;
         }
         if (timed.Backtime && _autoAdvance && _connecting == null) Backtime(ti, left);
+    }
+
+    /// <summary>
+    /// Scheduled items still waiting whose latest start passed more than <see cref="StaleAfter"/> ago (the player was
+    /// stopped or paused then, or the app wasn't running) are taken out with the rest of their event, not played late
+    /// one after the other. Returns whether any were.
+    /// </summary>
+    bool DropStale()
+    {
+        var now = DateTime.UtcNow;
+        var left = new List<string>();
+        for (int i = _playlist.Count - 1; i > _cursorIndex; i--)
+        {
+            var t = _playlist[i];
+            if (t.StartBy is not { } by || now - by < StaleAfter || _played.Contains(t.Id) || t.Id == _connecting || t.Id == _current?.Track.Id) continue;
+            int end = i + 1;
+            while (end < _playlist.Count && t.Event != null && _playlist[end].Event == t.Event && _playlist[end].StartBy == null && !_played.Contains(_playlist[end].Id)) end++;
+            _playlist.RemoveRange(i, end - i);
+            left.Add(t.Event ?? t.Display);
+        }
+        if (left.Count == 0) return false;
+        left.Reverse();
+        Emit(L.F("Left out, their time passed while the player wasn't playing: {0}", string.Join(", ", left)));
+        return true;
     }
 
     /// <summary>
@@ -1408,7 +1482,7 @@ public sealed class PlayoutEngine : IDisposable
             if (!probed.IsCompletedSuccessfully || index <= _cursorIndex || Upcoming() is not { } now) return;
             double stillLeft = (_playlist[index].StartBy!.Value - DateTime.UtcNow).TotalSeconds;
             double stillGap = stillLeft - now.First(u => u.Index == index).At;
-            var best = probed.Result.Where(t => Step(t) <= stillGap + BacktimeTolerance).MaxBy(Step);
+            var best = probed.Result.Where(t => Step(t) <= stillGap + BacktimeTolerance).MaxBy(t => Step(t));
             if (best == null)
             {
                 if (_backtimeReported != timedId)
@@ -1424,7 +1498,7 @@ public sealed class PlayoutEngine : IDisposable
     }
 
     /// <summary>How long after an item starts the next one does (in AUTO): its play length less its overlap with the next.</summary>
-    double Step(Track t) => t.PlayLength - (t.End - t.MixPoint(CrossfadeSeconds));
+    double Step(Track t, Track? next = null) => t.PlayLength - (t.End - t.MixPoint(CrossfadeBetween(t, next)));
 
     /// <summary>
     /// When each item after the one on air will start (seconds from now) if nothing changes, as the playlist's start
@@ -1437,7 +1511,7 @@ public sealed class PlayoutEngine : IDisposable
         double position = deck.Track.IsStream
             ? (DateTime.UtcNow - deck.Started).TotalSeconds
             : Bass.ChannelBytes2Seconds(deck.Handle, Math.Max(0, BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes)));
-        double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeSeconds), deck.Track.IsStream ? deck.Track.End : deck.Length);
+        double mixAt = deck.Track.IsStream ? Math.Min(deck.Track.MixPoint(CrossfadeBetween(deck.Track, null)), deck.Track.End) : deck.MixAt;
         double at = Math.Max(0, mixAt - position);
         var list = new List<(int, double)>();
         int first = _playlist.FindIndex(t => t.Id == deck.Track.Id) + 1;
@@ -1445,7 +1519,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             list.Add((i, at));
             if (_playlist[i].IsOpenEnded) return list; // nothing after it has a time
-            at += Step(_playlist[i]);
+            at += Step(_playlist[i], i + 1 < _playlist.Count ? _playlist[i + 1] : null);
         }
         list.Add((_playlist.Count, at));
         return list;
@@ -1453,7 +1527,7 @@ public sealed class PlayoutEngine : IDisposable
 
     /// <summary>How long items played one after another take, from the first starting to the last ending.</summary>
     double ChainLength(IReadOnlyList<Track> tracks) =>
-        tracks.Take(tracks.Count - 1).Sum(Step) + tracks[^1].PlayLength;
+        Enumerable.Range(0, tracks.Count - 1).Sum(i => Step(tracks[i], tracks[i + 1])) + tracks[^1].PlayLength;
 
     /// <summary>
     /// Where a backtimed event goes: before the upcoming item whose start is nearest to when it has to start (in
@@ -1584,6 +1658,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         if (Fill()) return; // Insert published the playlist
         var next = NextTrack();
+        RearmMix();
         if (_preload is { } p && p.Id != next?.Id)
         {
             Bass.StreamFree(p.Handle);
