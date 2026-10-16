@@ -103,6 +103,8 @@ public partial class MainWindow : Window
                 AppLog.Write(message);
                 Dispatcher.UIThread.Post(() => LastLog.Text = message);
             };
+            // Saved in the schedule program: show what is coming up now.
+            _scheduler.Reloaded += () => Dispatcher.UIThread.Post(() => ReadUpcoming(DateTime.Now, force: true));
         }
         ApplyWebNowPlaying();
         AppLog.Write($"Started {AppInfo.Name} {Updates.CurrentText}");
@@ -245,7 +247,6 @@ public partial class MainWindow : Window
         };
         StreamToggle.ContextMenu = streamMenu;
         SettingsButton.Click += async (_, _) => await OpenSettings();
-        ScheduleButton.Click += async (_, _) => await OpenSchedule();
         ReportsButton.Click += (_, _) => OpenReports();
 
         // Tunnel: the operator's shortcuts come before whatever control has focus (Space on a button, keys in the playlist).
@@ -1327,28 +1328,7 @@ public partial class MainWindow : Window
     readonly AsRunLog _asRun = new(AsRunLog.DefaultFolder);
     Scheduler? _scheduler;
     WebNowPlaying? _web;
-    bool _scheduleOpen;
     ReportsWindow? _reports;
-
-    async Task OpenSchedule()
-    {
-        if (_scheduler == null || _scheduleOpen) return;
-        _scheduleOpen = true;
-        try
-        {
-            if (await new ScheduleWindow(_scheduler.Current, _settings.Library.Folders.FirstOrDefault() ?? _settings.MusicFolder)
-                    .ShowDialog<ScheduleData?>(this) is { } edited)
-            {
-                _scheduler.Update(edited);
-                LastLog.Text = L.T("Schedule saved");
-                ReadUpcoming(DateTime.Now, force: true);
-            }
-        }
-        finally
-        {
-            _scheduleOpen = false;
-        }
-    }
 
     void OpenReports()
     {

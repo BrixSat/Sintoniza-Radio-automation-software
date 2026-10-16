@@ -57,8 +57,11 @@ engine for decoding, mixing and streaming.
   Drop a file on a cart (from the music browser or the file manager) to assign it.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.
-- **Schedule** (the *Schedule* button under the playlist): things that happen at set times, placed on **week
-  calendars** (days across, times down, like a traffic system). Click a cell to put the selected item there, drag
+- **Schedule** — a separate program, **Sintoniza Schedule** (its own entry in the app menu / Start menu, or
+  `radio-playout --schedule`), for whoever runs the programming and the advertising; the on-air screen has no way
+  into it. Save writes `schedule.json` and the playout picks it up within a few seconds (it keeps when each event
+  last ran in `schedule-state.json`, so the two never write the same file). It places what happens at set times on
+  **week calendars** (days across, times down, like a traffic system). Click a cell to put the selected item there, drag
   to fill many cells, or click a time for every day; rows can be every 5 to 60 minutes from any minute (every hour
   at :20), and exact times such as 12:59:55 can be added as rows. Other items show faintly in their cells.
   - **Events** play a file, the newest file in a folder (a news bulletin downloaded there; optionally only if it

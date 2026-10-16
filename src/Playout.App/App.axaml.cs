@@ -10,9 +10,13 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        Localization.Load(AppSettings.Load().Language);
+        var settings = AppSettings.Load();
+        Localization.Load(settings.Language);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.MainWindow = new MainWindow();
+            // The schedule program (its own menu entry): events, ad breaks, clients. Not part of the on-air screen.
+            desktop.MainWindow = desktop.Args?.Contains(AppInfo.ScheduleArg) == true
+                ? new ScheduleWindow(ScheduleData.Load(), settings.Library.Folders.FirstOrDefault() ?? settings.MusicFolder)
+                : new MainWindow();
         base.OnFrameworkInitializationCompleted();
     }
 }

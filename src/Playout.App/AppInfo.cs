@@ -4,4 +4,8 @@ namespace Playout.App;
 public static class AppInfo
 {
     public const string Name = "Sintoniza Radio Broadcast system";
+    /// <summary>The schedule program: events, ad breaks and clients, kept apart from the on-air screen.</summary>
+    public const string ScheduleName = "Sintoniza Schedule";
+    /// <summary>Starts the app as the schedule program.</summary>
+    public const string ScheduleArg = "--schedule";
 }

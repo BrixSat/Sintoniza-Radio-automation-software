@@ -24,7 +24,7 @@ static class Watchdog
 
     /// <summary>True when this process should supervise rather than be the app.</summary>
     public static bool ShouldSupervise(string[] args) =>
-        !args.Contains(ChildArg) && !args.Contains(NoWatchdogArg) && AppSettings.Load().RestartAfterCrash;
+        !args.Contains(ChildArg) && !args.Contains(NoWatchdogArg) && !args.Contains(AppInfo.ScheduleArg) && AppSettings.Load().RestartAfterCrash;
 
     static string HeartbeatFile(int pid) => Path.Combine(Path.GetTempPath(), $"RadioPlayout-{pid}.alive");
 

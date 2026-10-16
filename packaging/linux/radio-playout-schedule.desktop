@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Schedule
+GenericName=Radio schedule and advertising
+Comment=Events, ad breaks, clients and campaigns for Sintoniza Radio Broadcast system
+Exec=radio-playout --schedule
+Icon=radio-playout
+Terminal=false
+Keywords=radio;schedule;advertising;traffic;clients;campaigns;
+Categories=AudioVideo;Audio;

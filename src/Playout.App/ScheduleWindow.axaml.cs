@@ -33,8 +33,9 @@ public sealed class ScheduleRow : INotifyPropertyChanged
 }
 
 /// <summary>
-/// Edits the schedule on week calendars: events at set times (news, programmes, streams), ad breaks, and the
-/// adverts placed in them. Works on a copy: Save hands it back, Cancel drops it.
+/// The schedule program (<c>--schedule</c>, its own menu entry, apart from the on-air screen): events at set times
+/// (news, programmes, streams), ad breaks and their running order, and the clients' campaigns placed in them, on week
+/// calendars. Save writes schedule.json; the playout loads it within a few seconds.
 /// </summary>
 public partial class ScheduleWindow : Window
 {
@@ -49,7 +50,19 @@ public partial class ScheduleWindow : Window
     DateTime _week = Monday(DateTime.Today);
     List<double> _spotTimes = new();
     List<AdPlacement>? _spotSnapshot;
-    bool _loading;
+    bool _loading, _closing;
+    string _saved;
+
+    /// <summary>The schedule as text, to tell whether it changed since it was opened or saved.</summary>
+    string Snapshot()
+    {
+        var state = _data.LastStarted;
+        _data.LastStarted = new();
+        try { return System.Text.Json.JsonSerializer.Serialize(_data); }
+        finally { _data.LastStarted = state; }
+    }
+
+    bool Changed => Snapshot() != _saved;
 
     // Parameterless constructor for the XAML previewer.
     public ScheduleWindow() : this(new ScheduleData(), "") { }
@@ -76,7 +89,16 @@ public partial class ScheduleWindow : Window
         WireBreaks();
         WireClients();
         SaveButton.Click += (_, _) => Save();
-        CancelButton.Click += (_, _) => Close(null);
+        CancelButton.Click += (_, _) => Close();
+        Closing += async (_, e) =>
+        {
+            if (_closing || !Changed) return;
+            e.Cancel = true;
+            if (!await Dialogs.Confirm(this, L.T("Unsaved changes"), L.T("Close without saving the changes?"), L.T("Close"))) return;
+            _closing = true;
+            Close();
+        };
+        _saved = Snapshot();
 
         _eventRows = data.Events.Select(EventRow).ToList();
         _breakRows = data.Breaks.Select(BreakRow).ToList();
@@ -774,7 +796,7 @@ public partial class ScheduleWindow : Window
         if (_loading || (list.SelectedItem as ScheduleRow)?.Item is not T item) return;
         change(item);
         (list.SelectedItem as ScheduleRow)?.Refresh();
-        ErrorText.Text = "";
+        ErrorText.Text = SavedText.Text = "";
         if (item is AdClient or AdCampaign)
         {
             (ClientList.SelectedItem as ScheduleRow)?.Refresh();
@@ -843,6 +865,7 @@ public partial class ScheduleWindow : Window
     /// <summary>Checks that what is switched on is in the calendar, and the adverts' dates, before handing the schedule back.</summary>
     void Save()
     {
+        SavedText.Text = "";
         foreach (var (entry, list, tab) in _data.Events.Select(e => ((ScheduleEntry)e, EventList, 0))
                      .Concat(_data.Breaks.Select(b => ((ScheduleEntry)b, BreakList, 1))))
         {
@@ -862,6 +885,16 @@ public partial class ScheduleWindow : Window
                     ErrorText.Text = L.F("{0}: the last day is before the first.", CampaignName(k));
                     return;
                 }
-        Close(_data);
+        try
+        {
+            _data.Save();
+            _saved = Snapshot();
+            ErrorText.Text = "";
+            SavedText.Text = L.F("Saved at {0:HH:mm:ss}. The playout takes it within a few seconds.", DateTime.Now);
+        }
+        catch (Exception ex)
+        {
+            ErrorText.Text = L.F("Not saved: {0}", ex.Message);
+        }
     }
 }

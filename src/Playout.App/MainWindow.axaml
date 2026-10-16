@@ -219,8 +219,6 @@
                     <TextBlock Text="Settings" />
                 </StackPanel>
             </Button>
-            <Button Grid.Column="1" x:Name="ScheduleButton" Classes="tool" Content="Schedule" Margin="8,0,0,0"
-                    ToolTip.Tip="Events at fixed times (news, programmes), ad breaks and the adverts booked into them" />
             <Button Grid.Column="2" x:Name="ReportsButton" Classes="tool" Content="Reports" Margin="8,0,0,0"
                     ToolTip.Tip="Music played (royalties) and proof of broadcast for advertisers" />
             <Button Grid.Column="3" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
