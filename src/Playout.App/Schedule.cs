@@ -490,8 +490,9 @@ public static class ScheduleTimes
 /// <param name="Start">When it is expected to start (an EndAt one: its length before <paramref name="Due"/>).</param>
 /// <param name="Due">Its time in the schedule.</param>
 /// <param name="MaxDelayMinutes">Soft: at most this late (0 = it waits for the song on air).</param>
+/// <param name="Empty">A break with no adverts booked: shown, so it can be seen, but nothing will play.</param>
 public sealed record UpcomingEvent(Guid EntryId, string Label, string What, DateTime Start, DateTime Due, EventStart Timing, double Seconds, bool IsBreak,
-    double MaxDelayMinutes = 0)
+    double MaxDelayMinutes = 0, bool Empty = false)
 {
     /// <summary>How it starts, for the playlist and the countdown: "hard start at 12:20:00", "can wait 5 min"…</summary>
     public string How => Timing switch
@@ -593,7 +594,13 @@ sealed class Scheduler : IDisposable
         foreach (var (entry, at) in due)
         {
             var items = Items(entry, at, quiet: true);
-            if (items.Count == 0) continue; // a break with no adverts, a missing file: nothing will play
+            if (items.Count == 0)
+            {
+                // A break with no adverts is shown all the same (greyed): so it is seen that nothing is booked there.
+                if (entry is AdBreak)
+                    list.Add(new UpcomingEvent(entry.Id, Label(entry, at), L.T("no adverts booked: it will be skipped"), at, at, entry.Start, 0, true, entry.MaxDelayMinutes, Empty: true));
+                continue; // a missing file: nothing will play
+            }
             double seconds = items.Sum(i => i.StreamName != null ? i.StreamSeconds : Length(i.Path));
             string what = entry switch
             {

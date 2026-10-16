@@ -274,6 +274,9 @@
         <Style Selector="Grid.preview">
             <Setter Property="Opacity" Value="0.8" />
         </Style>
+        <Style Selector="Grid.preview.empty">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
         <Style Selector="Grid.preview TextBlock.title">
             <Setter Property="FontStyle" Value="Italic" />
         </Style>

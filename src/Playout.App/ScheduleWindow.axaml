@@ -367,7 +367,12 @@
                                 </Grid>
                                 <Button x:Name="SpotClearDatesButton" Content="No date limit" HorizontalAlignment="Left" />
                                 <TextBlock x:Name="SpotPlacedText" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" HorizontalAlignment="Left" />
+                                <TextBlock x:Name="SpotOrphanText" Foreground="{StaticResource OnAir}" FontSize="12" TextWrapping="Wrap" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button x:Name="SpotEveryBreakButton" Content="In every break" ToolTip.Tip="Every week, in every break that has its section" />
+                                    <Button x:Name="SpotOrphanButton" Content="Remove the places with no break" />
+                                    <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" />
+                                </WrapPanel>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

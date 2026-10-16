@@ -113,7 +113,9 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     /// <summary>The number shown: none for a scheduled preview (it isn't in the playlist yet).</summary>
     public string NumberText => IsPreview ? "" : _number.ToString();
 
-    bool _isPlaying, _isNext, _isPlayed;
+    bool _isPlaying, _isNext, _isPlayed, _isEmptyBreak;
+    /// <summary>A break shown ahead with no adverts booked: nothing will play.</summary>
+    public bool IsEmptyBreak { get => _isEmptyBreak; set => Set(ref _isEmptyBreak, value); }
     public bool IsPlaying { get => _isPlaying; set => Set(ref _isPlaying, value); }
     public bool IsNext { get => _isNext; set => Set(ref _isNext, value); }
     public bool IsPlayed { get => _isPlayed; set => Set(ref _isPlayed, value); }

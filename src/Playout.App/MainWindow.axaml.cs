@@ -581,7 +581,7 @@ public partial class MainWindow : Window
         {
             row.StartTime = t.ToString("HH:mm:ss");
             // The first ad break still to come (shown ahead, or already in the playlist), for the countdown.
-            if (_nextBreak == null && row.IsAdBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
+            if (_nextBreak == null && row.IsAdBreak && !row.IsEmptyBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
                 _nextBreak = (t, row.IsPreview ? row.Title : row.Track.Event ?? L.T("Ad break"),
                     row.IsPreview ? _upcoming.FirstOrDefault(u => row.Title == u.Label)?.How ?? "" : BreakHow(row.Track));
             var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
@@ -716,6 +716,7 @@ public partial class MainWindow : Window
         if (!_previewRows.TryGetValue((u.EntryId, u.Due), out var row))
             _previewRows[(u.EntryId, u.Due)] = row = new PlaylistRow(track with { Id = Guid.NewGuid() }) { IsPreview = true };
         else row.Track = track with { Id = row.Id };
+        row.IsEmptyBreak = u.Empty;
         row.HourMark = "";
         return row;
     }

@@ -634,6 +634,16 @@ public partial class ScheduleWindow : Window
             SpotToBox.SelectedDate = null;
         };
         SpotClearPlacesButton.Click += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Placements.Clear());
+        SpotEveryBreakButton.Click += (_, _) => Edit<AdCampaign>(CampaignList, k =>
+        {
+            // Every week, at every day and time of a break that has its section (places on a date stay).
+            k.Placements.RemoveAll(p => p.Date == null);
+            foreach (var b in _data.Breaks.Where(b => b.Enabled && b.SectionOf(k) != null))
+                foreach (var slot in b.Slots)
+                    if (!k.Placements.Any(p => p.Date == null && p.Day == slot.Day && p.At == slot.At))
+                        k.Placements.Add(new AdPlacement { Day = slot.Day, Time = slot.Time });
+        });
+        SpotOrphanButton.Click += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Placements.RemoveAll(p => !HasBreak(k, p)));
 
         // The week calendar of breaks.
         SpotGrid.CellOf = SpotCell;
@@ -714,7 +724,19 @@ public partial class ScheduleWindow : Window
             ? L.T("Not placed in the calendar yet: click the breaks it goes in.")
             : L.F("Placed in {0} of the calendar ({1} every week, {2} on a date).", Plural(places, "{0} break", "{0} breaks"), k.Placements.Count(p => p.Date == null), k.Placements.Count(p => p.Date != null));
         SpotClearPlacesButton.IsVisible = places > 0;
+        // Places where there is no break (any more): a break moved to another time leaves them behind.
+        var orphans = k?.Placements.Where(p => !HasBreak(k, p)).ToList() ?? new();
+        SpotOrphanText.Text = orphans.Count == 0 ? ""
+            : L.F("{0} with no break that has its section (e.g. {1}): it doesn't play there. A break moved to another time? Place it again.",
+                Plural(orphans.Count, "{0} place", "{0} places"),
+                string.Join(", ", orphans.Select(p => p.Date is { } d ? d.ToString("d/M ", CultureInfo.CurrentCulture) + WeekGrid.Time(p.At.TotalSeconds) : DayShort(p.Day ?? DayOfWeek.Monday) + " " + WeekGrid.Time(p.At.TotalSeconds)).Distinct().Take(3)));
+        SpotOrphanButton.IsVisible = orphans.Count > 0;
+        SpotEveryBreakButton.IsVisible = k != null;
     }
+
+    /// <summary>Whether there is a break at a place of the campaign that has its section.</summary>
+    bool HasBreak(AdCampaign k, AdPlacement p) => _data.Breaks.Any(b => b.Enabled && b.SectionOf(k) != null
+        && (p.Date is { } d ? b.TimesOn(d.Date).Contains(d.Date + p.At) : b.Slots.Any(s => s.Day == p.Day && s.At == p.At)));
 
     /// <summary>After clients or campaigns changed: the counts in the breaks and the calendar.</summary>
     void AdvertsChanged()
