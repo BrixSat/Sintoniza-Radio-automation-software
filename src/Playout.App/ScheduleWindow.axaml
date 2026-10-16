@@ -85,8 +85,8 @@
                             <ComboBox x:Name="EventStepBox" Width="100" />
                             <TextBlock Text="from minute" VerticalAlignment="Center" />
                             <NumericUpDown x:Name="EventOffsetBox" Minimum="0" Maximum="59" Increment="1" FormatString="0" Width="120" />
-                            <TextBox x:Name="EventAddTimeBox" Width="96" PlaceholderText="hh:mm:ss" />
-                            <Button x:Name="EventAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 12:59:55" />
+                            <TextBox x:Name="EventAddTimeBox" Width="96" PlaceholderText="hh:mm:ss or *:mm:ss" />
+                            <Button x:Name="EventAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 12:59:55; *:59:55 puts the selected one at that minute and second of every hour, every day" />
                             <Button x:Name="EventClearButton" Content="Clear" ToolTip.Tip="Take this event out of every day and time" />
                         </WrapPanel>
                         <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
@@ -179,8 +179,8 @@
                             <ComboBox x:Name="BreakStepBox" Width="100" />
                             <TextBlock Text="from minute" VerticalAlignment="Center" />
                             <NumericUpDown x:Name="BreakOffsetBox" Minimum="0" Maximum="59" Increment="1" FormatString="0" Width="120" />
-                            <TextBox x:Name="BreakAddTimeBox" Width="96" PlaceholderText="hh:mm:ss" />
-                            <Button x:Name="BreakAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 12:59:55" />
+                            <TextBox x:Name="BreakAddTimeBox" Width="96" PlaceholderText="hh:mm:ss or *:mm:ss" />
+                            <Button x:Name="BreakAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 12:59:55; *:59:55 puts the selected one at that minute and second of every hour, every day" />
                             <Button x:Name="BreakClearButton" Content="Clear" ToolTip.Tip="Take this break out of every day and time" />
                         </WrapPanel>
                         <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"

@@ -85,6 +85,7 @@ public partial class ScheduleWindow : Window
                 (BreakList.SelectedItem as ScheduleRow)?.Refresh();
                 ShowBooked();
                 ShowSpotWeek();
+                ShowPlaced(); // a break moved: the campaigns' places left without one
             });
 
         _templateCalendar = new EntryCalendar(this, TemplateGrid, TemplateHeader, TemplateStepBox, TemplateOffsetBox, TemplateAddTimeBox, TemplateAddTimeButton, TemplateClearButton,
@@ -866,12 +867,21 @@ public partial class ScheduleWindow : Window
             grid.PaintEnded += () => _changed();
             addButton.Click += (_, _) =>
             {
-                if (ScheduleTimes.Parse(addBox.Text) is not { EveryHour: false } t)
+                if (ScheduleTimes.Parse(addBox.Text) is not { } t)
                 {
-                    window.ErrorText.Text = L.F("\"{0}\" isn't a time (e.g. 12:59:55)", addBox.Text);
+                    window.ErrorText.Text = L.F("\"{0}\" isn't a time (e.g. 12:59:55, or *:59:55 for every hour)", addBox.Text);
                     return;
                 }
-                _extra.Add(t.Time.TotalSeconds);
+                var times = t.EveryHour ? Enumerable.Range(0, 24).Select(h => TimeSpan.FromHours(h) + t.Time).ToList() : [t.Time];
+                foreach (var time in times) _extra.Add(time.TotalSeconds);
+                // "*:59:55": a row every hour at that minute and second, with the selected item put at all of them, every day.
+                if (t.EveryHour && _selected() is { } e)
+                {
+                    foreach (var day in Week)
+                        foreach (var time in times)
+                            e.Set(day, time, true);
+                    _changed();
+                }
                 addBox.Text = "";
                 window.ErrorText.Text = "";
                 Rebuild();
@@ -1002,6 +1012,7 @@ public partial class ScheduleWindow : Window
             RefreshRows(_campaignRows);
             BreakGrid.Refresh();
             ShowSpotWeek();
+            ShowPlaced();
         }
         if (item is ScheduledEvent) EventGrid.Refresh();
         if (item is PlaylistTemplate) TemplateGrid.Refresh();
