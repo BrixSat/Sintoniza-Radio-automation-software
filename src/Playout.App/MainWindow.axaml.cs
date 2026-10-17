@@ -292,6 +292,12 @@ public partial class MainWindow : Window
         Closed += (_, _) => _web?.Dispose();
         Closed += (_, _) =>
         {
+            // Nothing keeps running for a closed window.
+            _fastTimer.Stop();
+            _saveTimer.Stop();
+            _updateTimer?.Stop();
+            _health?.Dispose();
+            _backups?.Dispose();
             _scheduler?.Dispose();
             LogCartsOnAir();
             _asRun.Close();
@@ -426,68 +432,130 @@ public partial class MainWindow : Window
         Clock.Text = now.ToString("HH:mm:ss");
 
         if (_engine == null) return;
-        var st = _engine.GetStatus();
-        _rds?.Update(st.State == PlayerState.Stopped ? null : st.Current);
-
-        MeterL.Push(st.LevelLeft);
-        MeterR.Push(st.LevelRight);
-
-        bool hasTrack = st.Current != null;
-        NowTitle.Text = st.Current?.Title ?? L.T("Nothing on air");
-        NowArtist.Text = string.IsNullOrWhiteSpace(st.Current?.Artist) ? " " : st.Current!.Artist;
-        UpdateWaveforms(st);
-        ShowCover(st.Current);
-        // Times run from Cue In to Cue Out, not over the whole file.
-        double start = st.Current?.Start ?? 0;
-        double end = st.Current != null ? Math.Min(st.Current.End, st.Length) : 0;
-        double elapsed = Math.Max(0, st.Position - start);
-        if (st.Current is { } cur && _rowsById.TryGetValue(cur.Id, out var onAirRow))
-            onAirRow.Progress = end > start ? elapsed / (end - start) : 0;
-        Elapsed.Text = Format.Duration(elapsed);
-        double remaining = Math.Max(0, end - st.Position);
-        bool openEnded = st.Current?.IsOpenEnded == true;
-        UpdateCueBadge(st, end);
-        ShowSilence(st);
-        UpdateCueTimes(st);
-        Remaining.Text = openEnded ? "∞" : "-" + Format.Duration(Math.Ceiling(remaining));
-        Remaining.Foreground = hasTrack && !openEnded && remaining <= 10
-            ? (IBrush)this.FindResource("OnAir")!
-            : (IBrush)this.FindResource("TextMain")!;
-
-        PlayButton.Classes.Set("active", st.State == PlayerState.Playing);
-        PauseButton.Classes.Set("active", st.State == PlayerState.Paused);
-        StopButton.Classes.Set("active", st.State == PlayerState.Stopped);
-        MicButton.Classes.Set("live", _engine.MicLive);
-        if (st.Current?.Id != _lastOnAirId)
+        PlayerStatus st;
+        try { st = _engine.GetStatus(); }
+        catch (Exception ex)
         {
-            // A new item went on air (Next button, double-click or auto-advance): flash Next.
-            if (st.Current != null && _lastOnAirId != null) FlashNext();
-            if (st.Current != null) CountPlayed();
-            _lastOnAirId = st.Current?.Id;
+            TickFailed("status", ex);
+            return;
         }
-
-        (OnAirText.Text, OnAirBadge.Background) = st.State switch
+        // Each part on its own: one that fails (a file, a platform quirk) doesn't stop the rest of the deck.
+        Part("rds", () => _rds?.Update(st.State == PlayerState.Stopped ? null : st.Current));
+        Part("meters", () =>
         {
-            PlayerState.Playing => (L.T("ON AIR"), (IBrush)this.FindResource("OnAir")!),
-            PlayerState.Paused => (L.T("PAUSED"), (IBrush)this.FindResource("NextUp")!),
-            _ => (L.T("STOPPED"), new SolidColorBrush(Color.Parse("#3A3F4B"))),
-        };
+            MeterL.Push(st.LevelLeft);
+            MeterR.Push(st.LevelRight);
+        });
+        Part("now playing", () =>
+        {
+            NowTitle.Text = st.Current?.Title ?? L.T("Nothing on air");
+            NowArtist.Text = string.IsNullOrWhiteSpace(st.Current?.Artist) ? " " : st.Current!.Artist;
+        });
+        Part("waveform", () => UpdateWaveforms(st));
+        Part("cover", () => ShowCover(st.Current));
+        Part("times", () =>
+        {
+            // Times run from Cue In to Cue Out, not over the whole file.
+            bool hasTrack = st.Current != null;
+            double start = st.Current?.Start ?? 0;
+            double end = st.Current != null ? Math.Min(st.Current.End, st.Length) : 0;
+            double elapsed = Math.Max(0, st.Position - start);
+            if (st.Current is { } cur && _rowsById.TryGetValue(cur.Id, out var onAirRow))
+                onAirRow.Progress = end > start ? elapsed / (end - start) : 0;
+            Elapsed.Text = Format.Duration(elapsed);
+            double remaining = Math.Max(0, end - st.Position);
+            bool openEnded = st.Current?.IsOpenEnded == true;
+            UpdateCueBadge(st, end);
+            ShowSilence(st);
+            UpdateCueTimes(st);
+            Remaining.Text = openEnded ? "∞" : "-" + Format.Duration(Math.Ceiling(remaining));
+            Remaining.Foreground = hasTrack && !openEnded && remaining <= 10
+                ? (IBrush)this.FindResource("OnAir")!
+                : (IBrush)this.FindResource("TextMain")!;
+        });
+        Part("buttons", () =>
+        {
+            PlayButton.Classes.Set("active", st.State == PlayerState.Playing);
+            PauseButton.Classes.Set("active", st.State == PlayerState.Paused);
+            StopButton.Classes.Set("active", st.State == PlayerState.Stopped);
+            MicButton.Classes.Set("live", _engine.MicLive);
+            if (st.Current?.Id != _lastOnAirId)
+            {
+                // A new item went on air (Next button, double-click or auto-advance): flash Next.
+                if (st.Current != null && _lastOnAirId != null) FlashNext();
+                if (st.Current != null) CountPlayed();
+                _lastOnAirId = st.Current?.Id;
+            }
 
-        UpdateCarts();
-        UpdateBreakCountdown(now);
-
-        UpdateStreamStatus(st);
+            (OnAirText.Text, OnAirBadge.Background) = st.State switch
+            {
+                PlayerState.Playing => (L.T("ON AIR"), (IBrush)this.FindResource("OnAir")!),
+                PlayerState.Paused => (L.T("PAUSED"), (IBrush)this.FindResource("NextUp")!),
+                _ => (L.T("STOPPED"), new SolidColorBrush(Color.Parse("#3A3F4B"))),
+            };
+        });
+        Part("carts", UpdateCarts);
+        Part("watch", () => WatchDisplay(st));
+        Part("break countdown", () => UpdateBreakCountdown(now));
+        Part("stream", () => UpdateStreamStatus(st));
 
         // Once a second is plenty for the date, ETA column and station info.
         if (_slowTick-- > 0) return;
         _slowTick = 30;
-        DateText.Text = now.ToString("dddd, d MMMM yyyy");
-        ReadUpcoming(now);
-        _asRun.Sync(); // every ten minutes: what the database missed
-        UpdateStartTimes(st);
-        _smart?.Check(_playlistEnds, st.State == PlayerState.Playing && _engine.AutoAdvance);
-        UpdateStationInfo(now);
-        _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem());
+        Part("date", () => DateText.Text = now.ToString("dddd, d MMMM yyyy"));
+        Part("upcoming", () => ReadUpcoming(now));
+        Part("as-run", () => _asRun.Sync()); // every ten minutes: what the database missed
+        Part("start times", () => UpdateStartTimes(st));
+        Part("smart playlist", () => _smart?.Check(_playlistEnds, st.State == PlayerState.Playing && _engine.AutoAdvance));
+        Part("station", () => UpdateStationInfo(now));
+        Part("website", () => _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem()));
+    }
+
+    double _lastPosition = -1;
+    long _positionSince = Environment.TickCount64, _soundSince, _lastDiagnosis;
+    Guid? _watchedId;
+    PlayerState _watchedState;
+
+    /// <summary>
+    /// The display should follow the sound: when it doesn't (sound coming out but the player not playing, or playing
+    /// with the position stuck for 3 s), what the engine is doing goes in the log, at most once a minute.
+    /// </summary>
+    void WatchDisplay(PlayerStatus st)
+    {
+        long now = Environment.TickCount64;
+        // A new item or a change of state starts the count again.
+        if (Math.Abs(st.Position - _lastPosition) > 0.001 || st.Current?.Id != _watchedId || st.State != _watchedState)
+        {
+            _lastPosition = st.Position;
+            _positionSince = now;
+            _watchedId = st.Current?.Id;
+            _watchedState = st.State;
+        }
+        bool sound = Math.Max(st.LevelLeft, st.LevelRight) > 0.05f;
+        _soundSince = sound && st.State != PlayerState.Playing ? (_soundSince == 0 ? now : _soundSince) : 0;
+        string? problem = st.State == PlayerState.Playing && st.Current is { IsOpenEnded: false } && now - _positionSince > 3000 ? "the position isn't moving"
+            : _soundSince != 0 && now - _soundSince > 3000 ? "sound is coming out but the player isn't playing"
+            : null;
+        if (problem == null || now - _lastDiagnosis < 60_000 || _engine == null) return;
+        _lastDiagnosis = now;
+        AppLog.Write($"Display: {problem}: {_engine.Diagnose()}");
+    }
+
+    readonly Dictionary<string, long> _tickErrors = new();
+
+    void Part(string name, Action action)
+    {
+        try { action(); }
+        catch (Exception ex) { TickFailed(name, ex); }
+    }
+
+    /// <summary>A part of the screen's update failed: in the log with what went wrong (at most every 10 s for each part).</summary>
+    void TickFailed(string part, Exception ex)
+    {
+        long now = Environment.TickCount64;
+        if (_tickErrors.TryGetValue(part, out long last) && now - last < 10_000) return;
+        _tickErrors[part] = now;
+        AppLog.Write($"Screen update failed ({part}): {ex}");
     }
 
     void UpdateWaveforms(PlayerStatus st)

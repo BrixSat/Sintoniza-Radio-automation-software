@@ -727,9 +727,20 @@ public sealed class PlayoutEngine : IDisposable
         double pos = 0, len = 0;
         if (deck != null)
         {
-            // Corrected for what is still queued on the card, so the display matches what is audible.
-            long p = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes, _graph.MusicDelay);
+            // Corrected for what is still queued on the card, so the display matches what is audible. When the mixer
+            // can't say (just after the item started, or a card that queues more than it remembers, as on macOS just
+            // after the card started), the position less the time queued: never stuck.
+            int delay = _graph.MusicDelay;
+            long p = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes, delay);
             if (p >= 0) pos = Bass.ChannelBytes2Seconds(deck.Handle, p);
+            else if (BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes) is var plain and >= 0)
+            {
+                double queued = delay / (double)(AudioGraph.SampleRate * 2 * sizeof(float));
+                double played = Bass.ChannelBytes2Seconds(deck.Handle, plain);
+                pos = Math.Max(0, played - queued);
+                if (played > queued + 1 && Interlocked.Exchange(ref _delayReported, 1) == 0)
+                    Emit($"Position: the mixer can't look back over the card's queue ({queued:0.00} s, {Bass.LastError}); worked out instead");
+            }
             len = deck.Length;
         }
 
@@ -743,6 +754,20 @@ public sealed class PlayoutEngine : IDisposable
     }
 
     public PlayerState State => (PlayerState)_state;
+
+    int _delayReported;
+
+    /// <summary>What the engine is doing, in one line for the log (when the display doesn't follow the sound).</summary>
+    public string Diagnose()
+    {
+        var deck = _current;
+        string current = deck == null ? "none" :
+            $"{Path.GetFileName(deck.Track.Path)} handle {deck.Handle} active {Bass.ChannelIsActive(deck.Handle)} " +
+            $"paused in mixer {(BassMix.ChannelFlags(deck.Handle, 0, 0) & BassFlags.MixerChanPause) != 0}, bus position {Bass.ChannelGetPosition(_graph.MusicBus)}, " +
+            $"pos {BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes)} / delayed {BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes, _graph.MusicDelay)} ({Bass.LastError})";
+        return $"state {State}, current {current}, card queue {_graph.MusicDelay} bytes, playing out {_playingOut.Count}, fading {_fading.Count}, " +
+               $"connecting {_connecting?.ToString() ?? "no"}, auto {_autoAdvance}";
+    }
 
     /// <summary>Connects to the streaming server. Until <see cref="StopStreaming"/>, a lost or failed connection is retried.</summary>
     public void StartStreaming(StreamSettings s)
