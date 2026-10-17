@@ -307,7 +307,7 @@ This sends every output to that device and ignores the routing in Settings.
 
 ### 4. Make a release build
 
-`./build.sh` builds ready-to-ship packages for Windows and Linux in `dist/` and fetches any missing BASS libraries
+`./build.sh` builds ready-to-ship packages for Windows and Linux (and, on a Mac, macOS) in `dist/` and fetches any missing BASS libraries
 first: a `.zip` and a `-setup.exe` installer for Windows, and a `.tar.gz` and a `.deb` for Linux. The installer needs
 NSIS (`sudo apt install nsis`); without it the script skips that step.
 
@@ -317,6 +317,26 @@ Use `./build.sh win` or `./build.sh linux` for one platform, and
 To publish a GitHub Release, commit and push your changes, then run `./release.sh 1.0.0`. It builds all four packages,
 tags the commit `v1.0.0` and uploads them to the repository's Releases page. It needs the
 [GitHub CLI](https://cli.github.com/) (`sudo apt install gh`, then `gh auth login`).
+
+#### macOS
+
+`./build.sh mac 1.0.0` builds, for Apple Silicon (`arm64`) and Intel (`x64`) Macs, **Sintoniza Radio Broadcast
+system.app** and **Sintoniza Schedule.app** (which starts the first as the schedule program; keep both in the same
+folder, normally Applications), with their icons and the microphone permission text.
+
+- **On a Mac** (best): they are signed and put in `dist/Sintoniza-1.0.0-macos-arm64.dmg` and `-x64.dmg`, a disk image
+  with a link to Applications to drag them onto. To add them to a release made with `./release.sh` on Linux: on the
+  Mac, `git pull`, then `./release-mac.sh 1.0.0` (needs `brew install gh` and `gh auth login`).
+- **On Linux**: they go in `.zip` files. An Apple Silicon Mac only starts signed apps, so these are signed ad hoc if
+  [`rcodesign`](https://github.com/indygreg/apple-platform-rs) is installed; otherwise sign them once on the Mac after
+  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Radio Broadcast system.app" "/Applications/Sintoniza Schedule.app"`.
+
+Without an Apple Developer ID the apps are signed *ad hoc*: the first time, macOS says it can't check the developer;
+right-click the app → **Open** (or System Settings → Privacy & Security → **Open Anyway**), once. With a Developer ID
+(Apple Developer Program), `MAC_SIGN_IDENTITY="Developer ID Application: …" ./build.sh mac 1.0.0` signs them for
+distribution, with the hardened runtime; then notarize the `.dmg` with
+`xcrun notarytool submit dist/Sintoniza-1.0.0-macos-arm64.dmg --keychain-profile <profile> --wait` and
+`xcrun stapler staple` it, and they open without the warning. `scripts/make-icns.py` remakes the icons.
 
 To publish by hand instead, build a self-contained release, which needs no .NET installed on the target machine:
 
@@ -338,8 +358,8 @@ The build copies the matching libraries into the output folder automatically.
 Then start the app:
 
 - **Windows:** `dist\win-x64\RadioPlayout.exe`
-- **macOS:** `dist/osx-arm64/RadioPlayout`. The build is unsigned, so if macOS blocks it, run
-  `xattr -dr com.apple.quarantine dist/osx-arm64` once. A proper `.app` bundle isn't produced yet.
+- **macOS:** `dist/osx-arm64/RadioPlayout` (for an app to install, use `./build.sh mac`, above). The build is
+  unsigned, so if macOS blocks it, run `xattr -dr com.apple.quarantine dist/osx-arm64` once.
 - **Linux:** `dist/linux-x64/RadioPlayout`. Audio goes through ALSA, which works with PulseAudio and PipeWire.
 
 ## Project layout

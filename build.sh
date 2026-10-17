@@ -4,7 +4,8 @@
 #   dist/RadioPlayout-<version>-win-x64-setup.exe   (needs NSIS: apt install nsis)
 #   dist/RadioPlayout-<version>-linux-x64.tar.gz
 #   dist/radio-playout_<version>_amd64.deb          (needs dpkg-deb and fakeroot)
-# Usage: ./build.sh [win|linux|all] [version]   (defaults: all, version from git)
+#   dist/Sintoniza-<version>-macos-arm64.dmg / -x64.dmg   (on a Mac; a .zip when built on Linux)
+# Usage: ./build.sh [win|linux|mac|all] [version]   (defaults: all, version from git; all = win and linux, and mac on a Mac)
 # Fetches the BASS libraries for each platform first if they are missing.
 set -euo pipefail
 
@@ -132,7 +133,79 @@ CTL
   echo "→ $file"
 }
 
+# macOS: two apps per Mac type (Apple Silicon arm64, Intel x64), Sintoniza Radio Broadcast system.app and
+# Sintoniza Schedule.app (a launcher that starts the first with --schedule). On a Mac they are signed (ad hoc, or with
+# the Developer ID in MAC_SIGN_IDENTITY) and put in a .dmg; on Linux they go in a .zip, signed ad hoc only if rcodesign
+# is installed: an Apple Silicon Mac won't start an unsigned app (sign it there with codesign, see the README).
+mac() {
+  local native="$ROOT/native/osx" rid out pkg app sched stage file appname="Sintoniza Radio Broadcast system"
+  if [[ -z "$(ls -A "$native" 2>/dev/null)" || ! -e "$native/libbassflac.dylib" ]]; then
+    "$ROOT/scripts/fetch-bass.sh" osx
+  fi
+  for rid in osx-arm64 osx-x64; do
+    pkg="Sintoniza-$version-macos-${rid#osx-}"
+    out="$DIST/$pkg"
+    rm -rf "$out"
+    app="$out/$appname.app"
+    sched="$out/Sintoniza Schedule.app"
+    mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$sched/Contents/MacOS" "$sched/Contents/Resources"
+
+    echo "▶ Publishing $rid"
+    for project in "$PROJECT" "$ROOT/src/Playout.Import"; do
+      dotnet publish "$project" -c Release -r "$rid" --self-contained \
+        -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$app/Contents/MacOS"
+    done
+    cp "$ROOT/README.md" "$out/"
+    sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Info.plist" > "$app/Contents/Info.plist"
+    cp "$ROOT/packaging/macos/icon.icns" "$app/Contents/Resources/"
+    sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Schedule-Info.plist" > "$sched/Contents/Info.plist"
+    cp "$ROOT/packaging/macos/schedule.icns" "$sched/Contents/Resources/"
+    cp "$ROOT/packaging/macos/sintoniza-schedule" "$sched/Contents/MacOS/"
+    chmod +x "$app/Contents/MacOS/$NAME" "$app/Contents/MacOS/radio-import" "$sched/Contents/MacOS/sintoniza-schedule"
+
+    echo "▶ Signing $pkg"
+    if command -v codesign >/dev/null; then
+      local identity=${MAC_SIGN_IDENTITY:--}
+      for bundle in "$app" "$sched"; do
+        if [[ $identity == - ]]; then
+          codesign --force --deep --sign - "$bundle"
+        else
+          codesign --force --deep --options runtime --timestamp --entitlements "$ROOT/packaging/macos/entitlements.plist" \
+            --sign "$identity" "$bundle"
+        fi
+      done
+    elif command -v rcodesign >/dev/null; then
+      rcodesign sign "$app" >/dev/null && rcodesign sign "$sched" >/dev/null
+    elif [[ $rid == osx-arm64 ]]; then
+      echo "⚠ Not signed (no codesign or rcodesign): on an Apple Silicon Mac run once" >&2
+      echo "    codesign --force --deep --sign - \"/Applications/$appname.app\" \"/Applications/Sintoniza Schedule.app\"" >&2
+    fi
+
+    echo "▶ Packaging $pkg"
+    if command -v hdiutil >/dev/null; then
+      # The disk image: both apps and a link to Applications to drag them onto.
+      stage="$(mktemp -d)"
+      cp -R "$app" "$sched" "$out/README.md" "$stage/"
+      ln -s /Applications "$stage/Applications"
+      file="$DIST/$pkg.dmg"
+      rm -f "$file"
+      hdiutil create -quiet -volname "Sintoniza $version" -srcfolder "$stage" -fs HFS+ -format UDZO "$file"
+      rm -rf "$stage"
+    else
+      file="$DIST/$pkg.zip"
+      rm -f "$file"
+      (cd "$out" && zip -qry "$file" "$appname.app" "Sintoniza Schedule.app" README.md)
+    fi
+    echo "→ $file"
+  done
+}
+
 case $target in
-  all) build win; build linux ;;
+  all)
+    build win
+    build linux
+    if [[ "$(uname -s)" == Darwin ]]; then mac; fi
+    ;;
+  mac) mac ;;
   *)   build "$target" ;;
 esac

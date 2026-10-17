@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -39,11 +40,19 @@ static class Updates
     /// <summary>Built from source rather than by build.sh: no version to compare with.</summary>
     public static bool IsDevBuild => Current == new Version(0, 0, 0);
 
-    /// <summary>How this installation can update itself: Windows setup, Debian package, or not at all (zip/tar, macOS, from source).</summary>
+    /// <summary>
+    /// How this installation can update itself: Windows setup, Debian package, the macOS disk image for this Mac (an
+    /// installed app), or not at all (zip/tar, from source).
+    /// </summary>
     static string? PackageSuffix =>
         OperatingSystem.IsWindows() ? "-win-x64-setup.exe"
         : OperatingSystem.IsLinux() && AppContext.BaseDirectory.StartsWith(DebInstallDir) ? "_amd64.deb"
+        : OperatingSystem.IsMacOS() && AppContext.BaseDirectory.Contains(".app/Contents/MacOS")
+            ? RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "-macos-arm64.dmg" : "-macos-x64.dmg"
         : null;
+
+    /// <summary>macOS: installing opens the disk image, and the apps are dragged to Applications by hand.</summary>
+    public static bool InstallOpensDiskImage => OperatingSystem.IsMacOS();
 
     /// <summary>The latest release if it is newer than this build, else null.</summary>
     public static async Task<UpdateInfo?> CheckAsync(CancellationToken cancel = default)
@@ -126,6 +135,13 @@ static class Updates
         if (OperatingSystem.IsWindows())
         {
             Process.Start(new ProcessStartInfo(file, "/S /RESTART") { UseShellExecute = true });
+            return;
+        }
+        if (OperatingSystem.IsMacOS())
+        {
+            // Finder opens the disk image: the new apps are dragged onto Applications, over the old ones.
+            using var open = Process.Start(new ProcessStartInfo("open", [file])) ?? throw new InvalidOperationException(L.T("Could not open the disk image"));
+            await open.WaitForExitAsync();
             return;
         }
 

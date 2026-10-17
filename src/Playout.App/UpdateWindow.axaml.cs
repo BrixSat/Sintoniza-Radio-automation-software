@@ -32,8 +32,10 @@ public partial class UpdateWindow : Window
         {
             // Portable zip/tar or macOS: no installer this copy can run.
             InstallButton.Content = L.T("Download page");
-            ShowStatus(L.T("This copy can't update itself (it isn't installed with the setup or the .deb package). Download the new version from the release page."));
+            ShowStatus(L.T("This copy can't update itself (it isn't installed with the setup, the .deb package or the macOS app). Download the new version from the release page."));
         }
+        else if (Updates.InstallOpensDiskImage)
+            WarningText.Text = L.T("The disk image opens: drag both apps onto Applications, replacing the old ones. Playout carries on; the new version runs after a restart.");
         else if (Updates.InstallClosesApp)
             WarningText.Text = L.F("Installing closes {0}, so playout and streaming stop until it starts again (about a minute). Update when you are off air.", AppInfo.Name);
         else
@@ -75,7 +77,9 @@ public partial class UpdateWindow : Window
                 return;
             }
             _installed = true;
-            ShowStatus(L.F("Version {0} is installed. Restart {1} to use it.", _update.Version, AppInfo.Name));
+            ShowStatus(Updates.InstallOpensDiskImage
+                ? L.F("Drag both apps from the disk image onto Applications, replacing the old ones; then restart {0}.", AppInfo.Name)
+                : L.F("Version {0} is installed. Restart {1} to use it.", _update.Version, AppInfo.Name));
             InstallButton.Content = L.T("Restart now");
             InstallButton.IsEnabled = true;
             LaterButton.Content = L.T("Restart later");
