@@ -48,10 +48,23 @@ static class DragHelper
         }, RoutingStrategies.Tunnel);
     }
 
-    public static DataTransfer Data<TValue>(DataFormat<TValue> format, TValue value) where TValue : class
+    /// <summary>
+    /// What a drag carries: the app's own format, and the same as plain text (<paramref name="text"/>). macOS needs
+    /// something it can put on its pasteboard: a drag with only an in-app format has no items there, and AppKit ends
+    /// the app ("There are 0 items on the pasteboard, but 1 drag images").
+    /// </summary>
+    public static DataTransfer Data<TValue>(DataFormat<TValue> format, TValue value, string text) where TValue : class
     {
         var data = new DataTransfer();
         data.Add(DataTransferItem.Create(format, value));
+        data.Add(DataTransferItem.Create(DataFormat.Text, text.Length > 0 ? text : AppInfo.Name));
         return data;
+    }
+
+    /// <summary>File paths: the app's format, and the paths one per line as text.</summary>
+    public static DataTransfer Paths(IEnumerable<string> paths)
+    {
+        var list = paths.ToArray();
+        return Data(AudioFiles.DragFormat, list, string.Join("\n", list));
     }
 }

@@ -57,7 +57,7 @@ public partial class TrackLibraryView : UserControl
             BuildMenu(TrackList.ContextMenu);
         };
         DragHelper.Attach(TrackList, Selected,
-            rows => DragHelper.Data(AudioFiles.DragFormat, rows.Select(r => r.Path).ToArray()));
+            rows => DragHelper.Paths(rows.Select(r => r.Path)));
     }
 
     internal void Attach(LibraryService service)

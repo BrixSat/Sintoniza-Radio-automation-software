@@ -199,7 +199,7 @@ public partial class MainWindow : Window
         // Rows can be dragged to reorder; drops also come from the music browser or the OS file manager.
         DragHelper.Attach(Playlist,
             () => Playlist.SelectedItems?.OfType<PlaylistRow>().ToList() ?? new(),
-            rows => DragHelper.Data(RowDragFormat, rows.Select(r => r.Id).ToArray()),
+            rows => DragHelper.Data(RowDragFormat, rows.Select(r => r.Id).ToArray(), string.Join("\n", rows.Select(r => r.Track.Display))),
             DragDropEffects.Move);
 
         Playlist.AddHandler(DragDrop.DragOverEvent, (_, e) =>

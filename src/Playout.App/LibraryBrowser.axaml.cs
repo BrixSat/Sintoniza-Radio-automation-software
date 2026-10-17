@@ -90,10 +90,10 @@ public partial class LibraryBrowser : UserControl
 
         DragHelper.Attach(FileList,
             () => FileList.SelectedItems?.OfType<FileEntry>().ToList() ?? new(),
-            files => DragHelper.Data(AudioFiles.DragFormat, files.Select(f => f.Path).ToArray()));
+            files => DragHelper.Paths(files.Select(f => f.Path)));
         DragHelper.Attach(FolderTree,
             () => FolderTree.SelectedItem is FolderNode n ? [n] : new List<FolderNode>(),
-            nodes => DragHelper.Data(AudioFiles.DragFormat, nodes.Select(n => n.Path).ToArray()));
+            nodes => DragHelper.Paths(nodes.Select(n => n.Path)));
     }
 
     /// <summary>The library's categories (id, name), for a folder's Category menu; empty if the library isn't there.</summary>
