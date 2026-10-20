@@ -117,6 +117,8 @@ public sealed class AppSettings
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? Playlist { get; set; }
     public string MusicFolder { get; set; } = DefaultMusicFolder();
+    /// <summary>The last Sintoniza user who logged in on this computer (filled in at the next login).</summary>
+    public string LastUser { get; set; } = "";
     /// <summary>The web remote (this computer's: the server runs on it).</summary>
     public RemoteSettings Remote { get; set; } = new();
     /// <summary>Where voice tracks are kept (the station's; a folder every studio can reach). Empty: not chosen yet.</summary>

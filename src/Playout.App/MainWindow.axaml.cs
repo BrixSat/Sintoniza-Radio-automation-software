@@ -1,3 +1,4 @@
+using Playout.Library;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
@@ -1613,12 +1614,29 @@ public partial class MainWindow : Window
         Close();
     }
 
+    DateTime _settingsUnlockedUntil;
+
+    /// <summary>
+    /// A user who may change this computer's settings (asked again after five minutes). Without the database there are
+    /// no users to ask for: Settings opens, so the connection can be fixed.
+    /// </summary>
+    async Task<bool> MayOpenSettings()
+    {
+        if (_library.Db is not { } db || DateTime.UtcNow < _settingsUnlockedUntil) return true;
+        var login = new LoginWindow(db, AppInfo.Name, Permission.Computer, L.T("Settings of this computer"), _settings.StationName);
+        if (await login.ShowDialog<SintonizaUser?>(this) is not { } user) return false;
+        AppLog.Write($"Settings opened by {user.Name}");
+        _settingsUnlockedUntil = DateTime.UtcNow.AddMinutes(5);
+        return true;
+    }
+
     async Task OpenSettings()
     {
         if (_settingsOpen) return;
         _settingsOpen = true;
         try
         {
+            if (!await MayOpenSettings()) return;
             var routingBefore = _settings.Routing;
             string libraryBefore = _settings.Library.ConnectionKey();
             var micBefore = _settings.ActiveMic;

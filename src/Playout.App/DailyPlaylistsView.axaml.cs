@@ -24,6 +24,28 @@ public partial class DailyPlaylistsView : UserControl
     readonly LibraryService? _library;
     readonly ScheduleStore? _scheduleStore;
     readonly AppSettings _settings;
+
+    /// <summary>
+    /// Only voice tracks may be recorded (a presenter): the hours can be looked at and listened to, not changed.
+    /// </summary>
+    public bool VoiceOnly
+    {
+        get => _voiceOnly;
+        set
+        {
+            _voiceOnly = value;
+            foreach (var c in new Control[] { StreamButton, SegueButton, TagsButton, ReplaceButton, UpButton, DownButton, RemoveButton, GenerateHourButton, GenerateDayButton })
+                c.IsVisible = !value;
+            LibraryPanel.IsVisible = LibrarySplitter.IsVisible = !value; // nothing to put in from the library
+            if (LibraryPanel.Parent is Grid grid && grid.ColumnDefinitions.Count == 5)
+            {
+                grid.ColumnDefinitions[3].Width = new Avalonia.Controls.GridLength(value ? 0 : 12);
+                grid.ColumnDefinitions[4].Width = new Avalonia.Controls.GridLength(value ? 0 : 420);
+            }
+            ShowButtons();
+        }
+    }
+    bool _voiceOnly;
     /// <summary>Changes the schedule and saves it straight away (Sintoniza Pro does it); returns why not, or null.</summary>
     readonly Func<Action<ScheduleData>, string?>? _changeSchedule;
     ScheduleData _schedule;
@@ -664,7 +686,7 @@ public partial class DailyPlaylistsView : UserControl
         VoiceButton.IsEnabled = open && VoiceRows() != null;
         GenerateHourButton.IsEnabled = open;
         GenerateDayButton.IsEnabled = _db != null && _day.AddDays(1) > DateTime.Now;
-        Tracks.IsEnabled = open;
+        Tracks.IsEnabled = open && !_voiceOnly;
     }
 
     // ───────────────────────── Changes ─────────────────────────

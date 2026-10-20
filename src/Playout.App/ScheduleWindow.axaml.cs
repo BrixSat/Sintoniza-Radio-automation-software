@@ -83,8 +83,9 @@ public partial class ScheduleWindow : Window
 
     /// <param name="library">The music library (the daily playlists' library panel); null: that tab isn't offered.</param>
     internal ScheduleWindow(ScheduleData data, string browseFolder, ScheduleStore? store, long version, string? offline,
-        LibraryService? library = null, AppSettings? settings = null)
+        LibraryService? library = null, AppSettings? settings = null, SintonizaUser? user = null)
     {
+        _user = user;
         _library = library;
         _settings = settings;
         InitializeComponent();
@@ -128,7 +129,7 @@ public partial class ScheduleWindow : Window
         Tabs.SelectionChanged += (_, _) =>
         {
             if (Tabs.SelectedItem != DailyTab || _daily != null || store == null || settings == null) return;
-            DailyTab.Content = _daily = new DailyPlaylistsView(store.Db, library, store, settings, _data.Clone(), null, ChangeNow);
+            DailyTab.Content = _daily = new DailyPlaylistsView(store.Db, library, store, settings, _data.Clone(), null, ChangeNow) { VoiceOnly = !May(Permission.Programming) };
         };
         Closed += (_, _) => _daily?.Stop();
         Closing += async (_, e) =>

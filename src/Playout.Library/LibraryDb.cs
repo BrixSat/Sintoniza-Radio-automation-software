@@ -82,7 +82,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 10;
+    public const int SchemaVersion = 11;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -185,6 +185,7 @@ public sealed partial class LibraryDb
         }
         if (version < 4) DropEmptyOldTables(c, db._mySql);
         FixedCategories.Ensure(c, Normalize, db._mySql);
+        new UserStore(db).EnsureDefaults();
         db.FillSearchText(c);
         return db;
     }
@@ -678,7 +679,7 @@ public sealed partial class LibraryDb
     static DateTime ParseTime(string text) =>
         DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
 
-    internal static string Now() => Time(DateTime.UtcNow);
+    public static string Now() => Time(DateTime.UtcNow);
 
     public static string Time(DateTime utc) => utc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 

@@ -41,7 +41,8 @@ CHAPTERS = [
 
 ("First setup", "setup", [
     ("p", "On <b>each studio computer</b>, in the on-air program: click <b>Settings</b> (bottom left, or Ctrl/Cmd + ,). "
-          "Only what belongs to that computer is there. <b>Save</b> applies the changes."),
+          "Only what belongs to that computer is there. <b>Save</b> applies the changes. Once the library is set up, Settings "
+          "asks for a user who may change this computer's settings (at first: <b>admin</b>, password <b>admin</b>)."),
     ("fig", "settings-station", "Settings → General", [("LanguageBox", "The <b>language</b> of the screens (English, Português, Français); it applies the next time the program starts.")]),
     ("fig", "settings-audio", "Settings → Audio", [
         ("MusicDeviceBox", "The sound card and channel pair for <b>Music</b>; Cartwall and Preview below it. <b>Test</b> plays a short tone."),
@@ -52,7 +53,7 @@ CHAPTERS = [
     ("fig", "settings-safety", "Settings → Safety", [
         ("ResumeBox", "<b>Carry on playing when the app starts</b>, <b>Start the app again if it crashes</b>, <b>Start the app when I log in</b>: for a station that is never off air."),
         ("BackupBox", "<b>Backups</b>: every day, of the database and the station's files.")]),
-    ("p", "Then <b>once, for the whole station</b>, in <b>Sintoniza Pro → Station settings</b>:"),
+    ("p", "Then <b>once, for the whole station</b>, in <b>Sintoniza Pro → Station settings</b> (log in as <b>admin</b> / <b>admin</b>, and change that password in Station → Users):"),
     ("fig", "station-station", "Station settings → Station", [("StationNameBox", "<b>Station name</b>, <b>logo</b>, genre and website: shown next to the clock and sent to the stream and RDS. "
         "<b>Station type</b>: <i>FM radio</i> (microphone through the mixing desk) or <i>Web radio</i> (through the computer).")]),
     ("fig", "station-audio", "Station settings → Audio", [("CrossfadeBox", "Crossfade from song to song, in seconds."),
@@ -163,7 +164,7 @@ CHAPTERS = [
     ("p", "Control the playout from a phone or another computer on the station's network: a web page, no app to install."),
     ("fig", "settings-remote", "Settings → Remote", [
         ("RemoteBox", "Switch it on (it is off until you do)."),
-        ("RemotePasswordBox", "The <b>password</b> the page asks for (and the port)."),
+        ("RemotePortBox", "The port (8090 by default). The page asks for a station user with the <b>Web remote</b> permission, e.g. <b>dj</b> (chapter 3, Users)."),
         ("RemoteAddressText", "The address to open on the phone, on the same network."),
     ]),
     ("fig", "remote-phone", "The web remote on a phone", []),
@@ -187,7 +188,7 @@ CHAPTERS = [
         ["Shortcuts", "Keys for Play, Pause, Next, Stop, MIC, the stream and each cart"],
         ["RDS", "Whether this computer sends to the RDS encoder, and how it reaches it"],
         ["Playlist", "How much of the next hour the playlist shows"],
-        ["Remote", "The web remote: on/off, port, password, its address"],
+        ["Remote", "The web remote: on/off, port, its address (it logs in with the station's users)"],
         ["About", "Version, updates and this manual"],
     ]),
     ("p", "The station's, in <b>Sintoniza Pro → Station settings</b>:"),
@@ -210,7 +211,7 @@ CHAPTERS = [
     ("fig", "production", "Sintoniza Pro: Home", [
         ("MainMenu", "The <b>menu</b>: File, Library, Programming, Traffic, Station, Help."),
         ("SaveButton", "The <b>toolbar</b>: Save (Ctrl+S) and the tools used most."),
-        ("NavPanel", "The <b>tools</b>: Home; Library (songs, categories, import); Programming (hour templates, daily playlists, events); Traffic (ad breaks, clients and campaigns); Station (settings, cartwalls)."),
+        ("NavPanel", "The <b>tools</b>: Home; Library (songs, categories, import); Programming (hour templates, daily playlists, events); Traffic (ad breaks, clients and campaigns); Station (settings, cartwalls, users)."),
         ("HomeClock", "The clock and the date."),
         ("HomeToday", "<b>Today</b>: the hours planned, ad breaks and adverts booked, events, voice tracks."),
         ("HomeWarnings", "<b>Needs attention</b>: missing files, songs without a category, hours without a template, campaigns ending this week, unsaved changes."),
@@ -246,6 +247,36 @@ CHAPTERS = [
         ("SaveButton", "<b>Save</b>: every studio gets them within a minute."),
     ]),
     ("tip", "Use files every studio can reach (a shared folder), as for the music."),
+    ("h2", "Users and permissions"),
+    ("p", "Sintoniza Pro, Sintoniza Import, the on-air program's Settings and the web remote ask for a <b>user and password</b>: "
+          "the station's users, the same in every studio. A new library has two: <b>admin</b> / <b>admin</b> (may do everything) "
+          "and <b>dj</b> / <b>dj</b> (a presenter). <b>Change those passwords first</b>: until then Pro's Home reminds you."),
+    ("fig", "login", "Logging in", [
+        ("UserBox", "The user (it remembers the last one)…"),
+        ("PasswordBox", "…and the password."),
+        ("LoginButton", "<b>Log in</b>. In Pro, File → <b>Switch user…</b> changes it."),
+    ]),
+    ("fig", "users", "Station → Users", [
+        ("UserList", "The station's users."),
+        ("AddButton", "<b>New user</b>; <b>Delete</b> next to it."),
+        ("NameBox", "The name…"),
+        ("PasswordBox", "…and a new password (left empty, it stays as it is)."),
+        ("EnabledBox", "<b>May log in</b>: untick it to stop someone without deleting them."),
+        ("AdminPresetButton", "<b>Everything</b> or <b>Presenter</b> (voice tracks and web remote) tick the usual sets."),
+        ("PermissionPanel", "What they may use: Pro shows them only those tools, menus and buttons."),
+        ("SaveUserButton", "<b>Save user</b>."),
+    ]),
+    ("table", ["Permission", "Lets them"], [
+        ["Library", "Songs, categories, importing music (and Sintoniza Import)"],
+        ["Programming", "Hour templates, daily playlists, events"],
+        ["Voice tracks", "Record voice tracks: they see the daily playlists but can't change the songs"],
+        ["Traffic", "Ad breaks, clients and campaigns"],
+        ["Station", "The station's settings and cartwalls"],
+        ["Users", "Add and change users"],
+        ["This computer's settings", "Open a playout's own Settings (sound cards, database, keys…)"],
+        ["Web remote", "Control a playout from a phone"],
+    ]),
+    ("tip", "Passwords are kept only as a secure hash: a forgotten one is set again by another user with <b>Users</b>. Nobody can delete or lock out themselves, nor take away their own <b>Users</b>."),
     ("h2", "The schedule"),
     ("p", "Everything planned ahead: Events, Ad breaks, Clients and campaigns, Hour templates and Daily playlists, chosen on the left. <b>Save</b> (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database and the on-air program "
           "takes it within a few seconds. If someone else saved meanwhile, you are asked before theirs is replaced."),
@@ -340,7 +371,7 @@ CHAPTERS = [
 ]),
 
 ("Sintoniza Import", "import", [
-    ("p", "Brings a folder of music into the library, with the folders inside it as categories."),
+    ("p", "Brings a folder of music into the library, with the folders inside it as categories. It asks for a user with the <b>Library</b> permission."),
     ("fig", "import", "Sintoniza Import", [
         ("FolderBox", "The <b>folder</b> to import (<b>Choose…</b> next to it)."),
         ("NameBox", "The <b>category</b> it goes into (by default the folder's name)…"),
@@ -365,6 +396,9 @@ CHAPTERS = [
 ]),
 
 ("How do I…", "howto", [
+    ("h3", "…give a presenter their own login?"),
+    ("steps", ["Pro → Station → <b>Users</b> → <b>New user</b>.", "Their name and a password; click <b>Presenter</b>.",
+               "<b>Save user</b>. They can record voice tracks in Pro and use the web remote, nothing else."]),
     ("h3", "…set up a weekday morning show?"),
     ("steps", ["Pro → <b>Playlists</b> → <b>New</b>; name it.", "Add its lines: e.g. Music › Current, Gold, Jingles, Current, 80s.",
                "Drag over the hours 07–10, Monday to Friday. <b>Save</b>.", "Check it on <b>Daily playlists</b>: the hours are made within minutes."]),

@@ -1,3 +1,4 @@
+using Playout.Library;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
 namespace Playout.App;
@@ -31,6 +32,7 @@ public partial class ScheduleWindow
             else if (tab == ImportTab) Show(tab, new ImportWindow(db, null), hide: "CloseButton");
             else if (tab == StationSettingsTab) await ShowStationSettings(new StationStore(db));
             else if (tab == CartwallsTab) await ShowCartwalls(new StationStore(db));
+            else if (tab == UsersTab && tab.Content == null) tab.Content = new UsersView(new UserStore(db), _user?.Name ?? "");
         };
         Closed += (_, _) => { foreach (var page in _pages.Values) page.Discard(); };
     }

@@ -892,11 +892,6 @@ public partial class SettingsWindow : PageWindow
 
     void Save()
     {
-        if (RemoteBox.IsChecked == true && string.IsNullOrEmpty(RemotePasswordBox.Text) && _scope == SettingsScope.Computer)
-        {
-            SaveErrorText.Text = L.T("The web remote needs a password (Remote tab).");
-            return;
-        }
         _settings.CheckForUpdates = AutoUpdateBox.IsChecked == true;
         _settings.StationName = StationNameBox.Text?.Trim() ?? "";
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
