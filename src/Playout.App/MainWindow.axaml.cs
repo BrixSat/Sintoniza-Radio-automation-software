@@ -92,6 +92,7 @@ public partial class MainWindow : Window
         ApplyShortcuts();
         WireEvents();
         WirePlaylistView();
+        WireLogin();
 
         if (_engine != null)
         {
@@ -346,6 +347,7 @@ public partial class MainWindow : Window
     /// <summary>The operator's shortcuts (Settings → Shortcuts): transport, mic and the carts on screen.</summary>
     void OnShortcutKeyDown(object? sender, KeyEventArgs e)
     {
+        if (_locked) return; // nobody logged in
         if (Shortcuts.FromEvent(e) is not { } pressed) return;
         // Plain keys type text in a text box (e.g. searching the music folder).
         if (FocusManager?.GetFocusedElement() is TextBox && Shortcuts.TypesText(pressed)) return;
@@ -457,6 +459,7 @@ public partial class MainWindow : Window
 
     void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        if (_locked) return;
         var cmd = CommandModifiers;
         switch (e.Key)
         {
@@ -1622,7 +1625,7 @@ public partial class MainWindow : Window
     /// </summary>
     async Task<bool> MayOpenSettings()
     {
-        if (_library.Db is not { } db || DateTime.UtcNow < _settingsUnlockedUntil) return true;
+        if (_library.Db is not { } db || DateTime.UtcNow < _settingsUnlockedUntil || _user?.Can(Permission.Computer) == true) return true;
         var login = new LoginWindow(db, AppInfo.Name, Permission.Computer, L.T("Settings of this computer"), _settings.StationName);
         if (await login.ShowDialog<SintonizaUser?>(this) is not { } user) return false;
         AppLog.Write($"Settings opened by {user.Name}");
@@ -1895,7 +1898,8 @@ public partial class MainWindow : Window
     {
         // Missing files are not added again: count what's left up to the item that was on air.
         int index = _settings.PlaylistItems.Take(_settings.OnAirIndex + 1).Count(e => e.IsStream || File.Exists(e.Path)) - 1;
-        bool play = _settings.ResumeOnStart && _settings.WasPlaying && _settings.AutoAdvance;
+        // In AUTO it plays (as when it closed, or when it was stopped and closed: AUTO is what the station runs on).
+        bool play = _settings.ResumeOnStart && _settings.AutoAdvance && (_settings.WasPlaying || _settings.PlaylistItems.Count > 0);
         await _engine!.Resume(index, play);
         _restored = true;
         if (_settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();

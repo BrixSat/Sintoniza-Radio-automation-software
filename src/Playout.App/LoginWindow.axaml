@@ -1,31 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
         x:Class="Playout.App.LoginWindow"
         Icon="/Assets/schedule.ico"
         Title="Log in"
         Width="420" SizeToContent="Height" CanResize="False"
         WindowStartupLocation="CenterScreen">
-    <StackPanel Margin="24" Spacing="14">
-        <StackPanel Orientation="Horizontal" Spacing="12">
-            <Image Source="/Assets/icon.ico" Width="44" Height="44" />
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock x:Name="ProgramText" FontSize="18" FontWeight="SemiBold" />
-                <TextBlock x:Name="StationText" Classes="muted" FontSize="12" />
-            </StackPanel>
-        </StackPanel>
-        <TextBlock x:Name="ReasonText" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
-        <StackPanel Spacing="4">
-            <TextBlock Text="User" Classes="muted" FontSize="12" />
-            <TextBox x:Name="UserBox" />
-        </StackPanel>
-        <StackPanel Spacing="4">
-            <TextBlock Text="Password" Classes="muted" FontSize="12" />
-            <TextBox x:Name="PasswordBox" PasswordChar="•" />
-        </StackPanel>
-        <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
-            <Button x:Name="LoginButton" Content="Log in" MinWidth="90" HorizontalContentAlignment="Center" Classes="accent" IsDefault="True" />
-        </StackPanel>
-    </StackPanel>
+    <app:LoginPanel x:Name="Panel" Margin="24" />
 </Window>

@@ -1248,7 +1248,7 @@ public partial class ScheduleWindow : Window
     }
 
     /// <summary>Who saved, for the next one who finds the schedule changed.</summary>
-    static string Who => $"{Environment.UserName}@{Environment.MachineName}";
+    string Who => $"{_user?.Name ?? Environment.UserName}@{Environment.MachineName}";
 
     /// <summary>Saves to the database; <paramref name="expected"/> null: over whatever is there.</summary>
     void Store(long? expected)

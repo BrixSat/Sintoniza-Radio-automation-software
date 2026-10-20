@@ -105,11 +105,13 @@ engine for decoding, mixing and streaming.
   can't be edited until it has finished playing.
 - **Cartwall**: 12 instant buttons that play over the music, with their length, and a countdown and a progress fill
   while playing. The station's cartwalls are made in Sintoniza Pro; the host picks one and fires its carts.
-- **Users and permissions**: Sintoniza Pro, Sintoniza Import, the playout's Settings and the web remote log in with
-  the station's users (kept in the library, the same in every studio; passwords only as a salted PBKDF2 hash). Each user
-  gets what they may do — library, programming, voice tracks, traffic, station, users, this computer's settings, web
+- **Users and permissions**: the on-air program, Sintoniza Pro, Sintoniza Import, the playout's Settings and the web
+  remote log in with the station's users (kept in the library, the same in every studio; passwords only as a salted PBKDF2 hash). Each user
+  gets what they may do — on air, library, programming, voice tracks, traffic, station, users, this computer's settings, web
   remote — and Pro shows them only those tools. A new library has **admin** / **admin** (everything) and **dj** / **dj**
-  (voice tracks and the web remote); Pro's Home reminds you to change those passwords.
+  (on air, voice tracks and the web remote); Pro's Home reminds you to change those passwords. The on-air program
+  opens locked behind its log-in — what is on air carries on, and in AUTO it starts playing by itself — and
+  **Log out** locks it again; Pro has File → Log out.
 - **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network — what is on air,
   the time left and the next ad break, ▶ ❚❚ ⏭ ■ and AUTO, the cartwall, play now / remove on what comes next, and a
   library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong

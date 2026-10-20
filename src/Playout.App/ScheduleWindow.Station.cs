@@ -102,7 +102,7 @@ public partial class ScheduleWindow
     }
 
     /// <summary>Saves the station's settings over the version read; returns why not, or null.</summary>
-    static string? SaveStation(StationStore store, StationSettings settings, long version)
+    string? SaveStation(StationStore store, StationSettings settings, long version)
     {
         try
         {

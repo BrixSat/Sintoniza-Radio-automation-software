@@ -92,6 +92,8 @@ public partial class ScheduleWindow
             var login = new LoginWindow(store.Db, AppInfo.ScheduleName, null, L.T("Switch user"), _station?.StationName ?? "");
             if (await login.ShowDialog<SintonizaUser?>(this) is { } user) ApplyUser(user);
         };
+        MenuLogout.IsVisible = store != null && _user != null;
+        MenuLogout.Click += async (_, _) => await LogOut(store);
         ApplyUser(_user);
         string database = _settings?.Library is { } l ? (l.IsMySql ? $"MySQL · {l.Server}/{l.Database}" : $"SQLite · {Path.GetFileName(l.SqliteFile)}") : "";
         StatusDatabase.Text = store != null ? $"● {database}" : $"○ {L.T("database offline")}";
@@ -309,4 +311,44 @@ public partial class ScheduleWindow
         if (Tabs.SelectedItem is TabItem current && !Allowed(current)) Tabs.SelectedItem = HomeTab;
         _nextFigures = DateTime.MinValue;
     }
+
+    /// <summary>
+    /// Log out: the changes are saved first (or it stays), then the log-in covers the workstation until someone logs
+    /// in — each gets their own tools — or it is closed.
+    /// </summary>
+    async Task LogOut(ScheduleStore? store)
+    {
+        if (store == null || _user == null) return;
+        if (Changed)
+        {
+            if (!await Dialogs.Confirm(this, L.T("Unsaved changes"), L.T("Save the changes and log out?"), L.T("Save and log out"))) return;
+            Save();
+            if (Changed) return; // not saved: the reason is shown
+        }
+        AppLog.Write($"{AppInfo.ScheduleName}: {_user.Name} logged out");
+        if (!_lockWired)
+        {
+            _lockWired = true;
+            LockLogin.Setup(store.Db, AppInfo.ScheduleName, null, _station?.StationName ?? "", L.T("Close"));
+            LockLogin.LoggedIn += user =>
+            {
+                AppLog.Write($"{AppInfo.ScheduleName}: {user.Name} logged in");
+                if (_settings != null) { _settings.LastUser = user.Name; _settings.Save(); }
+                LockOverlay.IsVisible = false;
+                Workstation.IsEnabled = true;
+                UsersTab.Content = null; // made again for the new user
+                ApplyUser(user);
+                Tabs.SelectedItem = HomeTab;
+            };
+            LockLogin.Cancelled += Close;
+        }
+        Tabs.SelectedItem = HomeTab;
+        _user = null;
+        Workstation.IsEnabled = false;
+        LockLogin.Clear();
+        LockOverlay.IsVisible = true;
+        LockLogin.FocusFirst();
+    }
+
+    bool _lockWired;
 }

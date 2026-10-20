@@ -1476,5 +1476,18 @@
  "A playout's own Settings (sound cards, database, keys…)": "As Definições do próprio playout (placas de som, base de dados, teclas…)",
  "Web remote": "Controlo remoto web",
  "Controlling a playout from a phone": "Controlar um playout a partir de um telemóvel",
- "Songs, categories, importing music": "Músicas, categorias, importar música"
+ "Songs, categories, importing music": "Músicas, categorias, importar música",
+ "Carry on playing when the app starts, if it is in AUTO": "Continuar a tocar ao arrancar a aplicação, se estiver em AUTO",
+ "The station stays on air while nobody is logged in.": "A estação continua no ar enquanto ninguém tem sessão iniciada.",
+ "Log in to work on air.": "Entre para trabalhar no ar.",
+ "Log in to close the program.": "Entre para fechar o programa.",
+ "Log out ({0})": "Sair ({0})",
+ "Lock the screen: on air carries on": "Bloquear o ecrã: a emissão continua",
+ "Nobody is logged in: the library couldn't be reached": "Ninguém tem sessão iniciada: não foi possível chegar à biblioteca",
+ "{0} logged in": "{0} entrou",
+ "The library can't be reached: open without a log-in.": "Não é possível chegar à biblioteca: aberto sem entrar.",
+ "Save the changes and log out?": "Guardar as alterações e sair?",
+ "Save and log out": "Guardar e sair",
+ "The library isn't open yet: try again in a moment.": "A biblioteca ainda não está aberta: tente daqui a pouco.",
+ "The on-air program in the studio: playing, the playlist, the cartwall, the microphone": "O programa de emissão no estúdio: tocar, a playlist, a cartwall, o microfone"
 }

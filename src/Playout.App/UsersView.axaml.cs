@@ -10,6 +10,7 @@ public partial class UsersView : UserControl
 {
     static readonly (string Key, string Name, string Help)[] Permissions =
     [
+        (Permission.OnAir, "On air", "The on-air program in the studio: playing, the playlist, the cartwall, the microphone"),
         (Permission.Library, "Library", "Songs, categories, importing music"),
         (Permission.Programming, "Programming", "Hour templates, daily playlists, events"),
         (Permission.Voice, "Voice tracks", "Recording voice tracks (and looking at the daily playlists)"),

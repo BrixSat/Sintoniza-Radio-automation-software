@@ -7,6 +7,8 @@ namespace Playout.Library;
 /// <summary>What a user may do (kept as these keys in users.permissions).</summary>
 public static class Permission
 {
+    /// <summary>The on-air program: playing, the playlist, the cartwall, the microphone.</summary>
+    public const string OnAir = "onair";
     /// <summary>Songs, categories, importing music.</summary>
     public const string Library = "library";
     /// <summary>Hour templates, daily playlists (changing them), events.</summary>
@@ -24,9 +26,9 @@ public static class Permission
     /// <summary>The web remote.</summary>
     public const string Remote = "remote";
 
-    public static readonly string[] All = [Library, Programming, Voice, Traffic, Station, Users, Computer, Remote];
+    public static readonly string[] All = [OnAir, Library, Programming, Voice, Traffic, Station, Users, Computer, Remote];
     /// <summary>What dj gets the first time: a presenter.</summary>
-    public static readonly string[] Presenter = [Voice, Remote];
+    public static readonly string[] Presenter = [OnAir, Voice, Remote];
 }
 
 /// <summary>A user (the password is only ever kept as a hash).</summary>

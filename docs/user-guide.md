@@ -20,10 +20,11 @@ studio.
 
 The screens follow the language chosen in the on-air program's Settings → General (English, Português, Français).
 
-**Users.** Pro, Import, the on-air program's Settings and the web remote ask for a **user and password** — the
-station's users, the same in every studio (see [Users and permissions](#users-and-permissions)). A new library has two:
-**admin** / **admin** (may do everything) and **dj** / **dj** (a presenter: voice tracks and the web remote). Change
-those passwords first (Pro → Station → Users); until then Pro's Home reminds you.
+**Users.** Every program asks for a **user and password** — the on-air program, Pro, Import, the on-air program's
+Settings and the web remote — the station's users, the same in every studio (see
+[Users and permissions](#users-and-permissions)). A new library has two: **admin** / **admin** (may do everything)
+and **dj** / **dj** (a presenter: on air, voice tracks and the web remote). Change those passwords first (Pro →
+Station → Users); until then Pro's Home reminds you.
 
 ---
 
@@ -36,8 +37,8 @@ library is set up it asks for a user with *This computer's settings*, e.g. admin
    studios share). Click **Test**.
 2. **Audio** → the sound card and channel pair for **Music**, **Cartwall** and **Preview** (Test plays a short tone on
    each). Preview is for listening before air: headphones or the desk's PFL/cue, never an on-air output.
-3. **Safety** → *Carry on playing when the app starts*, *Start the app again if it crashes*, *Start the app when I log
-   in*, and the daily backups.
+3. **Safety** → *Carry on playing when the app starts, if it is in AUTO*, *Start the app again if it crashes*, *Start
+   the app when I log in*, and the daily backups.
 
 Then once, for the whole station, in [**Sintoniza Pro**](#2-sintoniza-pro) (log in as **admin** / **admin**):
 
@@ -66,7 +67,18 @@ they are changed in Pro only.
 - **Top right — the station.** Clock, *TOP OF HOUR* countdown, *PLAYLIST ENDS*, *PLAYED TODAY*, *NEXT EVENT*,
   stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
 - **Bottom left — the playlist.** **Bottom right — Cartwall / Library / Folders** tabs.
-- **Status line** (bottom): the last thing that happened (also in the log, Settings → Safety → Open log folder).
+- **Status line** (bottom): **Settings**, **Reports**, **Log out**, and the last thing that happened (also in the log,
+  Settings → Safety → Open log folder).
+
+### Logging in
+
+The program opens **locked**: the on-air screen shows behind the log-in, but nothing can be clicked and the keys do
+nothing until a user with the *On air* permission logs in (e.g. **dj**). Locked or not, the station stays on air:
+when the program starts in **AUTO** it plays straight away (Settings → Safety → *Carry on playing when the app
+starts*), the schedule and the ad breaks run, and the web remote works. **Log out (name)** at the bottom locks it
+again, e.g. between shows. While locked, the window can't be closed (shutting the computer down or an update still
+closes it). If the library can't be reached there are no users to check: the program opens without a log-in, so the
+station can still be run, and says so on the status line.
 
 ### The playlist
 
@@ -207,11 +219,13 @@ tempo and energy, tags, listen).
 
 ### Users and permissions
 
-Pro opens with a log-in (File → **Switch user…** changes it). Each user has a name, a password and the
+Pro opens with a log-in; File → **Switch user…** changes the user, File → **Log out** saves the changes and covers Pro
+with the log-in until someone logs in (or **Close**). Each user has a name, a password and the
 **permissions** ticked for them; Pro shows only the tools, menus and buttons they may use:
 
 | Permission | Lets them |
 | --- | --- |
+| On air | the on-air program in the studio: playing, the playlist, the cartwall, the microphone |
 | Library | songs, categories, importing music (and Sintoniza Import) |
 | Programming | hour templates, daily playlists, events |
 | Voice tracks | record voice tracks (they see the daily playlists, but can't change the songs) |
@@ -221,7 +235,7 @@ Pro opens with a log-in (File → **Switch user…** changes it). Each user has 
 | This computer's settings | open a playout's own Settings (sound cards, database, keys…) |
 | Web remote | control a playout from a phone |
 
-**Everything** and **Presenter** (voice tracks and web remote) tick the usual sets. **New user** → a name, a password
+**Everything** and **Presenter** (on air, voice tracks and web remote) tick the usual sets. **New user** → a name, a password
 → **Save user**; to change a password type a new one (empty keeps it). Untick *May log in* to stop someone without
 deleting them. You can't delete or lock out yourself, nor take away your own *Users*. Passwords are kept only as a
 secure hash (PBKDF2): a forgotten one is set again by another user with *Users*.
@@ -367,7 +381,7 @@ the songs of deleted folders are taken out; a drive or share that isn't connecte
 - **…put a folder of songs in Gold?** Sintoniza Import with that folder, *Into the category* Gold, no sub-categories.
   Or in the on-air program: Folders tab → right-click the folder → Category → Gold.
 - **…give a presenter their own login?** Pro → Station → Users → New user → their name and a password → **Presenter**
-  → Save user. They can record voice tracks in Pro and use the web remote, nothing else.
+  → Save user. They can work on air, record voice tracks in Pro and use the web remote, nothing else.
 - **…get the music report for the collecting society?** On-air program → Reports → Music played (royalties) → the
   month → Save as CSV.
 - **…send an advertiser the proof of broadcast?** Reports → Adverts → the advertiser and dates → Save as a page to

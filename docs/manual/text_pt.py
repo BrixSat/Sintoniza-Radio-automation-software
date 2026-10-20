@@ -54,7 +54,7 @@ CHAPTERS = [
         ("LibraryTypeBox", "Onde fica a biblioteca: <i>SQLite</i> (um ficheiro neste computador) ou <i>MySQL / MariaDB</i> (um servidor partilhado por vários estúdios)."),
         ("TestLibraryButton", "<b>Testar</b> abre-a (e cria as tabelas da primeira vez).")]),
     ("fig", "settings-safety", "Definições → Segurança", [
-        ("ResumeBox", "<b>Continuar a tocar ao arrancar</b>, <b>Voltar a arrancar se falhar</b>, <b>Arrancar quando inicio sessão</b>: para uma estação que nunca sai do ar."),
+        ("ResumeBox", "<b>Continuar a tocar ao arrancar, se estiver em AUTO</b>, <b>Voltar a arrancar se falhar</b>, <b>Arrancar quando inicio sessão</b>: para uma estação que nunca sai do ar."),
         ("BackupBox", "<b>Cópias de segurança</b>: todos os dias, da base de dados e dos ficheiros da estação.")]),
     ("p", "Depois, <b>uma vez para toda a estação</b>, na <b>Sintoniza Pro → Definições da estação</b> (entre como <b>admin</b> / <b>admin</b>, e mude essa palavra-passe em Estação → Utilizadores):"),
     ("fig", "station-station", "Definições da estação → Estação", [("StationNameBox", "<b>Nome da estação</b>, <b>logótipo</b>, género e site: aparecem ao lado do relógio e vão para o stream e o RDS. "
@@ -74,6 +74,18 @@ CHAPTERS = [
 ("O programa de emissão", "onair", [
     ("p", "O <b>Sintoniza Radio Broadcast system</b> é o programa com que o locutor trabalha. A metade de cima é o que está "
           "no ar agora; a de baixo é o que vem a seguir (a playlist) e o que está à mão (cartwall, biblioteca, pastas)."),
+    ("h2", "Entrar"),
+    ("p", "O programa abre <b>bloqueado</b>: o ecrã de emissão vê-se por trás da entrada, mas não se pode clicar em nada e as teclas não fazem "
+          "nada até entrar um utilizador com a permissão <b>No ar</b>. Bloqueado ou não, a estação continua no ar: em <b>AUTO</b> começa "
+          "a tocar sozinho quando o programa arranca, a programação e os blocos de publicidade correm, e o controlo remoto web funciona."),
+    ("fig", "main-locked", "Bloqueado: entre para trabalhar no ar", [
+        ("UserBox", "O utilizador (o último já vem preenchido)…"),
+        ("PasswordBox", "…e a palavra-passe."),
+        ("LoginButton", "<b>Entrar</b> (ou Enter)."),
+        ("LockNote", "O que está no ar continua entretanto."),
+    ]),
+    ("tip", "<b>Sair</b> (em baixo à esquerda) volta a bloqueá-lo, p. ex. entre programas. Bloqueado, a janela não pode ser fechada. Se não for possível chegar à biblioteca não há utilizadores para verificar: o programa abre sem entrar, para a estação poder continuar a ser operada."),
+    ("h2", "O ecrã"),
     ("fig", "main", "O ecrã de emissão", [
         ("OnAirBadge", "Estado: <b>NO AR</b>, <b>PARADO</b>, <b>SILÊNCIO</b> (não se ouve nada) ou a contagem para o próximo bloco."),
         ("NowTitle", "O que está no ar, com o artista."),
@@ -95,6 +107,7 @@ CHAPTERS = [
         ("Cartwall", "O cartwall: jingles e sons à mão."),
         ("SettingsButton", "<b>Definições</b> (Ctrl/Cmd + ,)."),
         ("ReportsButton", "<b>Relatórios</b>: música emitida e comprovativo de emissão."),
+        ("LogoutButton", "<b>Sair</b>: volta a bloquear o ecrã (a emissão continua)."),
         ("LastLog", "A última coisa que aconteceu (tudo fica no registo)."),
     ]),
     ("h2", "A playlist"),
@@ -167,7 +180,7 @@ CHAPTERS = [
     ("p", "Controle o playout a partir de um telemóvel ou de outro computador da rede da estação: uma página web, sem nada para instalar."),
     ("fig", "settings-remote", "Definições → Remoto", [
         ("RemoteBox", "Ligue-o (está desligado até o fazer)."),
-        ("RemotePortBox", "A porta (8090 por omissão). A página pede um utilizador da estação com a permissão <b>Controlo remoto web</b>, p. ex. <b>dj</b> (capítulo 3, Utilizadores)."),
+        ("RemotePortBox", "A porta (8090 por omissão). A página pede um utilizador da estação com a permissão <b>Controlo remoto web</b>, p. ex. <b>dj</b> (capítulo 4, Utilizadores)."),
         ("RemoteAddressText", "O endereço a abrir no telemóvel, na mesma rede."),
     ]),
     ("fig", "remote-phone", "O controlo remoto num telemóvel", []),
@@ -253,13 +266,13 @@ CHAPTERS = [
     ]),
     ("tip", "Use ficheiros a que todos os estúdios cheguem (uma pasta partilhada), como para a música."),
     ("h2", "Utilizadores e permissões"),
-    ("p", "O Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto web pedem um <b>utilizador e palavra-passe</b>: "
+    ("p", "O programa de emissão, o Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto web pedem um <b>utilizador e palavra-passe</b>: "
           "os utilizadores da estação, os mesmos em todos os estúdios. Uma biblioteca nova tem dois: <b>admin</b> / <b>admin</b> (pode fazer tudo) "
-          "e <b>dj</b> / <b>dj</b> (um locutor). <b>Mude primeiro essas palavras-passe</b>: até lá o Início do Pro lembra-o."),
+          "e <b>dj</b> / <b>dj</b> (um locutor: no ar, voice tracks, controlo remoto web). <b>Mude primeiro essas palavras-passe</b>: até lá o Início do Pro lembra-o."),
     ("fig", "login", "Entrar", [
         ("UserBox", "O utilizador (lembra-se do último)…"),
         ("PasswordBox", "…e a palavra-passe."),
-        ("LoginButton", "<b>Entrar</b>. No Pro, Ficheiro → <b>Mudar de utilizador…</b> troca-o."),
+        ("LoginButton", "<b>Entrar</b>. No Pro, Ficheiro → <b>Mudar de utilizador…</b> troca-o e Ficheiro → <b>Sair</b> volta a cobrir o Pro com a entrada."),
     ]),
     ("fig", "users", "Estação → Utilizadores", [
         ("UserList", "Os utilizadores da estação."),
@@ -267,11 +280,12 @@ CHAPTERS = [
         ("NameBox", "O nome…"),
         ("PasswordBox", "…e uma nova palavra-passe (vazia, fica como está)."),
         ("EnabledBox", "<b>Pode entrar</b>: desmarque para impedir alguém sem o apagar."),
-        ("AdminPresetButton", "<b>Tudo</b> ou <b>Locutor</b> (voice tracks e controlo remoto web) marcam os conjuntos habituais."),
+        ("AdminPresetButton", "<b>Tudo</b> ou <b>Locutor</b> (no ar, voice tracks e controlo remoto web) marcam os conjuntos habituais."),
         ("PermissionPanel", "O que pode usar: o Pro só lhe mostra essas ferramentas, menus e botões."),
         ("SaveUserButton", "<b>Guardar utilizador</b>."),
     ]),
     ("table", ["Permissão", "Deixa"], [
+        ["No ar", "O programa de emissão no estúdio: tocar, a playlist, a cartwall, o microfone"],
         ["Biblioteca", "Músicas, categorias, importar música (e o Sintoniza Import)"],
         ["Programação", "Modelos de hora, playlists diárias, eventos"],
         ["Voice tracks", "Gravar voice tracks: vê as playlists diárias mas não muda as músicas"],
@@ -403,7 +417,7 @@ CHAPTERS = [
 ("Como faço…", "howto", [
     ("h3", "…para dar a um locutor o seu próprio acesso?"),
     ("steps", ["Pro → Estação → <b>Utilizadores</b> → <b>Novo utilizador</b>.", "O nome e uma palavra-passe; clique em <b>Locutor</b>.",
-               "<b>Guardar utilizador</b>. Pode gravar voice tracks no Pro e usar o controlo remoto web, mais nada."]),
+               "<b>Guardar utilizador</b>. Pode trabalhar no ar, gravar voice tracks no Pro e usar o controlo remoto web, mais nada."]),
     ("h3", "…para criar um programa da manhã nos dias úteis?"),
     ("steps", ["Pro → <b>Playlists</b> → <b>Novo</b>; dê-lhe um nome.", "Junte as linhas: p. ex. Music › Atuais, Gold, Jingles, Atuais, Anos 80.",
                "Arraste sobre as horas das 07 às 10, de segunda a sexta. <b>Guardar</b>.", "Veja-o nas <b>Playlists diárias</b>: as horas ficam feitas em poucos minutos."]),

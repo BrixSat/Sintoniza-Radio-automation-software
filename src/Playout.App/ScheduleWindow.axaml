@@ -98,12 +98,14 @@
         </Style>
     </Window.Styles>
 
-    <DockPanel>
+    <Panel>
+    <DockPanel x:Name="Workstation">
         <!-- Menu -->
         <Menu DockPanel.Dock="Top" x:Name="MainMenu" Padding="6,2" Background="#15181E">
             <MenuItem Header="_File">
                 <MenuItem x:Name="MenuSave" Header="_Save" InputGesture="Ctrl+S" />
                 <MenuItem x:Name="MenuSwitchUser" Header="Switch user…" />
+                <MenuItem x:Name="MenuLogout" Header="Log out" />
                 <Separator />
                 <MenuItem x:Name="MenuClose" Header="_Close" />
             </MenuItem>
@@ -736,4 +738,12 @@
         </TabControl>
     </DockPanel>
     </DockPanel>
+
+    <!-- Logged out: the log-in over the workstation -->
+    <Border x:Name="LockOverlay" Background="#E60B0D12" IsVisible="False">
+        <Border Classes="panel" Width="440" Padding="26" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <app:LoginPanel x:Name="LockLogin" />
+        </Border>
+    </Border>
+    </Panel>
 </Window>

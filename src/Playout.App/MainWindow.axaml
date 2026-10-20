@@ -24,7 +24,8 @@
         <StreamGeometry x:Key="IconGear">M10.3,1 L11,3.1 C11.5,3.3 12,3.6 12.4,3.9 L14.5,3.4 L15.9,5.8 L14.4,7.4 C14.5,7.9 14.5,8.4 14.4,8.9 L15.9,10.5 L14.5,12.9 L12.4,12.4 C12,12.7 11.5,13 11,13.2 L10.3,15.3 H7.5 L6.9,13.2 C6.4,13 5.9,12.7 5.5,12.4 L3.4,12.9 L2,10.5 L3.5,8.9 C3.4,8.4 3.4,7.9 3.5,7.4 L2,5.8 L3.4,3.4 L5.5,3.9 C5.9,3.6 6.4,3.3 6.9,3.1 L7.5,1 Z M8.9,5.6 A2.6,2.6 0 1 0 8.9,10.8 A2.6,2.6 0 1 0 8.9,5.6 Z</StreamGeometry>
     </Window.Resources>
 
-    <DockPanel Margin="12">
+    <Panel>
+    <DockPanel x:Name="Studio" Margin="12">
 
         <!-- ═════════ Header: on-air deck + station panel ═════════ -->
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,12,400" Margin="0,0,0,12">
@@ -212,7 +213,7 @@
         </Grid>
 
         <!-- ═════════ Status bar ═════════ -->
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
             <Button x:Name="SettingsButton" Classes="tool" ToolTip.Tip="Settings (Ctrl/Cmd+,)">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Width="12" Height="12" Data="{StaticResource IconGear}" />
@@ -221,8 +222,14 @@
             </Button>
             <Button Grid.Column="2" x:Name="ReportsButton" Classes="tool" Content="Reports" Margin="8,0,0,0"
                     ToolTip.Tip="Music played (royalties) and proof of broadcast for advertisers" />
-            <Button Grid.Column="3" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
-            <TextBlock Grid.Column="4" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
+            <Button Grid.Column="3" x:Name="LogoutButton" Classes="tool" Margin="8,0,0,0" IsVisible="False">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Width="10" Height="12" Data="{StaticResource IconLock}" />
+                    <TextBlock x:Name="LogoutText" Text="Log out" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="4" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
+            <TextBlock Grid.Column="5" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </Grid>
 
@@ -370,4 +377,17 @@
             </Border>
         </Grid>
     </DockPanel>
+
+    <!-- ═════════ Locked: nobody logged in (on air carries on) ═════════ -->
+    <Border x:Name="LockOverlay" Background="#D90B0D12" IsVisible="False">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+            <Border Classes="panel" Width="440" Padding="26">
+                <app:LoginPanel x:Name="LockLogin" />
+            </Border>
+            <TextBlock x:Name="LockNote" Classes="muted" FontSize="12" HorizontalAlignment="Center" TextAlignment="Center"
+                       TextWrapping="Wrap" MaxWidth="440"
+                       Text="The station stays on air while nobody is logged in." />
+        </StackPanel>
+    </Border>
+    </Panel>
 </Window>

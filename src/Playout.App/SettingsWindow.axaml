@@ -302,7 +302,7 @@
                             <Button Grid.Column="1" x:Name="OpenLogsButton" Content="Open log folder" FontSize="12" Padding="10,3"
                                     ToolTip.Tip="What went on air, warnings and restarts: one file a day, kept for 90 days" />
                         </Grid>
-                        <CheckBox x:Name="ResumeBox" Content="Carry on playing when the app starts, if it was playing in AUTO" />
+                        <CheckBox x:Name="ResumeBox" Content="Carry on playing when the app starts, if it is in AUTO" />
                         <CheckBox x:Name="WatchdogBox" Content="Start the app again if it crashes or stops responding" />
                         <CheckBox x:Name="AutostartBox" Content="Start the app when I log in to this computer" />
                         <TextBlock Classes="note"
