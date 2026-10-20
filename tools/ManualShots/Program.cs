@@ -225,9 +225,17 @@ engine.Play();
 Thread.Sleep(2500);
 WaitFor(() => engine.GetStatus().State == PlayerState.Playing, 10);
 for (int i = 0; i < 40; i++) { Pump(2); Thread.Sleep(60); }
+// It opens locked (on air carries on) until a presenter logs in
+var lockPanel = main.FindControl<LoginPanel>("LockLogin")!;
+WaitFor(() => Field<LibraryService>(main, "_library").Db != null, 20);
+Pump(10);
+lockPanel.FindControl<TextBox>("UserBox")!.Text = "dj";
+Shot(main, "main-locked", "UserBox", "PasswordBox", "LoginButton", "LockNote");
+main.LogIn(new UserStore(db).LogIn("dj", "dj"));
+Pump(10);
 string[] deck = ["OnAirBadge", "NowTitle", "WaveMain", "Elapsed", "PlayButton", "PauseButton", "NextButton", "StopButton", "Remaining", "AutoSwitch",
     "StreamToggle", "Clock", "TopOfHourText", "PlaylistEndsText", "NextEventPanel", "MeterL", "Playlist", "OnAirButton", "HourViewButton", "AddStreamButton",
-    "RemoveButton", "ClearButton", "CartwallTab", "LibraryTab", "FoldersTab", "Cartwall", "CartwallPicker", "CartwallMenuButton", "SettingsButton", "ReportsButton", "LastLog"];
+    "RemoveButton", "ClearButton", "CartwallTab", "LibraryTab", "FoldersTab", "Cartwall", "CartwallPicker", "CartwallMenuButton", "SettingsButton", "ReportsButton", "LogoutButton", "LastLog"];
 Shot(main, "main", deck);
 
 // The web remote's page with the demo station's status (make-manual.sh photographs it at a phone's size)
@@ -429,7 +437,7 @@ schedule.Close();
 
 // The log-in, as Sintoniza Pro opens
 var login = new LoginWindow(db, AppInfo.ScheduleName, null, null, station.StationName) { Width = 420 };
-login.FindControl<TextBox>("UserBox")!.Text = "ana";
+login.FindControl<LoginPanel>("Panel")!.FindControl<TextBox>("UserBox")!.Text = "ana";
 login.Show();
 Pump(20);
 Shot(login, "login", "UserBox", "PasswordBox", "LoginButton");

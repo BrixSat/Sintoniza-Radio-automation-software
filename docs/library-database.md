@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **11**. The scripts that create the tables are
+Schema version **12**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -33,7 +33,10 @@ templates' artist and album gaps), then
 settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) and
 [`mysql-10.sql`](../src/Playout.Library/Schema/mysql-10.sql) (voice tracks in the daily playlists), then
 [`sqlite-11.sql`](../src/Playout.Library/Schema/sqlite-11.sql) and
-[`mysql-11.sql`](../src/Playout.Library/Schema/mysql-11.sql) (the station's users). The app creates the tables itself the
+[`mysql-11.sql`](../src/Playout.Library/Schema/mysql-11.sql) (the station's users), then
+[`sqlite-12.sql`](../src/Playout.Library/Schema/sqlite-12.sql) and
+[`mysql-12.sql`](../src/Playout.Library/Schema/mysql-12.sql) (the on-air program's log-in: every user so far gets
+`onair`). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -169,7 +172,7 @@ computer (sound cards, microphone, the database login, keys) stays in that compu
 
 ## Users
 
-`users`: who may log in to Sintoniza Pro, Sintoniza Import, a playout's Settings and the web remote — the same in
+`users`: who may log in to the on-air program, Sintoniza Pro, Sintoniza Import, a playout's Settings and the web remote — the same in
 every studio.
 
 | Column | Type | |
@@ -177,12 +180,12 @@ every studio.
 | `id` | integer | |
 | `name` | text | unique, compared without case |
 | `password_hash` | text | `iterations$salt$hash`: PBKDF2-HMAC-SHA256, salt and hash in base64 (16 and 32 bytes) |
-| `permissions` | text | comma-separated: `library`, `programming`, `voice`, `traffic`, `station`, `users`, `computer`, `remote` |
+| `permissions` | text | comma-separated: `onair`, `library`, `programming`, `voice`, `traffic`, `station`, `users`, `computer`, `remote` |
 | `enabled` | bool | 0: can't log in |
 | `last_login`, `created_at` | text | UTC |
 
 When the table is empty the app adds **admin** (password `admin`, every permission) and **dj** (password `dj`,
-`voice` and `remote`). A program that adds users must write the hash in the same form; it must never store a
+`onair`, `voice` and `remote`). A program that adds users must write the hash in the same form; it must never store a
 password as it is.
 
 ## The schedule

@@ -51,7 +51,7 @@ CHAPTERS = [
         ("LibraryTypeBox", "Where the library lives: <i>SQLite</i> (a file on this computer) or <i>MySQL / MariaDB</i> (a server several studios share)."),
         ("TestLibraryButton", "<b>Test</b> opens it (and makes its tables the first time).")]),
     ("fig", "settings-safety", "Settings → Safety", [
-        ("ResumeBox", "<b>Carry on playing when the app starts</b>, <b>Start the app again if it crashes</b>, <b>Start the app when I log in</b>: for a station that is never off air."),
+        ("ResumeBox", "<b>Carry on playing when the app starts, if it is in AUTO</b>, <b>Start the app again if it crashes</b>, <b>Start the app when I log in</b>: for a station that is never off air."),
         ("BackupBox", "<b>Backups</b>: every day, of the database and the station's files.")]),
     ("p", "Then <b>once, for the whole station</b>, in <b>Sintoniza Pro → Station settings</b> (log in as <b>admin</b> / <b>admin</b>, and change that password in Station → Users):"),
     ("fig", "station-station", "Station settings → Station", [("StationNameBox", "<b>Station name</b>, <b>logo</b>, genre and website: shown next to the clock and sent to the stream and RDS. "
@@ -65,12 +65,24 @@ CHAPTERS = [
     ("p", "The other tabs there: <b>Time signal</b>, <b>Library</b> (other music folders), <b>Streaming</b>, <b>RDS</b> (the texts), "
           "<b>Website</b>, <b>Alerts</b> and <b>Playlist</b> (days made ahead, row colours). Every studio takes the station's "
           "settings within a minute of saving. The first studio started after updating to this version publishes its own."),
-    ("tip", "Then import the music (chapter 4), make the cartwalls, build the templates and ad breaks (chapter 3), switch the on-air program to <b>AUTO</b> and press <b>Play</b>."),
+    ("tip", "Then import the music (chapter 5), make the cartwalls, build the templates and ad breaks (chapter 4), switch the on-air program to <b>AUTO</b> and press <b>Play</b>."),
 ]),
 
 ("The on-air program", "onair", [
     ("p", "<b>Sintoniza Radio Broadcast system</b> is what the host works with. The top half is what is on air now; the bottom "
           "half is what comes next (the playlist) and what is at hand (cartwall, library, folders)."),
+    ("h2", "Logging in"),
+    ("p", "The program opens <b>locked</b>: the on-air screen shows behind the log-in, but nothing can be clicked and the keys do nothing "
+          "until a user with the <b>On air</b> permission logs in. Locked or not, the station stays on air: in <b>AUTO</b> it starts "
+          "playing by itself when the program starts, the schedule and the ad breaks run, and the web remote works."),
+    ("fig", "main-locked", "Locked: log in to work on air", [
+        ("UserBox", "The user (the last one is filled in)…"),
+        ("PasswordBox", "…and the password."),
+        ("LoginButton", "<b>Log in</b> (or Enter)."),
+        ("LockNote", "What is on air carries on meanwhile."),
+    ]),
+    ("tip", "<b>Log out</b> (bottom left) locks it again, e.g. between shows. While locked the window can't be closed. If the library can't be reached there are no users to check: the program opens without a log-in, so the station can still be run."),
+    ("h2", "The screen"),
     ("fig", "main", "The on-air screen", [
         ("OnAirBadge", "State: <b>ON AIR</b>, <b>STOPPED</b>, <b>SILENCE</b> (nothing heard), or the countdown to the next ad break."),
         ("NowTitle", "What is on air, with its artist."),
@@ -92,6 +104,7 @@ CHAPTERS = [
         ("Cartwall", "The cartwall: jingles and sounds at hand."),
         ("SettingsButton", "<b>Settings</b> (Ctrl/Cmd + ,)."),
         ("ReportsButton", "<b>Reports</b>: music played and proof of broadcast."),
+        ("LogoutButton", "<b>Log out</b>: locks the screen again (on air carries on)."),
         ("LastLog", "The last thing that happened (all of it is in the log)."),
     ]),
     ("h2", "The playlist"),
@@ -113,7 +126,7 @@ CHAPTERS = [
     ]),
     ("warn", "<b>Adverts are protected.</b> While an advert is on air, Next, Pause, Stop and putting another item on air ask first. "
              "Only a click on the button in the question does it, so a paid spot isn't cut by accident."),
-    ("p", "<b>Where the songs come from:</b> the daily playlists (chapter 3). About half an hour before each hour, its songs are "
+    ("p", "<b>Where the songs come from:</b> the daily playlists (chapter 4). About half an hour before each hour, its songs are "
           "put in the playlist. Near the end of the hour the program keeps time: if the next hour would start late, an "
           "<i>optional</i> item is left out; if it would start early, songs are added. You can still change the playlist on air."),
     ("h2", "Cartwall"),
@@ -164,7 +177,7 @@ CHAPTERS = [
     ("p", "Control the playout from a phone or another computer on the station's network: a web page, no app to install."),
     ("fig", "settings-remote", "Settings → Remote", [
         ("RemoteBox", "Switch it on (it is off until you do)."),
-        ("RemotePortBox", "The port (8090 by default). The page asks for a station user with the <b>Web remote</b> permission, e.g. <b>dj</b> (chapter 3, Users)."),
+        ("RemotePortBox", "The port (8090 by default). The page asks for a station user with the <b>Web remote</b> permission, e.g. <b>dj</b> (chapter 4, Users)."),
         ("RemoteAddressText", "The address to open on the phone, on the same network."),
     ]),
     ("fig", "remote-phone", "The web remote on a phone", []),
@@ -248,13 +261,13 @@ CHAPTERS = [
     ]),
     ("tip", "Use files every studio can reach (a shared folder), as for the music."),
     ("h2", "Users and permissions"),
-    ("p", "Sintoniza Pro, Sintoniza Import, the on-air program's Settings and the web remote ask for a <b>user and password</b>: "
+    ("p", "The on-air program, Sintoniza Pro, Sintoniza Import, the on-air program's Settings and the web remote ask for a <b>user and password</b>: "
           "the station's users, the same in every studio. A new library has two: <b>admin</b> / <b>admin</b> (may do everything) "
-          "and <b>dj</b> / <b>dj</b> (a presenter). <b>Change those passwords first</b>: until then Pro's Home reminds you."),
+          "and <b>dj</b> / <b>dj</b> (a presenter: on air, voice tracks, web remote). <b>Change those passwords first</b>: until then Pro's Home reminds you."),
     ("fig", "login", "Logging in", [
         ("UserBox", "The user (it remembers the last one)…"),
         ("PasswordBox", "…and the password."),
-        ("LoginButton", "<b>Log in</b>. In Pro, File → <b>Switch user…</b> changes it."),
+        ("LoginButton", "<b>Log in</b>. In Pro, File → <b>Switch user…</b> changes it and File → <b>Log out</b> covers Pro with the log-in again."),
     ]),
     ("fig", "users", "Station → Users", [
         ("UserList", "The station's users."),
@@ -262,11 +275,12 @@ CHAPTERS = [
         ("NameBox", "The name…"),
         ("PasswordBox", "…and a new password (left empty, it stays as it is)."),
         ("EnabledBox", "<b>May log in</b>: untick it to stop someone without deleting them."),
-        ("AdminPresetButton", "<b>Everything</b> or <b>Presenter</b> (voice tracks and web remote) tick the usual sets."),
+        ("AdminPresetButton", "<b>Everything</b> or <b>Presenter</b> (on air, voice tracks and web remote) tick the usual sets."),
         ("PermissionPanel", "What they may use: Pro shows them only those tools, menus and buttons."),
         ("SaveUserButton", "<b>Save user</b>."),
     ]),
     ("table", ["Permission", "Lets them"], [
+        ["On air", "The on-air program in the studio: playing, the playlist, the cartwall, the microphone"],
         ["Library", "Songs, categories, importing music (and Sintoniza Import)"],
         ["Programming", "Hour templates, daily playlists, events"],
         ["Voice tracks", "Record voice tracks: they see the daily playlists but can't change the songs"],
@@ -398,7 +412,7 @@ CHAPTERS = [
 ("How do I…", "howto", [
     ("h3", "…give a presenter their own login?"),
     ("steps", ["Pro → Station → <b>Users</b> → <b>New user</b>.", "Their name and a password; click <b>Presenter</b>.",
-               "<b>Save user</b>. They can record voice tracks in Pro and use the web remote, nothing else."]),
+               "<b>Save user</b>. They can work on air, record voice tracks in Pro and use the web remote, nothing else."]),
     ("h3", "…set up a weekday morning show?"),
     ("steps", ["Pro → <b>Playlists</b> → <b>New</b>; name it.", "Add its lines: e.g. Music › Current, Gold, Jingles, Current, 80s.",
                "Drag over the hours 07–10, Monday to Friday. <b>Save</b>.", "Check it on <b>Daily playlists</b>: the hours are made within minutes."]),
