@@ -656,6 +656,7 @@ public partial class MainWindow : Window
                         Dispatcher.UIThread.Post(() =>
                         {
                             if (_waveTrackId != id) return; // track changed while decoding
+                            if (t.Result is { } wave) _remoteWave = (id, wave);
                             WaveMain.SetTrack(t.Result, length);
                             WaveOverview.SetTrack(t.Result, length);
                         });

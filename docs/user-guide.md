@@ -144,9 +144,11 @@ pauses on the Preview output; ← → move by a second (Shift: 0.1 s); the mouse
 
 Settings → **Remote**: switch it on (the port is 8090 by default) and open the address it shows on a phone or
 computer on the station's network. Log in with a station user who has the *Web remote* permission (e.g. **dj**; the
-phone remembers the user name). The page shows what is on air with the time left, the next
-ad break, the stream and silence lights and what comes next; it has **▶ ❚❚ ⏭ ■**, **AUTO**, the cartwall's carts,
-*Now* / ✕ on the items coming up, and a library search to add a song after the item on air. An advert on air is only
+phone remembers the user name). The page is laid out as the on-air screen (on a phone, one panel under the other):
+the deck with the waveform, time played and left, the talk-over and ad break countdowns, **▶ ❚❚ ⏭ ■** and **AUTO**;
+the station panel with the clock, top of hour, playlist end, next event and the level meters; the playlist with its
+colours and tags (tap an item for *▶ Now* and ✕); and **CARTWALL** (any of the cartwalls) / **LIBRARY** (search, add
+a song after the item on air). An advert on air is only
 cut after a question. Five wrong passwords lock it for a minute. It is plain HTTP: for the station's own network, or
 from outside only through the station's VPN — never open the port on the router.
 

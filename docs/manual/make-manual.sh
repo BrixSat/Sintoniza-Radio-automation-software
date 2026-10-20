@@ -17,11 +17,13 @@ manual() { # $1 = en | pt
   # No user or computer names in the screenshots.
   SINTONIZA_COMPUTER=studio SINTONIZA_USER=presenter XDG_CONFIG_HOME="$work/config" \
     dotnet run --project "$ROOT/tools/ManualShots" -c Release -- "$work" "$shots" "$lang" --device=0 </dev/null
-  # The web remote on a phone: its page with the demo station's status, at a phone's size.
+  # The web remote: its page with the demo station's status, at a phone's and at a computer's size.
   local browser; browser=$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)
   if [[ -n $browser && -f "$shots/remote-mock.html" ]]; then
-    "$browser" --headless --disable-gpu --no-sandbox --hide-scrollbars --window-size=420,1100 \
+    "$browser" --headless --disable-gpu --no-sandbox --hide-scrollbars --virtual-time-budget=3000 --window-size=420,1100 \
       --screenshot="$shots/remote-phone.png" "file://$shots/remote-mock.html" >/dev/null 2>&1 || true
+    "$browser" --headless --disable-gpu --no-sandbox --hide-scrollbars --virtual-time-budget=3000 --window-size=1480,920 \
+      --screenshot="$shots/remote-desktop.png" "file://$shots/remote-mock.html" >/dev/null 2>&1 || true
   fi
   echo "▶ PDF ($lang)"
   python3 "$ROOT/docs/manual/build.py" "$shots" "$pdf" "$lang"
