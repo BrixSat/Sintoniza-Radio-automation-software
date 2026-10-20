@@ -59,6 +59,7 @@
 <section id="login" class="hidden">
   <h1 style="font-size:20px">Sintoniza</h1>
   <div class="card">
+    <input id="user" type="text" placeholder="{{User}}" autocomplete="username" autocapitalize="none">
     <input id="password" type="password" placeholder="{{Password}}" autocomplete="current-password">
     <button class="accent big" id="loginButton">{{Open the remote}}</button>
     <div class="msg" id="loginMsg"></div>
@@ -133,11 +134,16 @@ async function api(path, body) {
   return { status: r.status, data: await r.json().catch(() => ({})) };
 }
 
-function showLogin() { clearInterval(timer); timer = null; $("app").classList.add("hidden"); $("login").classList.remove("hidden"); $("password").focus(); }
+function showLogin() {
+  clearInterval(timer); timer = null; $("app").classList.add("hidden"); $("login").classList.remove("hidden");
+  $("user").value = $("user").value || localStorage.getItem("sintonizaUser") || "";
+  ($("user").value ? $("password") : $("user")).focus();
+}
 function showApp() { $("login").classList.add("hidden"); $("app").classList.remove("hidden"); refresh(); if (!timer) timer = setInterval(refresh, 1000); }
 
 $("loginButton").onclick = async () => {
-  const r = await api("/api/login", { password: $("password").value });
+  const r = await api("/api/login", { user: $("user").value.trim(), password: $("password").value });
+  if (r.status === 200) localStorage.setItem("sintonizaUser", $("user").value.trim());
   if (r.status === 200) { $("password").value = ""; $("loginMsg").textContent = ""; showApp(); }
   else $("loginMsg").textContent = r.data.error || "";
 };

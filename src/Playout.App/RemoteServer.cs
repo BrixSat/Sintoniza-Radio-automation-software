@@ -13,7 +13,7 @@ public sealed class RemoteSettings
 {
     public bool Enabled { get; set; }
     public int Port { get; set; } = 8090;
-    /// <summary>Asked before anything can be seen or done; the remote doesn't start without one.</summary>
+    /// <summary>Before Sintoniza users: the remote's own password (no longer used: it asks for a user).</summary>
     public string Password { get; set; } = "";
 }
 
@@ -26,6 +26,8 @@ public interface IRemoteHandler
     Task<object> Command(JsonObject command);
     /// <summary>Songs in the library for the search box.</summary>
     Task<object> Search(string text);
+    /// <summary>A Sintoniza user who may use the web remote (null: wrong name or password, or not allowed).</summary>
+    Task<string?> LogIn(string user, string password);
 }
 
 /// <summary>
@@ -41,7 +43,6 @@ public sealed class RemoteServer : IDisposable
     static readonly JsonSerializerOptions Json = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     readonly IRemoteHandler _handler;
-    readonly string _password;
     readonly TcpListener _listener;
     readonly CancellationTokenSource _stop = new();
     readonly ConcurrentDictionary<string, DateTime> _sessions = new();
@@ -53,9 +54,7 @@ public sealed class RemoteServer : IDisposable
     /// <summary>Starts listening on every network address of this computer.</summary>
     public RemoteServer(RemoteSettings settings, IRemoteHandler handler, Action<string> log)
     {
-        if (string.IsNullOrEmpty(settings.Password)) throw new InvalidOperationException(L.T("Set a password for the web remote first."));
         _handler = handler;
-        _password = settings.Password;
         _log = log;
         Port = settings.Port;
         _listener = new TcpListener(IPAddress.Any, Port);
@@ -194,8 +193,9 @@ public sealed class RemoteServer : IDisposable
         {
             if (_failures.TryGetValue(from, out var f) && f.Failures >= 5 && DateTime.UtcNow < f.Until)
                 return (429, "application/json", JsonBody(new { error = L.T("Too many wrong passwords: wait a minute.") }), null);
-            string given = JsonNode.Parse(r.Body.Length > 0 ? r.Body : "{}"u8.ToArray())?["password"]?.GetValue<string>() ?? "";
-            if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(given), Encoding.UTF8.GetBytes(_password)))
+            var login = JsonNode.Parse(r.Body.Length > 0 ? r.Body : "{}"u8.ToArray());
+            string given = login?["password"]?.GetValue<string>() ?? "", userName = login?["user"]?.GetValue<string>() ?? "";
+            if (await _handler.LogIn(userName, given) is not { } who)
             {
                 var now = _failures.AddOrUpdate(from, (1, DateTime.UtcNow.AddMinutes(1)), (_, old) => (old.Failures + 1, DateTime.UtcNow.AddMinutes(1)));
                 if (now.Failures == 5) _log(L.F("Web remote: five wrong passwords from {0}", from));
@@ -206,7 +206,7 @@ public sealed class RemoteServer : IDisposable
             string token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             _sessions[token] = DateTime.UtcNow + SessionLife;
             foreach (var old in _sessions.Where(s => s.Value < DateTime.UtcNow).Select(s => s.Key).ToList()) _sessions.TryRemove(old, out _);
-            _log(L.F("Web remote: opened from {0}", from));
+            _log(L.F("Web remote: {0} logged in from {1}", who, from));
             return (200, "application/json", JsonBody(new { ok = true }), $"sintoniza={token}; HttpOnly; SameSite=Strict; Path=/; Max-Age={(int)SessionLife.TotalSeconds}");
         }
 

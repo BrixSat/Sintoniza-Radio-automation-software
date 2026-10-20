@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **10**. The scripts that create the tables are
+Schema version **11**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -31,7 +31,9 @@ templates' artist and album gaps), then
 [`sqlite-9.sql`](../src/Playout.Library/Schema/sqlite-9.sql) and
 [`mysql-9.sql`](../src/Playout.Library/Schema/mysql-9.sql) (the eight fixed top-level categories and the station's
 settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) and
-[`mysql-10.sql`](../src/Playout.Library/Schema/mysql-10.sql) (voice tracks in the daily playlists). The app creates the tables itself the
+[`mysql-10.sql`](../src/Playout.Library/Schema/mysql-10.sql) (voice tracks in the daily playlists), then
+[`sqlite-11.sql`](../src/Playout.Library/Schema/sqlite-11.sql) and
+[`mysql-11.sql`](../src/Playout.Library/Schema/mysql-11.sql) (the station's users). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -164,6 +166,24 @@ logo (base64), crossfades, loudness, silence detection, fill music, time signal,
 alerts, streaming server, cartwalls and the library's other folders — saved by Sintoniza Pro; `version` goes up
 by one on every save and the playouts read it again; `updated_at` (UTC) and `updated_by`. What belongs to one
 computer (sound cards, microphone, the database login, keys) stays in that computer's settings file.
+
+## Users
+
+`users`: who may log in to Sintoniza Pro, Sintoniza Import, a playout's Settings and the web remote — the same in
+every studio.
+
+| Column | Type | |
+| --- | --- | --- |
+| `id` | integer | |
+| `name` | text | unique, compared without case |
+| `password_hash` | text | `iterations$salt$hash`: PBKDF2-HMAC-SHA256, salt and hash in base64 (16 and 32 bytes) |
+| `permissions` | text | comma-separated: `library`, `programming`, `voice`, `traffic`, `station`, `users`, `computer`, `remote` |
+| `enabled` | bool | 0: can't log in |
+| `last_login`, `created_at` | text | UTC |
+
+When the table is empty the app adds **admin** (password `admin`, every permission) and **dj** (password `dj`,
+`voice` and `remote`). A program that adds users must write the hash in the same form; it must never store a
+password as it is.
 
 ## The schedule
 

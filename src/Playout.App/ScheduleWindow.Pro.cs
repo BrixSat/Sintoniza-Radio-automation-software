@@ -19,6 +19,12 @@ public partial class ScheduleWindow
     DateTime _nextFigures;
     bool _figuresBusy;
     StationSettings? _station;
+    List<string> _defaultPasswords = new();
+    DateTime _nextPasswordCheck;
+    /// <summary>Who is working here (null: no login, e.g. the manual's screenshots: everything is open).</summary>
+    SintonizaUser? _user;
+
+    bool May(string permission) => _user == null || _user.Can(permission);
 
     /// <summary>The pages in the middle, by what opens them.</summary>
     void WirePro(ScheduleStore? store)
@@ -36,7 +42,9 @@ public partial class ScheduleWindow
             (NavImport, ImportButton, MenuImport, ImportTab, L.T("Library ›"), L.T("Import music")),
             (NavStationSettings, StationSettingsButton, MenuStationSettings, StationSettingsTab, L.T("Station ›"), L.T("Station settings")),
             (NavCartwalls, CartwallsButton, MenuCartwalls, CartwallsTab, L.T("Station ›"), L.T("Cartwalls")),
+            (NavUsers, null, MenuUsers, UsersTab, L.T("Station ›"), L.T("Users")),
         };
+        _gates = pages.Select(p => (p.Nav, p.Tool, p.Menu, p.Tab)).ToList();
         foreach (var (nav, tool, menu, tab, _, _) in pages)
         {
             nav.Click += (_, _) => Tabs.SelectedItem = tab;
@@ -77,8 +85,14 @@ public partial class ScheduleWindow
 
         // What doesn't change while it runs.
         StatusVersion.Text = $"{AppInfo.ScheduleName} {(Updates.IsDevBuild ? "dev" : Updates.CurrentText)}";
-        StatusUser.Text = $"👤 {AppInfo.UserName}@{AppInfo.ComputerName}";
-        BoxUserText.Text = $"{AppInfo.UserName}@{AppInfo.ComputerName}";
+        MenuSwitchUser.IsVisible = store != null && _user != null;
+        MenuSwitchUser.Click += async (_, _) =>
+        {
+            if (store == null) return;
+            var login = new LoginWindow(store.Db, AppInfo.ScheduleName, null, L.T("Switch user"), _station?.StationName ?? "");
+            if (await login.ShowDialog<SintonizaUser?>(this) is { } user) ApplyUser(user);
+        };
+        ApplyUser(_user);
         string database = _settings?.Library is { } l ? (l.IsMySql ? $"MySQL · {l.Server}/{l.Database}" : $"SQLite · {Path.GetFileName(l.SqliteFile)}") : "";
         StatusDatabase.Text = store != null ? $"● {database}" : $"○ {L.T("database offline")}";
         BoxDatabaseText.Text = database;
@@ -122,6 +136,12 @@ public partial class ScheduleWindow
                 var hours = plan.Hours(now.Date, now.Date.AddDays(1));
                 var items = plan.Items(now.Date, now.Date.AddDays(1));
                 var (station, _) = new StationStore(db).Load();
+                // The first passwords (slow to check on purpose): every few minutes.
+                if (DateTime.UtcNow >= _nextPasswordCheck)
+                {
+                    _defaultPasswords = new UserStore(db).WithDefaultPasswords();
+                    _nextPasswordCheck = DateTime.UtcNow.AddMinutes(5);
+                }
                 return (stats, categories.Count, last, hours, items, station);
             });
             _station = f.station;
@@ -175,6 +195,7 @@ public partial class ScheduleWindow
 
         // What needs attention.
         var warnings = new List<string>();
+        if (_defaultPasswords.Count > 0) warnings.Add(L.F("🔑 Change the first password of {0} (Station › Users)", string.Join(", ", _defaultPasswords)));
         if (stats.Missing > 0) warnings.Add(L.F("⚠ {0:N0} songs whose file is missing", stats.Missing));
         if (stats.Uncategorised > 0) warnings.Add(L.F("⚠ {0:N0} songs without a category", stats.Uncategorised));
         int noTemplate = Enumerable.Range(now.Hour, 24 - now.Hour).Count(h => data.TemplateAt(now.Date.AddHours(h)) == null);
@@ -248,5 +269,44 @@ public partial class ScheduleWindow
         }
         catch { /* unknown */ }
         return _cpu = "";
+    }
+
+    List<(Button Nav, Button? Tool, MenuItem? Menu, TabItem Tab)> _gates = new();
+
+    /// <summary>What the user may use: the other tools are hidden; their name in the status bar and the station box.</summary>
+    void ApplyUser(SintonizaUser? user)
+    {
+        _user = user;
+        string who = user?.Name ?? AppInfo.UserName;
+        StatusUser.Text = $"👤 {who}@{AppInfo.ComputerName}";
+        BoxUserText.Text = $"{who}@{AppInfo.ComputerName}";
+        bool Allowed(TabItem tab) =>
+            tab == HomeTab ? true
+            : tab == SongsTab || tab == CategoriesTab || tab == ImportTab ? May(Permission.Library)
+            : tab == DailyTab ? May(Permission.Programming) || May(Permission.Voice)
+            : tab == Tabs.Items[3] || tab == Tabs.Items[0] ? May(Permission.Programming)
+            : tab == Tabs.Items[1] || tab == Tabs.Items[2] ? May(Permission.Traffic)
+            : tab == StationSettingsTab || tab == CartwallsTab ? May(Permission.Station)
+            : tab == UsersTab ? May(Permission.Users)
+            : true;
+        foreach (var (nav, tool, menu, tab) in _gates)
+        {
+            bool allowed = Allowed(tab) && (tab != DailyTab || DailyTab.IsVisible) && (tab != SongsTab || _library != null);
+            nav.IsVisible = allowed;
+            if (tool != null) tool.IsVisible = allowed;
+            if (menu != null) menu.IsVisible = allowed;
+        }
+        // Only the menus and groups with something left in them.
+        foreach (var top in MainMenu.Items.OfType<MenuItem>())
+            if (top.Items.OfType<MenuItem>().Any()) top.IsVisible = top.Items.OfType<MenuItem>().Any(m => m.IsVisible);
+        foreach (var group in NavPanel.Children.OfType<TextBlock>())
+        {
+            int i = NavPanel.Children.IndexOf(group);
+            group.IsVisible = NavPanel.Children.Skip(i + 1).TakeWhile(c => c is Button).Any(c => c.IsVisible);
+        }
+        SaveButton.IsVisible = MenuSave.IsVisible = May(Permission.Programming) || May(Permission.Traffic);
+        if (_daily != null) _daily.VoiceOnly = !May(Permission.Programming);
+        if (Tabs.SelectedItem is TabItem current && !Allowed(current)) Tabs.SelectedItem = HomeTab;
+        _nextFigures = DateTime.MinValue;
     }
 }

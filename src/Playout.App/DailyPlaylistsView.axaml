@@ -164,10 +164,10 @@
                     </Panel>
                 </DockPanel>
             </Border>
-            <GridSplitter Grid.Column="3" Background="Transparent" ResizeDirection="Columns" />
+            <GridSplitter Grid.Column="3" x:Name="LibrarySplitter" Background="Transparent" ResizeDirection="Columns" />
 
             <!-- The library: double-click or Enter puts a song after the selected one -->
-            <Border Grid.Column="4" Classes="panel" Padding="10">
+            <Border Grid.Column="4" x:Name="LibraryPanel" Classes="panel" Padding="10">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Classes="caption" Text="LIBRARY" Margin="4,0,0,8" />
                     <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="4,8,0,0"

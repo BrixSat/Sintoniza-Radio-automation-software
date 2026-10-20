@@ -1,0 +1,56 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Playout.App.UsersView">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Styles>
+    <Grid ColumnDefinitions="260,18,*">
+        <DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                <Button x:Name="AddButton" Content="New user" Classes="accent" />
+                <Button x:Name="DeleteButton" Content="Delete" />
+            </StackPanel>
+            <ListBox x:Name="UserList" Background="#13161C" />
+        </DockPanel>
+        <ScrollViewer Grid.Column="2">
+            <StackPanel x:Name="EditPanel" Spacing="14" MaxWidth="760" HorizontalAlignment="Left">
+                <Grid ColumnDefinitions="*,14,*,14,Auto">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Name" />
+                        <TextBox x:Name="NameBox" MaxLength="100" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Classes="label" Text="New password" />
+                        <TextBox x:Name="PasswordBox" PasswordChar="•" PlaceholderText="(unchanged)" />
+                    </StackPanel>
+                    <CheckBox Grid.Column="4" x:Name="EnabledBox" Content="May log in" VerticalAlignment="Bottom" />
+                </Grid>
+                <StackPanel Spacing="6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Classes="label" Text="May use" VerticalAlignment="Bottom" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                            <Button x:Name="AdminPresetButton" Content="Everything" FontSize="12" Padding="10,3" />
+                            <Button x:Name="PresenterPresetButton" Content="Presenter" FontSize="12" Padding="10,3" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel x:Name="PermissionPanel" Spacing="8" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Button x:Name="SaveUserButton" Content="Save user" Classes="accent" />
+                    <TextBlock x:Name="MessageText" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="520" />
+                </StackPanel>
+                <TextBlock Classes="note"
+                           Text="Users are the station's: they log in to Sintoniza Pro and Sintoniza Import, to a playout's Settings and to the web remote, in every studio. Passwords are kept only as a secure hash. Change the first passwords (admin/admin, dj/dj)." />
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

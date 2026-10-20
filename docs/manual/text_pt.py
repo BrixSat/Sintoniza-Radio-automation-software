@@ -44,7 +44,8 @@ CHAPTERS = [
 
 ("Primeira configuração", "setup", [
     ("p", "Em <b>cada computador de estúdio</b>, no programa de emissão: clique em <b>Definições</b> (em baixo à esquerda, ou "
-          "Ctrl/Cmd + ,). Só lá está o que é desse computador. <b>Guardar</b> aplica as alterações."),
+          "Ctrl/Cmd + ,). Só lá está o que é desse computador. <b>Guardar</b> aplica as alterações. Com a biblioteca configurada, as "
+          "Definições pedem um utilizador que possa mudar as definições deste computador (no início: <b>admin</b>, palavra-passe <b>admin</b>)."),
     ("fig", "settings-station", "Definições → Geral", [("LanguageBox", "O <b>idioma</b> dos ecrãs (English, Português, Français); aplica-se da próxima vez que o programa arrancar.")]),
     ("fig", "settings-audio", "Definições → Áudio", [
         ("MusicDeviceBox", "A placa de som e o par de canais da <b>Música</b>; Cartwall e Pré-escuta por baixo. <b>Testar</b> toca um tom curto."),
@@ -55,7 +56,7 @@ CHAPTERS = [
     ("fig", "settings-safety", "Definições → Segurança", [
         ("ResumeBox", "<b>Continuar a tocar ao arrancar</b>, <b>Voltar a arrancar se falhar</b>, <b>Arrancar quando inicio sessão</b>: para uma estação que nunca sai do ar."),
         ("BackupBox", "<b>Cópias de segurança</b>: todos os dias, da base de dados e dos ficheiros da estação.")]),
-    ("p", "Depois, <b>uma vez para toda a estação</b>, na <b>Sintoniza Pro → Definições da estação</b>:"),
+    ("p", "Depois, <b>uma vez para toda a estação</b>, na <b>Sintoniza Pro → Definições da estação</b> (entre como <b>admin</b> / <b>admin</b>, e mude essa palavra-passe em Estação → Utilizadores):"),
     ("fig", "station-station", "Definições da estação → Estação", [("StationNameBox", "<b>Nome da estação</b>, <b>logótipo</b>, género e site: aparecem ao lado do relógio e vão para o stream e o RDS. "
         "<b>Tipo de estação</b>: <i>Rádio FM</i> (microfone pela mesa de mistura) ou <i>Rádio web</i> (pelo computador).")]),
     ("fig", "station-audio", "Definições da estação → Áudio", [("CrossfadeBox", "Crossfade de música para música, em segundos."),
@@ -166,7 +167,7 @@ CHAPTERS = [
     ("p", "Controle o playout a partir de um telemóvel ou de outro computador da rede da estação: uma página web, sem nada para instalar."),
     ("fig", "settings-remote", "Definições → Remoto", [
         ("RemoteBox", "Ligue-o (está desligado até o fazer)."),
-        ("RemotePasswordBox", "A <b>palavra-passe</b> que a página pede (e a porta)."),
+        ("RemotePortBox", "A porta (8090 por omissão). A página pede um utilizador da estação com a permissão <b>Controlo remoto web</b>, p. ex. <b>dj</b> (capítulo 3, Utilizadores)."),
         ("RemoteAddressText", "O endereço a abrir no telemóvel, na mesma rede."),
     ]),
     ("fig", "remote-phone", "O controlo remoto num telemóvel", []),
@@ -192,7 +193,7 @@ CHAPTERS = [
         ["Atalhos", "Teclas para Play, Pausa, Seguinte, Parar, MIC, o stream e cada cart"],
         ["RDS", "Se este computador envia para o codificador RDS, e como chega a ele"],
         ["Playlist", "Quanto da hora seguinte a playlist mostra"],
-        ["Remoto", "O controlo remoto web: ligar/desligar, porta, palavra-passe, o endereço"],
+        ["Remoto", "O controlo remoto web: ligar/desligar, porta, o endereço (entra com os utilizadores da estação)"],
         ["Acerca de", "Versão, atualizações e este manual"],
     ]),
     ("p", "As da estação, na <b>Sintoniza Pro → Definições da estação</b>:"),
@@ -215,7 +216,7 @@ CHAPTERS = [
     ("fig", "production", "Sintoniza Pro: Início", [
         ("MainMenu", "O <b>menu</b>: Ficheiro, Biblioteca, Programação, Publicidade, Estação, Ajuda."),
         ("SaveButton", "A <b>barra de ferramentas</b>: Guardar (Ctrl+S) e as ferramentas mais usadas."),
-        ("NavPanel", "As <b>ferramentas</b>: Início; Biblioteca (músicas, categorias, importar); Programação (modelos de hora, playlists diárias, eventos); Publicidade (blocos, clientes e campanhas); Estação (definições, cartwalls)."),
+        ("NavPanel", "As <b>ferramentas</b>: Início; Biblioteca (músicas, categorias, importar); Programação (modelos de hora, playlists diárias, eventos); Publicidade (blocos, clientes e campanhas); Estação (definições, cartwalls, utilizadores)."),
         ("HomeClock", "O relógio e a data."),
         ("HomeToday", "<b>Hoje</b>: as horas planeadas, blocos e anúncios marcados, eventos, voice tracks."),
         ("HomeWarnings", "<b>A verificar</b>: ficheiros em falta, músicas sem categoria, horas sem modelo, campanhas a acabar esta semana, alterações por guardar."),
@@ -251,6 +252,36 @@ CHAPTERS = [
         ("SaveButton", "<b>Guardar</b>: todos os estúdios recebem-nas até um minuto depois."),
     ]),
     ("tip", "Use ficheiros a que todos os estúdios cheguem (uma pasta partilhada), como para a música."),
+    ("h2", "Utilizadores e permissões"),
+    ("p", "O Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto web pedem um <b>utilizador e palavra-passe</b>: "
+          "os utilizadores da estação, os mesmos em todos os estúdios. Uma biblioteca nova tem dois: <b>admin</b> / <b>admin</b> (pode fazer tudo) "
+          "e <b>dj</b> / <b>dj</b> (um locutor). <b>Mude primeiro essas palavras-passe</b>: até lá o Início do Pro lembra-o."),
+    ("fig", "login", "Entrar", [
+        ("UserBox", "O utilizador (lembra-se do último)…"),
+        ("PasswordBox", "…e a palavra-passe."),
+        ("LoginButton", "<b>Entrar</b>. No Pro, Ficheiro → <b>Mudar de utilizador…</b> troca-o."),
+    ]),
+    ("fig", "users", "Estação → Utilizadores", [
+        ("UserList", "Os utilizadores da estação."),
+        ("AddButton", "<b>Novo utilizador</b>; <b>Apagar</b> ao lado."),
+        ("NameBox", "O nome…"),
+        ("PasswordBox", "…e uma nova palavra-passe (vazia, fica como está)."),
+        ("EnabledBox", "<b>Pode entrar</b>: desmarque para impedir alguém sem o apagar."),
+        ("AdminPresetButton", "<b>Tudo</b> ou <b>Locutor</b> (voice tracks e controlo remoto web) marcam os conjuntos habituais."),
+        ("PermissionPanel", "O que pode usar: o Pro só lhe mostra essas ferramentas, menus e botões."),
+        ("SaveUserButton", "<b>Guardar utilizador</b>."),
+    ]),
+    ("table", ["Permissão", "Deixa"], [
+        ["Biblioteca", "Músicas, categorias, importar música (e o Sintoniza Import)"],
+        ["Programação", "Modelos de hora, playlists diárias, eventos"],
+        ["Voice tracks", "Gravar voice tracks: vê as playlists diárias mas não muda as músicas"],
+        ["Publicidade", "Blocos de publicidade, clientes e campanhas"],
+        ["Estação", "As definições e cartwalls da estação"],
+        ["Utilizadores", "Adicionar e alterar utilizadores"],
+        ["Definições deste computador", "Abrir as Definições do próprio playout (placas de som, base de dados, teclas…)"],
+        ["Controlo remoto web", "Controlar um playout a partir de um telemóvel"],
+    ]),
+    ("tip", "As palavras-passe só são guardadas como um hash seguro: uma esquecida é definida de novo por outro utilizador com <b>Utilizadores</b>. Ninguém se pode apagar ou bloquear a si próprio, nem tirar a sua própria permissão <b>Utilizadores</b>."),
     ("h2", "A programação"),
     ("p", "Tudo o que se planeia com antecedência: Eventos, Blocos publicitários, Clientes e campanhas, Modelos de hora e Playlists diárias, escolhidos à esquerda. <b>Guardar</b> (na barra de ferramentas, acesa quando algo mudou, ou Ctrl+S) grava na base de "
           "dados e o programa de emissão recebe-o em poucos segundos. Se outra pessoa gravou entretanto, é-lhe perguntado antes de substituir o que ela fez."),
@@ -345,7 +376,7 @@ CHAPTERS = [
 ]),
 
 ("Sintoniza Importação", "import", [
-    ("p", "Traz uma pasta de música para a biblioteca, com as pastas lá dentro como categorias."),
+    ("p", "Traz uma pasta de música para a biblioteca, com as pastas lá dentro como categorias. Pede um utilizador com a permissão <b>Biblioteca</b>."),
     ("fig", "import", "Sintoniza Importação", [
         ("FolderBox", "A <b>pasta</b> a importar (<b>Escolher…</b> ao lado)."),
         ("NameBox", "A <b>categoria</b> para onde vai (por omissão o nome da pasta)…"),
@@ -370,6 +401,9 @@ CHAPTERS = [
 ]),
 
 ("Como faço…", "howto", [
+    ("h3", "…para dar a um locutor o seu próprio acesso?"),
+    ("steps", ["Pro → Estação → <b>Utilizadores</b> → <b>Novo utilizador</b>.", "O nome e uma palavra-passe; clique em <b>Locutor</b>.",
+               "<b>Guardar utilizador</b>. Pode gravar voice tracks no Pro e usar o controlo remoto web, mais nada."]),
     ("h3", "…para criar um programa da manhã nos dias úteis?"),
     ("steps", ["Pro → <b>Playlists</b> → <b>Novo</b>; dê-lhe um nome.", "Junte as linhas: p. ex. Music › Atuais, Gold, Jingles, Atuais, Anos 80.",
                "Arraste sobre as horas das 07 às 10, de segunda a sexta. <b>Guardar</b>.", "Veja-o nas <b>Playlists diárias</b>: as horas ficam feitas em poucos minutos."]),

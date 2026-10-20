@@ -265,7 +265,7 @@ void SettingsShots(SettingsWindow sw, string prefix)
         tabs.SelectedIndex = i;
         Pump(15);
         Shot(sw, prefix + settingsTabs[i], "LibraryFoldersList", "MusicDeviceBox", "PreviewDeviceBox", "CrossfadeBox", "OtherCrossfadeBox", "StationNameBox",
-            "NextMinutesBox", "PlanDaysBox", "LanguageBox", "LibraryTypeBox", "TestLibraryButton", "ResumeBox", "BackupBox", "SilenceBox", "FillBox", "RdsPsBox", "LoudnessBox", "RemoteBox", "RemotePasswordBox", "RemoteAddressText");
+            "NextMinutesBox", "PlanDaysBox", "LanguageBox", "LibraryTypeBox", "TestLibraryButton", "ResumeBox", "BackupBox", "SilenceBox", "FillBox", "RdsPsBox", "LoudnessBox", "RemoteBox", "RemotePortBox", "RemoteAddressText");
     }
     sw.Close();
 }
@@ -331,7 +331,9 @@ main.Close();
 using (var c = db.Connect()) Dapper.SqlMapper.Execute(c, "UPDATE plan_hours SET generated_by = 'studio'");
 var scheduleLibrary = new LibraryService();
 _ = scheduleLibrary.OpenAsync(settings.Library);
-var schedule = new ScheduleWindow(data, media, store, version, null, scheduleLibrary, settings) { Width = 1500, Height = 920 };
+// Logged in as the first user, admin (its first password still: Home asks to change it).
+var users = new UserStore(db);
+var schedule = new ScheduleWindow(data, media, store, version, null, scheduleLibrary, settings, users.LogIn("admin", "admin")) { Width = 1500, Height = 920 };
 schedule.Show();
 // It opens on Home: the clock, on air, today, what needs attention, the library, the database, this computer.
 var proTick = typeof(ScheduleWindow).GetMethod("Tick", BindingFlags.NonPublic | BindingFlags.Instance)!;
@@ -414,7 +416,24 @@ if (firstSong?.Item is { } vtSong)
     vtWindow.Close();
     vtDeck.Dispose();
 }
+
+// The station's users: a presenter of the demo station next to the first two
+if (users.All().All(u => u.Name != "ana")) users.Save(new SintonizaUser { Name = "ana", Permissions = [.. Permission.Presenter] }, "demo");
+stabs.SelectedItem = schedule.FindControl<TabItem>("UsersTab");
+Pump(20);
+var userList = ((UsersView)schedule.FindControl<TabItem>("UsersTab")!.Content!).FindControl<ListBox>("UserList")!;
+userList.SelectedIndex = userList.ItemsSource!.Cast<string>().ToList().FindIndex(n => n.StartsWith("ana"));
+Pump(20);
+Shot(schedule, "users", "UserList", "AddButton", "NameBox", "PasswordBox", "EnabledBox", "AdminPresetButton", "PermissionPanel", "SaveUserButton");
 schedule.Close();
+
+// The log-in, as Sintoniza Pro opens
+var login = new LoginWindow(db, AppInfo.ScheduleName, null, null, station.StationName) { Width = 420 };
+login.FindControl<TextBox>("UserBox")!.Text = "ana";
+login.Show();
+Pump(20);
+Shot(login, "login", "UserBox", "PasswordBox", "LoginButton");
+login.Close();
 
 // ───────────────────────── Sintoniza Import ─────────────────────────
 

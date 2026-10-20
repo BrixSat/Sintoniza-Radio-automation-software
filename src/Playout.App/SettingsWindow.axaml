@@ -755,15 +755,14 @@
                         <Grid ColumnDefinitions="Auto,8,120,24,Auto,8,260">
                             <TextBlock Text="Port" VerticalAlignment="Center" />
                             <NumericUpDown Grid.Column="2" x:Name="RemotePortBox" Minimum="1024" Maximum="65535" Increment="1" FormatString="0" />
-                            <TextBlock Grid.Column="4" Text="Password" VerticalAlignment="Center" />
-                            <TextBox Grid.Column="6" x:Name="RemotePasswordBox" PasswordChar="•" />
+                            <TextBox Grid.Column="6" x:Name="RemotePasswordBox" PasswordChar="•" IsVisible="False" />
                         </Grid>
                         <StackPanel Spacing="4">
                             <TextBlock Classes="label" Text="Open on the phone (same network)" />
                             <SelectableTextBlock x:Name="RemoteAddressText" FontSize="15" FontWeight="SemiBold" />
                         </StackPanel>
                         <TextBlock Classes="note"
-                                   Text="It shows what is on air and next, and has Play, Pause, Next, Stop, AUTO, the cartwall, play now / remove and adding a song. An advert on air is only cut after a question, as on screen. The page asks for the password; five wrong ones lock it for a minute. It is plain HTTP: use it on the station's own network, or from outside only through the station's VPN — never open the port on the router." />
+                                   Text="It shows what is on air and next, and has Play, Pause, Next, Stop, AUTO, the cartwall, play now / remove and adding a song. An advert on air is only cut after a question, as on screen. The page asks for a Sintoniza user with the Web remote permission (Sintoniza Pro → Users); five wrong passwords lock it for a minute. It is plain HTTP: use it on the station's own network, or from outside only through the station's VPN — never open the port on the router." />
                     </StackPanel>
                 </StackPanel>
             </TabItem>

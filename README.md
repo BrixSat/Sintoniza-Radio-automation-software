@@ -105,6 +105,15 @@ engine for decoding, mixing and streaming.
   can't be edited until it has finished playing.
 - **Cartwall**: 12 instant buttons that play over the music, with their length, and a countdown and a progress fill
   while playing. The station's cartwalls are made in Sintoniza Pro; the host picks one and fires its carts.
+- **Users and permissions**: Sintoniza Pro, Sintoniza Import, the playout's Settings and the web remote log in with
+  the station's users (kept in the library, the same in every studio; passwords only as a salted PBKDF2 hash). Each user
+  gets what they may do — library, programming, voice tracks, traffic, station, users, this computer's settings, web
+  remote — and Pro shows them only those tools. A new library has **admin** / **admin** (everything) and **dj** / **dj**
+  (voice tracks and the web remote); Pro's Home reminds you to change those passwords.
+- **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network — what is on air,
+  the time left and the next ad break, ▶ ❚❚ ⏭ ■ and AUTO, the cartwall, play now / remove on what comes next, and a
+  library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong
+  passwords lock it for a minute. Plain HTTP: for the station's own network or its VPN only.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.
 - **Pro** — a separate program, **Sintoniza Pro** (the station's production program; its own executable,

@@ -103,6 +103,7 @@
         <Menu DockPanel.Dock="Top" x:Name="MainMenu" Padding="6,2" Background="#15181E">
             <MenuItem Header="_File">
                 <MenuItem x:Name="MenuSave" Header="_Save" InputGesture="Ctrl+S" />
+                <MenuItem x:Name="MenuSwitchUser" Header="Switch user…" />
                 <Separator />
                 <MenuItem x:Name="MenuClose" Header="_Close" />
             </MenuItem>
@@ -123,6 +124,7 @@
             <MenuItem Header="_Station">
                 <MenuItem x:Name="MenuStationSettings" Header="Station settings" />
                 <MenuItem x:Name="MenuCartwalls" Header="Cartwalls" />
+                <MenuItem x:Name="MenuUsers" Header="Users" />
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem x:Name="MenuManual" Header="User manual" />
@@ -208,6 +210,7 @@
                         <TextBlock Classes="navgroup" Text="STATION" />
                         <Button x:Name="NavStationSettings" Classes="nav" Content="⚙   Station settings" />
                         <Button x:Name="NavCartwalls" Classes="nav" Content="▣   Cartwalls" />
+                        <Button x:Name="NavUsers" Classes="nav" Content="👤   Users" />
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -725,6 +728,7 @@
             <TabItem Header="Import music" x:Name="ImportTab" />
             <TabItem Header="Station settings" x:Name="StationSettingsTab" />
             <TabItem Header="Cartwalls" x:Name="CartwallsTab" />
+            <TabItem Header="Users" x:Name="UsersTab" />
             <!-- ───────── The library: every song ───────── -->
             <TabItem Header="Songs" x:Name="SongsTab">
                 <app:TrackLibraryView x:Name="SongsView" />

@@ -20,11 +20,17 @@ studio.
 
 The screens follow the language chosen in the on-air program's Settings → General (English, Português, Français).
 
+**Users.** Pro, Import, the on-air program's Settings and the web remote ask for a **user and password** — the
+station's users, the same in every studio (see [Users and permissions](#users-and-permissions)). A new library has two:
+**admin** / **admin** (may do everything) and **dj** / **dj** (a presenter: voice tracks and the web remote). Change
+those passwords first (Pro → Station → Users); until then Pro's Home reminds you.
+
 ---
 
 ## First setup
 
-On each studio computer, in the on-air program's **Settings** (the button bottom left, or Ctrl/Cmd+,):
+On each studio computer, in the on-air program's **Settings** (the button bottom left, or Ctrl/Cmd+,; once the
+library is set up it asks for a user with *This computer's settings*, e.g. admin):
 
 1. **Library** → where the library lives: *SQLite* (a file on this computer) or *MySQL / MariaDB* (a server several
    studios share). Click **Test**.
@@ -33,7 +39,7 @@ On each studio computer, in the on-air program's **Settings** (the button bottom
 3. **Safety** → *Carry on playing when the app starts*, *Start the app again if it crashes*, *Start the app when I log
    in*, and the daily backups.
 
-Then once, for the whole station, in [**Sintoniza Pro**](#2-sintoniza-pro):
+Then once, for the whole station, in [**Sintoniza Pro**](#2-sintoniza-pro) (log in as **admin** / **admin**):
 
 4. **Station settings** → name, logo, *FM* (mic through the desk) or *Web radio* (mic through the computer),
    crossfades, silence detection and **fill music** (what plays if the playlist ever runs out), time signal,
@@ -124,8 +130,9 @@ pauses on the Preview output; ← → move by a second (Shift: 0.1 s); the mouse
 
 ### Web remote
 
-Settings → **Remote**: switch it on, give it a **password** (and a port, 8090 by default), and open the address it
-shows on a phone or computer on the station's network. The page shows what is on air with the time left, the next
+Settings → **Remote**: switch it on (the port is 8090 by default) and open the address it shows on a phone or
+computer on the station's network. Log in with a station user who has the *Web remote* permission (e.g. **dj**; the
+phone remembers the user name). The page shows what is on air with the time left, the next
 ad break, the stream and silence lights and what comes next; it has **▶ ❚❚ ⏭ ■**, **AUTO**, the cartwall's carts,
 *Now* / ✕ on the items coming up, and a library search to add a song after the item on air. An advert on air is only
 cut after a question. Five wrong passwords lock it for a minute. It is plain HTTP: for the station's own network, or
@@ -144,7 +151,9 @@ print / save as PDF.
 
 ### Settings at a glance
 
-This computer's only (the station's are in Pro → Station settings):
+This computer's only (the station's are in Pro → Station settings). Settings asks for a user with *This computer's
+settings* (once logged in it stays open for 5 minutes); while the library can't be reached it opens without asking, so
+the database can be fixed.
 
 | Tab | |
 | --- | --- |
@@ -156,7 +165,7 @@ This computer's only (the station's are in Pro → Station settings):
 | Shortcuts | keys for transport, MIC, stream and carts |
 | RDS | whether this computer sends to the RDS encoder, and how it reaches it |
 | Playlist | how much of the next hour the playlist shows |
-| Remote | the web remote: on/off, port, password, its address |
+| Remote | the web remote: on/off, port, its address (it logs in with the station's users) |
 | About | version, updates, the manual |
 
 ### Updates
@@ -171,7 +180,7 @@ install (Windows: the app restarts on the new version; Linux: it asks for the pa
 The station's production program, laid out as a workstation: a **menu** (File, Library, Programming, Traffic,
 Station, Help) and a **toolbar** at the top; the **tools** on the left (Home · Library: songs, categories, import ·
 Programming: hour templates, daily playlists, events · Traffic: ad breaks, clients and campaigns · Station: settings,
-cartwalls), with **Now playing** (from every studio's play history, and this hour's template) and the **station**
+cartwalls, users), with **Now playing** (from every studio's play history, and this hour's template) and the **station**
 box under them; the chosen tool in the middle; a **status bar** at the bottom (version, station, database, user,
 unsaved changes, date and time).
 
@@ -194,6 +203,28 @@ tempo and energy, tags, listen).
 - **Cartwalls** — the cartwalls every studio plays: New, Copy, Rename, Delete; click a cart to give it a file
   (or drop one on it), a colour and an icon, and listen to it.
 - **Import music** — Sintoniza Import, inside Pro.
+- **Users** — the station's users and what each may do (below).
+
+### Users and permissions
+
+Pro opens with a log-in (File → **Switch user…** changes it). Each user has a name, a password and the
+**permissions** ticked for them; Pro shows only the tools, menus and buttons they may use:
+
+| Permission | Lets them |
+| --- | --- |
+| Library | songs, categories, importing music (and Sintoniza Import) |
+| Programming | hour templates, daily playlists, events |
+| Voice tracks | record voice tracks (they see the daily playlists, but can't change the songs) |
+| Traffic | ad breaks, clients and campaigns |
+| Station | the station's settings and cartwalls |
+| Users | add and change users |
+| This computer's settings | open a playout's own Settings (sound cards, database, keys…) |
+| Web remote | control a playout from a phone |
+
+**Everything** and **Presenter** (voice tracks and web remote) tick the usual sets. **New user** → a name, a password
+→ **Save user**; to change a password type a new one (empty keeps it). Untick *May log in* to stop someone without
+deleting them. You can't delete or lock out yourself, nor take away your own *Users*. Passwords are kept only as a
+secure hash (PBKDF2): a forgotten one is set again by another user with *Users*.
 
 ### The schedule
 
@@ -293,7 +324,7 @@ within N minutes (Station settings → Safety → fill music), never the same ar
 
 ## 3. Sintoniza Import
 
-Brings a folder of music into the library, in categories.
+Brings a folder of music into the library, in categories. It asks for a user with the *Library* permission.
 
 1. **Choose…** the folder (e.g. `D:\Music\Sintoniza`).
 2. **Into the category**: its name (by default the folder's), **Under** (one of the station's eight — Music by
@@ -335,6 +366,8 @@ the songs of deleted folders are taken out; a drive or share that isn't connecte
   Another song (or Remove and double-click one in the library).
 - **…put a folder of songs in Gold?** Sintoniza Import with that folder, *Into the category* Gold, no sub-categories.
   Or in the on-air program: Folders tab → right-click the folder → Category → Gold.
+- **…give a presenter their own login?** Pro → Station → Users → New user → their name and a password → **Presenter**
+  → Save user. They can record voice tracks in Pro and use the web remote, nothing else.
 - **…get the music report for the collecting society?** On-air program → Reports → Music played (royalties) → the
   month → Save as CSV.
 - **…send an advertiser the proof of broadcast?** Reports → Adverts → the advertiser and dates → Save as a page to
