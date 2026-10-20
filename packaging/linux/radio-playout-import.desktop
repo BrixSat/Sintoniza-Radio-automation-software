@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Import
+GenericName=Radio music import
+Comment=Folders of audio into the Sintoniza Radio Broadcast system library, in categories
+Exec=radio-playout --import
+Icon=radio-playout-import
+StartupWMClass=SintonizaImport
+Terminal=false
+Keywords=radio;import;music;library;categories;
+Categories=AudioVideo;Audio;

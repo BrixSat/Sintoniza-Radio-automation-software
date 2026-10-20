@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Radio Broadcast system
+GenericName=Radio automation
+Comment=Radio automation and playout
+Exec=radio-playout
+Icon=radio-playout
+Terminal=false
+StartupWMClass=RadioPlayout
+Keywords=radio;playout;broadcast;automation;jingles;streaming;
+Categories=AudioVideo;Audio;

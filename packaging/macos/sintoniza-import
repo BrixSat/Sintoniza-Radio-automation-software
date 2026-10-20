@@ -1,0 +1,10 @@
+#!/bin/sh
+# Sintoniza Import: the main app started as the import program (--import). It is looked for next to this app
+# (both in Applications), then in the user's Applications.
+here="$(cd "$(dirname "$0")/../../.." && pwd)"
+for app in "$here/Sintoniza Radio Broadcast system.app" "/Applications/Sintoniza Radio Broadcast system.app" \
+           "$HOME/Applications/Sintoniza Radio Broadcast system.app"; do
+  if [ -x "$app/Contents/MacOS/RadioPlayout" ]; then exec "$app/Contents/MacOS/RadioPlayout" --import "$@"; fi
+done
+osascript -e 'display alert "Sintoniza Import" message "Put Sintoniza Import in the same folder as Sintoniza Radio Broadcast system (Applications)."'
+exit 1

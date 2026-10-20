@@ -1,0 +1,373 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Playout.App.Controls"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.MainWindow"
+        Icon="/Assets/icon.ico"
+        Title="Sintoniza Radio Broadcast system"
+        Width="1480" Height="920" MinWidth="1200" MinHeight="740"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <StreamGeometry x:Key="IconPlay">M0,0 L11,7 L0,14 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconPause">M0,0 H4 V14 H0 Z M7,0 H11 V14 H7 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconNext">M0,0 L8,7 L0,14 Z M9,0 H12 V14 H9 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconStop">M0,0 H12 V12 H0 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconAuto">M8,2 A6,6 0 1 1 2.6,5.4 L4.4,6.3 A4,4 0 1 0 8,4 Z M7.5,0 L11,3 L7.5,6 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconAssisted">M5,4 A3,3 0 1 0 11,4 A3,3 0 1 0 5,4 Z M2,15.5 C2,11 4.7,9 8,9 C11.3,9 14,11 14,15.5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconMusic">M5.5,2.2 L15,0 V11.3 A2.6,2.2 0 1 1 13.4,9.3 V3.4 L7.1,4.9 V13.3 A2.6,2.2 0 1 1 5.5,11.3 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconJingle">M8,0 L9.9,6.1 L16,8 L9.9,9.9 L8,16 L6.1,9.9 L0,8 L6.1,6.1 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconCommercial">M0,5 H3 L12,0 V16 L3,11 H0 Z M13.5,6 H16 V10 H13.5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconMic">M8,0 A3,3 0 0 1 11,3 V8 A3,3 0 0 1 5,8 V3 A3,3 0 0 1 8,0 Z M2.5,7 H4 A4,4 0 0 0 12,7 H13.5 A5.5,5.5 0 0 1 8.75,12.45 V14.5 H11 V16 H5 V14.5 H7.25 V12.45 A5.5,5.5 0 0 1 2.5,7 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconLock">M2,7 V5 A6,6 0 0 1 14,5 V7 H16 V18 H0 V7 Z M5,7 H11 V5 A3,3 0 0 0 5,5 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconStream">M8,6.4 A1.6,1.6 0 1 1 8,9.6 A1.6,1.6 0 1 1 8,6.4 Z M4.11,4.11 L5.17,5.17 A4,4 0 0 0 5.17,10.83 L4.11,11.89 A5.5,5.5 0 0 1 4.11,4.11 Z M11.89,4.11 A5.5,5.5 0 0 1 11.89,11.89 L10.83,10.83 A4,4 0 0 0 10.83,5.17 Z M2.34,2.34 L3.4,3.4 A6.5,6.5 0 0 0 3.4,12.6 L2.34,13.66 A8,8 0 0 1 2.34,2.34 Z M13.66,2.34 A8,8 0 0 1 13.66,13.66 L12.6,12.6 A6.5,6.5 0 0 0 12.6,3.4 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconGear">M10.3,1 L11,3.1 C11.5,3.3 12,3.6 12.4,3.9 L14.5,3.4 L15.9,5.8 L14.4,7.4 C14.5,7.9 14.5,8.4 14.4,8.9 L15.9,10.5 L14.5,12.9 L12.4,12.4 C12,12.7 11.5,13 11,13.2 L10.3,15.3 H7.5 L6.9,13.2 C6.4,13 5.9,12.7 5.5,12.4 L3.4,12.9 L2,10.5 L3.5,8.9 C3.4,8.4 3.4,7.9 3.5,7.4 L2,5.8 L3.4,3.4 L5.5,3.9 C5.9,3.6 6.4,3.3 6.9,3.1 L7.5,1 Z M8.9,5.6 A2.6,2.6 0 1 0 8.9,10.8 A2.6,2.6 0 1 0 8.9,5.6 Z</StreamGeometry>
+    </Window.Resources>
+
+    <DockPanel Margin="12">
+
+        <!-- ═════════ Header: on-air deck + station panel ═════════ -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,12,400" Margin="0,0,0,12">
+
+            <Border Classes="panel" Grid.Column="0">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                    <!-- Status badges: on-air state and the stream on/off toggle, side by side -->
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                        <Border x:Name="OnAirBadge" Classes="badge" Background="#3A3F4B">
+                            <TextBlock x:Name="OnAirText" Text="STOPPED" />
+                        </Border>
+                        <Button Grid.Column="1" x:Name="StreamToggle" Classes="badge stream" Margin="8,0,0,0"
+                                ToolTip.Tip="Start / stop streaming (configure the server in Settings)">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Ellipse x:Name="StreamDot" Width="7" Height="7" Fill="#8B93A3" VerticalAlignment="Center" />
+                                <TextBlock x:Name="StreamText" Text="STREAM OFF" />
+                            </StackPanel>
+                        </Button>
+                        <!-- Talk-over countdown: time left in the intro, or to the end once the outro starts -->
+                        <Border Grid.Column="2" x:Name="CueBadge" Classes="badge cue" HorizontalAlignment="Center" IsVisible="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock x:Name="CueLabel" />
+                                <TextBlock x:Name="CueTime" Classes="digits" />
+                            </StackPanel>
+                        </Border>
+                        <!-- Dead air: the output has been silent for a while although an item is playing -->
+                        <Border Grid.Column="2" x:Name="SilenceBadge" Classes="badge cue" Background="{StaticResource OnAir}"
+                                HorizontalAlignment="Center" IsVisible="False"
+                                ToolTip.Tip="Nothing is being heard although an item is playing. AUTO skips to the next item (Settings → Safety).">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="SILENCE" />
+                                <TextBlock x:Name="SilenceTime" Classes="digits" />
+                            </StackPanel>
+                        </Border>
+                        <!-- The next ad break, when it is near -->
+                        <Border Grid.Column="2" x:Name="BreakBadge" Classes="badge cue break" HorizontalAlignment="Right" Margin="0,0,10,0" IsVisible="False">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock x:Name="BreakSign" />
+                                <TextBlock Text="BREAK IN" />
+                                <TextBlock x:Name="BreakTime" Classes="digits" />
+                                <TextBlock x:Name="BreakHowText" Opacity="0.85" />
+                            </StackPanel>
+                        </Border>
+                        <ToggleButton Grid.Column="3" x:Name="AutoSwitch" Classes="mode" IsChecked="True">
+                            <Panel>
+                                <StackPanel x:Name="AutoContent" Orientation="Horizontal" Spacing="7">
+                                    <PathIcon Data="{StaticResource IconAuto}" />
+                                    <TextBlock Text="AUTO" />
+                                </StackPanel>
+                                <StackPanel x:Name="AssistedContent" Orientation="Horizontal" Spacing="7" IsVisible="False">
+                                    <PathIcon Data="{StaticResource IconAssisted}" />
+                                    <TextBlock Text="ASSISTED" />
+                                </StackPanel>
+                            </Panel>
+                        </ToggleButton>
+                    </Grid>
+
+                    <!-- Album cover (when the file has one) beside the title and the waveforms -->
+                    <Grid Grid.Row="1" Grid.RowSpan="3" ColumnDefinitions="Auto,*" Margin="0,6,0,0">
+                        <Border x:Name="NowCoverFrame" Width="164" Height="164" CornerRadius="8" ClipToBounds="True"
+                                Background="#13161C" Margin="0,0,14,0" VerticalAlignment="Top" IsVisible="False">
+                            <Image x:Name="NowCover" Stretch="UniformToFill" />
+                        </Border>
+                        <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto">
+                            <TextBlock x:Name="NowTitle" Text="Nothing on air" FontSize="26" FontWeight="SemiBold"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Row="1" x:Name="NowArtist" Classes="muted" FontSize="16" Margin="0,0,0,10" Text=" "
+                                       TextTrimming="CharacterEllipsis" />
+                            <Grid Grid.Row="2" RowDefinitions="78,4,22">
+                                <c:WaveformView x:Name="WaveMain" Mode="Scrolling" />
+                                <c:WaveformView Grid.Row="2" x:Name="WaveOverview" Mode="Overview" />
+                            </Grid>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Transport bar -->
+                    <Grid Grid.Row="4" ColumnDefinitions="*,Auto,*" Margin="0,10,0,0">
+                        <!-- Cue points that are set (Intro, Outro, Mix) count down next to the times; dimmed once passed -->
+                        <StackPanel Orientation="Horizontal" Spacing="22" VerticalAlignment="Center">
+                            <StackPanel>
+                                <TextBlock Classes="caption" Text="ELAPSED" />
+                                <TextBlock x:Name="Elapsed" Classes="digits" Text="00:00" FontSize="30" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel x:Name="IntroInfo" Classes="cue-time" IsVisible="False">
+                                <TextBlock Classes="caption" Text="INTRO" Foreground="#3ECF8E" />
+                                <TextBlock x:Name="IntroTime" Classes="digits" />
+                            </StackPanel>
+                        </StackPanel>
+                        <Border Grid.Column="1" Background="#13161C" CornerRadius="10" Padding="6">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <Button x:Name="PlayButton" Classes="transport play" ToolTip.Tip="Play">
+                                    <PathIcon Data="{StaticResource IconPlay}" />
+                                </Button>
+                                <Button x:Name="PauseButton" Classes="transport pause" ToolTip.Tip="Pause / resume">
+                                    <PathIcon Data="{StaticResource IconPause}" />
+                                </Button>
+                                <Button x:Name="NextButton" Classes="transport next" ToolTip.Tip="Next, crossfade now">
+                                    <PathIcon Data="{StaticResource IconNext}" />
+                                </Button>
+                                <Button x:Name="StopButton" Classes="transport stop" ToolTip.Tip="Stop">
+                                    <PathIcon Data="{StaticResource IconStop}" />
+                                </Button>
+                                <!-- Web radio only: hold to talk; music and carts are ducked while it is open -->
+                                <Button x:Name="MicButton" Classes="transport mic" IsVisible="False" Margin="10,0,0,0"
+                                        ToolTip.Tip="Hold to talk. Music and cartwall fade down while the mic is open.">
+                                    <StackPanel Orientation="Horizontal" Spacing="7">
+                                        <PathIcon Data="{StaticResource IconMic}" />
+                                        <TextBlock Text="MIC" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="22" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <StackPanel x:Name="OutroInfo" Classes="cue-time" IsVisible="False">
+                                <TextBlock Classes="caption" Text="OUTRO" Foreground="#B392F0" />
+                                <TextBlock x:Name="OutroTime" Classes="digits" />
+                            </StackPanel>
+                            <StackPanel x:Name="MixInfo" Classes="cue-time" IsVisible="False">
+                                <TextBlock Classes="caption" Text="MIX" Foreground="{StaticResource NextUp}" />
+                                <TextBlock x:Name="MixTime" Classes="digits" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="caption" Text="REMAINING" HorizontalAlignment="Right" />
+                                <TextBlock x:Name="Remaining" Classes="digits" Text="-00:00" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Right" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                        <TextBlock Classes="caption" Text="NEXT" VerticalAlignment="Center" Foreground="{StaticResource NextUp}" />
+                        <TextBlock x:Name="NextTitle" Text="—" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Station panel: logo, clock, broadcast info, meters -->
+            <Border Classes="panel" Grid.Column="2">
+                <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border x:Name="LogoFrame" Width="88" Height="88" CornerRadius="10" ClipToBounds="True"
+                                Margin="0,0,14,0" IsVisible="False" Background="#13161C">
+                            <Image x:Name="LogoImage" Stretch="Uniform" />
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock x:Name="StationNameText" Classes="caption" HorizontalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="Clock" Classes="digits" Text="00:00:00" FontSize="50" FontWeight="Light" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="DateText" Classes="muted" HorizontalAlignment="Center" Margin="0,-4,0,0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*" RowDefinitions="Auto,8,Auto,8,Auto" Margin="0,14,0,0">
+                        <StackPanel Classes="info">
+                            <TextBlock Classes="caption" Text="TOP OF HOUR" />
+                            <TextBlock x:Name="TopOfHourText" Classes="digits value" Text="—" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Classes="info">
+                            <TextBlock Classes="caption" Text="PLAYLIST ENDS" />
+                            <TextBlock x:Name="PlaylistEndsText" Classes="digits value" Text="—" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Classes="info">
+                            <TextBlock Classes="caption" Text="PLAYED TODAY" />
+                            <TextBlock x:Name="PlayedTodayText" Classes="digits value" Text="0" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="1" x:Name="StreamTimePanel" Classes="info">
+                            <TextBlock Classes="caption" Text="STREAM TIME" />
+                            <TextBlock x:Name="StreamTimeText" Classes="digits value" Text="—" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Classes="info" x:Name="NextEventPanel" IsVisible="False">
+                            <TextBlock Classes="caption" Text="NEXT EVENT" />
+                            <TextBlock x:Name="NextEventText" Classes="value" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="3" ColumnDefinitions="18,*" Margin="0,10,0,4">
+                        <TextBlock Classes="caption" Text="L" VerticalAlignment="Center" />
+                        <c:VuMeter Grid.Column="1" x:Name="MeterL" Height="12" />
+                    </Grid>
+                    <Grid Grid.Row="4" ColumnDefinitions="18,*">
+                        <TextBlock Classes="caption" Text="R" VerticalAlignment="Center" />
+                        <c:VuMeter Grid.Column="1" x:Name="MeterR" Height="12" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ═════════ Status bar ═════════ -->
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
+            <Button x:Name="SettingsButton" Classes="tool" ToolTip.Tip="Settings (Ctrl/Cmd+,)">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <PathIcon Width="12" Height="12" Data="{StaticResource IconGear}" />
+                    <TextBlock Text="Settings" />
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" x:Name="ReportsButton" Classes="tool" Content="Reports" Margin="8,0,0,0"
+                    ToolTip.Tip="Music played (royalties) and proof of broadcast for advertisers" />
+            <Button Grid.Column="3" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
+            <TextBlock Grid.Column="4" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
+                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </Grid>
+
+        <!-- ═════════ Body: playlist | cartwall, library or folders ═════════ -->
+        <Grid x:Name="Body" ColumnDefinitions="3*,12,2*">
+
+            <Border Classes="panel" Padding="10">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="4,0,0,8">
+                        <TextBlock Classes="caption" Text="PLAYLIST" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" x:Name="PlaylistInfo" Classes="muted" FontSize="12" VerticalAlignment="Center"
+                                   Margin="10,0,8,0" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                            <Button x:Name="OnAirButton" Classes="tool" Content="On air"
+                                    ToolTip.Tip="Go to the item on air, and keep it at the top again" />
+                            <ToggleButton x:Name="HourViewButton" Classes="tool" Content="This hour"
+                                          ToolTip.Tip="Show this hour and the next (on) or the whole playlist (off)" />
+                            <Button x:Name="AddStreamButton" Classes="tool" Content="Stream…"
+                                    ToolTip.Tip="Add another station's internet stream, for a set time or until Stop" />
+                            <Button x:Name="OpenListButton" Classes="tool" Content="Open…" ToolTip.Tip="Open a playlist (M3U)" />
+                            <Button x:Name="SaveListButton" Classes="tool" Content="Save…" ToolTip.Tip="Save the playlist (M3U, Ctrl/Cmd+S)" />
+                            <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
+                            <Button x:Name="DownButton" Classes="tool" Content="▼" ToolTip.Tip="Move down" />
+                            <Button x:Name="RemoveButton" Classes="tool" Content="Remove" />
+                            <Button x:Name="ClearButton" Classes="tool" Content="Clear" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="10,36,28,*,70,70" Margin="8,0,8,4">
+                        <TextBlock Grid.Column="1" Classes="caption" Text="#" />
+                        <TextBlock Grid.Column="3" Classes="caption" Text="TITLE" />
+                        <TextBlock Grid.Column="4" Classes="caption" Text="START" HorizontalAlignment="Right" />
+                        <TextBlock Grid.Column="5" Classes="caption" Text="LENGTH" HorizontalAlignment="Right" />
+                    </Grid>
+
+                    <Panel>
+                        <ListBox x:Name="Playlist" SelectionMode="Multiple" DragDrop.AllowDrop="True">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:PlaylistRow">
+                                    <DockPanel>
+                                    <!-- A new hour starts with this item (by the START times) -->
+                                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0,2,0,7" IsVisible="{Binding HasHourMark}">
+                                        <Border Classes="hour-tag">
+                                            <TextBlock Text="{Binding HourMark}" />
+                                        </Border>
+                                        <Border Grid.Column="1" Classes="hour-line" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="10,36,28,*,70,70" Classes="playlist-row"
+                                          Classes.playing="{Binding IsPlaying}"
+                                          Classes.next="{Binding IsNext}"
+                                          Classes.played="{Binding IsPlayed}"
+                                          Classes.over="{Binding IsOverHour}"
+                                          Classes.preview="{Binding IsPreview}"
+                                          Classes.empty="{Binding IsEmptyBreak}">
+                                        <Border Grid.ColumnSpan="6" Classes="music-bg" IsVisible="{Binding IsMusic}" />
+                                        <Border Grid.ColumnSpan="6" Classes="break-bg" IsVisible="{Binding IsAdBreak}" />
+                                        <Border Grid.ColumnSpan="6" Classes="jingle-bg" IsVisible="{Binding IsJingleRow}" />
+                                        <Border Grid.ColumnSpan="6" Classes="programme-bg" IsVisible="{Binding IsProgramme}" />
+                                        <Border Grid.ColumnSpan="6" Classes="stream-bg" IsVisible="{Binding IsStreamRow}" />
+                                        <Border Grid.ColumnSpan="6" Classes="row-bg" IsVisible="{Binding IsPlaying}" />
+                                        <c:ProgressFill Grid.ColumnSpan="6" Classes="row-progress" Value="{Binding Progress}"
+                                                        IsVisible="{Binding IsPlaying}" />
+                                        <Border Classes="row-marker" HorizontalAlignment="Left" />
+                                        <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding NumberText}" VerticalAlignment="Center" />
+                                        <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                            <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="{x:Static app:Strings.Music}" />
+                                            <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="{x:Static app:Strings.Jingle}" />
+                                            <TextBlock Classes="kind-currency" Text="{Binding CurrencySign}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="{x:Static app:Strings.Advert}" />
+                                            <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="{x:Static app:Strings.InternetStream}" />
+                                            <PathIcon Classes="kind programme" Data="{StaticResource IconMic}" IsVisible="{Binding IsProgramme}" ToolTip.Tip="{x:Static app:Strings.Programme}" />
+                                        </Panel>
+                                        <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Right" Classes="cue-tag" Margin="6,0,0,0" IsVisible="{Binding HasCues}" ToolTip.Tip="{x:Static app:Strings.HasCues}">
+                                                    <TextBlock Text="{x:Static app:Strings.Cue}" />
+                                                </Border>
+                                                <Border DockPanel.Dock="Right" Classes="preview-tag" Margin="6,0,0,0" IsVisible="{Binding IsPreview}"
+                                                        ToolTip.Tip="{x:Static app:Strings.ScheduledTip}">
+                                                    <TextBlock Text="{x:Static app:Strings.Scheduled}" />
+                                                </Border>
+                                                <PathIcon DockPanel.Dock="Right" Classes="lock" Margin="6,0,0,0" Data="{StaticResource IconLock}"
+                                                          IsVisible="{Binding IsLocked}" ToolTip.Tip="{Binding LockTip}" />
+                                                <Border DockPanel.Dock="Right" Classes="over-tag" Margin="6,0,0,0" IsVisible="{Binding IsOverHour}"
+                                                        ToolTip.Tip="{Binding OverHourTip}">
+                                                    <TextBlock Text="{x:Static app:Strings.WontPlay}" />
+                                                </Border>
+                                                <Border DockPanel.Dock="Right" Classes="event-tag" Margin="6,0,0,0" IsVisible="{Binding HasEvent}"
+                                                        ToolTip.Tip="{Binding EventTip}">
+                                                    <TextBlock Text="{Binding EventTag}" />
+                                                </Border>
+                                                <TextBlock Classes="title" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                            <TextBlock Classes="muted" Text="{Binding Artist}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding HasArtist}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="4" Classes="muted digits" Classes.timed="{Binding IsTimed}" Text="{Binding StartTime}"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center" ToolTip.Tip="{Binding TimedTip}" />
+                                        <TextBlock Grid.Column="5" Classes="digits" Text="{Binding Length}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </Grid>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <Canvas x:Name="DropLayer" IsHitTestVisible="False">
+                            <Border x:Name="DropIndicator" Height="3" CornerRadius="1.5" IsVisible="False"
+                                    Background="{StaticResource Accent}" />
+                        </Canvas>
+                        <TextBlock x:Name="EmptyHint" IsHitTestVisible="False" Classes="muted" TextAlignment="Center" VerticalAlignment="Center"
+                                   Text="Double-click a song in the Library on the right, or drag files or folders here&#10;from Folders or your file manager.  Double-click an item to put it on air." />
+                    </Panel>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns" />
+
+            <!-- One panel, three tabs: the cartwall, the music library (search every indexed song), the folders on disk -->
+            <Border Grid.Column="2" Classes="panel" Padding="10">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,Auto,*" Margin="0,0,0,8">
+                        <ToggleButton x:Name="CartwallTab" Classes="sidetab" Content="CARTWALL" IsChecked="True"
+                                      ToolTip.Tip="Jingles and sounds at hand" />
+                        <ToggleButton Grid.Column="1" x:Name="LibraryTab" Classes="sidetab" Content="LIBRARY" Margin="2,0,0,0"
+                                      ToolTip.Tip="Search the music library (Ctrl/Cmd+F)" />
+                        <ToggleButton Grid.Column="2" x:Name="FoldersTab" Classes="sidetab" Content="FOLDERS" Margin="2,0,0,0"
+                                      ToolTip.Tip="Browse the music folders on disk" />
+                        <Grid Grid.Column="3" x:Name="CartwallTools" ColumnDefinitions="*,Auto" Margin="10,0,0,0">
+                            <ComboBox x:Name="CartwallPicker" HorizontalAlignment="Stretch" Margin="0,0,6,0"
+                                      FontSize="12" MinHeight="0" ToolTip.Tip="Choose a cartwall" />
+                            <Button Grid.Column="1" x:Name="CartwallMenuButton" Classes="tool" Content="⋯"
+                                    ToolTip.Tip="New, save as, rename or delete cartwalls" />
+                        </Grid>
+                        <Button Grid.Column="3" x:Name="ScanButton" Classes="tool" Content="Scan" HorizontalAlignment="Right" IsVisible="False"
+                                ToolTip.Tip="Bring the library up to date with the music folders (Settings → Library)" />
+                    </Grid>
+                    <Panel>
+                        <DockPanel x:Name="CartwallPanel">
+                            <TextBlock DockPanel.Dock="Bottom" Classes="muted" FontSize="11" Margin="4,6,0,0"
+                                       Text="Click a cart to play it, again to stop. The cartwalls are made in Sintoniza Pro." />
+                            <UniformGrid x:Name="Cartwall" Columns="3" />
+                        </DockPanel>
+                        <app:TrackLibraryView x:Name="Tracks" IsVisible="False" />
+                        <app:LibraryBrowser x:Name="Library" IsVisible="False" />
+                    </Panel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

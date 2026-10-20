@@ -1,0 +1,78 @@
+<app:PageWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.CartwallsWindow"
+        Icon="/Assets/schedule.ico"
+        Title="Cartwalls"
+        Width="1100" Height="700" MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterOwner">
+
+    <app:PageWindow.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Button.cart.selected /template/ ContentPresenter">
+            <Setter Property="BorderBrush" Value="White" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+    </app:PageWindow.Styles>
+
+    <DockPanel Margin="18">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" Margin="8,0,0,0" IsCancel="True" />
+            <Button Grid.Column="2" x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" Margin="8,0,0,0" Classes="accent" />
+        </Grid>
+
+        <Grid ColumnDefinitions="220,18,*,18,280">
+            <!-- The cartwalls -->
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="label" Text="Cartwalls" />
+                <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="6" LineSpacing="6" Margin="0,8,0,0">
+                    <Button x:Name="NewButton" Content="New" />
+                    <Button x:Name="CopyButton" Content="Copy" ToolTip.Tip="A new cartwall with the same carts" />
+                    <Button x:Name="RenameButton" Content="Rename…" />
+                    <Button x:Name="DeleteButton" Content="Delete" />
+                </WrapPanel>
+                <ListBox x:Name="PageList" Background="#13161C" />
+            </DockPanel>
+
+            <!-- Its carts -->
+            <DockPanel Grid.Column="2">
+                <TextBlock DockPanel.Dock="Top" Classes="label" Text="Its carts: click one to change it, or drop a file on it" />
+                <UniformGrid x:Name="CartGrid" Columns="3" />
+            </DockPanel>
+
+            <!-- The selected cart -->
+            <StackPanel Grid.Column="4" x:Name="CartPanel" Spacing="14">
+                <TextBlock x:Name="CartTitle" FontSize="16" FontWeight="SemiBold" />
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="label" Text="Sound" />
+                    <TextBlock x:Name="CartFileText" TextWrapping="Wrap" FontSize="12" />
+                    <WrapPanel ItemSpacing="6" LineSpacing="6">
+                        <Button x:Name="ChooseFileButton" Content="Choose file…" />
+                        <Button x:Name="ListenButton" Content="▶ Listen" ToolTip.Tip="On the Preview output, not on air" />
+                        <Button x:Name="ClearButton" Content="Clear" />
+                    </WrapPanel>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="label" Text="Colour" />
+                    <WrapPanel x:Name="ColorPanel" ItemSpacing="6" LineSpacing="6" />
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="label" Text="Icon" />
+                    <WrapPanel x:Name="IconPanel" ItemSpacing="6" LineSpacing="6" />
+                </StackPanel>
+                <TextBlock Classes="note"
+                           Text="Every studio gets these cartwalls (within a minute of saving); the host picks one and fires its carts. Use files every studio can reach (a shared folder)." />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</app:PageWindow>

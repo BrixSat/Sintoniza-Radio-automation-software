@@ -1,0 +1,110 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.VoiceTrackWindow"
+        Icon="/Assets/schedule.ico"
+        Title="Voice track"
+        Width="900" Height="600" MinWidth="760" MinHeight="540"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Button.big">
+            <Setter Property="MinWidth" Value="130" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.small">
+            <Setter Property="Padding" Value="9,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="0" />
+        </Style>
+        <Style Selector="Button.talk">
+            <Setter Property="Background" Value="#8E1F24" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="18">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,16,0,0">
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" Margin="8,0,0,0" IsCancel="True" />
+            <Button Grid.Column="2" x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" Margin="8,0,0,0" Classes="accent" IsEnabled="False" />
+        </Grid>
+
+        <StackPanel Spacing="16">
+            <!-- Between which songs -->
+            <Grid ColumnDefinitions="*,Auto,*">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="After" />
+                    <TextBlock x:Name="BeforeTitle" FontSize="16" FontWeight="SemiBold" Foreground="#6FB1F0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Grid.Column="1" Text="🎙" FontSize="26" Margin="18,0" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="2">
+                    <TextBlock Classes="label" Text="Before" />
+                    <TextBlock x:Name="AfterTitle" FontSize="16" FontWeight="SemiBold" Foreground="#5CCB9F" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+
+            <Border x:Name="OnAirWarning" IsVisible="False" Background="#4A3510" BorderBrush="#F5A524" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                <TextBlock TextWrapping="Wrap" Foreground="#FFD48A" FontSize="12"
+                           Text="Preview comes out of the same output as Music or Cartwall: what you hear here is heard on air. Choose a separate Preview output in the on-air program's Settings → Audio." />
+            </Border>
+
+            <!-- Input -->
+            <Grid ColumnDefinitions="Auto,8,*,16,Auto,8,200">
+                <TextBlock Text="Record from" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="2" x:Name="InputBox" HorizontalAlignment="Stretch" />
+                <TextBlock Grid.Column="4" Text="Hear the song before from" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="6" x:Name="PreRollBox" HorizontalAlignment="Stretch" />
+            </Grid>
+            <ProgressBar x:Name="LevelBar" Minimum="0" Maximum="1" Height="10" Foreground="#3ECF8E" />
+
+            <!-- Recording -->
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                <Button x:Name="StartButton" Classes="big" Content="▶  Start" ToolTip.Tip="Plays the end of the song before, on the Preview output" />
+                <Button x:Name="TalkButton" Classes="big talk" Content="●  Talk" ToolTip.Tip="Space: start recording; again to stop" IsEnabled="False" />
+                <Button x:Name="NextButton" Classes="big" Content="⏭  Next song" ToolTip.Tip="Enter: the next song starts now, under your voice" IsEnabled="False" />
+                <Button x:Name="StopButton" Classes="big" Content="■  Stop" IsEnabled="False" />
+            </StackPanel>
+            <TextBlock x:Name="StatusText" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+            <TextBlock x:Name="TimeText" Classes="digits" FontSize="28" FontWeight="SemiBold" HorizontalAlignment="Center" />
+
+            <!-- The take -->
+            <Border x:Name="TakePanel" Classes="panel" Padding="12" IsVisible="False">
+                <StackPanel Spacing="10">
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto">
+                        <TextBlock Text="It starts before the end of the song before by" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" x:Name="OverlapLess" Classes="small" Content="−0.5" Margin="8,0,4,0" />
+                        <TextBlock Grid.Column="2" x:Name="OverlapText" Classes="digits" FontWeight="SemiBold" MinWidth="64" TextAlignment="Center" VerticalAlignment="Center" />
+                        <Button Grid.Column="3" x:Name="OverlapMore" Classes="small" Content="+0.5" Margin="4,0,0,0" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto">
+                        <TextBlock x:Name="NextStartLabel" Text="The next song starts into the voice track at" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" x:Name="NextLess" Classes="small" Content="−0.5" Margin="8,0,4,0" />
+                        <TextBlock Grid.Column="2" x:Name="NextText" Classes="digits" FontWeight="SemiBold" MinWidth="64" TextAlignment="Center" VerticalAlignment="Center" />
+                        <Button Grid.Column="3" x:Name="NextMore" Classes="small" Content="+0.5" Margin="4,0,0,0" />
+                        <Button Grid.Column="4" x:Name="NextEndButton" Classes="small" Content="At its end" Margin="8,0,0,0" />
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="PlayBackButton" Content="▶  Play it back" Classes="accent" ToolTip.Tip="The end of the song before, the voice track and the start of the next, as on air" />
+                        <Button x:Name="StopPlayButton" Content="■" MinWidth="44" HorizontalContentAlignment="Center" />
+                        <Button x:Name="AgainButton" Content="Record again" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Classes="note"
+                       Text="Start plays the end of the song before. Press Talk (Space) when you want to speak — over its ending if you like — and Next song (Enter) when the next one should come in, under your voice if you keep talking. Stop (Space) ends the take. The voice track belongs to the song before it: if that song is removed or replaced, the voice track goes too." />
+        </StackPanel>
+    </DockPanel>
+</Window>

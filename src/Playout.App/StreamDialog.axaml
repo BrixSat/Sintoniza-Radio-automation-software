@@ -1,0 +1,61 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.StreamDialog"
+        Icon="/Assets/icon.ico"
+        Title="Add internet stream"
+        Width="520" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </Window.Styles>
+
+    <StackPanel Margin="18" Spacing="14">
+        <StackPanel>
+            <TextBlock Classes="label" Text="Name" />
+            <TextBox x:Name="NameBox" PlaceholderText="e.g. Antena 1" />
+        </StackPanel>
+        <StackPanel>
+            <TextBlock Classes="label" Text="Stream address" />
+            <TextBox x:Name="UrlBox" PlaceholderText="https://…" />
+            <TextBlock Classes="note" Margin="0,4,0,0"
+                       Text="The direct address of the stream (MP3, AAC or OGG), as used by a media player. Web pages and .pls/.m3u links don't work." />
+        </StackPanel>
+        <StackPanel Spacing="6">
+            <TextBlock Classes="label" Text="Play it" />
+            <RadioButton x:Name="UntilStopRadio" GroupName="Length" Content="Until I press Stop or Next" IsChecked="True" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <RadioButton x:Name="ForRadio" GroupName="Length" Content="For" VerticalAlignment="Center" />
+                <TextBox x:Name="LengthBox" Width="110" PlaceholderText="1:00:00" />
+                <TextBlock Classes="note" Text="hours:minutes:seconds" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Classes="note" Text="Timed streams crossfade into the next item when the time is up. If the stream drops, the playlist moves on." />
+        </StackPanel>
+        <CheckBox x:Name="PlayNextBox" Content="Play next (right after the item on air)" />
+        <!-- In a day's playlist (Sintoniza Pro): when it starts -->
+        <StackPanel x:Name="WhenPanel" Spacing="6" IsVisible="False">
+            <TextBlock Classes="label" Text="Starts at" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox x:Name="AtBox" Width="110" PlaceholderText="14:00:00" />
+                <TextBlock x:Name="DayText" Classes="note" VerticalAlignment="Center" />
+            </StackPanel>
+            <RadioButton x:Name="HardRadio" GroupName="Start" Content="On the dot (what is on air fades out)" IsChecked="True" />
+            <RadioButton x:Name="SoftRadio" GroupName="Start" Content="After the item on air ends" />
+        </StackPanel>
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" IsVisible="False" TextWrapping="Wrap" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,4,0,0">
+            <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+            <Button x:Name="AddButton" Content="Add" MinWidth="90" HorizontalContentAlignment="Center" IsDefault="True" Classes="accent" />
+        </StackPanel>
+    </StackPanel>
+</Window>

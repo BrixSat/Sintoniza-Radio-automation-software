@@ -1,0 +1,108 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Playout.App.Controls"
+        x:Class="Playout.App.SegueEditorWindow"
+        Icon="/Assets/icon.ico"
+        Title="Segue"
+        Width="1000" Height="640" MinWidth="820" MinHeight="560"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Button.small">
+            <Setter Property="Padding" Value="9,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.value">
+            <Setter Property="FontFeatures" Value="+tnum" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="MinWidth" Value="76" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="18">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12" Spacing="2">
+            <TextBlock x:Name="FirstTitle" FontSize="18" FontWeight="SemiBold" Foreground="#6FB1F0" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="NextTitle" FontSize="18" FontWeight="SemiBold" Foreground="#5CCB9F" TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+
+        <Border DockPanel.Dock="Top" x:Name="OnAirWarning" IsVisible="False" Background="#4A3510" BorderBrush="#F5A524"
+                BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,0,12">
+            <TextBlock TextWrapping="Wrap" Foreground="#FFD48A" FontSize="12"
+                       Text="Preview comes out of the same output as Music or Cartwall, so anything you play here is heard on air. Choose a separate Preview output in Settings → Audio (e.g. the desk's PFL / cue input)." />
+        </Border>
+
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="PlayButton" Content="▶  Play the join" Classes="accent" ToolTip.Tip="From a few seconds before the join, as on air (Space)" />
+                <Button x:Name="StopButton" Content="■" MinWidth="44" HorizontalContentAlignment="Center" ToolTip.Tip="Stop listening" />
+                <ComboBox x:Name="PreRollBox" Width="175" ToolTip.Tip="How long before the join it starts" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center"
+                       HorizontalAlignment="Right" Margin="12,0" TextWrapping="Wrap" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+                <Button x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" Classes="accent" />
+            </StackPanel>
+        </Grid>
+
+        <Grid RowDefinitions="*,12,Auto,12,Auto">
+            <c:SegueView x:Name="Join" MinHeight="240" />
+
+            <Grid Grid.Row="2" ColumnDefinitions="*,24,*">
+                <!-- The end of the first item -->
+                <StackPanel Spacing="8">
+                    <TextBlock x:Name="FirstCaption" Classes="caption" Foreground="#6FB1F0" />
+                    <Grid ColumnDefinitions="80,Auto,Auto,Auto,Auto,Auto,8,Auto">
+                        <TextBlock Text="Mix" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   ToolTip.Tip="Where the next item starts" />
+                        <Button Grid.Column="1" x:Name="MixBack1" Classes="small" Content="−1 s" Margin="0,0,4,0" />
+                        <Button Grid.Column="2" x:Name="MixBack01" Classes="small" Content="−0.1" />
+                        <TextBlock Grid.Column="3" x:Name="MixText" Classes="value" />
+                        <Button Grid.Column="4" x:Name="MixFwd01" Classes="small" Content="+0.1" Margin="0,0,4,0" />
+                        <Button Grid.Column="5" x:Name="MixFwd1" Classes="small" Content="+1 s" />
+                        <Button Grid.Column="7" x:Name="MixAutoButton" Classes="small" Content="Automatic"
+                                ToolTip.Tip="No Mix marker: the usual crossfade before Cue Out, fading this one out" />
+                    </Grid>
+                    <Grid ColumnDefinitions="80,Auto,Auto,Auto,Auto,Auto,8,Auto">
+                        <TextBlock Text="Cue Out" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip.Tip="Where it stops" />
+                        <Button Grid.Column="1" x:Name="OutBack1" Classes="small" Content="−1 s" Margin="0,0,4,0" />
+                        <Button Grid.Column="2" x:Name="OutBack01" Classes="small" Content="−0.1" />
+                        <TextBlock Grid.Column="3" x:Name="OutText" Classes="value" />
+                        <Button Grid.Column="4" x:Name="OutFwd01" Classes="small" Content="+0.1" Margin="0,0,4,0" />
+                        <Button Grid.Column="5" x:Name="OutFwd1" Classes="small" Content="+1 s" />
+                        <Button Grid.Column="7" x:Name="OutEndButton" Classes="small" Content="End of file" />
+                    </Grid>
+                </StackPanel>
+                <!-- The start of the next item -->
+                <StackPanel Grid.Column="2" Spacing="8">
+                    <TextBlock x:Name="NextCaption" Classes="caption" Foreground="#5CCB9F" />
+                    <Grid ColumnDefinitions="80,Auto,Auto,Auto,Auto,Auto,8,Auto">
+                        <TextBlock Text="Cue In" FontWeight="SemiBold" VerticalAlignment="Center" ToolTip.Tip="Where it starts" />
+                        <Button Grid.Column="1" x:Name="InBack1" Classes="small" Content="−1 s" Margin="0,0,4,0" />
+                        <Button Grid.Column="2" x:Name="InBack01" Classes="small" Content="−0.1" />
+                        <TextBlock Grid.Column="3" x:Name="InText" Classes="value" />
+                        <Button Grid.Column="4" x:Name="InFwd01" Classes="small" Content="+0.1" Margin="0,0,4,0" />
+                        <Button Grid.Column="5" x:Name="InFwd1" Classes="small" Content="+1 s" />
+                        <Button Grid.Column="7" x:Name="InStartButton" Classes="small" Content="Start of file" />
+                    </Grid>
+                    <TextBlock x:Name="IntroText" Classes="note" />
+                </StackPanel>
+            </Grid>
+
+            <StackPanel Grid.Row="4" Spacing="4">
+                <TextBlock x:Name="SummaryText" FontSize="13" TextWrapping="Wrap" />
+                <TextBlock Classes="note"
+                           Text="Drag a song left or right to move the join · mouse wheel zooms · Space plays the join. Saved as the songs' cue points: they apply wherever the songs play, on every studio sharing the library." />
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

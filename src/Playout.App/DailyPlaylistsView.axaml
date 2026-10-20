@@ -1,0 +1,180 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:Playout.App"
+             x:Class="Playout.App.DailyPlaylistsView">
+
+    <UserControl.Styles>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Border.tag">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.tag > TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="0.8" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="ListBox.plan ListBoxItem">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Grid.scheduled">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
+        <Style Selector="Grid.scheduled TextBlock.title">
+            <Setter Property="FontStyle" Value="Italic" />
+        </Style>
+        <Style Selector="Grid.optional">
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="TextBlock.title">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel Margin="0,10,0,0">
+        <!-- Listening (on the Preview output, never on air) -->
+        <Border DockPanel.Dock="Bottom" Classes="panel" Padding="10,8" Margin="0,12,0,0">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+                <Button x:Name="ListenButton" Classes="tool" Content="▶" MinWidth="44" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Listen to the selected item (double-click or Space); again to pause" />
+                <Button Grid.Column="1" x:Name="ListenStopButton" Classes="tool" Content="■" MinWidth="44" Margin="4,0,0,0" HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Stop listening" />
+                <TextBlock Grid.Column="2" x:Name="ListenTime" Classes="digits" Text="0:00 / 0:00" Margin="12,0" VerticalAlignment="Center" />
+                <Slider Grid.Column="3" x:Name="ListenSlider" Minimum="0" Maximum="1" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" x:Name="ListenTitle" Classes="muted" Margin="12,0" VerticalAlignment="Center" MaxWidth="420"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="5" x:Name="ListenWarning" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center"
+                           TextWrapping="Wrap" MaxWidth="360" IsVisible="False" />
+            </Grid>
+        </Border>
+
+        <!-- The day -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto,Auto" Margin="0,0,0,12">
+            <Button x:Name="PrevDayButton" Classes="tool" Content="◀" ToolTip.Tip="The day before" />
+            <CalendarDatePicker Grid.Column="1" x:Name="DayBox" Width="170" Margin="6,0" SelectedDateFormat="Custom" CustomDateFormatString="ddd dd/MM/yyyy" />
+            <Button Grid.Column="2" x:Name="NextDayButton" Classes="tool" Content="▶" ToolTip.Tip="The day after" />
+            <Button Grid.Column="3" x:Name="TodayButton" Classes="tool" Content="Today" Margin="6,0,0,0" />
+            <TextBlock Grid.Column="4" x:Name="DayText" Classes="muted" VerticalAlignment="Center" Margin="14,0,0,0" />
+            <TextBlock Grid.Column="5" x:Name="StatusText" Classes="note" VerticalAlignment="Center" Margin="14,0" TextTrimming="CharacterEllipsis" />
+            <Button Grid.Column="6" x:Name="GenerateHourButton" Content="Make this hour again" Margin="0,0,6,0"
+                    ToolTip.Tip="Makes the selected hour again from its template (a new choice of songs)" />
+            <Button Grid.Column="7" x:Name="GenerateDayButton" Content="Make the day again" Classes="accent"
+                    ToolTip.Tip="Makes every hour of the day again from the templates" />
+        </Grid>
+
+        <Grid ColumnDefinitions="250,12,*,12,420">
+            <!-- The hours of the day -->
+            <Border Classes="panel" Padding="8">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="caption" Text="HOURS" Margin="6,2,0,8" />
+                    <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="4,8,0,0"
+                               Text="✎ changed by hand (never made again by itself) · ↻ its template changed since it was made" />
+                    <ListBox x:Name="HourList" Background="Transparent" Classes="plan">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="app:PlanHourRow">
+                                <Grid ColumnDefinitions="48,*,Auto,Auto" ToolTip.Tip="{Binding Tip}" Opacity="{Binding Opacity}">
+                                    <TextBlock Classes="digits" Text="{Binding HourText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding TemplateName}" Classes.muted="{Binding NoTemplate}" FontSize="12"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding Mark}" Foreground="#F5A524" Margin="6,0" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Classes="muted digits" Text="{Binding LengthText}" FontSize="11" VerticalAlignment="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- The hour: what will play, in order -->
+            <Border Grid.Column="2" Classes="panel" Padding="10">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" RowDefinitions="Auto,8,Auto" Margin="4,0,0,8">
+                        <TextBlock x:Name="HourTitle" Classes="caption" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" x:Name="HourInfo" Classes="muted" FontSize="12" Margin="12,0" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <WrapPanel Grid.Row="2" Grid.ColumnSpan="2" ItemSpacing="4" LineSpacing="4">
+                            <Button x:Name="StreamButton" Classes="tool" Content="Stream…"
+                                    ToolTip.Tip="Another station's internet stream, at a time in this hour (for a set time)" />
+                            <Button x:Name="VoiceButton" Classes="tool" Content="Voice track…"
+                                    ToolTip.Tip="Record your talk after the selected song, hearing its end and the start of the next" />
+                            <Button x:Name="SegueButton" Classes="tool" Content="Segue…"
+                                    ToolTip.Tip="How the selected item goes into the next: hear the join and move it" />
+                            <Button x:Name="TagsButton" Classes="tool" Content="Edit tags…" ToolTip.Tip="Title, artist, album… written in the file (ID3 for MP3)" />
+                            <Button x:Name="ReplaceButton" Classes="tool" Content="Another song" ToolTip.Tip="Another song from the same template line" />
+                            <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
+                            <Button x:Name="DownButton" Classes="tool" Content="▼" ToolTip.Tip="Move down" />
+                            <Button x:Name="RemoveButton" Classes="tool" Content="Remove" />
+                        </WrapPanel>
+                    </Grid>
+                    <TextBlock DockPanel.Dock="Top" x:Name="OnAirText" Foreground="#FF8A8D" FontWeight="SemiBold" FontSize="12" Margin="4,0,0,8"
+                               TextTrimming="CharacterEllipsis" IsVisible="False" />
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="18,70,28,*,150,64" Margin="8,0,8,4">
+                        <TextBlock Grid.Column="1" Classes="caption" Text="START" />
+                        <TextBlock Grid.Column="3" Classes="caption" Text="TITLE" />
+                        <TextBlock Grid.Column="4" Classes="caption" Text="FROM" />
+                        <TextBlock Grid.Column="5" Classes="caption" Text="LENGTH" HorizontalAlignment="Right" />
+                    </Grid>
+                    <TextBlock DockPanel.Dock="Bottom" x:Name="TotalText" Classes="note" Margin="8,8,0,0" />
+                    <Panel>
+                        <ListBox x:Name="ItemList" Classes="plan" Background="Transparent" SelectionMode="Multiple">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:PlanRow">
+                                    <Grid ColumnDefinitions="18,70,28,*,150,64" Height="38" Opacity="{Binding Opacity}" ToolTip.Tip="{Binding PlayedTip}"
+                                          Classes.scheduled="{Binding FromSchedule}" Classes.optional="{Binding IsOptional}">
+                                        <Border Grid.ColumnSpan="6" Classes="music-bg" IsVisible="{Binding IsMusic}" />
+                                        <Border Grid.ColumnSpan="6" Classes="break-bg" IsVisible="{Binding IsAdvert}" />
+                                        <Border Grid.ColumnSpan="6" Classes="jingle-bg" IsVisible="{Binding IsJingle}" />
+                                        <Border Grid.ColumnSpan="6" Classes="programme-bg" IsVisible="{Binding IsProgramme}" />
+                                        <Border Grid.ColumnSpan="6" Classes="stream-bg" IsVisible="{Binding IsStream}" />
+                                        <TextBlock Text="{Binding Mark}" Foreground="{Binding MarkBrush}" FontWeight="Bold" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding StartText}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="2" Text="{Binding Icon}" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                                        <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Right" Classes="tag" Background="#8A3036" Margin="6,0,0,0" IsVisible="{Binding IsOver}"
+                                                        ToolTip.Tip="{Binding OverTip}">
+                                                    <TextBlock Text="{x:Static app:Strings.WontPlay}" />
+                                                </Border>
+                                                <Border DockPanel.Dock="Right" Classes="tag" Background="#5B6274" Margin="6,0,0,0" IsVisible="{Binding IsOptional}"
+                                                        ToolTip.Tip="At the end of the hour: plays only if there is time">
+                                                    <TextBlock Text="OPTIONAL" />
+                                                </Border>
+                                                <TextBlock Classes="title" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                            <TextBlock Classes="muted" Text="{Binding Artist}" FontSize="12" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasArtist}" />
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="4" Classes="muted" Text="{Binding Source}" FontSize="11" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" Margin="8,0,0,0" ToolTip.Tip="{Binding Source}" />
+                                        <TextBlock Grid.Column="5" Classes="digits" Text="{Binding LengthText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock x:Name="EmptyText" Classes="muted" TextAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Margin="30"
+                                   IsVisible="False" />
+                    </Panel>
+                </DockPanel>
+            </Border>
+            <GridSplitter Grid.Column="3" Background="Transparent" ResizeDirection="Columns" />
+
+            <!-- The library: double-click or Enter puts a song after the selected one -->
+            <Border Grid.Column="4" Classes="panel" Padding="10">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="caption" Text="LIBRARY" Margin="4,0,0,8" />
+                    <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="4,8,0,0"
+                               Text="Double-click a song (or Enter) to put it in the hour after the selected item." />
+                    <app:TrackLibraryView x:Name="Tracks" />
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

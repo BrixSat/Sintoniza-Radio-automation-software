@@ -1,0 +1,352 @@
+# User guide
+
+Sintoniza is three programs and a command, sharing one database (the **library**: music, categories, the schedule,
+the daily playlists and the play history):
+
+| Program | Who uses it | What for |
+| --- | --- | --- |
+| [**Sintoniza Radio Broadcast system**](#1-sintoniza-radio-broadcast-system-on-air) | the host, in the studio | what goes on air: the playlist, cartwall, microphone, streaming |
+| [**Sintoniza Pro**](#2-sintoniza-pro) | programming, the commercial department, whoever runs the station | the station's settings, categories and cartwalls; events, ad breaks, clients and campaigns, hour templates, and the **daily playlists** song by song |
+| [**Sintoniza Import**](#3-sintoniza-import) | whoever looks after the music | bringing folders of music into the library, in categories |
+| [**radio-import**](#4-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
+
+Each has its own entry in the app menu (Linux), the Start menu and desktop (Windows) or Applications (macOS). Only one
+copy of each runs on a computer. With a MySQL / MariaDB library, Pro and Import can run on other computers (the
+commercial department, a music office): the studio sees their changes within seconds.
+
+The **on-air program's Settings** only has what belongs to that computer (sound cards,
+microphone, the database, keys); **everything about the station is set in Sintoniza Pro**, once for every
+studio.
+
+The screens follow the language chosen in the on-air program's Settings → General (English, Português, Français).
+
+---
+
+## First setup
+
+On each studio computer, in the on-air program's **Settings** (the button bottom left, or Ctrl/Cmd+,):
+
+1. **Library** → where the library lives: *SQLite* (a file on this computer) or *MySQL / MariaDB* (a server several
+   studios share). Click **Test**.
+2. **Audio** → the sound card and channel pair for **Music**, **Cartwall** and **Preview** (Test plays a short tone on
+   each). Preview is for listening before air: headphones or the desk's PFL/cue, never an on-air output.
+3. **Safety** → *Carry on playing when the app starts*, *Start the app again if it crashes*, *Start the app when I log
+   in*, and the daily backups.
+
+Then once, for the whole station, in [**Sintoniza Pro**](#2-sintoniza-pro):
+
+4. **Station settings** → name, logo, *FM* (mic through the desk) or *Web radio* (mic through the computer),
+   crossfades, silence detection and **fill music** (what plays if the playlist ever runs out), time signal,
+   streaming, RDS texts, website, alerts.
+5. Put the music in categories with **Import music** (or [Sintoniza Import](#3-sintoniza-import)), make the
+   **Cartwalls**, then build the hour templates and ad breaks.
+6. Back in the on-air program: switch to **AUTO** and press **Play**. From then on the playout plays the daily
+   playlists, the ad breaks and events at their times, and keeps each hour on time.
+
+The first studio started after updating to this version publishes its own settings as the station's; from then on
+they are changed in Pro only.
+
+---
+
+## 1. Sintoniza Radio Broadcast system (on air)
+
+### The screen
+
+- **Top left — the deck.** What is on air, with its waveform, **ELAPSED** / **REMAINING**, the **INTRO** countdown
+  (talk over the intro), **OUTRO** and **MIX** points, and **NEXT**. The badge shows *ON AIR*, *STOPPED*, *SILENCE*
+  (nothing heard although something plays) or *BREAK IN mm:ss* before an ad break.
+- **Transport:** **Play** (F5), **Pause** (F6), **Next** (F7: crossfades to the next item now), **Stop** (F8).
+  **AUTO** runs through the playlist; **ASSISTED** stops after each item until you start the next.
+- **Top right — the station.** Clock, *TOP OF HOUR* countdown, *PLAYLIST ENDS*, *PLAYED TODAY*, *NEXT EVENT*,
+  stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
+- **Bottom left — the playlist.** **Bottom right — Cartwall / Library / Folders** tabs.
+- **Status line** (bottom): the last thing that happened (also in the log, Settings → Safety → Open log folder).
+
+### The playlist
+
+- Each row: number, type icon (♫ song, ✦ jingle, € advert, 🎙 programme, stream), title and artist, **START**
+  (expected start time) and **LENGTH**. Non-songs have their own background (colours in Pro → Station settings → Playlist). The
+  item on air fills with red as it plays; a line marks where each hour starts.
+- **This hour** (on by default): the hour before, this hour and the first 30 minutes of the next (Settings →
+  Playlist). Off: everything still to play. What played before the previous hour is never shown (it is in Reports).
+- A planned song that would start after its hour has ended shows **WON'T PLAY**: in the last minutes of the hour
+  the playout leaves it out, so the next hour starts on time (the song on air always plays to its end; adverts,
+  breaks and locked items are never left out).
+- The item on air stays at the top. If you scroll away, **On air** lights up: click it to jump back.
+- Songs come from the **Library** tab on the right (double-click). **Stream…** another station's stream,
+  **Open… / Save…** M3U playlists, **▲ ▼** move, **Remove**, **Clear** (keeps the item on air and what the schedule
+  locked). Ctrl/Cmd+O still adds files from anywhere.
+- **Double-click** (or Enter) an item to put it on air now. **Drag** rows to reorder, or drop files from the
+  library, the folders tab or your file manager.
+- Right-click an item: *Edit cue points…* (Ctrl/Cmd+E), *Segue with the next…* (Ctrl/Cmd+G), *Edit tags…*
+  (Ctrl/Cmd+T), *Remove* (Delete).
+- **Segue editor:** the end of one song above the start of the next, joined where the next starts. Drag either song
+  (or nudge the first one's **Mix** and **Cue Out** and the next one's **Cue In**) and **Play the join** — exactly as
+  on air, on the Preview output. Moving the Mix makes a Mix marker (the first song then plays on at full level to its
+  Cue Out); *Automatic* goes back to the usual crossfade. Saved as the songs' cue points, for every studio.
+- Rows tagged **SCHEDULED** are ad breaks and events coming up (from Sintoniza Pro), shown where they will play.
+- **Adverts are protected:** while one is on air, Next, Pause, Stop and putting another item on air ask first, and
+  only a click on the button in the question does it.
+
+Where the songs come from: the **daily playlists** made in Sintoniza Pro. The playout puts each hour in the
+playlist about half an hour before it plays, and near the end of every hour it keeps time: when the next hour would
+start late it leaves out an *optional* item, when it would start early it adds songs from the hour's template. What
+it does is written back to the plan, so Sintoniza Pro shows what really plays. You can still change the playlist
+on air; the plan isn't changed by that, and the as-run log has what really played.
+
+### Cartwall
+
+- Click a cart to play it; click again to stop. Carts play over the music on the Cartwall output. Each cart shows how
+  long it lasts, and while it plays the time left.
+- Several cartwalls: choose one in the list next to the tab. Keys for carts: Settings → Shortcuts.
+- The cartwalls are the station's: they are made in Sintoniza Pro → **Cartwalls**, and every studio gets them
+  within a minute.
+
+### Library tab (Ctrl/Cmd+F)
+
+- Search every song as you type (artist, title, album, file name; case and accents ignored). Filter by category
+  (a category includes the ones under it).
+- **Double-click** or Enter: the song goes to the end of the playlist and is selected there. Right-click: *Add to
+  playlist*, *Play next*, *Category*, *Also in* (a song can be in several categories), *Tempo*, *Energy*, *Voice*,
+  *Language…*, *Never pick automatically*, *Edit tags…*, *Edit cue points…*.
+- **✎** next to the filter: the categories editor. **Scan**: bring the library up to date now.
+
+### Folders tab
+
+Browse the music folders on disk; drag files or folders to the playlist. Right-click a folder → *Category* puts all
+its songs in a category (and new songs put there later).
+
+### Cue points (Edit cue points…)
+
+Set **Cue In** (where it starts), **Intro** (end of the intro), **Outro**, **Mix** (where the next item starts) and
+**Cue Out** on the waveform. *Auto-detect* finds the first and last sound and a good Mix point. Space plays and
+pauses on the Preview output; ← → move by a second (Shift: 0.1 s); the mouse wheel zooms.
+
+### Web remote
+
+Settings → **Remote**: switch it on, give it a **password** (and a port, 8090 by default), and open the address it
+shows on a phone or computer on the station's network. The page shows what is on air with the time left, the next
+ad break, the stream and silence lights and what comes next; it has **▶ ❚❚ ⏭ ■**, **AUTO**, the cartwall's carts,
+*Now* / ✕ on the items coming up, and a library search to add a song after the item on air. An advert on air is only
+cut after a question. Five wrong passwords lock it for a minute. It is plain HTTP: for the station's own network, or
+from outside only through the station's VPN — never open the port on the router.
+
+### Microphone (web radio)
+
+With *Web radio* chosen (Pro → Station settings), **MIC** (F9) opens the microphone: music and carts fade down while it
+is open. Hold to talk, or press on / press off (Settings → Microphone). With *FM radio* the mic goes through the desk.
+
+### Reports
+
+**Reports** (bottom left): *Music played (royalties)*, *Music totals per song*, *Adverts (proof of broadcast)* (per
+advertiser) and *Everything (as-run log)*, for a range of days. Save as CSV (commas or semicolons) or as a page to
+print / save as PDF.
+
+### Settings at a glance
+
+This computer's only (the station's are in Pro → Station settings):
+
+| Tab | |
+| --- | --- |
+| General | the language of the screens |
+| Audio | outputs for Music / Cartwall / Preview |
+| Microphone | (web radio) input, levels, how far the music goes down |
+| Safety | start-up and crash behaviour, log folder, **Backups** |
+| Library | the database, automatic scans |
+| Shortcuts | keys for transport, MIC, stream and carts |
+| RDS | whether this computer sends to the RDS encoder, and how it reaches it |
+| Playlist | how much of the next hour the playlist shows |
+| Remote | the web remote: on/off, port, password, its address |
+| About | version, updates, the manual |
+
+### Updates
+
+When a new version is out, a green **Update available** button appears (Settings → About to check now). Click it to
+install (Windows: the app restarts on the new version; Linux: it asks for the password, then offers a restart).
+
+---
+
+## 2. Sintoniza Pro
+
+The station's production program, laid out as a workstation: a **menu** (File, Library, Programming, Traffic,
+Station, Help) and a **toolbar** at the top; the **tools** on the left (Home · Library: songs, categories, import ·
+Programming: hour templates, daily playlists, events · Traffic: ad breaks, clients and campaigns · Station: settings,
+cartwalls), with **Now playing** (from every studio's play history, and this hour's template) and the **station**
+box under them; the chosen tool in the middle; a **status bar** at the bottom (version, station, database, user,
+unsaved changes, date and time).
+
+It opens on **Home**: the clock, what is on air, **today** (hours planned, ad breaks and adverts booked, events,
+voice tracks), what **needs attention** (missing files, songs without a category, hours without a template,
+campaigns ending this week, unsaved changes), the **library**, the **database** and **this computer** (system,
+processor, memory, free disk, how long it has been on). **Songs** shows the whole library (search, categories,
+tempo and energy, tags, listen).
+
+### The station (Station and Library, on the left)
+
+- **Station settings** — name and logo, genre, website, FM or web radio, money sign; crossfades and loudness; time
+  signal; silence detection and fill music; other music folders; streaming server; RDS texts (PS, radio text, RT+);
+  website now playing; alerts; days of daily playlists made ahead and row colours. Saved for every studio: each
+  playout takes them within a minute.
+- **Categories** — the library's categories. Every station has the same eight at the top, which can't be renamed,
+  moved or deleted: **Music**, **Jingles**, **Promos**, **ProgAutor** (shows recorded outside), **Fillers**,
+  **Redação** (news), **Spots** (adverts) and **Takes** (voice inserts: the time, the temperature… as if a host were
+  there). Make your own under them (*New under it*: Music › 80s, Spots › Clients…), each with its colour and folders.
+- **Cartwalls** — the cartwalls every studio plays: New, Copy, Rename, Delete; click a cart to give it a file
+  (or drop one on it), a colour and an icon, and listen to it.
+- **Import music** — Sintoniza Import, inside Pro.
+
+### The schedule
+
+Five tools, on the left under Programming and Traffic. **Save** (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database; the playout takes it
+within a few seconds. If someone else saved meanwhile, you are asked before replacing theirs.
+
+The calendars (Events, Ad breaks, Playlists) are a week grid: **click a cell** to place the selected item at that day
+and time (click again to take it out), **drag** to do many cells, **click a time** for every day. *Rows every* and
+*from minute* change the grid; **Add row** adds an exact time (e.g. `12:59:55`; `*:59:55` = that minute and second of
+every hour, every day).
+
+### Events
+
+Something that plays at set times: a file, the **newest file in a folder** (e.g. the news, skipped if older than N
+minutes), or an internet stream for N minutes. Choose how it starts:
+
+- **Soft:** after the item on air ends (at most N minutes late).
+- **Hard:** on the second (what is on air fades out).
+- **Ends at its time:** the songs before it are adjusted so it ends exactly then.
+
+and what the host may do with it in the playlist (remove/move, only move, or nothing).
+
+### Ad breaks
+
+A break has a **running order**: jingles (**Jingle…**) and **sections** (e.g. *Before the hour*), where the adverts
+booked in that section go. *Play this jingle only when the section after it has adverts* makes a section opener. A
+break with nothing booked is skipped. Place breaks on the calendar; start and lock options as for events (breaks are
+locked by default).
+
+### Clients
+
+- **Clients** (the name on the proof of broadcast) → their **Campaigns**: the advert files (several take turns), the
+  **section**, the **position** (automatic, 1–5 from the start, 6–10 at the end), first and last day.
+- The week grid shows the ad breaks; **click a break** to book the campaign there *every week* or *on that date only*.
+  **In every break** books it in every break that has its section. **Remove the places with no break** tidies up
+  after breaks were moved.
+
+### Playlists (hour templates)
+
+A template is an hour's recipe: **lines played in order** (then from the top again until the hour is full). A line is
+a song from a **library category** (Music, Gold, Music › 80s…; jingle and advert categories work too) or a file from
+a **folder**. Place the template on the calendar: each row is an hour (drag to do many; click an hour for every
+day). This is how you set up your shows: e.g. *Manhãs* on weekdays 07–10, *Tardes* 14–19.
+
+**Music rules.** Select a line to ask for its songs' **tempo** (1 slow … 5 fast) and **energy** (1 calm … 5 lively),
+e.g. tempo 4–5 for the first song after the news. Set both on the songs in the library (select many, right-click →
+*Tempo* / *Energy*; hover a song to see them). For the whole template:
+
+- **Same artist not again within N hours** (0 = the artist rest time in Station settings → Safety).
+- **Same album not again within N hours** (0 = no album rule).
+- **Slow songs in a row, at most N** (slow = tempo 1–2; 0 = no limit).
+
+The same song never comes back within the song rest time (Station settings → Safety). When a rule would leave nothing to play
+it is let go for that song — the album first, then slow songs, then the artist — so the hour is always full; a line
+whose tempo or energy no song has plays from its whole category, and Daily playlists says so.
+
+### Daily playlists
+
+The hours as they will play, made from the templates:
+
+- **The day** (◀ ▶, the date, **Today**) and its **24 hours** on the left, with each hour's template and length.
+  ✎ = changed by hand (never made again by itself); ↻ = its template changed since it was made.
+- **The hour**: every song and jingle in order with its start time and where it came from (template line and
+  category), and the ad breaks (each advert with its client) and events in their place. The total is at the bottom.
+  Items marked **OPTIONAL** play only if there is time. An hour made longer than the hour by hand marks the songs
+  that would start after it ends **WON'T PLAY**: the playout leaves them out so the next hour starts on time.
+- **What played**: ✓ and dimmed; the item on air **▶**, with a line saying how far ahead or behind the plan the
+  playout is. Songs the playout added to keep time say *added on air to keep time*.
+- **Build it song by song:** **Another song** (another pick from the same line), **▲ ▼**, **Remove**, or double-click
+  a song in the library on the right to put it after the selected item. Each change is saved at once and marks the
+  hour ✎.
+- **Streams at a set time:** **Stream…** puts another station's stream in the hour: its address, when it starts
+  (e.g. 14:00:00), on the dot (what is on air fades out) or after the item on air, and how long it plays. It is saved
+  in the schedule as an event for that day only (Events lists it as *once: 20/10 14:00*), so the playout starts it on
+  time like any event. Select it and **Remove** to take it out.
+- **Or let your rules do it:** **Make this hour again** / **Make the day again** (hours changed by hand are kept,
+  unless you make that hour again on purpose). Today and the next days (Station settings → Playlist)
+  are always made; an hour whose template changes is made again within minutes unless it was changed by hand or is
+  about to play.
+- **Listen:** select an item and press **▶** (or double-click, or Space); right-click a library song → *Listen*. It
+  plays on the Preview output only; a red warning appears if Preview is set to the on-air output.
+- **Voice track…** (select a song): record your talk after it, as if you were live. **Start** plays the song's end;
+  **Talk** (Space) starts recording — over its ending if you like; **Next song** (Enter) brings in the following item,
+  under your voice if you keep talking; **Stop** (Space) ends the take. **Play it back** as on air, nudge where it
+  starts over the song and where the next one comes in, **Record again** or **Save**. It is kept as an MP3 in the
+  station's voice tracks folder (Station settings → Library; asked the first time) and in the library under
+  **Takes**, and goes right after the song, shown 🗣. A voice track belongs to its song: removing or replacing the
+  song takes it too, moving the song moves it, and on air it is skipped if the song can't play.
+- **Segue…**: the segue editor for the selected item and the next (see the playlist above); the planned times follow.
+- **Edit tags…** of the selected item (or right-click a library song): title, artist, album… written in the file. A
+  song on air right now can't be edited until it ends.
+
+The rules the songs are picked by: the songs rested longest first, a song not again within N hours and an artist not
+within N minutes (Station settings → Safety → fill music), never the same artist twice in a row while another can play.
+
+---
+
+## 3. Sintoniza Import
+
+Brings a folder of music into the library, in categories.
+
+1. **Choose…** the folder (e.g. `D:\Music\Sintoniza`).
+2. **Into the category**: its name (by default the folder's), **Under** (one of the station's eight — Music by
+   default — or a category under them), and the **Kind** for new categories (it follows the one it goes under).
+3. **Folders inside become sub-categories**: none, or 1–3 levels (`Music/80s/Rock` → *Music › 80s › Rock*).
+4. **Songs already in another category**: keep it and add this one too (a song can be in several), move them, or
+   leave them as they are.
+5. **Preview import** shows the categories it will make (NEW or ALREADY THERE) and, for each, the files, how many
+   are in the library already and how many are in another category. Nothing is changed yet.
+6. **Import** makes the categories, reads the songs, puts each in its category, and keeps each folder for its
+   category: songs put there later get it too (the playout scans those folders by itself). **Stop** halts it;
+   importing again finishes.
+
+---
+
+## 4. radio-import (command line)
+
+```
+radio-import                          scan the library's folders (Pro → Station settings → Library)
+radio-import /music /jingles          scan these folders
+radio-import --db /path/library.db    an SQLite library file
+radio-import --mysql user:password@server[:port]/database
+radio-import --stats                  what is in the library
+```
+
+Only new and changed files are read, so it can run every few minutes from cron or Task Scheduler. Deleted files and
+the songs of deleted folders are taken out; a drive or share that isn't connected is left alone.
+
+---
+
+## How do I…
+
+- **…set up a weekday morning show?** Pro → Playlists → New → name it, add its lines (e.g. Music, Music,
+  Jingles, Gold), click the hours 07–10 Monday to Friday → Save. Check it on Daily playlists.
+- **…put the adverts last in the hour?** Pro → Ad breaks → New → running order with a section → Add row
+  `*:59:00` (or the time that suits) and click it for every day → choose *Ends at its time* so it ends on the hour →
+  book the campaigns on the Clients tab.
+- **…change a song in tomorrow's 09:00?** Pro → Daily playlists → ▶ to tomorrow → 09:00 → select the song →
+  Another song (or Remove and double-click one in the library).
+- **…put a folder of songs in Gold?** Sintoniza Import with that folder, *Into the category* Gold, no sub-categories.
+  Or in the on-air program: Folders tab → right-click the folder → Category → Gold.
+- **…get the music report for the collecting society?** On-air program → Reports → Music played (royalties) → the
+  month → Save as CSV.
+- **…send an advertiser the proof of broadcast?** Reports → Adverts → the advertiser and dates → Save as a page to
+  print → print to PDF.
+
+## When something isn't right
+
+- **The playlist doesn't match Sintoniza Pro.** Press **Clear** in the on-air program: the playlist refills from
+  the plan, from the item planned for that moment. If it runs ahead or behind, the line above the hour in Daily
+  playlists says by how much; it catches up by the next hour.
+- **Only jingles and adverts play.** The songs' files have moved or been deleted: fix the categories' folders (Pro → Categories)
+  and click **Scan** in the on-air program's Library tab; songs that are gone are taken out of the library.
+- **A song is skipped with "FileOpen".** The file isn't where the library says: scan again.
+- **Something went wrong on air.** Settings → Safety → **Open log folder**: one file a day of what played, warnings and
+  restarts. Pro → Station settings → Alerts can tell you by Telegram or e-mail.
