@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:Playout.App"
+             x:Class="Playout.App.TrackLibraryView">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+            <TextBox x:Name="SearchBox" PlaceholderText="Search all songs: artist, title, album…" FontSize="13" />
+            <ComboBox Grid.Column="1" x:Name="CategoryBox" Width="170" FontSize="12" MinHeight="0" Margin="6,0,0,0" VerticalAlignment="Stretch" />
+            <Button Grid.Column="2" x:Name="EditCategoriesButton" Content="✎" Classes="tool" FontSize="12" Padding="7,3" Margin="4,0,0,0"
+                    ToolTip.Tip="Edit categories: add, rename, colour, order, delete" />
+            <TextBlock Grid.Column="3" x:Name="CountText" Classes="muted" FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" />
+        </Grid>
+
+        <Grid Grid.Row="1" ColumnDefinitions="3*,2*,44,96,62" Margin="8,10,8,4">
+            <TextBlock Classes="caption" Text="TITLE" />
+            <TextBlock Grid.Column="1" Classes="caption" Text="ARTIST" Margin="8,0,0,0" />
+            <TextBlock Grid.Column="2" Classes="caption" Text="YEAR" HorizontalAlignment="Right" />
+            <TextBlock Grid.Column="3" Classes="caption" Text="CATEGORY" Margin="10,0,0,0" />
+            <TextBlock Grid.Column="4" Classes="caption" Text="LENGTH" HorizontalAlignment="Right" />
+        </Grid>
+
+        <ListBox Grid.Row="2" x:Name="TrackList" SelectionMode="Multiple" Background="Transparent">
+            <ListBox.Styles>
+                <Style Selector="ListBoxItem">
+                    <Setter Property="Padding" Value="8,5" />
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="CornerRadius" Value="4" />
+                </Style>
+                <Style Selector="ListBoxItem:nth-child(2n)">
+                    <Setter Property="Background" Value="#0DFFFFFF" />
+                </Style>
+            </ListBox.Styles>
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="app:LibraryRow">
+                    <Grid ColumnDefinitions="3*,2*,44,96,62" ToolTip.Tip="{Binding Tip}">
+                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Classes="muted" Text="{Binding Artist}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                   Margin="8,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Classes="muted digits" Text="{Binding Year}" FontSize="12" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                        <Border Grid.Column="3" CornerRadius="3" Padding="5,0" Margin="10,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                Background="{Binding CategoryBrush}" IsVisible="{Binding HasCategory}">
+                            <TextBlock Text="{Binding Category}" FontSize="10" FontWeight="SemiBold" Foreground="White" TextTrimming="CharacterEllipsis" />
+                        </Border>
+                        <TextBlock Grid.Column="4" Classes="digits" Text="{Binding Length}" FontSize="12" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Grid.Row="2" x:Name="EmptyText" Classes="muted" FontSize="12" TextWrapping="Wrap" TextAlignment="Center"
+                   VerticalAlignment="Center" Margin="12" IsVisible="False" />
+
+        <TextBlock Grid.Row="3" x:Name="StatusText" Classes="muted" FontSize="11" Margin="2,6,0,0" TextTrimming="CharacterEllipsis" />
+    </Grid>
+</UserControl>

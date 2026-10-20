@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.UpdateWindow"
+        Icon="/Assets/icon.ico"
+        Title="Update available"
+        Width="560" Height="460" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <DockPanel Margin="18">
+        <StackPanel DockPanel.Dock="Top" Spacing="4">
+            <TextBlock x:Name="HeadingText" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock x:Name="CurrentText" Foreground="{StaticResource TextMuted}" FontSize="12" />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+            <TextBlock x:Name="WarningText" Foreground="{StaticResource NextUp}" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+            <ProgressBar x:Name="Progress" Minimum="0" Maximum="1" Height="6" IsVisible="False" />
+            <TextBlock x:Name="StatusText" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button x:Name="PageButton" Content="Release page" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="LaterButton" Content="Later" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+                    <Button x:Name="InstallButton" Content="Download and install" Classes="accent" IsDefault="True" />
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+
+        <Border Margin="0,14,0,0" CornerRadius="6" Background="#13161C" BorderBrush="{StaticResource PanelBorder}" BorderThickness="1">
+            <ScrollViewer Padding="12,10">
+                <TextBlock x:Name="NotesText" TextWrapping="Wrap" FontSize="12" />
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</Window>

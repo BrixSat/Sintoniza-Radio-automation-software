@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Sintoniza Import.app: starts the main app as the import program; build.sh fills in @VERSION@. -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>                 <string>Sintoniza Import</string>
+    <key>CFBundleDisplayName</key>          <string>Sintoniza Import</string>
+    <key>CFBundleIdentifier</key>           <string>net.cesararaujo.sintoniza.import</string>
+    <key>CFBundleExecutable</key>           <string>sintoniza-import</string>
+    <key>CFBundleIconFile</key>             <string>import</string>
+    <key>CFBundlePackageType</key>          <string>APPL</string>
+    <key>CFBundleShortVersionString</key>   <string>@VERSION@</string>
+    <key>CFBundleVersion</key>              <string>@VERSION@</string>
+    <key>LSMinimumSystemVersion</key>       <string>12.0</string>
+    <key>NSHighResolutionCapable</key>      <true/>
+    <key>NSHumanReadableCopyright</key>     <string>César Araújo — cesararaujo.net</string>
+</dict>
+</plist>

@@ -1,0 +1,807 @@
+<app:PageWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.SettingsWindow"
+        Icon="/Assets/icon.ico"
+        Title="Settings"
+        Width="1100" Height="600" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <app:PageWindow.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="10,0" />
+        </Style>
+    </app:PageWindow.Styles>
+
+    <DockPanel Margin="18">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
+            <TextBlock x:Name="SaveErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="560" />
+            <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+            <Button x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" IsDefault="True"
+                    Classes="accent" />
+        </StackPanel>
+
+        <TabControl>
+            <!-- ───────── Station ───────── -->
+            <TabItem Header="Station" x:Name="StationTab">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <Border Classes="computer" Background="#1A2233" CornerRadius="6" Padding="12,10">
+                        <TextBlock TextWrapping="Wrap" Foreground="#AFC4F2" FontSize="13"
+                                   Text="Here: what belongs to this computer (sound cards, microphone, the library database, keys, the RDS encoder's connection). The station's settings — name and logo, crossfades, fill music, time signal, streaming, RDS texts, website, alerts, cartwalls, library folders and categories — are set in Sintoniza Pro, for every studio." />
+                    </Border>
+                    <StackPanel Classes="station">
+                        <TextBlock Classes="label" Text="Station name" />
+                        <TextBox x:Name="StationNameBox" PlaceholderText="e.g. Rádio Exemplo 99.9 FM" />
+                    </StackPanel>
+
+                    <StackPanel Classes="station">
+                        <TextBlock Classes="label" Text="Logo" />
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="96" Height="96" CornerRadius="10" Background="#13161C" ClipToBounds="True"
+                                    BorderBrush="{StaticResource PanelBorder}" BorderThickness="1">
+                                <Panel>
+                                    <Image x:Name="LogoPreview" Stretch="Uniform" />
+                                    <TextBlock x:Name="NoLogoText" Text="No logo" Classes="note" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Panel>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="8" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Button x:Name="ChooseLogoButton" Content="Choose image…" />
+                                    <Button x:Name="RemoveLogoButton" Content="Remove" />
+                                </StackPanel>
+                                <TextBlock Classes="note" Text="PNG, JPG, BMP or WebP. A square image looks best; it is shown next to the clock." />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+
+                    <Grid ColumnDefinitions="*,12,*" Classes="station">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Genre" />
+                            <TextBox x:Name="GenreBox" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Website" />
+                            <TextBox x:Name="UrlBox" PlaceholderText="https://" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="note station" Text="Name, genre and website are also sent to the streaming server and shown in directory listings." />
+
+                    <StackPanel>
+                        <Grid ColumnDefinitions="Auto,24,Auto,24,Auto">
+                            <StackPanel Grid.Column="4" Classes="computer">
+                                <TextBlock Classes="label" Text="Language" />
+                                <ComboBox x:Name="LanguageBox" MinWidth="200"
+                                          ToolTip.Tip="The language of the windows and messages. Applies the next time the app starts." />
+                            </StackPanel>
+                            <StackPanel Classes="station">
+                                <TextBlock Classes="label" Text="Station type" />
+                                <ComboBox x:Name="StationTypeBox" MinWidth="320">
+                                    <ComboBoxItem Content="FM radio (mic through the mixing desk)" />
+                                    <ComboBoxItem Content="Web radio (mic through this computer)" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Classes="station">
+                                <TextBlock Classes="label" Text="Money sign on adverts" />
+                                <TextBox x:Name="CurrencyBox" Width="90" HorizontalAlignment="Left" MaxLength="3"
+                                         ToolTip.Tip="Shown on advert rows and the break countdown. Empty: this computer's currency." />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="note station" Margin="0,4,0,0"
+                                   Text="Web radio adds a MIC button: hold it to talk. Set up the microphone on the Microphone tab. The STREAM button shows on web radio, or on FM once a streaming server is set up." />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ───────── Audio ───────── -->
+            <TabItem Header="Audio">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Margin="0,12,16,0">
+                    <StackPanel Classes="station">
+                        <TextBlock Classes="label" Text="Crossfade between tracks (seconds)" />
+                        <NumericUpDown x:Name="CrossfadeBox" Minimum="0" Maximum="15" Increment="0.5" FormatString="0.0"
+                                       Width="160" HorizontalAlignment="Left" />
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="Song to song: the outgoing song fades out over this time while the next one starts. 0 = back-to-back. Applies from the next track." />
+                    </StackPanel>
+                    <StackPanel Classes="station">
+                        <TextBlock Classes="label" Text="Crossfade with jingles, adverts and programmes (seconds)" />
+                        <NumericUpDown x:Name="OtherCrossfadeBox" Minimum="0" Maximum="15" Increment="0.5" FormatString="0.0"
+                                       Width="160" HorizontalAlignment="Left" />
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="Into or out of a jingle, promo, advert or programme. 0 (the default) = no fade: the song ends and the jingle starts clean, and the jingle plays to its end." />
+                    </StackPanel>
+                    <StackPanel Classes="computer">
+                        <TextBlock Classes="label" Text="Outputs (one desk channel each)" />
+                        <Grid ColumnDefinitions="90,*,10,110,10,Auto" RowDefinitions="Auto,8,Auto,8,Auto">
+                            <TextBlock Text="Music" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ComboBox Grid.Column="1" x:Name="MusicDeviceBox" HorizontalAlignment="Stretch" />
+                            <ComboBox Grid.Column="3" x:Name="MusicChannelBox" HorizontalAlignment="Stretch" />
+                            <Button Grid.Column="5" x:Name="MusicTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
+
+                            <TextBlock Grid.Row="2" Text="Cartwall" VerticalAlignment="Center" FontWeight="SemiBold" />
+                            <ComboBox Grid.Row="2" Grid.Column="1" x:Name="CartDeviceBox" HorizontalAlignment="Stretch" />
+                            <ComboBox Grid.Row="2" Grid.Column="3" x:Name="CartChannelBox" HorizontalAlignment="Stretch" />
+                            <Button Grid.Row="2" Grid.Column="5" x:Name="CartTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
+
+                            <TextBlock Grid.Row="4" Text="Preview" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       ToolTip.Tip="Pre-listen in the cue editor. Use an output that is not on air, e.g. the desk's PFL / cue input or headphones." />
+                            <ComboBox Grid.Row="4" Grid.Column="1" x:Name="PreviewDeviceBox" HorizontalAlignment="Stretch" />
+                            <ComboBox Grid.Row="4" Grid.Column="3" x:Name="PreviewChannelBox" HorizontalAlignment="Stretch" />
+                            <Button Grid.Row="4" Grid.Column="5" x:Name="PreviewTestButton" Content="Test" ToolTip.Tip="1 second 1 kHz tone on this output" />
+                        </Grid>
+                        <TextBlock Classes="note" Margin="0,6,0,0"
+                                   Text="Send music and cartwall to different sound cards or output pairs to get them on separate desk faders. Use Test to find which fader is which. Applies when you click Save. The stream always carries music and cartwall together. Preview (for the cue editor) is never streamed; give it an output that is not on air." />
+                    </StackPanel>
+                    <StackPanel Spacing="8" Classes="station">
+                        <CheckBox x:Name="LoudnessBox" Content="Level everything to the same loudness" FontWeight="SemiBold" />
+                        <StackPanel x:Name="LoudnessPanel" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Target" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="LoudnessTargetBox" Minimum="-30" Maximum="-8" Increment="1" FormatString="0" Width="110" />
+                            <TextBlock Text="LUFS, raise quiet items by at most" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="LoudnessBoostBox" Minimum="0" Maximum="20" Increment="1" FormatString="0" Width="110" />
+                            <TextBlock Text="dB" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="Each file's loudness is measured (EBU R128) in the background when it is added to the playlist, a cart or the schedule, and remembered. Loud songs are turned down and quiet ones up, never so far that their peaks go over -1 dBFS; the audio files are not changed. An item that hasn't been measured yet plays as it is. -16 LUFS suits most stations; the output is quieter than most modern masters, so check the desk levels after switching it on." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Microphone ───────── -->
+            <TabItem Header="Microphone" Classes="computer">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <TextBlock x:Name="MicFmNote" Classes="note"
+                               Text="The station type is FM radio, so the mic goes through the mixing desk and these settings are not used. Choose Web radio on the Station tab to use them." />
+                    <StackPanel x:Name="MicPanel" Spacing="14">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="The MIC button and its key" />
+                            <RadioButton x:Name="MicHoldRadio" GroupName="MicMode" Content="Hold to talk" />
+                            <RadioButton x:Name="MicToggleRadio" GroupName="MicMode" Content="Press to switch the mic on, press again to switch it off" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Microphone input" />
+                            <ComboBox x:Name="MicDeviceBox" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Mic level (dB)" />
+                                <NumericUpDown x:Name="MicGainBox" Minimum="-20" Maximum="20" Increment="1" FormatString="+0;-0;0"
+                                               HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Music level while talking (dB)" />
+                                <NumericUpDown x:Name="DuckBox" Minimum="-60" Maximum="0" Increment="1" FormatString="0"
+                                               HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Fade down (seconds)" />
+                                <NumericUpDown x:Name="FadeDownBox" Minimum="0" Maximum="5" Increment="0.1" FormatString="0.0"
+                                               HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Fade back up (seconds)" />
+                                <NumericUpDown x:Name="FadeUpBox" Minimum="0" Maximum="5" Increment="0.1" FormatString="0.0"
+                                               HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Classes="note"
+                                   Text="The MIC button or its key (F9 unless changed on the Shortcuts tab) opens the mic: held down, or from one press to the next. Music and cartwall fade down to the level above while it is open, and back up when it closes. The mic goes into the stream only, not to the audio outputs, so you don't hear yourself with a delay; listen on headphones." />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <!-- ───────── Time signal ───────── -->
+            <TabItem Header="Time signal" Classes="station">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="At the top of the hour" />
+                        <ComboBox x:Name="TimeSignalModeBox" HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="Off: no time signal" />
+                            <ComboBoxItem Content="Play it over what is playing" />
+                            <ComboBoxItem Content="Stop what is playing, play it, then carry on with the next item" />
+                        </ComboBox>
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="With Stop, the item on air and any carts fade out just before the time signal. Right after it the next playlist item starts in AUTO; otherwise the player waits for you. If nothing is playing, the time signal plays on its own." />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Sound" />
+                        <RadioButton x:Name="PipsRadio" GroupName="Signal" Content="Pips: five short and a long one, the long one starts on the hour" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <RadioButton x:Name="SignalFileRadio" GroupName="Signal" Content="Audio file:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="SignalFileText" VerticalAlignment="Center" MaxWidth="300" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseSignalButton" Content="Choose…" />
+                        </StackPanel>
+                        <TextBlock Classes="note" Text="An audio file is started so that it ends exactly on the hour." />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Hour announcements (optional)" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:Name="HourFolderText" VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseHourFolderButton" Content="Folder…" />
+                            <Button x:Name="ClearHourFolderButton" Content="Clear" />
+                        </StackPanel>
+                        <ComboBox x:Name="HourAtBox" HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="Instead of the time signal: it ends exactly on the hour" />
+                            <ComboBoxItem Content="After the time signal" />
+                        </ComboBox>
+                        <TextBlock x:Name="HourFolderNote" Classes="note" FontWeight="SemiBold" />
+                        <TextBlock Classes="note" Text="A file for each hour, with the hour's number at the end of its name: HRS05.mp3 plays at 05:00, HRS22.mp3 at 22:00 (midnight: 00 or 24). An hour without a file gets the time signal only." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="ListenSignalButton" Content="Listen" ToolTip.Tip="Play the time signal now on the Preview output (not on air)" />
+                        <TextBlock Classes="note" VerticalAlignment="Center" Text="Plays it now on the Preview output, not on air." />
+                    </StackPanel>
+                    <TextBlock Classes="note"
+                               Text="The time signal comes out of the Cartwall output and goes into the stream. It follows this computer's clock, so keep the clock set automatically (internet time)." />
+                </StackPanel>
+            </TabItem>
+
+            <!-- ───────── Shortcuts ───────── -->
+            <!-- ───────── Safety: never off air ───────── -->
+            <TabItem Header="Safety">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
+                    <StackPanel Spacing="6" Classes="station">
+                        <CheckBox x:Name="SilenceBox" Content="Detect silence (dead air)" FontWeight="SemiBold" />
+                        <StackPanel x:Name="SilencePanel" Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
+                            <TextBlock Text="Quieter than" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="SilenceLevelBox" Minimum="-70" Maximum="-20" Increment="1" FormatString="0" Width="120" />
+                            <TextBlock Text="dB for" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="SilenceSecondsBox" Minimum="3" Maximum="120" Increment="1" FormatString="0" Width="120" />
+                            <TextBlock Text="seconds" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="note" Margin="28,0,0,0"
+                                   Text="A red SILENCE warning shows after 5 s of dead air while an item plays. When the time is up, AUTO skips to the next item; ASSISTED only warns. Carts count as sound; an open mic pauses the check." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" Classes="station">
+                        <CheckBox x:Name="FillBox" Content="When the playlist runs out in AUTO, keep playing music" FontWeight="SemiBold" />
+                        <StackPanel x:Name="FillPanel" Spacing="6" Margin="28,0,0,0">
+                            <RadioButton x:Name="FillLibraryRadio" GroupName="FillSource" Content="From the library, these categories:" />
+                            <StackPanel x:Name="FillLibraryPanel" Spacing="6" Margin="28,0,0,0">
+                                <WrapPanel x:Name="FillCategoriesPanel" ItemSpacing="14" />
+                                <TextBlock x:Name="FillCategoriesNote" Classes="note" Text="None ticked: every music category." />
+                                <Grid ColumnDefinitions="Auto,8,110,8,Auto" RowDefinitions="Auto,6,Auto">
+                                    <TextBlock Text="Not the same song within" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Column="2" x:Name="FillSongHoursBox" Minimum="0" Maximum="168" Increment="1" FormatString="0.#" />
+                                    <TextBlock Grid.Column="4" Text="hours" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Text="Not the same artist within" VerticalAlignment="Center" />
+                                    <NumericUpDown Grid.Row="2" Grid.Column="2" x:Name="FillArtistMinutesBox" Minimum="0" Maximum="1440" Increment="15" FormatString="0" />
+                                    <TextBlock Grid.Row="2" Grid.Column="4" Text="minutes (when there is another choice)" VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                            <RadioButton x:Name="FillFolderRadio" GroupName="FillSource" Content="From a folder only" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Folder:" VerticalAlignment="Center" />
+                                <TextBlock x:Name="FillFolderText" VerticalAlignment="Center" MaxWidth="440" TextTrimming="CharacterEllipsis" />
+                                <Button x:Name="ChooseFillButton" Content="Choose…" />
+                                <Button x:Name="ClearFillButton" Content="Clear" />
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Classes="note" Margin="28,0,0,0"
+                                   Text="Songs are added to the end of the playlist. From the library: songs that may be picked automatically, rested longest first, using the play history of every studio sharing the library; with the library, the folder is used while the library can't be reached or has nothing to pick. From a folder: random songs from it and its subfolders, without recent repeats. Off: the player stops at the end of the playlist." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="4" Classes="computer">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="label" Text="After a crash, power cut or restart" VerticalAlignment="Bottom" />
+                            <Button Grid.Column="1" x:Name="OpenLogsButton" Content="Open log folder" FontSize="12" Padding="10,3"
+                                    ToolTip.Tip="What went on air, warnings and restarts: one file a day, kept for 90 days" />
+                        </Grid>
+                        <CheckBox x:Name="ResumeBox" Content="Carry on playing when the app starts, if it was playing in AUTO" />
+                        <CheckBox x:Name="WatchdogBox" Content="Start the app again if it crashes or stops responding" />
+                        <CheckBox x:Name="AutostartBox" Content="Start the app when I log in to this computer" />
+                        <TextBlock Classes="note"
+                                   Text="Carries on with the item after the one that was on air, and turns streaming back on. The watchdog applies from the next start. On an unattended studio computer, also turn on automatic login and turn off sleep." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" Classes="computer">
+                        <TextBlock Classes="label" Text="Backups" />
+                        <WrapPanel ItemSpacing="8" LineSpacing="6">
+                            <CheckBox x:Name="BackupBox" Content="Every day at" VerticalAlignment="Center" />
+                            <TextBox x:Name="BackupTimeBox" Width="80" PlaceholderText="04:00" />
+                            <TextBlock Text="keep" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="BackupKeepBox" Minimum="1" Maximum="365" Increment="1" FormatString="0" Width="120" />
+                            <TextBlock Text="days" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Folder:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="BackupFolderText" VerticalAlignment="Center" MaxWidth="420" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseBackupFolderButton" Content="Choose…" />
+                            <Button x:Name="DefaultBackupFolderButton" Content="Default" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="BackupNowButton" Content="Back up now" />
+                            <Button x:Name="OpenBackupsButton" Content="Open folder" />
+                            <TextBlock x:Name="BackupStatusText" Classes="note" VerticalAlignment="Center" MaxWidth="460" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="One zip a day with the database (MySQL: an SQL file that puts every table back with mysql name &lt; file; SQLite: a copy) and the station's files: settings, schedule, cue points, as-run logs. Older ones are removed after the days to keep; the newest three always stay. Best on another disk or a network folder." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Library database ───────── -->
+            <TabItem Header="Library">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
+                    <StackPanel Spacing="12" Classes="computer">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Library database" />
+                        <ComboBox x:Name="LibraryTypeBox" HorizontalAlignment="Stretch">
+                            <ComboBoxItem Content="SQLite: a file on this computer" />
+                            <ComboBoxItem Content="MySQL / MariaDB: a server that several studios can share" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel x:Name="SqlitePanel" Orientation="Horizontal" Spacing="8">
+                        <TextBlock x:Name="LibraryFileText" VerticalAlignment="Center" MaxWidth="480" TextTrimming="CharacterEllipsis" />
+                        <Button x:Name="ChooseLibraryFileButton" Content="Choose…" />
+                    </StackPanel>
+
+                    <Grid x:Name="MySqlPanel" ColumnDefinitions="*,10,*" RowDefinitions="Auto,8,Auto">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Server" />
+                            <Grid ColumnDefinitions="*,6,80">
+                                <TextBox x:Name="DbServerBox" PlaceholderText="localhost" />
+                                <TextBox Grid.Column="2" x:Name="DbPortBox" PlaceholderText="3306" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Database" />
+                            <TextBox x:Name="DbNameBox" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2">
+                            <TextBlock Classes="label" Text="User" />
+                            <TextBox x:Name="DbUserBox" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="2">
+                            <TextBlock Classes="label" Text="Password" />
+                            <TextBox x:Name="DbPasswordBox" PasswordChar="•" />
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="TestLibraryButton" Content="Test" ToolTip.Tip="Open the library with these settings (creates its tables if new)" />
+                        <TextBlock x:Name="LibraryTestText" Classes="note" VerticalAlignment="Center" MaxWidth="520" />
+                    </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Classes="station">
+                        <TextBlock Classes="label" Text="Other music folders (their songs have no category until you give them one)" />
+                        <Grid ColumnDefinitions="*,8,Auto">
+                            <ListBox x:Name="LibraryFoldersList" Height="96" />
+                            <StackPanel Grid.Column="2" Spacing="6">
+                                <Button x:Name="AddLibraryFolderButton" Content="Add…" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                                <Button x:Name="RemoveLibraryFolderButton" Content="Remove" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock x:Name="CategoryFoldersText" Classes="note" Margin="0,6,0,0" MaxWidth="760" HorizontalAlignment="Left" IsVisible="False" />
+                    </StackPanel>
+                    <StackPanel Classes="station" Spacing="4">
+                        <TextBlock Classes="label" Text="Voice tracks" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:Name="VoiceFolderText" VerticalAlignment="Center" MaxWidth="520" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseVoiceFolderButton" Content="Choose…" />
+                        </StackPanel>
+                        <TextBlock Classes="note" Text="The folder voice tracks are recorded into (Daily playlists → Voice track…). Every studio must reach it under the same path, like the music." />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10" Classes="station" IsVisible="False">
+                        <Button x:Name="CategoriesButton" Content="Categories…" ToolTip.Tip="Add, rename and colour categories, and give each its folders" />
+                        <TextBlock Classes="note" VerticalAlignment="Center" MaxWidth="560"
+                                   Text="Each category can have folders: their songs go in it, and new ones put there later too." />
+                    </StackPanel>
+
+                    <StackPanel Spacing="6" Classes="computer">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <CheckBox x:Name="AutoScanBox" Content="Scan automatically every" />
+                            <NumericUpDown x:Name="AutoScanMinutesBox" Minimum="5" Maximum="1440" Increment="5" FormatString="0" Width="120" />
+                            <TextBlock Text="minutes" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <CheckBox x:Name="WatchFoldersBox" Content="Also scan shortly after files in the music folders are added, changed or deleted" />
+                        <TextBlock Classes="note"
+                                   Text="Scan (above the library) does it now. A scan only reads new and changed files; moved files keep their category, cue points and history. Network shares don't always report changes, so keep the schedule on for them. radio-import does the same from the command line, using these settings. With a shared MySQL library, every studio must see the music under the same path, and one studio scanning is enough." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Shortcuts" Classes="computer">
+                <StackPanel Spacing="12" Margin="0,12,0,0">
+                    <TextBlock Classes="note"
+                               Text="Click a box, then press the key or combination, e.g. F5, Space, Ctrl+1 or Num 1. Backspace or Delete clears it, Esc cancels. Cart keys play or stop the carts of the cartwall on screen." />
+                    <Grid ColumnDefinitions="4*,16,3*,16,3*">
+                        <StackPanel x:Name="PlayerKeys" Spacing="6" />
+                        <StackPanel Grid.Column="2" x:Name="CartKeysA" Spacing="6" />
+                        <StackPanel Grid.Column="4" x:Name="CartKeysB" Spacing="6" />
+                    </Grid>
+                    <TextBlock x:Name="ShortcutMessage" Classes="note" Foreground="{StaticResource NextUp}" />
+                    <Button x:Name="DefaultKeysButton" Content="Reset to defaults" />
+                    <TextBlock Classes="note"
+                               Text="Plain keys (letters, numbers, Space) don't fire while you type in a text box, such as the music folder filter; F-keys and Ctrl/Alt combinations always do." />
+                </StackPanel>
+            </TabItem>
+
+            <!-- ───────── Streaming ───────── -->
+            <TabItem Header="Streaming" Classes="station">
+                <StackPanel Spacing="12" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Server type" />
+                        <ComboBox x:Name="ServerTypeBox" MinWidth="220" SelectedIndex="0">
+                            <ComboBoxItem Content="Icecast 2" />
+                            <ComboBoxItem Content="Shoutcast v1" />
+                        </ComboBox>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,12,120">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Server host" />
+                            <TextBox x:Name="HostBox" PlaceholderText="stream.example.com" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Port" />
+                            <TextBox x:Name="PortBox" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,12,*">
+                        <StackPanel x:Name="MountPanel">
+                            <TextBlock Classes="label" Text="Mount point" />
+                            <TextBox x:Name="MountBox" PlaceholderText="/live" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Source password" />
+                            <TextBox x:Name="PasswordBox" PasswordChar="•" RevealPassword="False" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,12,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Format" />
+                            <ComboBox x:Name="FormatBox" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="MP3" />
+                                <ComboBoxItem Content="OGG Vorbis" />
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Bitrate (kbps)" />
+                            <ComboBox x:Name="BitrateBox" HorizontalAlignment="Stretch">
+                                <ComboBoxItem Content="64" />
+                                <ComboBoxItem Content="96" />
+                                <ComboBoxItem Content="128" />
+                                <ComboBoxItem Content="192" />
+                                <ComboBoxItem Content="256" />
+                                <ComboBoxItem Content="320" />
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. On FM, the button shows once a source password is set. Changes here apply the next time the stream starts." />
+                </StackPanel>
+            </TabItem>
+            <!-- ───────── RDS ───────── -->
+            <TabItem Header="RDS">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
+                    <CheckBox x:Name="RdsBox" Content="Send now playing to the RDS encoder" FontWeight="SemiBold" Classes="computer" />
+                    <StackPanel x:Name="RdsPanel" Spacing="12">
+                        <StackPanel Spacing="12" Classes="station">
+                        <Grid ColumnDefinitions="140,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="PS (8 characters)" />
+                                <TextBox x:Name="RdsPsBox" MaxLength="8" FontFamily="monospace" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Radio text while a song is on air" />
+                                <TextBox x:Name="RdsTemplateBox" PlaceholderText="{}{artist} - {title}" />
+                            </StackPanel>
+                        </Grid>
+                        <Grid ColumnDefinitions="*,12,Auto">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Radio text when no song is on air" />
+                                <TextBox x:Name="RdsDefaultBox" PlaceholderText="{}{station}" />
+                            </StackPanel>
+                            <CheckBox Grid.Column="2" x:Name="RdsJinglesBox" Content="Also during jingles, adverts and programmes" VerticalAlignment="Bottom" />
+                        </Grid>
+                        <TextBlock Classes="note"
+                                   Text="{}{artist}, {title} and {station} are filled in; up to 64 characters are sent. An empty PS uses the station name. A static PS is the norm: many countries don't allow a scrolling one." />
+                        </StackPanel>
+
+                        <StackPanel Spacing="12" Classes="computer">
+                        <Grid ColumnDefinitions="*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Encoder protocol" />
+                                <ComboBox x:Name="RdsProtocolBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="ASCII commands (PIRA32, P232, MRDS, DEVA…)" />
+                                    <ComboBoxItem Content="UECP (professional encoders)" />
+                                    <ComboBoxItem Content="Text file (the encoder reads a file)" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" x:Name="RdsConnectionPanel">
+                                <TextBlock Classes="label" Text="Connection" />
+                                <ComboBox x:Name="RdsConnectionBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="TCP (network)" />
+                                    <ComboBoxItem Content="UDP (network)" />
+                                    <ComboBoxItem Content="Serial port (RS-232 / USB)" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="RdsNetworkPanel" ColumnDefinitions="*,12,120">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Encoder address" />
+                                <TextBox x:Name="RdsHostBox" PlaceholderText="192.168.1.50" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Port" />
+                                <TextBox x:Name="RdsPortBox" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid x:Name="RdsSerialPanel" ColumnDefinitions="*,12,160">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Serial port" />
+                                <ComboBox x:Name="RdsSerialBox" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Speed (baud)" />
+                                <ComboBox x:Name="RdsBaudBox" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel x:Name="RdsFilePanel" Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="File:" VerticalAlignment="Center" />
+                            <TextBlock x:Name="RdsFileText" VerticalAlignment="Center" MaxWidth="480" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseRdsFileButton" Content="Choose…" />
+                        </StackPanel>
+
+                        <Grid x:Name="RdsAsciiPanel" ColumnDefinitions="*,12,*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="PS command" />
+                                <TextBox x:Name="RdsPsCommandBox" FontFamily="monospace" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Radio text command" />
+                                <TextBox x:Name="RdsRtCommandBox" FontFamily="monospace" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Classes="label" Text="Characters" />
+                                <ComboBox x:Name="RdsCharsetBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Plain (no accents)" />
+                                    <ComboBoxItem Content="RDS character set" />
+                                    <ComboBoxItem Content="Latin-1" />
+                                    <ComboBoxItem Content="UTF-8" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel x:Name="RdsRtPlusPanel" Spacing="6">
+                            <Grid ColumnDefinitions="Auto,12,*">
+                                <CheckBox x:Name="RdsRtPlusBox" Content="Send RT+ (title and artist tags)" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="2" x:Name="RdsRtPlusCommandBox" FontFamily="monospace" />
+                            </Grid>
+                            <TextBlock Classes="note"
+                                       Text="RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent after the radio text: {type1},{start1},{len1} and {type2},{start2},{len2} are the content type (1 title, 4 artist), first character (from 0) and length marker (characters − 1) of each tag. Check the command in the encoder's manual; some need RT+ switched on in their setup too." />
+                        </StackPanel>
+
+                        <Grid x:Name="RdsUecpPanel" ColumnDefinitions="*,12,*">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Site address (0 = all)" />
+                                <NumericUpDown x:Name="RdsSiteBox" Minimum="0" Maximum="1023" Increment="1" FormatString="0" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Encoder address (0 = all)" />
+                                <NumericUpDown x:Name="RdsEncoderBox" Minimum="0" Maximum="63" Increment="1" FormatString="0" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Send everything again every" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="RdsResendBox" Minimum="5" Maximum="3600" Increment="5" FormatString="0" Width="120" />
+                            <TextBlock Text="seconds" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="RdsTestButton" Content="Send now" ToolTip.Tip="Send the PS and the radio text for what is on air now, with these settings" />
+                            <TextBlock x:Name="RdsTestText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="ASCII commands: check the encoder's manual for the command names (RT= and PS= are the most common; some use TEXT= or DPS=). Plain characters show correctly on every radio. The text changes when the next item goes on air and is sent again regularly, so an encoder that restarted catches up." />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Website ───────── -->
+            <TabItem Header="Website" Classes="station">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="12" Margin="0,12,16,0">
+                    <CheckBox x:Name="WebBox" Content="Send now playing to the station's website" FontWeight="SemiBold" />
+                    <StackPanel x:Name="WebPanel" Spacing="12">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Address it is sent to" />
+                            <TextBox x:Name="WebUrlBox" PlaceholderText="https://www.example.com/nowplaying/nowplaying.php" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Key (the page only accepts posts with it)" />
+                            <TextBox x:Name="WebKeyBox" PasswordChar="•" RevealPassword="False" />
+                        </StackPanel>
+                        <CheckBox x:Name="WebSongsOnlyBox" Content="Songs only: during jingles, adverts and programmes the website keeps the last song" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="WebTestButton" Content="Send now" ToolTip.Tip="Send what is on air now, with these settings" />
+                            <TextBlock x:Name="WebTestText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="When what is on air (or next) changes, the app sends it as JSON (station, now, next: artist, title, type, duration, start time) in a POST, with the key in the X-Api-Key header. If the website can't be reached it tries again every 30 seconds. The docs/now-playing folder of the project (on GitHub) has an example PHP page that keeps it in nowplaying.txt and nowplaying.json for the website to show." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── About ───────── -->
+            <!-- ───────── Alerts ───────── -->
+            <TabItem Header="Alerts" Classes="station">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="14" Margin="0,12,16,0">
+                        <CheckBox x:Name="AlertsBox" Content="Send an alert when something goes wrong on air, and another when it is fixed" />
+                        <StackPanel x:Name="AlertsPanel" Spacing="14">
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="label" Text="When" />
+                                <CheckBox x:Name="AlertSilenceBox" Content="Silence on air (as long as set in Safety)" />
+                                <CheckBox x:Name="AlertStreamBox" Content="The stream is down for a minute" />
+                                <CheckBox x:Name="AlertEngineBox" Content="The audio engine stops responding" />
+                                <CheckBox x:Name="AlertRestartBox" Content="The app was started again after a crash or a freeze" />
+                                <CheckBox x:Name="AlertDatabaseBox" Content="The library database is unavailable for a minute" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                    <CheckBox x:Name="AlertDiskBox" Content="A disk has less than" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="AlertDiskGbBox" Minimum="0.5" Maximum="1000" Increment="0.5" FormatString="0.0" Width="120" />
+                                    <TextBlock Text="GB free" VerticalAlignment="Center" />
+                                </WrapPanel>
+                                <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                    <CheckBox x:Name="AlertClockBox" Content="The clock is off by more than" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="AlertClockSecondsBox" Minimum="0.5" Maximum="60" Increment="0.5" FormatString="0.0" Width="120" />
+                                    <TextBlock Text="s from" VerticalAlignment="Center" />
+                                    <TextBox x:Name="AlertTimeServerBox" Width="180" PlaceholderText="pool.ntp.org" />
+                                </WrapPanel>
+                                <CheckBox x:Name="AlertBackupBox" Content="A backup fails" />
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Telegram (a bot: its token, and the chat or group id)" />
+                                <Grid ColumnDefinitions="*,8,200">
+                                    <TextBox x:Name="TelegramTokenBox" PlaceholderText="123456:ABC… (from @BotFather)" />
+                                    <TextBox Grid.Column="2" x:Name="TelegramChatBox" PlaceholderText="chat id" />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Email" />
+                                <Grid ColumnDefinitions="*,8,90,8,Auto">
+                                    <TextBox x:Name="SmtpServerBox" PlaceholderText="SMTP server, e.g. smtp.gmail.com" />
+                                    <TextBox Grid.Column="2" x:Name="SmtpPortBox" PlaceholderText="587" />
+                                    <CheckBox Grid.Column="4" x:Name="SmtpSslBox" Content="TLS" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <TextBox x:Name="SmtpUserBox" PlaceholderText="user" />
+                                    <TextBox Grid.Column="2" x:Name="SmtpPasswordBox" PasswordChar="•" PlaceholderText="password" />
+                                </Grid>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <TextBox x:Name="MailFromBox" PlaceholderText="from (empty = the user)" />
+                                    <TextBox Grid.Column="2" x:Name="MailToBox" PlaceholderText="to (several: separated by commas)" />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Web address (gets a JSON POST: station, kind, ok, message, time)" />
+                                <TextBox x:Name="WebhookBox" PlaceholderText="https://…" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <Button x:Name="TestAlertButton" Content="Send a test alert" />
+                                <TextBlock x:Name="TestAlertText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Colours ───────── -->
+            <TabItem Header="Playlist">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="14" Margin="0,12,16,0">
+                        <StackPanel Classes="computer">
+                            <TextBlock Classes="label" Text="What the playlist shows" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="With This hour on: the hour before, this hour and the first" VerticalAlignment="Center" />
+                                <NumericUpDown x:Name="NextMinutesBox" Minimum="0" Maximum="60" Increment="5" FormatString="0" Width="120" />
+                                <TextBlock Text="minutes of the next hour." VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Classes="note" Margin="0,4,0,0"
+                                       Text="With it off, everything still to play. Either way, what played before the hour before isn't shown (it's in Reports)." />
+                        </StackPanel>
+                        <StackPanel Classes="station">
+                            <TextBlock Classes="label" Text="Daily playlists" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Made ahead for today and the next" VerticalAlignment="Center" />
+                                <NumericUpDown x:Name="PlanDaysBox" Minimum="0" Maximum="14" Increment="1" FormatString="0" Width="110" />
+                                <TextBlock Text="days." VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Classes="note" Margin="0,4,0,0"
+                                       Text="From the hour templates (Playlists tab); see and change them on the Daily playlists tab. The playout plays them, about half an hour ahead, and keeps each hour on time." />
+                        </StackPanel>
+                        <StackPanel Spacing="14" Classes="station">
+                        <TextBlock Classes="label" Text="Playlist backgrounds, by type" />
+                        <StackPanel x:Name="ColourRows" Spacing="12" />
+                        <TextBlock Classes="note"
+                                   Text="Click a colour, or type one (#RRGGBB). Default puts the original back. Dark colours keep the text easy to read." />
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ───────── Web remote ───────── -->
+            <TabItem Header="Remote" Classes="computer">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <CheckBox x:Name="RemoteBox" Content="Let a phone or computer on the station's network control this playout (a web page)" FontWeight="SemiBold" />
+                    <StackPanel x:Name="RemotePanel" Spacing="12" Margin="28,0,0,0">
+                        <Grid ColumnDefinitions="Auto,8,120,24,Auto,8,260">
+                            <TextBlock Text="Port" VerticalAlignment="Center" />
+                            <NumericUpDown Grid.Column="2" x:Name="RemotePortBox" Minimum="1024" Maximum="65535" Increment="1" FormatString="0" />
+                            <TextBlock Grid.Column="4" Text="Password" VerticalAlignment="Center" />
+                            <TextBox Grid.Column="6" x:Name="RemotePasswordBox" PasswordChar="•" />
+                        </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Classes="label" Text="Open on the phone (same network)" />
+                            <SelectableTextBlock x:Name="RemoteAddressText" FontSize="15" FontWeight="SemiBold" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="It shows what is on air and next, and has Play, Pause, Next, Stop, AUTO, the cartwall, play now / remove and adding a song. An advert on air is only cut after a question, as on screen. The page asks for the password; five wrong ones lock it for a minute. It is plain HTTP: use it on the station's own network, or from outside only through the station's VPN — never open the port on the router." />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="About" Classes="computer">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <Image Source="/Assets/icon.ico" Width="56" Height="56" />
+                        <StackPanel VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{x:Static app:AppInfo.Name}" FontSize="18" FontWeight="SemiBold" />
+                            <TextBlock x:Name="VersionText" Classes="note" FontSize="12" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Spacing="4">
+                        <TextBlock Text="By César Araújo" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="WebsiteButton" Content="cesararaujo.net" Classes="tool" />
+                            <Button x:Name="SourceButton" Content="Source and releases on GitHub" Classes="tool" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
+                            <Button x:Name="ManualButton" Content="User manual (PDF)" Classes="accent" />
+                            <TextBlock x:Name="ManualText" Classes="note" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="label" Text="Updates" />
+                        <CheckBox x:Name="AutoUpdateBox" Content="Check for new versions automatically (at start and every 6 hours)" />
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <Button x:Name="CheckNowButton" Content="Check now" />
+                            <TextBlock x:Name="UpdateResultText" Classes="note" VerticalAlignment="Center" />
+                            <Button x:Name="ShowUpdateButton" Content="Details and install…" Classes="accent" IsVisible="False" />
+                        </StackPanel>
+                        <TextBlock Classes="note"
+                                   Text="A new version is never installed by itself: you choose when. Installed with the setup (Windows) or the .deb package (Linux), it downloads and installs in one click; other copies open the download page." />
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</app:PageWindow>

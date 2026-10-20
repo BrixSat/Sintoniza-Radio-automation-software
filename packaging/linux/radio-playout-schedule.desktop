@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Pro
+GenericName=Radio production: station, library, schedule and advertising
+Comment=Events, ad breaks, clients, hour templates and daily playlists for Sintoniza Radio Broadcast system
+Exec=sintoniza-pro
+Icon=radio-playout-schedule
+StartupWMClass=SintonizaPro
+Terminal=false
+Keywords=radio;schedule;advertising;traffic;clients;campaigns;
+Categories=AudioVideo;Audio;

@@ -1,0 +1,735 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        xmlns:c="using:Playout.App.Controls"
+        x:Class="Playout.App.ScheduleWindow"
+        Icon="/Assets/schedule.ico"
+        Title="Sintoniza Pro"
+        Width="1440" Height="880" MinWidth="1180" MinHeight="680"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Padding" Value="10,0" />
+        </Style>
+        <Style Selector="ToggleButton.day">
+            <Setter Property="MinWidth" Value="40" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="TextBlock.dayhead">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#C9CFDA" />
+        </Style>
+        <Style Selector="TextBlock.dayhead.today">
+            <Setter Property="Foreground" Value="{StaticResource NextUp}" />
+        </Style>
+        <Style Selector="Border.calendar">
+            <Setter Property="Background" Value="#111318" />
+            <Setter Property="BorderBrush" Value="#2A2F3A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
+        <!-- Sintoniza Pro's frame: menu, toolbar, the tools on the left, the status bar -->
+        <Style Selector="TabControl#Tabs /template/ ItemsPresenter#PART_ItemsPresenter">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.nav">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="Padding" Value="14,7" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+        <Style Selector="Button.nav.current">
+            <Setter Property="Background" Value="#24508F" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="TextBlock.navgroup">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="#7D8594" />
+            <Setter Property="Margin" Value="14,14,0,4" />
+        </Style>
+        <Style Selector="Button.toolbar">
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Border.statusbar TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#C9CFDA" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.homecard">
+            <Setter Property="Background" Value="#1A1D24" />
+            <Setter Property="BorderBrush" Value="#2A2F3A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,0,14,14" />
+        </Style>
+        <Style Selector="TextBlock.cardtitle">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="#7D8594" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+        <!-- Menu -->
+        <Menu DockPanel.Dock="Top" x:Name="MainMenu" Padding="6,2" Background="#15181E">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="MenuSave" Header="_Save" InputGesture="Ctrl+S" />
+                <Separator />
+                <MenuItem x:Name="MenuClose" Header="_Close" />
+            </MenuItem>
+            <MenuItem Header="_Library">
+                <MenuItem x:Name="MenuSongs" Header="Songs" />
+                <MenuItem x:Name="MenuCategories" Header="Categories" />
+                <MenuItem x:Name="MenuImport" Header="Import music" />
+            </MenuItem>
+            <MenuItem Header="_Programming">
+                <MenuItem x:Name="MenuTemplates" Header="Hour templates" />
+                <MenuItem x:Name="MenuDaily" Header="Daily playlists" />
+                <MenuItem x:Name="MenuEvents" Header="Events" />
+            </MenuItem>
+            <MenuItem Header="_Traffic">
+                <MenuItem x:Name="MenuBreaks" Header="Ad breaks" />
+                <MenuItem x:Name="MenuClients" Header="Clients and campaigns" />
+            </MenuItem>
+            <MenuItem Header="_Station">
+                <MenuItem x:Name="MenuStationSettings" Header="Station settings" />
+                <MenuItem x:Name="MenuCartwalls" Header="Cartwalls" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem x:Name="MenuManual" Header="User manual" />
+                <MenuItem x:Name="MenuAbout" Header="About Sintoniza Pro" />
+            </MenuItem>
+        </Menu>
+
+        <!-- Toolbar -->
+        <Border DockPanel.Dock="Top" Background="#15181E" BorderBrush="#2A2F3A" BorderThickness="0,0,0,1" Padding="8,2,8,6">
+            <StackPanel Orientation="Horizontal" Spacing="2">
+                <Button x:Name="ToolHome" Classes="toolbar" Content="⌂  Home" />
+                <Button x:Name="SaveButton" Classes="toolbar" Content="💾  Save" ToolTip.Tip="Save the schedule (Ctrl+S): lights up when something changed" />
+                <Rectangle Width="1" Fill="#2A2F3A" Margin="6,4" />
+                <Button x:Name="ToolSongs" Classes="toolbar" Content="♫  Songs" />
+                <Button x:Name="ToolDaily" Classes="toolbar" Content="☰  Daily playlists" />
+                <Button x:Name="ToolTemplates" Classes="toolbar" Content="▦  Hour templates" />
+                <Button x:Name="ToolBreaks" Classes="toolbar" Content="€  Ad breaks" />
+                <Rectangle Width="1" Fill="#2A2F3A" Margin="6,4" />
+                <Button x:Name="StationSettingsButton" Classes="toolbar" Content="⚙  Station settings"
+                        ToolTip.Tip="Name, logo, crossfades, fill music, time signal, streaming, RDS texts, website, alerts: for every studio" />
+                <Button x:Name="CategoriesButton" Classes="toolbar" Content="🏷  Categories" ToolTip.Tip="The library's categories (under the station's eight) and their folders" />
+                <Button x:Name="CartwallsButton" Classes="toolbar" Content="▣  Cartwalls" ToolTip.Tip="The cartwalls every studio plays" />
+                <Button x:Name="ImportButton" Classes="toolbar" Content="⇪  Import music" ToolTip.Tip="Folders of audio into the library, in categories" />
+            </StackPanel>
+        </Border>
+
+        <!-- Status bar -->
+        <Border DockPanel.Dock="Bottom" Classes="statusbar" Background="#24508F" Padding="12,4">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
+                <TextBlock x:Name="StatusVersion" Margin="0,0,18,0" />
+                <TextBlock Grid.Column="1" x:Name="StatusStation" Margin="0,0,18,0" />
+                <TextBlock Grid.Column="2" x:Name="StatusDatabase" Margin="0,0,18,0" />
+                <TextBlock Grid.Column="3" x:Name="StatusUser" Margin="0,0,18,0" />
+                <!-- What was just saved, or why not -->
+                <Panel Grid.Column="4" Margin="0,0,18,0">
+                    <TextBlock x:Name="SavedText" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="ErrorText" Foreground="#FFD0D2" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                </Panel>
+                <TextBlock Grid.Column="5" x:Name="StatusChanges" Foreground="#FFD48A" FontWeight="SemiBold" Margin="0,0,18,0" />
+                <TextBlock Grid.Column="6" x:Name="StatusClock" FontWeight="SemiBold" />
+            </Grid>
+        </Border>
+
+        <!-- The tools -->
+        <Border DockPanel.Dock="Left" Width="240" Background="#15181E" BorderBrush="#2A2F3A" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <!-- Now on air and the station -->
+                <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="10">
+                    <Border Background="#1A1D24" CornerRadius="6" Padding="10,8">
+                        <StackPanel Spacing="2">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Classes="cardtitle" Text="NOW PLAYING" Margin="0" />
+                                <TextBlock Grid.Column="1" x:Name="NowAtText" FontSize="11" Foreground="#7D8594" />
+                            </Grid>
+                            <TextBlock x:Name="NowTitleText" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="NowArtistText" FontSize="12" Foreground="#9AA3B2" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="NowTemplateText" FontSize="11" Foreground="#7D8594" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#1A1D24" CornerRadius="6" Padding="10,8">
+                        <StackPanel Spacing="2">
+                            <TextBlock Classes="cardtitle" Text="STATION" Margin="0" />
+                            <TextBlock x:Name="BoxStationText" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="BoxDatabaseText" FontSize="11" Foreground="#9AA3B2" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="BoxUserText" FontSize="11" Foreground="#9AA3B2" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <ScrollViewer>
+                    <StackPanel x:Name="NavPanel" Margin="6,6,6,0">
+                        <Button x:Name="NavHome" Classes="nav" Content="⌂   Home" />
+                        <TextBlock Classes="navgroup" Text="LIBRARY" />
+                        <Button x:Name="NavSongs" Classes="nav" Content="♫   Songs" />
+                        <Button x:Name="NavCategories" Classes="nav" Content="🏷   Categories" />
+                        <Button x:Name="NavImport" Classes="nav" Content="⇪   Import music" />
+                        <TextBlock Classes="navgroup" Text="PROGRAMMING" />
+                        <Button x:Name="NavTemplates" Classes="nav" Content="▦   Hour templates" />
+                        <Button x:Name="NavDaily" Classes="nav" Content="☰   Daily playlists" />
+                        <Button x:Name="NavEvents" Classes="nav" Content="⏰   Events" />
+                        <TextBlock Classes="navgroup" Text="TRAFFIC" />
+                        <Button x:Name="NavBreaks" Classes="nav" Content="€   Ad breaks" />
+                        <Button x:Name="NavClients" Classes="nav" Content="👥   Clients and campaigns" />
+                        <TextBlock Classes="navgroup" Text="STATION" />
+                        <Button x:Name="NavStationSettings" Classes="nav" Content="⚙   Station settings" />
+                        <Button x:Name="NavCartwalls" Classes="nav" Content="▣   Cartwalls" />
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+    <DockPanel Margin="16,12,16,12">
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0,0,0,10">
+            <TextBlock x:Name="PageGroup" FontSize="13" Foreground="#7D8594" VerticalAlignment="Bottom" Margin="0,0,8,2" />
+            <TextBlock Grid.Column="1" x:Name="PageTitle" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Bottom" />
+        </Grid>
+        <TabControl x:Name="Tabs">
+            <!-- ───────── Events ───────── -->
+            <TabItem Header="Events">
+                <Grid ColumnDefinitions="220,14,*,14,330" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddEventButton" Content="New" />
+                            <Button x:Name="DeleteEventButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="EventList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8">
+                            <TextBlock Text="Rows every" VerticalAlignment="Center" />
+                            <ComboBox x:Name="EventStepBox" Width="100" />
+                            <TextBlock Text="from minute" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="EventOffsetBox" Minimum="0" Maximum="59" Increment="1" FormatString="0" Width="120" />
+                            <TextBox x:Name="EventAddTimeBox" Width="96" PlaceholderText="hh:mm:ss or *:mm:ss" />
+                            <Button x:Name="EventAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 12:59:55; *:59:55 puts the selected one at that minute and second of every hour, every day" />
+                            <Button x:Name="EventClearButton" Content="Clear" ToolTip.Tip="Take this event out of every day and time" />
+                        </WrapPanel>
+                        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
+                                   Text="Click a cell to put the selected event there (or take it out); drag to do many cells; click a time for every day. Other events show faintly." />
+                        <Border Classes="calendar">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Top" x:Name="EventHeader" Height="28" Background="#1A1D24" />
+                                <ScrollViewer x:Name="EventScroll">
+                                    <c:WeekGrid x:Name="EventGrid" />
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="4">
+                        <StackPanel x:Name="EventPanel" Spacing="12" Margin="0,0,14,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="EventNameBox" PlaceholderText="News" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="EventEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Play" />
+                                <TextBox x:Name="EventPathBox" PlaceholderText="A file, a folder (its newest file), or https://… stream" />
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+                                    <Button x:Name="EventFileButton" Content="File…" />
+                                    <Button x:Name="EventFolderButton" Content="Folder…" />
+                                </StackPanel>
+                                <TextBlock x:Name="EventPathNote" Classes="note" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel x:Name="EventFolderPanel" Spacing="4">
+                                <TextBlock Classes="label" Text="Skip if the newest file is older than (minutes, 0 = any age)" TextWrapping="Wrap" />
+                                <NumericUpDown x:Name="EventMaxAgeBox" Minimum="0" Maximum="10080" Increment="5" FormatString="0" Width="130" HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <StackPanel x:Name="EventStreamPanel" Spacing="4">
+                                <TextBlock Classes="label" Text="Play the stream for (minutes, 0 = until Stop or Next)" TextWrapping="Wrap" />
+                                <NumericUpDown x:Name="EventStreamMinutesBox" Minimum="0" Maximum="1440" Increment="5" FormatString="0" Width="130" HorizontalAlignment="Left" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Start" />
+                                <RadioButton x:Name="EventSoftBox" GroupName="EventStart" Content="Soft: after the item on air ends" />
+                                <WrapPanel x:Name="EventDelayPanel" ItemSpacing="6" LineSpacing="4" Margin="28,0,0,6">
+                                    <TextBlock Text="at most" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="EventDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
+                                    <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
+                                </WrapPanel>
+                                <RadioButton x:Name="EventHardBox" GroupName="EventStart" Content="Hard: on the second" />
+                                <RadioButton x:Name="EventEndBox" GroupName="EventStart" Content="Ends at its time (songs adjusted)" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="In the playlist, the host may" />
+                                <ComboBox x:Name="EventLockBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Remove and move its items" />
+                                    <ComboBoxItem Content="Move its items, but not remove them" />
+                                    <ComboBoxItem Content="Neither: they are locked" />
+                                </ComboBox>
+                            </StackPanel>
+                            <TextBlock Classes="note"
+                                       Text="Hard fades out what is on air; soft waits for it (at most so late); one that ends at its time goes into the playlist 15 minutes before, where it fits, and a folder's newest file is chosen then. Upcoming events show in the playlist at their place. One due while the app wasn't running starts if at most 2 minutes late." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ───────── Ad breaks ───────── -->
+            <TabItem Header="Ad breaks">
+                <Grid ColumnDefinitions="220,14,*,14,330" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddBreakButton" Content="New" />
+                            <Button x:Name="DeleteBreakButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="BreakList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8">
+                            <TextBlock Text="Rows every" VerticalAlignment="Center" />
+                            <ComboBox x:Name="BreakStepBox" Width="100" />
+                            <TextBlock Text="from minute" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="BreakOffsetBox" Minimum="0" Maximum="59" Increment="1" FormatString="0" Width="120" />
+                            <TextBox x:Name="BreakAddTimeBox" Width="96" PlaceholderText="hh:mm:ss or *:mm:ss" />
+                            <Button x:Name="BreakAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 12:59:55; *:59:55 puts the selected one at that minute and second of every hour, every day" />
+                            <Button x:Name="BreakClearButton" Content="Clear" ToolTip.Tip="Take this break out of every day and time" />
+                        </WrapPanel>
+                        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
+                                   Text="Click a cell to put the selected break there (or take it out); drag to do many cells; click a time for every day. Other breaks show faintly." />
+                        <Border Classes="calendar">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Top" x:Name="BreakHeader" Height="28" Background="#1A1D24" />
+                                <ScrollViewer x:Name="BreakScroll">
+                                    <c:WeekGrid x:Name="BreakGrid" />
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="4">
+                        <StackPanel x:Name="BreakPanel" Spacing="12" Margin="0,0,14,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="BreakNameBox" PlaceholderText="Ad break" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="BreakEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Start" />
+                                <RadioButton x:Name="BreakSoftBox" GroupName="BreakStart" Content="Soft: after the item on air ends" />
+                                <WrapPanel x:Name="BreakDelayPanel" ItemSpacing="6" LineSpacing="4" Margin="28,0,0,6">
+                                    <TextBlock Text="at most" VerticalAlignment="Center" />
+                                    <NumericUpDown x:Name="BreakDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
+                                    <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
+                                </WrapPanel>
+                                <RadioButton x:Name="BreakHardBox" GroupName="BreakStart" Content="Hard: on the second" />
+                                <RadioButton x:Name="BreakEndBox" GroupName="BreakStart" Content="Ends at its time (songs adjusted)" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="In the playlist, the host may" />
+                                <ComboBox x:Name="BreakLockBox" HorizontalAlignment="Stretch">
+                                    <ComboBoxItem Content="Remove and move its items" />
+                                    <ComboBoxItem Content="Move its items, but not remove them" />
+                                    <ComboBoxItem Content="Neither: they are locked" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Running order" />
+                                <ListBox x:Name="PartList" Height="190" Background="#13161C">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="app:ScheduleRow">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button x:Name="AddJingleButton" Content="Jingle…" ToolTip.Tip="Add a jingle to the running order" />
+                                    <Button x:Name="PartUpButton" Content="▲" ToolTip.Tip="Earlier in the break" />
+                                    <Button x:Name="PartDownButton" Content="▼" ToolTip.Tip="Later in the break" />
+                                    <Button x:Name="RemovePartButton" Content="Remove" />
+                                </WrapPanel>
+                                <Grid ColumnDefinitions="*,6,Auto">
+                                    <AutoCompleteBox x:Name="SectionNameBox" PlaceholderText="Section, e.g. Before the hour" FilterMode="StartsWith" MinimumPrefixLength="0" />
+                                    <Button Grid.Column="2" x:Name="AddSectionButton" Content="Add section" />
+                                </Grid>
+                                <CheckBox x:Name="PartOnlyBox" Content="Play this jingle only when the section after it has adverts" />
+                            </StackPanel>
+                            <TextBlock x:Name="BreakBookedText" FontWeight="SemiBold" />
+                            <TextBlock Classes="note"
+                                       Text="A break plays its running order: jingles, and in each section the adverts booked into it that day (Clients tab). A break with no adverts is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before: songs that wouldn't fit move after it and a gap is filled with a fill song." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <!-- ───────── Clients ───────── -->
+            <TabItem Header="Clients">
+                <Grid ColumnDefinitions="220,14,*,14,330" Margin="0,12,0,0">
+                    <Grid RowDefinitions="Auto,*,Auto,Auto,*,Auto">
+                        <TextBlock Classes="label" Text="Clients" />
+                        <ListBox Grid.Row="1" x:Name="ClientList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddClientButton" Content="New" />
+                            <Button x:Name="DeleteClientButton" Content="Delete" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="3" Classes="label" Text="Campaigns" Margin="0,14,0,4" />
+                        <ListBox Grid.Row="4" x:Name="CampaignList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddCampaignButton" Content="New" />
+                            <Button x:Name="DeleteCampaignButton" Content="Delete" />
+                        </StackPanel>
+                    </Grid>
+
+                    <DockPanel Grid.Column="2">
+                        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8">
+                            <Button x:Name="WeekBackButton" Content="◀" ToolTip.Tip="The week before" />
+                            <TextBlock x:Name="WeekText" FontWeight="SemiBold" VerticalAlignment="Center" MinWidth="210" TextAlignment="Center" />
+                            <Button x:Name="WeekNextButton" Content="▶" ToolTip.Tip="The week after" />
+                            <Button x:Name="ThisWeekButton" Content="This week" />
+                            <TextBlock Text="A click places it" VerticalAlignment="Center" Margin="10,0,0,0" />
+                            <RadioButton x:Name="EveryWeekBox" GroupName="PlaceMode" Content="every week" IsChecked="True" />
+                            <RadioButton x:Name="ThatDayBox" GroupName="PlaceMode" Content="on that date only" />
+                        </WrapPanel>
+                        <TextBlock DockPanel.Dock="Top" x:Name="SectionShownText" FontWeight="SemiBold" Foreground="{StaticResource NextUp}" Margin="0,0,0,8" />
+                        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
+                                   Text="Each cell is an ad break: how many adverts its section has and how long they run. Click to put the selected campaign in it (or take it out); drag to do many. Only breaks that have the campaign's section can be clicked. Every week: within the campaign's first and last day." />
+                        <Border Classes="calendar">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Top" x:Name="SpotHeader" Height="28" Background="#1A1D24" />
+                                <Panel>
+                                    <ScrollViewer x:Name="SpotScroll">
+                                        <c:WeekGrid x:Name="SpotGrid" />
+                                    </ScrollViewer>
+                                    <TextBlock x:Name="SpotNoBreaks" Classes="note" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Text="No ad breaks this week. Put breaks in the calendar on the Ad breaks tab first." />
+                                </Panel>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="4">
+                        <StackPanel Spacing="12" Margin="0,0,14,0">
+                            <Grid x:Name="ClientPanel" ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Client (on the proof of broadcast)" />
+                                    <TextBox x:Name="ClientNameBox" MaxLength="100" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="ClientEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <Separator />
+                            <StackPanel x:Name="CampaignPanel" Spacing="12">
+                                <Grid ColumnDefinitions="*,12,Auto">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Campaign" />
+                                        <TextBox x:Name="CampaignNameBox" MaxLength="100" PlaceholderText="e.g. Summer sale" />
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="2" x:Name="CampaignEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                                </Grid>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Classes="label" Text="Adverts (audio files; several take turns)" />
+                                    <ListBox x:Name="CampaignFiles" Height="96" Background="#13161C" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Button x:Name="AddFileButton" Content="Add…" />
+                                        <Button x:Name="RemoveFileButton" Content="Remove" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="Section" />
+                                        <ComboBox x:Name="CampaignSectionBox" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="label" Text="Position" />
+                                        <ComboBox x:Name="CampaignPositionBox" HorizontalAlignment="Stretch" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Classes="note" Text="Automatic: after positions 1–5 and before 6–10, never the same client twice in a row where it can be helped. 1 is the first in the section, 10 the last." />
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <StackPanel>
+                                        <TextBlock Classes="label" Text="First day" />
+                                        <CalendarDatePicker x:Name="SpotFromBox" HorizontalAlignment="Stretch" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd" PlaceholderText="No limit" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="label" Text="Last day" />
+                                        <CalendarDatePicker x:Name="SpotToBox" HorizontalAlignment="Stretch" SelectedDateFormat="Custom" CustomDateFormatString="yyyy-MM-dd" PlaceholderText="No limit" />
+                                    </StackPanel>
+                                </Grid>
+                                <Button x:Name="SpotClearDatesButton" Content="No date limit" HorizontalAlignment="Left" />
+                                <TextBlock x:Name="SpotPlacedText" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock x:Name="SpotOrphanText" Foreground="{StaticResource OnAir}" FontSize="12" TextWrapping="Wrap" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button x:Name="SpotEveryBreakButton" Content="In every break" ToolTip.Tip="Every week, in every break that has its section" />
+                                    <Button x:Name="SpotOrphanButton" Content="Remove the places with no break" />
+                                    <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <!-- ───────── Playlists (smart playlists: hour templates) ───────── -->
+            <TabItem Header="Playlists">
+                <Grid ColumnDefinitions="220,14,*,14,380" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddTemplateButton" Content="New" />
+                            <Button x:Name="DeleteTemplateButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="TemplateList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8" IsVisible="False">
+                            <ComboBox x:Name="TemplateStepBox" Width="100" />
+                            <NumericUpDown x:Name="TemplateOffsetBox" Minimum="0" Maximum="59" />
+                            <TextBox x:Name="TemplateAddTimeBox" />
+                            <Button x:Name="TemplateAddTimeButton" />
+                        </WrapPanel>
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                            <TextBlock Classes="note" VerticalAlignment="Center"
+                                       Text="Each row is an hour. Click the hours the selected template plays (drag to do many; click an hour for every day)." />
+                            <Button Grid.Column="1" x:Name="TemplateClearButton" Content="Clear" ToolTip.Tip="Take this template out of every day and hour" />
+                        </Grid>
+                        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
+                                   Text="The daily playlists are made from these templates ahead of time (today and the next days): each hour, its template's lines in turn, until the hour is full with its ad breaks and events. Daily playlists shows them song by song, and changes them; the playout plays them. A change here makes the hours not yet changed by hand again within minutes. Hours without a template: fill music." />
+                        <Border Classes="calendar">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Top" x:Name="TemplateHeader" Height="28" Background="#1A1D24" />
+                                <ScrollViewer x:Name="TemplateScroll">
+                                    <c:WeekGrid x:Name="TemplateGrid" />
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="4">
+                        <StackPanel x:Name="TemplatePanel" Spacing="12" Margin="0,0,14,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="TemplateNameBox" PlaceholderText="e.g. Weekday mornings" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="TemplateEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Lines, played in order (then from the top again until the hour is full)" />
+                                <ListBox x:Name="LineList" Height="260" Background="#13161C">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="app:ScheduleRow">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <WrapPanel ItemSpacing="6" LineSpacing="6">
+                                    <Button x:Name="LineUpButton" Content="▲" ToolTip.Tip="Earlier in the hour" />
+                                    <Button x:Name="LineDownButton" Content="▼" ToolTip.Tip="Later in the hour" />
+                                    <Button x:Name="LineCopyButton" Content="Copy" ToolTip.Tip="The same line again, after it" />
+                                    <Button x:Name="RemoveLineButton" Content="Remove" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <!-- The selected line's songs: a tempo and energy range -->
+                            <StackPanel x:Name="LineRulesPanel" Spacing="6">
+                                <TextBlock Classes="label" Text="The selected line's songs" />
+                                <Grid ColumnDefinitions="Auto,8,*,6,Auto,6,*" RowDefinitions="Auto,6,Auto">
+                                    <TextBlock Text="Tempo" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="2" x:Name="TempoMinBox" HorizontalAlignment="Stretch" />
+                                    <TextBlock Grid.Column="4" Text="to" Classes="muted" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Column="6" x:Name="TempoMaxBox" HorizontalAlignment="Stretch" />
+                                    <TextBlock Grid.Row="2" Text="Energy" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="2" Grid.Column="2" x:Name="EnergyMinBox" HorizontalAlignment="Stretch" />
+                                    <TextBlock Grid.Row="2" Grid.Column="4" Text="to" Classes="muted" VerticalAlignment="Center" />
+                                    <ComboBox Grid.Row="2" Grid.Column="6" x:Name="EnergyMaxBox" HorizontalAlignment="Stretch" />
+                                </Grid>
+                                <TextBlock Classes="note"
+                                           Text="Tempo 1 slow … 5 fast, energy 1 calm … 5 lively. Set them on the songs in the library (right-click → Tempo, Energy); songs without them only play on lines that ask for any." />
+                            </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Add a line" />
+                                <Grid ColumnDefinitions="*,6,Auto">
+                                    <ComboBox x:Name="LineCategoryBox" HorizontalAlignment="Stretch" PlaceholderText="Library category" />
+                                    <Button Grid.Column="2" x:Name="AddCategoryLineButton" Content="Add" />
+                                </Grid>
+                                <Button x:Name="AddFolderLineButton" Content="A folder…" ToolTip.Tip="A file from a folder (and its subfolders)" />
+                                <TextBlock x:Name="LibraryNote" Classes="note" />
+                            </StackPanel>
+                            <!-- The template's music rules -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Music rules" />
+                                <Grid ColumnDefinitions="*,6,100,6,Auto" RowDefinitions="Auto,6,Auto,6,Auto">
+                                    <TextBlock Text="Same artist not again within" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <NumericUpDown Grid.Column="2" x:Name="ArtistHoursBox" Minimum="0" Maximum="72" Increment="0.5" FormatString="0.#" />
+                                    <TextBlock Grid.Column="4" Text="hours" Classes="muted" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Text="Same album not again within" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <NumericUpDown Grid.Row="2" Grid.Column="2" x:Name="AlbumHoursBox" Minimum="0" Maximum="168" Increment="1" FormatString="0.#" />
+                                    <TextBlock Grid.Row="2" Grid.Column="4" Text="hours" Classes="muted" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="4" Text="Slow songs in a row, at most" VerticalAlignment="Center" TextWrapping="Wrap" />
+                                    <NumericUpDown Grid.Row="4" Grid.Column="2" x:Name="MaxSlowBox" Minimum="0" Maximum="10" Increment="1" FormatString="0" />
+                                </Grid>
+                                <TextBlock Classes="note"
+                                           Text="0: the artist rest time of fill music (Settings → Safety); no album rule; any number of slow songs (tempo 1–2). The same song never comes back within the song rest time. A rule that leaves no song is let go (album first, then slow songs, then artist)." />
+                            </StackPanel>
+                            <TextBlock Classes="note"
+                                       Text="A library category's jingles and adverts are tagged as such; a folder's files go by the folder (Jingles, Ads…)." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <!-- ───────── Daily playlists: made from the templates, as they will play ───────── -->
+            <TabItem Header="Daily playlists" x:Name="DailyTab" />
+            <!-- ───────── Home: the station at a glance ───────── -->
+            <TabItem Header="Home" x:Name="HomeTab">
+                <ScrollViewer>
+                    <StackPanel Margin="0,4,0,0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,14,18">
+                            <Border Width="84" Height="84" CornerRadius="12" Background="#1A1D24" ClipToBounds="True" Margin="0,0,18,0">
+                                <Image x:Name="HomeLogo" Stretch="Uniform" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock x:Name="HomeStation" FontSize="26" FontWeight="Bold" />
+                                <TextBlock x:Name="HomeGreeting" FontSize="14" Foreground="#9AA3B2" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                <TextBlock x:Name="HomeClock" FontSize="54" FontWeight="SemiBold" FontFeatures="+tnum" HorizontalAlignment="Right" />
+                                <TextBlock x:Name="HomeDate" FontSize="14" Foreground="#9AA3B2" HorizontalAlignment="Right" />
+                            </StackPanel>
+                        </Grid>
+                        <UniformGrid Columns="3">
+                            <Border Classes="homecard">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="cardtitle" Text="ON AIR" />
+                                    <TextBlock x:Name="HomeNowTitle" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="HomeNowArtist" Foreground="#9AA3B2" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock x:Name="HomeNowHour" FontSize="12" Foreground="#9AA3B2" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="homecard">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="cardtitle" Text="TODAY" />
+                                    <TextBlock x:Name="HomeToday" FontSize="13" TextWrapping="Wrap" LineHeight="21" />
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="homecard">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="cardtitle" Text="NEEDS ATTENTION" />
+                                    <TextBlock x:Name="HomeWarnings" FontSize="13" TextWrapping="Wrap" LineHeight="21" />
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="homecard">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="cardtitle" Text="LIBRARY" />
+                                    <TextBlock x:Name="HomeLibrary" FontSize="13" TextWrapping="Wrap" LineHeight="21" />
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="homecard">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="cardtitle" Text="DATABASE" />
+                                    <TextBlock x:Name="HomeDatabase" FontSize="13" TextWrapping="Wrap" LineHeight="21" />
+                                </StackPanel>
+                            </Border>
+                            <Border Classes="homecard">
+                                <StackPanel Spacing="4">
+                                    <TextBlock Classes="cardtitle" Text="THIS COMPUTER" />
+                                    <TextBlock x:Name="HomeComputer" FontSize="13" TextWrapping="Wrap" LineHeight="21" />
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <!-- ───────── Pages made when first opened (they read the database) ───────── -->
+            <TabItem Header="Categories" x:Name="CategoriesTab" />
+            <TabItem Header="Import music" x:Name="ImportTab" />
+            <TabItem Header="Station settings" x:Name="StationSettingsTab" />
+            <TabItem Header="Cartwalls" x:Name="CartwallsTab" />
+            <!-- ───────── The library: every song ───────── -->
+            <TabItem Header="Songs" x:Name="SongsTab">
+                <app:TrackLibraryView x:Name="SongsView" />
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+    </DockPanel>
+</Window>

@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    BASS native libraries (downloaded by scripts/fetch-bass.sh or scripts/fetch-bass.ps1).
+    With -r <rid> (publish) the target platform decides; otherwise the OS you build on.
+  -->
+  <PropertyGroup>
+    <BassPlatform Condition="$(RuntimeIdentifier.StartsWith('win'))">win-x64</BassPlatform>
+    <BassPlatform Condition="$(RuntimeIdentifier.StartsWith('osx'))">osx</BassPlatform>
+    <BassPlatform Condition="$(RuntimeIdentifier.StartsWith('linux'))">linux-x64</BassPlatform>
+    <BassPlatform Condition="'$(BassPlatform)' == '' And $([MSBuild]::IsOSPlatform('Windows'))">win-x64</BassPlatform>
+    <BassPlatform Condition="'$(BassPlatform)' == '' And $([MSBuild]::IsOSPlatform('OSX'))">osx</BassPlatform>
+    <BassPlatform Condition="'$(BassPlatform)' == ''">linux-x64</BassPlatform>
+    <BassDir>$(MSBuildThisFileDirectory)..\native\$(BassPlatform)\</BassDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(BassDir)*.so;$(BassDir)*.dylib;$(BassDir)*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="WarnMissingBass" BeforeTargets="Build" Condition="!Exists('$(BassDir)')">
+    <Warning Text="BASS libraries for $(BassPlatform) not found in native/$(BassPlatform). Run scripts/fetch-bass.sh (macOS/Linux) or scripts/fetch-bass.ps1 (Windows) first." />
+  </Target>
+</Project>
