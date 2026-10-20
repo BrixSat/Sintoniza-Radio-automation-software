@@ -238,14 +238,20 @@ string[] deck = ["OnAirBadge", "NowTitle", "WaveMain", "Elapsed", "PlayButton", 
     "RemoveButton", "ClearButton", "CartwallTab", "LibraryTab", "FoldersTab", "Cartwall", "CartwallPicker", "CartwallMenuButton", "SettingsButton", "ReportsButton", "LogoutButton", "LastLog"];
 Shot(main, "main", deck);
 
-// The web remote's page with the demo station's status (make-manual.sh photographs it at a phone's size)
+// The web remote's page with the demo station's status, levels, waveform and logo (make-manual.sh photographs it at a
+// computer's and at a phone's size)
 {
-    var statusTask = main.Status();
-    while (!statusTask.IsCompleted) Pump(2);
-    var json = System.Text.Json.JsonSerializer.Serialize(statusTask.Result, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+    T Ask<T>(Task<T> task) { while (!task.IsCompleted) Pump(2); return task.Result; }
+    var jsonOptions = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+    string Json(object? o) => System.Text.Json.JsonSerializer.Serialize(o, jsonOptions);
+    WaitFor(() => Ask(main.Waveform()) != null, 20);
+    string status = Json(Ask(main.Status())), levels = Json(Ask(main.Levels())), waveform = Json(Ask(main.Waveform()));
+    var logoPng = Ask(main.Logo());
     var pageBytes = (byte[])typeof(RemoteServer).GetMethod("Page", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, null)!;
     string remoteHtml = System.Text.Encoding.UTF8.GetString(pageBytes).Replace("<script>",
-        "<script>window.fetch=async(u)=>({status:200,json:async()=>(u.includes('status')?" + json + ":{ok:true})});</script><script>", StringComparison.Ordinal);
+        "<script>window.fetch=async(u)=>({status:200,json:async()=>(u.includes('status')?" + status + ":u.includes('levels')?" + levels
+        + ":u.includes('waveform')?" + waveform + ":{ok:true})});</script><script>", StringComparison.Ordinal);
+    if (logoPng != null) remoteHtml = remoteHtml.Replace("\"/api/logo\"", "\"data:image/png;base64," + Convert.ToBase64String(logoPng) + "\"", StringComparison.Ordinal);
     File.WriteAllText(Path.Combine(outDir, "remote-mock.html"), remoteHtml);
 }
 main.FindControl<Avalonia.Controls.Primitives.ToggleButton>("LibraryTab")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

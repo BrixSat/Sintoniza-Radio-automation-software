@@ -126,7 +126,10 @@ public sealed class PlaylistGenerator
     {
         var list = new List<PlannedEntry>();
         foreach (var entry in _data.Events.Cast<ScheduleEntry>().Concat(_data.Breaks).Where(e => e.Enabled))
-            foreach (var at in entry.TimesOn(hour.Date).Where(t => t >= hour && t < hour.AddHours(1)))
+            // One that ends at its time is in the hour it ends in: a break that ends at 18:00 is the last of 17:00.
+            foreach (var at in entry.TimesOn(hour.Date).Concat(entry.TimesOn(hour.Date.AddDays(1))).Where(t => entry.Start == EventStart.EndAt
+                         ? t > hour && t <= hour.AddHours(1)
+                         : t >= hour && t < hour.AddHours(1)))
             {
                 var parts = ScheduleItems.For(_data, entry, at, null).Select(i => i.StreamName != null
                     ? new PlannedPart(i.Path, TrackKind.Stream, i.StreamName, null, i.StreamSeconds)

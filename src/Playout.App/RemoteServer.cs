@@ -28,6 +28,12 @@ public interface IRemoteHandler
     Task<object> Search(string text);
     /// <summary>A Sintoniza user who may use the web remote (null: wrong name or password, or not allowed).</summary>
     Task<string?> LogIn(string user, string password);
+    /// <summary>The output levels and where the item on air is, asked for several times a second (the meters).</summary>
+    Task<object> Levels();
+    /// <summary>The waveform of the item on air (null: none, or not read yet).</summary>
+    Task<object?> Waveform();
+    /// <summary>The station's logo as a PNG (null: none).</summary>
+    Task<byte[]?> Logo();
 }
 
 /// <summary>
@@ -217,6 +223,12 @@ public sealed class RemoteServer : IDisposable
         {
             case ("GET", "/api/status"):
                 return (200, "application/json", JsonBody(await _handler.Status()), null);
+            case ("GET", "/api/levels"):
+                return (200, "application/json", JsonBody(await _handler.Levels()), null);
+            case ("GET", "/api/waveform"):
+                return (200, "application/json", JsonBody(await _handler.Waveform() ?? new { }), null);
+            case ("GET", "/api/logo"):
+                return await _handler.Logo() is { } png ? (200, "image/png", png, null) : (404, "text/plain", "No logo"u8.ToArray(), null);
             case ("GET", "/api/search"):
                 string text = Uri.UnescapeDataString(r.Query.Split('&').FirstOrDefault(p => p.StartsWith("q="))?[2..].Replace('+', ' ') ?? "");
                 return (200, "application/json", JsonBody(await _handler.Search(text)), null);

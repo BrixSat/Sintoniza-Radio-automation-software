@@ -112,9 +112,9 @@ engine for decoding, mixing and streaming.
   (on air, voice tracks and the web remote); Pro's Home reminds you to change those passwords. The on-air program
   opens locked behind its log-in — what is on air carries on, and in AUTO it starts playing by itself — and
   **Log out** locks it again; Pro has File → Log out.
-- **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network — what is on air,
-  the time left and the next ad break, ▶ ❚❚ ⏭ ■ and AUTO, the cartwall, play now / remove on what comes next, and a
-  library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong
+- **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network, laid out as the
+  on-air screen — the deck with the waveform and countdowns, ▶ ❚❚ ⏭ ■ and AUTO, the clock and level meters, the
+  playlist (play now / remove), the cartwalls, and a library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong
   passwords lock it for a minute. Plain HTTP: for the station's own network or its VPN only.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.
