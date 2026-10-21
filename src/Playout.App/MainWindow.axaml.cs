@@ -1931,6 +1931,9 @@ public partial class MainWindow : Window
                 : folder == null ? null : folder.Next;
         }
         _engine.ConfigureFill(fill);
+        // Before a break that ends at its time, a gap is filled from the station's music even with fill music off.
+        _engine.GapFill = new LibraryFill(_library, [], TimeSpan.FromHours(Math.Max(1, _settings.FillSongHours)),
+            TimeSpan.FromMinutes(Math.Max(10, _settings.FillArtistMinutes)), null).Next;
     }
 
     // ───────────────────────── RDS ─────────────────────────

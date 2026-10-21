@@ -1613,5 +1613,8 @@
  "Each to the break nearest its time on the same day (e.g. 10:50 → 11:00)": "Cada um para o bloco mais próximo da sua hora no mesmo dia (p. ex. 10:50 → 11:00)",
  "€ {0} · {1}: booked at {2} with no ad break — it won't play there (Clients: Move them to the nearest break)": "€ {0} · {1}: marcado em {2} sem bloco publicitário — não toca aí (Clientes: Mover para o bloco mais próximo)",
  "{0} time": "{0} hora",
- "€ {0}: no adverts booked at {1} — it is skipped then": "€ {0}: sem anúncios marcados às {1} — é saltado nessas horas"
+ "€ {0}: no adverts booked at {1} — it is skipped then": "€ {0}: sem anúncios marcados às {1} — é saltado nessas horas",
+ "{0}: ends at {1:HH:mm:ss}, as the time signal for {2:HH:mm} starts": "{0}: acaba às {1:HH:mm:ss}, quando começa o sinal horário das {2:HH:mm}",
+ "Backtiming {0}: added {1} for {2:0} s; it fades out when the break starts": "Acerto ao horário {0}: juntado {1} para {2:0} s; desvanece quando o bloco começa",
+ "Daily playlist: {0} left out, after the break that ends at {1:HH}:00": "Playlist diária: {0} retirado, depois do bloco que acaba às {1:HH}:00"
 }
