@@ -269,6 +269,7 @@ public partial class ErcView : UserControl
             _alias = station?.StationName ?? "";
             AliasBox.Text = station?.ErcAlias is { Length: > 0 } a ? a : _alias;
             _countries = station?.ErcCountries is { Count: > 0 } list ? list : Erc.DefaultCountries();
+            PlanBox.IsChecked = station?.ErcPlan != false;
         }
         catch (Exception ex)
         {
@@ -318,6 +319,7 @@ public partial class ErcView : UserControl
             return;
         }
         string alias = AliasBox.Text?.Trim() ?? "";
+        bool plan = PlanBox.IsChecked == true;
         try
         {
             await Task.Run(() =>
@@ -327,6 +329,7 @@ public partial class ErcView : UserControl
                 station ??= StationSettings.From(AppSettings.Load());
                 station.ErcAlias = alias;
                 station.ErcCountries = countries;
+                station.ErcPlan = plan;
                 store.Save(station, version, _who);
             });
             _countries = countries;

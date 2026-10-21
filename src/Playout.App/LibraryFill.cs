@@ -71,12 +71,16 @@ sealed class LibraryFill
 
             // A song whose file isn't there (moved or deleted since the last scan) is set aside, and another picked:
             // it would only be skipped on air. It comes back with the next reload if the file does.
+            // Songs whose dates, days or hours don't allow them now are left out (unless that leaves nothing: never silence).
+            var local = DateTime.Now;
             for (int tries = 0; tries < 50 && _tracks.Length > 0; tries++)
             {
+                var pool = _tracks.Where(t => t.Track.Rules?.AllowsAt(local) != false).ToArray();
+                if (pool.Length == 0) pool = _tracks;
                 // Both rules if possible; if the categories are too small for that, the song rule; else the longest rested.
-                var choices = _tracks.Where(t => SongRested(t) && ArtistRested(t)).ToList();
-                if (choices.Count == 0) choices = _tracks.Where(SongRested).ToList();
-                if (choices.Count == 0) choices = _tracks.ToList();
+                var choices = pool.Where(t => SongRested(t) && ArtistRested(t)).ToList();
+                if (choices.Count == 0) choices = pool.Where(SongRested).ToList();
+                if (choices.Count == 0) choices = pool.ToList();
 
                 var oldest = choices.OrderBy(t => Last(t) ?? DateTime.MinValue).ToList();
                 int take = Math.Max(1, (int)Math.Ceiling(oldest.Count * OldestShare));

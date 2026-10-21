@@ -34,7 +34,7 @@
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="app:LibraryRow">
                     <Grid ColumnDefinitions="3*,2*,44,96,62" ToolTip.Tip="{Binding Tip}">
-                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ShownTitle}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Classes="muted" Text="{Binding Artist}" FontSize="13" TextTrimming="CharacterEllipsis"
                                    Margin="8,0,0,0" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="2" Classes="muted digits" Text="{Binding Year}" FontSize="12" HorizontalAlignment="Right"

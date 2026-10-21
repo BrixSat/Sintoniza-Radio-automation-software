@@ -73,6 +73,9 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
 
     public bool IsStream => Kind == TrackKind.Stream;
 
+    /// <summary>A take: put together from its files when it starts (see <see cref="Takes"/>).</summary>
+    public bool IsTake => Takes.IsTake(Path);
+
     /// <summary>A stream with no set play time: it stays on air until Stop or Next.</summary>
     public bool IsOpenEnded => IsStream && Duration <= 0;
 

@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **13**. The scripts that create the tables are
+Schema version **14**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -37,7 +37,8 @@ settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) a
 [`sqlite-12.sql`](../src/Playout.Library/Schema/sqlite-12.sql) and
 [`mysql-12.sql`](../src/Playout.Library/Schema/mysql-12.sql) (the on-air program's log-in: every user so far gets
 `onair`), then [`sqlite-13.sql`](../src/Playout.Library/Schema/sqlite-13.sql) and
-[`mysql-13.sql`](../src/Playout.Library/Schema/mysql-13.sql) (what the ERC needs about each song). The app creates the tables itself the
+[`mysql-13.sql`](../src/Playout.Library/Schema/mysql-13.sql) (what the ERC needs about each song), then [`sqlite-14.sql`](../src/Playout.Library/Schema/sqlite-14.sql) and
+[`mysql-14.sql`](../src/Playout.Library/Schema/mysql-14.sql) (when a song may be picked automatically). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -113,6 +114,10 @@ One row per audio file.
 | `erc_portuguese` | 0/1, null | ERC: Portuguese music (Lei da Rádio art. 41.º); null: as its categories say |
 | `erc_nationality` | text, null | ERC: the performer's country, as the ERC's code (`045` = Portugal); null: as its categories say |
 | `erc_release` | text, null | ERC: first edition, `yyyy-mm-dd`, `yyyy-mm` or `yyyy`; null: the `year` |
+| `play_from`, `play_until` | text, null | `yyyy-mm-dd`: picked automatically only from / until that day (null: no limit) |
+| `play_days` | text, null | 7 characters, Monday to Sunday, `1` = may be picked (null: every day) |
+| `play_hours` | text, null | 24 characters, 00h to 23h, `1` = may be picked (null: every hour) |
+| `max_day`, `max_week` | integer, null | picked automatically at most this many times a day / a week (Monday to Sunday) |
 | `cues_updated_at` | time, null | when the cue points were last set or cleared, by the **database server's** clock; null = never |
 
 The app reads the cue points of files whose `cues_updated_at` changed every 30 seconds. A program that changes cue
@@ -175,7 +180,8 @@ advertisers) are made from. Each studio also keeps its own CSV files and puts in
 `station_settings` (one row per station): `settings` is a JSON object with what every studio shares — station name,
 logo (base64), crossfades, loudness, silence detection, fill music, time signal, RDS texts, website now playing,
 alerts, streaming server, cartwalls, the library's other folders, and for the ERC its `ErcAlias` (the programme
-service's name in the ERC's file) and `ErcCountries` (`Name`, `Code` — the ERC's code — and `Eu`) — saved by Sintoniza Pro; `version` goes up
+service's name in the ERC's file), `ErcCountries` (`Name`, `Code` — the ERC's code — and `Eu`) and `ErcPlan` (the daily
+playlists are made to meet the quotas), and the `Takes` (`Folder`, `Latitude`, `Longitude`) — saved by Sintoniza Pro; `version` goes up
 by one on every save and the playouts read it again; `updated_at` (UTC) and `updated_by`. What belongs to one
 computer (sound cards, microphone, the database login, keys) stays in that computer's settings file.
 
@@ -210,7 +216,7 @@ changes. Ids are text (`CHAR(36)`, a GUID). Days: `weekday` 0 = Sunday … 6 = S
 | `schedule_slots` | `entry_id`, `weekday`, `time`: when each entry runs, every week (for an `EndAt` break, when it ends) |
 | `schedule_dates` | `entry_id`, `at` (local `yyyy-MM-ddTHH:mm:ss`): when an entry runs once, besides its weekly times (e.g. a stream put in a day's playlist) |
 | `break_parts` | a break's running order: `position`, `kind` (`Jingle`, `Section`), `path` of a jingle, `section` name, `only_with_adverts` (a section opener) |
-| `playlist_lines` | an hour template's lines, in `position` order: `source` `Category` (`category_id`, `category_name`, `kind`; `tempo_min`, `tempo_max`, `energy_min`, `energy_max`: the songs it may pick, null = any) or `Folder` (`folder`) |
+| `playlist_lines` | an hour template's lines, in `position` order: `source` `Category` (`category_id`, `category_name`, `kind`; `tempo_min`, `tempo_max`, `energy_min`, `energy_max`: the songs it may pick, null = any) or `Folder` (`folder`) or `Take` (`folder`: `take:time`, `take:temperature` or `take:time+temperature`, put together by the playout when it goes on air) |
 | `ad_clients` | advertisers: `name` (on the proof of broadcast), `enabled` |
 | `ad_campaigns` | a client's campaigns: `name`, `enabled`, `starts_on` and `ends_on` (null = no limit), `section` of the break they go in (`''` = its first), `place` (0 automatic, 1–5 from the start of the section, 6–10 at its end) |
 | `ad_campaign_files` | a campaign's adverts (they take turns): `position`, `path` |
@@ -227,7 +233,7 @@ here: they come from the schedule, as booked at air time. Hours are local times 
 | Table | |
 | --- | --- |
 | `plan_hours` | `station_id`, `hour_start`; `template_id` (the hour template it was made from, null: none), `signature` (that template's lines then: when it changes, an hour not `edited` is made again), `generated_at` (UTC), `generated_by` (the computer), `edited` (1: changed by hand, never made again by itself) |
-| `plan_items` | an hour's items in `position` order: `kind` (`music`, `jingle`, `commercial`, `programme`, `voice`), `path`, `title`, `artist`, `seconds` (how long it plays before the next starts), `track_id` (→ `tracks.id`, null if not in the library), `line` (the template line it came from, 0 = first; null: put in by hand), `category_id`, `optional` (1: at the end of the hour, played only if there is time); for a voice track (`kind` `voice`) `overlap` (seconds it starts before the item before it ends, over its ending) and `follows` (1: it belongs to the item before it — removed, moved and skipped with it) |
+| `plan_items` | an hour's items in `position` order: `kind` (`music`, `jingle`, `commercial`, `programme`, `voice`), `path` (a take: `take:…`, see `playlist_lines`), `title`, `artist`, `seconds` (how long it plays before the next starts), `track_id` (→ `tracks.id`, null if not in the library), `line` (the template line it came from, 0 = first; null: put in by hand), `category_id`, `optional` (1: at the end of the hour, played only if there is time); for a voice track (`kind` `voice`) `overlap` (seconds it starts before the item before it ends, over its ending) and `follows` (1: it belongs to the item before it — removed, moved and skipped with it) |
 
 Another program may write an hour (its row and items in one transaction) and set `edited` to 1 so it isn't made
 again. Hours from two days back are removed by the playout.

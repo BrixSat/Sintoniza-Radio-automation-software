@@ -369,7 +369,8 @@ public sealed class PlaylistTemplate : ScheduleEntry
     }
 }
 
-public enum LineSource { Category, Folder }
+/// <summary>Where a template line's item comes from: a library category, a folder, or a take (put together on air).</summary>
+public enum LineSource { Category, Folder, Take }
 
 /// <summary>A line of an hour template: one item, from a library category or a folder.</summary>
 public sealed class TemplateLine
@@ -380,6 +381,7 @@ public sealed class TemplateLine
     /// <summary>The category's name and kind (music, jingle, commercial, other) when it was chosen, to show and to tag what it plays.</summary>
     public string CategoryName { get; set; } = "";
     public string Kind { get; set; } = "music";
+    /// <summary>A folder line's folder; a take line's take (take:time, take:temperature, take:time+temperature).</summary>
     public string Folder { get; set; } = "";
     /// <summary>A library line's songs only with a tempo (1 slow … 5 fast) and energy (1 calm … 5 lively) in these ranges (null: any).</summary>
     public int? TempoMin { get; set; }
@@ -393,7 +395,7 @@ public sealed class TemplateLine
 
     /// <summary>What the playlist calls what it plays: a jingle category's files are jingles wherever they are kept; a folder's go by the folder.</summary>
     [JsonIgnore]
-    public TrackKind? TrackKind => Source == LineSource.Folder ? null : Kind switch
+    public TrackKind? TrackKind => Source == LineSource.Folder ? null : Source == LineSource.Take ? Playout.Engine.TrackKind.Jingle : Kind switch
     {
         "jingle" => Playout.Engine.TrackKind.Jingle,
         "commercial" => Playout.Engine.TrackKind.Commercial,

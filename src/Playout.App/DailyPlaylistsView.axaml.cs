@@ -660,6 +660,7 @@ public partial class DailyPlaylistsView : UserControl
         if (item.Line == PlanItem.KeptTime) return L.T("added on air to keep time");
         var line = _schedule.TemplateAt(hour)?.Lines.ElementAtOrDefault(item.Line.Value);
         string what = item.CategoryId is { } c && _categories.Any(x => x.Id == c) ? CategoryTree.PathOf(_categories, c)
+            : line?.Source == LineSource.Take ? ScheduleWindow.TakeName(line.Folder)
             : line?.Source == LineSource.Folder ? Path.GetFileName(line.Folder.TrimEnd('/', '\\')) : line?.CategoryName ?? "";
         return L.F("line {0}", item.Line.Value + 1) + (what.Length > 0 ? " · " + what : "");
     }

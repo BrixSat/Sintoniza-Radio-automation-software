@@ -68,11 +68,17 @@ public sealed class StationSettings
     /// <summary>Where voice tracks are recorded to: a folder every studio can reach. Empty: asked the first time.</summary>
     public string VoiceTrackFolder { get; set; } = "";
 
+    /// <summary>The takes (the time, the temperature): their folder and where the station is.</summary>
+    public TakesSettings Takes { get; set; } = new();
+
     /// <summary>The programme service's name at the ERC (ALIAS in its file); empty: the station's name.</summary>
     public string ErcAlias { get; set; } = "";
 
     /// <summary>The countries songs' performers are from, with the ERC's code for each and whether it is in the EU.</summary>
     public List<ErcCountry> ErcCountries { get; set; } = Erc.DefaultCountries();
+
+    /// <summary>The daily playlists are made to meet the ERC quotas (with the songs classified).</summary>
+    public bool ErcPlan { get; set; } = true;
 
     /// <summary>This computer's settings as the station's (the first studio after the upgrade publishes its own).</summary>
     public static StationSettings From(AppSettings s)
@@ -93,7 +99,7 @@ public sealed class StationSettings
             WebNowPlaying = s.WebNowPlaying, Alerts = s.Alerts,
             StreamHost = s.StreamHost, StreamPort = s.StreamPort, StreamMount = s.StreamMount, StreamPassword = s.StreamPassword,
             StreamFormat = s.StreamFormat, StreamBitrateIndex = s.StreamBitrateIndex, Shoutcast = s.Shoutcast,
-            Cartwalls = s.Cartwalls, LibraryFolders = s.Library.Folders.ToList(), VoiceTrackFolder = s.VoiceTrackFolder,
+            Cartwalls = s.Cartwalls, LibraryFolders = s.Library.Folders.ToList(), VoiceTrackFolder = s.VoiceTrackFolder, Takes = s.Takes,
         };
     }
 
@@ -115,6 +121,7 @@ public sealed class StationSettings
         s.Cartwalls = Cartwalls is { Count: > 0 } pages ? pages : s.Cartwalls;
         if (s.ActiveCartwall is { } active && s.Cartwalls.All(c => c.Name != active)) s.ActiveCartwall = s.Cartwalls.FirstOrDefault()?.Name;
         s.Library.Folders = LibraryFolders?.ToList() ?? new();
+        s.Takes = Takes ?? new();
         s.VoiceTrackFolder = VoiceTrackFolder ?? "";
     }
 

@@ -291,6 +291,13 @@ public partial class ScheduleWindow : Window
             if (SelectedTemplate == null || await PickFolder(L.T("Folder for this line")) is not { } folder) return;
             AddLine(new TemplateLine { Source = LineSource.Folder, Folder = folder });
         };
+        void AddTake(TakeKind kind)
+        {
+            if (SelectedTemplate != null) AddLine(new TemplateLine { Source = LineSource.Take, Folder = Takes.PathFor(kind), Kind = "jingle" });
+        }
+        TakeTimeItem.Click += (_, _) => AddTake(TakeKind.Time);
+        TakeTemperatureItem.Click += (_, _) => AddTake(TakeKind.Temperature);
+        TakeBothItem.Click += (_, _) => AddTake(TakeKind.TimeAndTemperature);
         LineList.SelectionChanged += (_, _) => ShowLineRules();
         foreach (var box in new[] { TempoMinBox, TempoMaxBox })
             box.ItemsSource = new[] { L.T("any") }.Concat(TempoNames).ToList();
@@ -369,9 +376,19 @@ public partial class ScheduleWindow : Window
         LineList.SelectedIndex = t == null || t.Lines.Count == 0 ? -1 : Math.Clamp(select, 0, t.Lines.Count - 1);
     }
 
-    ScheduleRow LineRow(TemplateLine l, int index) => new(l, () => l.Source == LineSource.Folder
+    ScheduleRow LineRow(TemplateLine l, int index) => new(l, () => l.Source == LineSource.Take
+        ? ($"{index + 1}.  🕒  {TakeName(l.Folder)}", L.T("a take, put together when it goes on air"), true)
+        : l.Source == LineSource.Folder
         ? ($"{index + 1}.  📁  {Path.GetFileName(l.Folder.TrimEnd('/', '\\'))}", L.F("a file from the folder {0}", l.Folder) + (Directory.Exists(l.Folder) ? "" : L.T(" · not found")), true)
         : ($"{index + 1}.  {KindIcon(l.Kind)}  {CategoryLabel(l)}", FromCategory(l.Kind) + RulesText(l), true));
+
+    /// <summary>What a take line says, for the lists.</summary>
+    internal static string TakeName(string take) => Takes.KindOf(take) switch
+    {
+        TakeKind.Time => L.T("Take: the time"),
+        TakeKind.Temperature => L.T("Take: the temperature"),
+        _ => L.T("Take: the time and temperature"),
+    };
 
     static string[] TempoNames => [L.T("1 · Slow"), "2", L.T("3 · Medium"), "4", L.T("5 · Fast")];
     static string[] EnergyNames => [L.T("1 · Calm"), "2", "3", "4", L.T("5 · Lively")];

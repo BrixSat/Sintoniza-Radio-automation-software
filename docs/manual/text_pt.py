@@ -216,6 +216,7 @@ CHAPTERS = [
         ["Estação", "Nome, logótipo, género, site, rádio FM ou web, símbolo da moeda"],
         ["Áudio", "Crossfades, nivelamento de volume"],
         ["Sinal horário", "Bips ou um ficheiro à hora certa; anúncios de hora (HRS05.mp3 às 05:00…)"],
+        ["Takes", "A pasta dos takes (a hora, a temperatura) e onde fica a estação"],
         ["Segurança", "Deteção de silêncio, música de enchimento"],
         ["Biblioteca", "Outras pastas de música (músicas sem categoria)"],
         ["Streaming", "Servidor Icecast / Shoutcast, formato e bitrate"],
@@ -321,6 +322,32 @@ CHAPTERS = [
         ("AliasBox", "O nome do serviço de programas na ERC (ALIAS)."),
         ("CountryPanel", "Os países e os seus códigos ERC (Portugal é 045; copie os outros do portal), e quais são da UE."),
     ]),
+    ("p", "<b>Planear para as quotas</b> (à direita, ligado por omissão): cada hora das playlists diárias é feita para cumprir as três quotas sozinha — "
+          "uma música portuguesa cerca de uma em cada três quando há pouca, e entre elas músicas em português por intérpretes da UE e recentes onde estas "
+          "faltam — das músicas classificadas da categoria de cada linha, conforme as regras de descanso permitem."),
+    ("h2", "Restrições das músicas"),
+    ("p", "<b>Músicas</b> → botão direito → <b>Restrições…</b>: quando uma música pode ser escolhida automaticamente. As playlists diárias cumprem-nas "
+          "sempre; a música de enchimento cumpre as datas, dias e horas. Posta à mão, a música toca na mesma. As músicas com restrições mostram ⏱ na lista."),
+    ("fig", "restrictions", "Restrições de uma música", [
+        ("FromBox", "<b>Só de</b>…"),
+        ("UntilBox", "…<b>até</b> (vazio: sem limite) — uma música de Natal em dezembro."),
+        ("DayGrid", "Nestes <b>dias</b>…"),
+        ("HourGrid", "…a estas <b>horas</b> (aceso = pode tocar)."),
+        ("DayHoursButton", "Escolhas rápidas: todas, 7:00–20:00, 20:00–7:00."),
+        ("MaxDayBox", "No máximo tantas vezes por <b>dia</b>…"),
+        ("MaxWeekBox", "…e por <b>semana</b>, de segunda a domingo (0: sem limite)."),
+        ("RemoveButton", "<b>Sem restrições</b>."),
+    ]),
+    ("h2", "Takes: a hora e a temperatura"),
+    ("p", "Pequenas inserções gravadas que o playout monta <b>quando vão para o ar</b>, por isso estão sempre certas. Ponha-as num modelo de hora: "
+          "<b>Juntar uma linha → Um take ▾</b> → a hora, a temperatura, ou as duas."),
+    ("fig", "station-takes", "Definições da estação → Takes", [
+        ("TakesFolderText", "A <b>pasta</b> com os takes: HRS00–HRS23 (a hora), MIN01–MIN59 (os minutos; ou HRS10_15 para uma hora inteira), TMP0–TMP45 e TMPM1… abaixo de zero."),
+        ("TakesFolderNote", "O que encontrou lá."),
+        ("LatitudeBox", "Onde fica a estação, para a temperatura (Open-Meteo, gratuito, a cada 10 minutos)…"),
+        ("TemperatureButton", "…e <b>Ler a temperatura</b> para experimentar."),
+    ]),
+    ("tip", "Várias gravações do mesmo take (HRS10a, HRS10b) são usadas ao acaso. A hora dita é o minuto mais próximo de quando começa. Um take sem os seus ficheiros é saltado."),
     ("h2", "A programação"),
     ("p", "Tudo o que se planeia com antecedência: Eventos, Blocos publicitários, Clientes e campanhas, Modelos de hora e Playlists diárias, escolhidos à esquerda. <b>Guardar</b> (na barra de ferramentas, acesa quando algo mudou, ou Ctrl+S) grava na base de "
           "dados e o programa de emissão recebe-o em poucos segundos. Se outra pessoa gravou entretanto, é-lhe perguntado antes de substituir o que ela fez."),
@@ -336,8 +363,8 @@ CHAPTERS = [
     ]),
     ("p", "Um evento toca um <b>ficheiro</b>, o <b>ficheiro mais recente de uma pasta</b> (o noticiário: saltado se tiver mais de "
           "N minutos) ou um <b>stream</b> durante N minutos. Como começa: <b>Flexível</b> (depois de acabar o que está no ar, no "
-          "máximo N minutos atrasado), <b>Rígido</b> (ao segundo; o que está no ar desvanece) ou <b>Acaba à sua hora</b> (as "
-          "músicas antes dele são ajustadas). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
+          "máximo N minutos atrasado), <b>Rígido</b> (ao segundo; o que está no ar desvanece) ou <b>Acaba à sua hora</b> (acaba exatamente "
+          "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
     ("h2", "Blocos publicitários"),
     ("fig", "schedule-breaks", "Blocos publicitários", [
         ("BreakList", "Os blocos."),
@@ -447,8 +474,8 @@ CHAPTERS = [
     ("steps", ["Pro → <b>Playlists</b> → <b>Novo</b>; dê-lhe um nome.", "Junte as linhas: p. ex. Music › Atuais, Gold, Jingles, Atuais, Anos 80.",
                "Arraste sobre as horas das 07 às 10, de segunda a sexta. <b>Guardar</b>.", "Veja-o nas <b>Playlists diárias</b>: as horas ficam feitas em poucos minutos."]),
     ("h3", "…para pôr a publicidade no fim da hora?"),
-    ("steps", ["Pro → <b>Blocos publicitários</b> → <b>Novo</b>; dê-lhe uma ordem de emissão com uma secção.", "<b>Adicionar linha</b> <code>*:59:00</code> e clique nessa hora para todos os dias.",
-               "Escolha <b>Acaba à sua hora</b>, para acabar à hora certa.", "Marque as campanhas no separador <b>Clientes</b>. <b>Guardar</b>."]),
+    ("steps", ["Pro → <b>Blocos publicitários</b> → <b>Novo</b>; dê-lhe uma ordem de emissão com uma secção.", "<b>Adicionar linha</b> <code>*:00:00</code> e clique nessa hora para todos os dias.",
+               "Escolha <b>Acaba à sua hora</b>: acaba exatamente à hora certa, a última coisa da hora anterior.", "Marque as campanhas no separador <b>Clientes</b>. <b>Guardar</b>."]),
     ("h3", "…para trocar uma música nas 09:00 de amanhã?"),
     ("steps", ["Pro → <b>Playlists diárias</b> → ▶ até amanhã → <b>09:00</b>.", "Selecione a música → <b>Outra música</b>, ou <b>Remover</b> e duplo clique numa da biblioteca."]),
     ("h3", "…para pôr uma pasta de músicas no Gold?"),

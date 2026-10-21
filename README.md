@@ -115,7 +115,12 @@ engine for decoding, mixing and streaming.
 - **ERC quotas (Portuguese music)** (Sintoniza Pro → Programming → ERC quotas): the Lei da Rádio's quotas for a period —
   at least 30 % Portuguese music, of it 60 % in Portuguese by EU performers and 35 % recent — over the whole month and
   Monday–Friday 7–20h, from what went on air and the daily playlists still to play, with the songs still to classify;
-  and the monthly XML file for the ERC's portal. Songs are classified one by one or through their category's defaults.
+  and the monthly XML file for the ERC's portal. Songs are classified one by one or through their category's defaults,
+  and the daily playlists are made to meet the quotas hour by hour.
+- **Song restrictions**: a song only between two dates, on some days, at some hours, at most N times a day / a week —
+  kept by the daily playlists and fill music.
+- **Takes**: the time and the temperature (from Open-Meteo) put together from recorded files (HRS10 + MIN15, TMP18)
+  the moment they go on air; a take line in an hour template.
 - **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network, laid out as the
   on-air screen — the deck with the waveform and countdowns, ▶ ❚❚ ⏭ ■ and AUTO, the clock and level meters, the
   playlist (play now / remove), the cartwalls, and a library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong

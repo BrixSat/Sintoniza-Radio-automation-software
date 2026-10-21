@@ -211,6 +211,7 @@ CHAPTERS = [
         ["Station", "Name, logo, genre, website, FM or web radio, money sign"],
         ["Audio", "Crossfades, loudness levelling"],
         ["Time signal", "Pips or a file at the top of the hour; hour announcements (HRS05.mp3 at 05:00…)"],
+        ["Takes", "The takes' folder (the time, the temperature) and where the station is"],
         ["Safety", "Silence detection, fill music"],
         ["Library", "Other music folders (songs without a category)"],
         ["Streaming", "Icecast / Shoutcast server, format and bitrate"],
@@ -316,6 +317,32 @@ CHAPTERS = [
         ("AliasBox", "The programme service's name at the ERC (ALIAS)."),
         ("CountryPanel", "The countries and their ERC codes (Portugal is 045; copy the others from the portal), and which are in the EU."),
     ]),
+    ("p", "<b>Planning to the quotas</b> (on the right, on by default): each hour of the daily playlists is made to meet the three quotas on its own — a "
+          "Portuguese song about every third song when there is too little, and among them songs in Portuguese by EU performers and recent ones where those "
+          "fall short — from the classified songs of each line's category, as the rest rules allow."),
+    ("h2", "Song restrictions"),
+    ("p", "<b>Songs</b> → right-click → <b>Restrictions…</b>: when a song may be picked automatically. The daily playlists always keep them; fill "
+          "music keeps the dates, days and hours. Put in by hand, the song plays all the same. Restricted songs show ⏱ in the list."),
+    ("fig", "restrictions", "Restrictions of a song", [
+        ("FromBox", "<b>Only from</b>…"),
+        ("UntilBox", "…<b>until</b> (empty: no limit) — a Christmas song in December."),
+        ("DayGrid", "On these <b>days</b>…"),
+        ("HourGrid", "…at these <b>hours</b> (lit = may play)."),
+        ("DayHoursButton", "Quick choices: all, 7:00–20:00, 20:00–7:00."),
+        ("MaxDayBox", "At most so many times a <b>day</b>…"),
+        ("MaxWeekBox", "…and a <b>week</b>, Monday to Sunday (0: no limit)."),
+        ("RemoveButton", "<b>No restrictions</b>."),
+    ]),
+    ("h2", "Takes: the time and the temperature"),
+    ("p", "Short recorded inserts the playout puts together <b>when they go on air</b>, so they are always right. Put them in an hour template: "
+          "<b>Add a line → A take ▾</b> → the time, the temperature, or both."),
+    ("fig", "station-takes", "Station settings → Takes", [
+        ("TakesFolderText", "The <b>folder</b> with the takes: HRS00–HRS23 (the hour), MIN01–MIN59 (the minutes; or HRS10_15 for a whole time), TMP0–TMP45 and TMPM1… below zero."),
+        ("TakesFolderNote", "What it found there."),
+        ("LatitudeBox", "Where the station is, for the temperature (Open-Meteo, free, every 10 minutes)…"),
+        ("TemperatureButton", "…and <b>Read the temperature</b> to try it."),
+    ]),
+    ("tip", "Several recordings of the same take (HRS10a, HRS10b) are used at random. The time said is the nearest minute when it starts. A take whose files are missing is skipped."),
     ("h2", "The schedule"),
     ("p", "Everything planned ahead: Events, Ad breaks, Clients and campaigns, Hour templates and Daily playlists, chosen on the left. <b>Save</b> (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database and the on-air program "
           "takes it within a few seconds. If someone else saved meanwhile, you are asked before theirs is replaced."),
@@ -331,8 +358,8 @@ CHAPTERS = [
     ]),
     ("p", "An event plays a <b>file</b>, the <b>newest file in a folder</b> (the news: skipped if older than N minutes) or an "
           "internet <b>stream</b> for N minutes. How it starts: <b>Soft</b> (after the item on air ends, at most N minutes "
-          "late), <b>Hard</b> (on the second; what is on air fades out) or <b>Ends at its time</b> (the songs before it are "
-          "adjusted). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
+          "late), <b>Hard</b> (on the second; what is on air fades out) or <b>Ends at its time</b> (it ends exactly then, never "
+          "later: the songs before it are adjusted, and what is on air fades if it would run over; one that ends at 10:00 is the last of 09:00). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
     ("h2", "Ad breaks"),
     ("fig", "schedule-breaks", "Ad breaks", [
         ("BreakList", "The breaks."),
@@ -442,8 +469,8 @@ CHAPTERS = [
     ("steps", ["Pro → <b>Playlists</b> → <b>New</b>; name it.", "Add its lines: e.g. Music › Current, Gold, Jingles, Current, 80s.",
                "Drag over the hours 07–10, Monday to Friday. <b>Save</b>.", "Check it on <b>Daily playlists</b>: the hours are made within minutes."]),
     ("h3", "…put the adverts last in the hour?"),
-    ("steps", ["Pro → <b>Ad breaks</b> → <b>New</b>; give it a running order with a section.", "<b>Add row</b> <code>*:59:00</code> and click that time for every day.",
-               "Choose <b>Ends at its time</b>, so it ends on the hour.", "Book the campaigns on the <b>Clients</b> tab. <b>Save</b>."]),
+    ("steps", ["Pro → <b>Ad breaks</b> → <b>New</b>; give it a running order with a section.", "<b>Add row</b> <code>*:00:00</code> and click that time for every day.",
+               "Choose <b>Ends at its time</b>: it ends exactly on the hour, the last thing of the hour before.", "Book the campaigns on the <b>Clients</b> tab. <b>Save</b>."]),
     ("h3", "…change a song in tomorrow's 09:00?"),
     ("steps", ["Pro → <b>Daily playlists</b> → ▶ to tomorrow → <b>09:00</b>.", "Select the song → <b>Another song</b>, or <b>Remove</b> it and double-click one in the library."]),
     ("h3", "…put a folder of songs in Gold?"),

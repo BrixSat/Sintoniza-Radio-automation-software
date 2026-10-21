@@ -59,6 +59,16 @@ public sealed class LibraryTrack
     public string? ErcNationality { get; set; }
     /// <summary>ERC: first edition, yyyy-mm-dd, yyyy-mm or yyyy (null: the year tag).</summary>
     public string? ErcRelease { get; set; }
+
+    public string? PlayFrom { get; set; }
+    public string? PlayUntil { get; set; }
+    public string? PlayDays { get; set; }
+    public string? PlayHours { get; set; }
+    public int? MaxDay { get; set; }
+    public int? MaxWeek { get; set; }
+
+    /// <summary>When it may be picked automatically (null: any time).</summary>
+    public SongRestrictions? Restrictions => SongRestrictions.Make(PlayFrom, PlayUntil, PlayDays, PlayHours, MaxDay, MaxWeek);
 }
 
 /// <summary>Which tracks to list: all, those without a category, those whose file is missing, or one category.</summary>
@@ -73,8 +83,10 @@ public sealed record TrackPage(IReadOnlyList<LibraryTrack> Tracks, int Total);
 /// <summary>A song fill music may pick: <see cref="LastPlayed"/> is UTC, null if it never went on air.</summary>
 /// <param name="Duration">Seconds; with the cue points (null: not set) it tells how long it plays.</param>
 /// <param name="Tempo">1 slow … 5 fast; <paramref name="Energy"/> 1 calm … 5 lively (null: not set).</param>
+/// <param name="Rules">When it may be picked (null: any time).</param>
 public sealed record RotationTrack(long Id, string Path, string Artist, DateTime? LastPlayed, string Title = "", double Duration = 0,
-    double? CueIn = null, double? CueOut = null, double? Mix = null, string Album = "", int? Tempo = null, int? Energy = null);
+    double? CueIn = null, double? CueOut = null, double? Mix = null, string Album = "", int? Tempo = null, int? Energy = null,
+    SongRestrictions? Rules = null);
 
 /// <summary>An item that went on air (UTC); <see cref="TrackId"/> is null for files not in the library.</summary>
 public sealed record RecentPlay(long? TrackId, string Artist, DateTime At, string Album = "", int? Tempo = null);
@@ -94,7 +106,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 13;
+    public const int SchemaVersion = 14;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -103,7 +115,8 @@ public sealed partial class LibraryDb
         id AS Id, path AS Path, file_size AS FileSize, file_modified AS FileModified, title AS Title, artist AS Artist,
         album AS Album, genre AS Genre, year AS Year, isrc AS Isrc, duration AS Duration, category_id AS CategoryId,
         tempo AS Tempo, energy AS Energy, voice AS Voice, language AS Language, enabled AS Enabled, missing AS Missing,
-        erc_portuguese AS ErcPortuguese, erc_nationality AS ErcNationality, erc_release AS ErcRelease
+        erc_portuguese AS ErcPortuguese, erc_nationality AS ErcNationality, erc_release AS ErcRelease,
+        play_from AS PlayFrom, play_until AS PlayUntil, play_days AS PlayDays, play_hours AS PlayHours, max_day AS MaxDay, max_week AS MaxWeek
         """;
 
     readonly string _connectionString;
@@ -634,13 +647,15 @@ public sealed partial class LibraryDb
         return c.Query<RotationRow>("""
                 SELECT t.id AS Id, t.path AS Path, t.artist AS Artist, t.title AS Title, t.duration AS Duration,
                        t.cue_in AS CueIn, t.cue_out AS CueOut, t.mix AS Mix, t.album AS Album, t.tempo AS Tempo, t.energy AS Energy,
+                       t.play_from AS PlayFrom, t.play_until AS PlayUntil, t.play_days AS PlayDays, t.play_hours AS PlayHours,
+                       t.max_day AS MaxDay, t.max_week AS MaxWeek,
                        (SELECT MAX(p.started_at) FROM plays p WHERE p.track_id = t.id) AS Last
                 FROM tracks t
                 WHERE t.enabled = 1 AND t.missing = 0
                   AND (t.category_id IN @categories OR t.id IN (SELECT track_id FROM track_categories WHERE category_id IN @categories))
                 """, new { categories })
             .Select(r => new RotationTrack(r.Id, r.Path, r.Artist, r.Last == null ? null : ParseTime(r.Last), r.Title, r.Duration, r.CueIn, r.CueOut, r.Mix,
-                r.Album, r.Tempo, r.Energy))
+                r.Album, r.Tempo, r.Energy, SongRestrictions.Make(r.PlayFrom, r.PlayUntil, r.PlayDays, r.PlayHours, r.MaxDay, r.MaxWeek)))
             .ToList();
     }
 
@@ -658,6 +673,12 @@ public sealed partial class LibraryDb
         public int? Tempo { get; set; }
         public int? Energy { get; set; }
         public string? Last { get; set; }
+        public string? PlayFrom { get; set; }
+        public string? PlayUntil { get; set; }
+        public string? PlayDays { get; set; }
+        public string? PlayHours { get; set; }
+        public int? MaxDay { get; set; }
+        public int? MaxWeek { get; set; }
     }
 
     /// <summary>What went on air since <paramref name="sinceUtc"/>, in any studio sharing the library.</summary>

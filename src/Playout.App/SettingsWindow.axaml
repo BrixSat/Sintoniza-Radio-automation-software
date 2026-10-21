@@ -252,6 +252,39 @@
 
             <!-- ───────── Shortcuts ───────── -->
             <!-- ───────── Safety: never off air ───────── -->
+            <TabItem Header="Takes" Classes="station">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Margin="0,12,16,0">
+                    <TextBlock Classes="note"
+                               Text="Takes are short recorded inserts the playout puts together when they go on air, so they are always right: the time and the temperature. Put them in an hour template (Add a line → A take)." />
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Folder with the takes" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:Name="TakesFolderText" VerticalAlignment="Center" MaxWidth="420" TextTrimming="CharacterEllipsis" />
+                            <Button x:Name="ChooseTakesFolderButton" Content="Folder…" />
+                            <Button x:Name="ClearTakesFolderButton" Content="Clear" />
+                        </StackPanel>
+                        <TextBlock x:Name="TakesFolderNote" Classes="note" FontWeight="SemiBold" />
+                        <TextBlock Classes="note"
+                                   Text="The time: HRS00 … HRS23 (the hour) and MIN01 … MIN59 (the minutes; MIN00 for o'clock, optional), or one file per minute, HRS10_15. The temperature: TMP0 … TMP45 and TMPM1 … TMPM10 below zero. Any audio format; several recordings of the same (HRS10a, HRS10b) are taken in turn at random. The time said is the nearest minute when it starts." />
+                    </StackPanel>
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="label" Text="Where the station is (for the temperature)" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Latitude" VerticalAlignment="Center" />
+                            <TextBox x:Name="LatitudeBox" Width="110" PlaceholderText="38.7223" />
+                            <TextBlock Text="Longitude" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            <TextBox x:Name="LongitudeBox" Width="110" PlaceholderText="-9.1393" />
+                            <Button x:Name="TemperatureButton" Content="Read the temperature" Margin="8,0,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="TemperatureText" Classes="note" FontWeight="SemiBold" />
+                        <TextBlock Classes="note"
+                                   Text="From Open-Meteo (free, no account), every 10 minutes. Without it, a take of the time and temperature says only the time." />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <TabItem Header="Safety">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="12" Margin="0,12,16,0">

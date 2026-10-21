@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -32,6 +33,27 @@ public partial class SettingsWindow : PageWindow
     string? _logoPath;
     string? _signalFile;
     string _hourFolder = "";
+    string _takesFolder = "";
+
+    TakesSettings TakesFromUi()
+    {
+        static double? Number(string? text) =>
+            double.TryParse(text?.Trim().Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : null;
+        return new TakesSettings(_takesFolder, Number(LatitudeBox.Text), Number(LongitudeBox.Text));
+    }
+
+    /// <summary>The takes folder and what is in it: how many hours, minutes and temperatures.</summary>
+    void ShowTakesFolder()
+    {
+        TakesFolderText.Text = _takesFolder.Length > 0 ? _takesFolder : L.T("(none)");
+        ClearTakesFolderButton.IsEnabled = _takesFolder.Length > 0;
+        if (_takesFolder.Length == 0 || !Directory.Exists(_takesFolder)) { TakesFolderNote.Text = _takesFolder.Length > 0 ? L.T("Folder not found.") : ""; return; }
+        var day = DateTime.Today;
+        int hours = Enumerable.Range(0, 24).Count(h => Takes.Files(_takesFolder, TakeKind.Time, day.AddHours(h), null).Count > 0);
+        int minutes = Enumerable.Range(1, 59).Count(m => Takes.Files(_takesFolder, TakeKind.Time, day.AddHours(10).AddMinutes(m), null).Count > 0);
+        int temperatures = Enumerable.Range(-20, 66).Count(t => Takes.Files(_takesFolder, TakeKind.Temperature, day, t).Count > 0);
+        TakesFolderNote.Text = L.F("Found: {0} of 24 hours, {1} of 59 minutes, {2} temperatures.", hours, minutes, temperatures);
+    }
     string _fillFolder = "";
     string _libraryFile = "";
     string _voiceFolder = "";
@@ -95,6 +117,25 @@ public partial class SettingsWindow : PageWindow
         PipsRadio.IsChecked = _signalFile == null;
         ShowSignalFile();
         ChooseSignalButton.Click += async (_, _) => await ChooseSignalFile();
+        _takesFolder = settings.Takes?.Folder ?? "";
+        LatitudeBox.Text = settings.Takes?.Latitude?.ToString(CultureInfo.InvariantCulture) ?? "";
+        LongitudeBox.Text = settings.Takes?.Longitude?.ToString(CultureInfo.InvariantCulture) ?? "";
+        ShowTakesFolder();
+        ChooseTakesFolderButton.Click += async (_, _) =>
+        {
+            var folders = await Storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = L.T("Folder with the takes") });
+            if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+            _takesFolder = path;
+            ShowTakesFolder();
+        };
+        ClearTakesFolderButton.Click += (_, _) => { _takesFolder = ""; ShowTakesFolder(); };
+        TemperatureButton.Click += async (_, _) =>
+        {
+            if (TakesFromUi() is not { HasPlace: true } t) { TemperatureText.Text = L.T("Write the latitude and longitude (e.g. 38.7223 and -9.1393)."); return; }
+            TemperatureText.Text = L.T("Reading…");
+            try { TemperatureText.Text = L.F("{0:0.0} °C there now.", await TakeService.Fetch(t.Latitude!.Value, t.Longitude!.Value)); }
+            catch (Exception ex) { TemperatureText.Text = L.F("Not read: {0}", ex.Message); }
+        };
         _hourFolder = signal.HourFolder ?? "";
         HourAtBox.SelectedIndex = (int)signal.HourAt;
         ShowHourFolder();
@@ -910,6 +951,7 @@ public partial class SettingsWindow : PageWindow
             (double)(FadeUpBox.Value ?? 1));
 
         _settings.TimeSignal = SignalFromUi();
+        _settings.Takes = TakesFromUi();
 
         _settings.Library = LibraryFromUi();
         _settings.Rds = RdsFromUi();
