@@ -70,6 +70,17 @@ public sealed class PlayoutEngine : IDisposable
     int _silenceSkips;       // silent items skipped in a row
     Guid? _silenceReported;  // item whose silence has been logged (ASSISTED, or too many skips)
     Func<string?>? _fill;    // gives a file to add when the playlist runs out in AUTO
+
+    /// <summary>
+    /// Songs to fill the gap before a break that ends at its time when the playlist would reach it early (null: the
+    /// fill music, if it is on). The station's music, whatever fill music is set to.
+    /// </summary>
+    public Func<string?>? GapFill { get; set; }
+
+    Func<string?>? Filler => _fill ?? GapFill;
+
+    /// <summary>Songs put before a break to be faded when it starts (longer than the gap): not moved after it.</summary>
+    readonly HashSet<Guid> _fadedFills = new();
     readonly HashSet<string> _badFill = new(); // fill files that couldn't be opened: not tried again
     bool _waitingForFill;    // AUTO ran out with nothing to fill yet: start something as soon as there is
     DateTime _nextFillTry;
@@ -393,6 +404,14 @@ public sealed class PlayoutEngine : IDisposable
 
         if (timing is { Start: EventStart.EndAt, EndsAt: { } endsAt })
         {
+            // On the hour with a time signal that stops what plays: it ends as the signal starts (the signal takes it
+            // to the hour), not cut by it.
+            var localEnd = endsAt.ToLocalTime();
+            if (_timeSignal.Mode == TimeSignalMode.Stop && localEnd.Minute == 0 && localEnd.Second == 0)
+            {
+                endsAt = endsAt.AddSeconds(-(LeadFor(localEnd) + SignalFadeSeconds));
+                Emit(L.F("{0}: ends at {1:HH:mm:ss}, as the time signal for {2:HH:mm} starts", label, endsAt.ToLocalTime(), localEnd));
+            }
             var startAt = endsAt - TimeSpan.FromSeconds(ChainLength(tracks));
             tracks[0] = tracks[0] with { StartBy = startAt, Backtime = true };
             double left = (startAt - DateTime.UtcNow).TotalSeconds;
@@ -1564,6 +1583,7 @@ public sealed class PlayoutEngine : IDisposable
             for (int j = ti - 1; j > _cursorIndex; j--)
             {
                 var song = _playlist[j];
+                if (_fadedFills.Contains(song.Id)) return; // put there to be faded when the break starts
                 if (song.Lock != ItemLock.Free || song.Event != null || song.Kind != TrackKind.Music) continue;
                 if (Math.Abs(error - Step(song)) >= error) continue; // wouldn't help
                 _playlist.RemoveAt(j);
@@ -1576,7 +1596,7 @@ public sealed class PlayoutEngine : IDisposable
             }
             return; // what is on air then is faded at the time
         }
-        if (error >= -BacktimeMinGap || _fill == null || _backtimeFilling || DateTime.UtcNow < _nextBacktimeFill) return;
+        if (error >= -BacktimeMinGap || Filler is not { } filler || _backtimeFilling || DateTime.UtcNow < _nextBacktimeFill) return;
         _nextBacktimeFill = DateTime.UtcNow.AddSeconds(10);
         double gap = -error;
         // Fill songs, then the one that fits best, opened off the engine thread (files can be slow to open).
@@ -1584,7 +1604,7 @@ public sealed class PlayoutEngine : IDisposable
         for (int i = 0; i < BacktimeFillTries; i++)
         {
             string? path;
-            try { path = _fill(); } catch { break; }
+            try { path = filler(); } catch { break; }
             if (path == null) break;
             // Not a song already waiting in the playlist (it would play twice).
             if (!_badFill.Contains(path) && !candidates.Contains(path) && !_playlist.Skip(Math.Max(0, _cursorIndex)).Any(t => t.Path == path))
@@ -1601,6 +1621,13 @@ public sealed class PlayoutEngine : IDisposable
             double stillLeft = (_playlist[index].StartBy!.Value - DateTime.UtcNow).TotalSeconds;
             double stillGap = stillLeft - now.First(u => u.Index == index).At;
             var best = probed.Result.Where(t => Step(t) <= stillGap + BacktimeTolerance).MaxBy(t => Step(t));
+            bool faded = false;
+            if (best == null)
+            {
+                // None short enough: the shortest longer one, faded out when the break has to start (it starts on time).
+                best = probed.Result.Where(t => Step(t) > stillGap).MinBy(t => Step(t));
+                faded = best != null;
+            }
             if (best == null)
             {
                 if (_backtimeReported != timedId)
@@ -1609,8 +1636,11 @@ public sealed class PlayoutEngine : IDisposable
                 return;
             }
             _playlist.Insert(index, best);
+            if (faded) _fadedFills.Add(best.Id);
             if (_loudness.Enabled) _loudnessWorker.Add(best.Path);
-            Emit(L.F("Backtiming {0}: added {1} to fill {2:0} s", _playlist[index + 1].Event, best.Display, stillGap));
+            Emit(faded
+                ? L.F("Backtiming {0}: added {1} for {2:0} s; it fades out when the break starts", _playlist[index + 1].Event, best.Display, stillGap)
+                : L.F("Backtiming {0}: added {1} to fill {2:0} s", _playlist[index + 1].Event, best.Display, stillGap));
             PlaylistUpdated();
         }));
     }
@@ -1664,7 +1694,7 @@ public sealed class PlayoutEngine : IDisposable
             bool insideEvent = index > 0 && index < _playlist.Count && _playlist[index].Event != null && _playlist[index].Event == _playlist[index - 1].Event;
             if (insideEvent) continue;
             double error = at > left ? at - left
-                : left - at >= BacktimeMinGap && _fill != null ? (left - at) / 4
+                : left - at >= BacktimeMinGap && Filler != null ? (left - at) / 4
                 : left - at;
             if (error < bestError) { best = index; bestError = error; }
         }

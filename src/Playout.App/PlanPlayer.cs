@@ -97,13 +97,17 @@ sealed class PlanPlayer
             if (waiting.Contains(pending.Hour) || now > pending.Until) _pending = null;
             else return;
         }
-        if (now >= _nextSync && hour.AddHours(1) - now <= SyncWindow) Sync(hour, rows, now);
+        // An ad break (or event) that ends at its time on the hour keeps that hour's end itself (the engine fits the
+        // songs before it): nothing is added or taken out around it here, and what is left after it goes.
+        var anchor = HourEndingBreak(rows);
+        if (anchor is { } a) DropAfterBreak(rows, a);
+        if (now >= _nextSync && hour.AddHours(1) - now <= SyncWindow && anchor?.Hour != hour.AddHours(1)) Sync(hour, rows, now);
         if (now >= _nextOver)
         {
             _nextOver = now.AddSeconds(15);
             DropOverHour(rows, now);
         }
-        KeepEarlyHours(rows, now);
+        KeepEarlyHours(rows, now, anchor?.Hour);
         if (_busy is { IsCompleted: false }) return;
 
         // When the playlist runs out, the plan carries on from there: the hour it runs out in, from the item planned for
@@ -258,10 +262,11 @@ sealed class PlanPlayer
     /// (the playlist ran short, or ran ahead, e.g. after items were removed), the gap is filled with songs from the
     /// template of the hour it falls in (optional, so a late hour can still drop them), and that hour starts on time.
     /// </summary>
-    void KeepEarlyHours(IReadOnlyList<PlaylistRow> rows, DateTime now)
+    void KeepEarlyHours(IReadOnlyList<PlaylistRow> rows, DateTime now, DateTime? anchored)
     {
         var first = rows.FirstOrDefault(r => !r.IsPlayed && !r.IsPlaying && !r.IsPreview && ReadTag(r.Track.Tag) is { } t && t.Hour > Hour(now));
         if (first == null || first.StartAt is not { } start || ReadTag(first.Track.Tag) is not { } tag) return;
+        if (tag.Hour == anchored) return; // a break that ends on that hour: it starts the hour on time
         var gap = tag.Hour - start;
         if (gap <= Early || _filled.TryGetValue(tag.Hour, out var until) && now < until) return;
         _filled[tag.Hour] = now.AddSeconds(30); // until the start times show the filled gap
@@ -271,6 +276,46 @@ sealed class PlanPlayer
     }
 
     readonly Dictionary<DateTime, DateTime> _filled = new();
+
+    /// <summary>
+    /// A break (or event) still to play that ends at its time on the hour, or just before it (as the time signal
+    /// starts): the hour it ends, and its rows in the playlist (first and last index).
+    /// </summary>
+    internal static (DateTime Hour, int First, int Last)? HourEndingBreak(IReadOnlyList<PlaylistRow> rows)
+    {
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            if (r.IsPlayed || r.IsPreview || !r.Track.Backtime || r.Track.StartBy is not { } by) continue;
+            int last = i;
+            double length = r.Track.PlayLength;
+            while (last + 1 < rows.Count && rows[last + 1].Track.Event == r.Track.Event && rows[last + 1].Track.StartBy == null)
+                length += rows[++last].Track.PlayLength;
+            var ends = by.ToLocalTime().AddSeconds(length);
+            var hour = Hour(ends.AddSeconds(30));
+            if ((hour - ends).TotalSeconds is >= -5 and <= 20) return (hour, i, last);
+            i = last;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Songs of an earlier hour left after a break that ends on the hour (moved there because they didn't fit before
+    /// it): they would play past the hour, so they go.
+    /// </summary>
+    void DropAfterBreak(IReadOnlyList<PlaylistRow> rows, (DateTime Hour, int First, int Last) anchor)
+    {
+        for (int i = anchor.Last + 1; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            if (ReadTag(r.Track.Tag) is not { } t || t.Hour >= anchor.Hour) break; // the next hour starts here
+            if (r.IsPlaying || !Droppable(r)) continue;
+            _engine.Remove(r.Id);
+            if (Store is { } store) { var hour = t.Hour; var path = r.Track.Path; _ = Task.Run(() => { try { store.KeepTime(hour, [], path); } catch { /* the plan stays as it was */ } }); }
+            Say(L.F("Daily playlist: {0} left out, after the break that ends at {1:HH}:00", r.Track.Display, anchor.Hour));
+            return; // one at a time: the rows change
+        }
+    }
 
     /// <summary>Songs from the template of <paramref name="hour"/> for <paramref name="gap"/>, put in before an item.</summary>
     void Fill(DateTime hour, Guid before, DateTime at, TimeSpan gap)

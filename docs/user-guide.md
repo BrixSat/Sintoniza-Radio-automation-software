@@ -323,8 +323,10 @@ minutes), or an internet stream for N minutes. Choose how it starts:
 - **Soft:** after the item on air ends (at most N minutes late).
 - **Hard:** on the second (what is on air fades out).
 - **Ends at its time:** it ends exactly then, to the second — never later. The songs before it are adjusted; if the
-  music would still run over, what is on air is faded at the moment the break has to start. A break that ends at 10:00
-  is the last of the 09:00 hour (the daily playlists leave room for it there).
+  music would still run over, what is on air is faded at the moment the break has to start; if it would get there early,
+  a song is put before it (from the station's music, even with fill music off) and faded when the break starts. A break
+  that ends at 10:00 is the last of the 09:00 hour (the daily playlists leave room for it there, and leave its end to
+  it). With the time signal set to stop what plays, a break that ends on the hour ends as the pips start (09:59:54).
 
 and what the host may do with it in the playlist (remove/move, only move, or nothing).
 
