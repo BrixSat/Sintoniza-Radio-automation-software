@@ -179,7 +179,7 @@ static class Updates
     /// <summary>Starts the newly installed version (Linux); the caller then shuts down.</summary>
     public static void Restart()
     {
-        string exe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "RadioPlayout");
+        string exe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "SintonizaEmi");
         Process.Start(new ProcessStartInfo(exe) { UseShellExecute = false });
     }
 

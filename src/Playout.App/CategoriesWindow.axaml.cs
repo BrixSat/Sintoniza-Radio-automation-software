@@ -38,6 +38,7 @@ public partial class CategoriesWindow : PageWindow
         FoldersPanel.IsVisible = folders != null;
         AddFolderButton.Click += async (_, _) => await AddFolder();
         RemoveFolderButton.Click += async (_, _) => await RemoveFolder();
+        ScanFoldersButton.Click += async (_, _) => await ScanFolders();
 
         foreach (var color in Palette)
         {
@@ -64,7 +65,7 @@ public partial class CategoriesWindow : PageWindow
             {
                 // Raised on the UI thread: the scan's state as of this change.
                 bool scanning = service.IsScanning;
-                if (wasScanning && !scanning) Dispatcher.UIThread.Post(async () => await Load(Selected?.Category.Id));
+                if (wasScanning && !scanning) Dispatcher.UIThread.Post(async () => await Load(Selected?.Category.Id, quiet: true));
                 wasScanning = scanning;
             }
             service.Changed += Changed;
@@ -83,7 +84,18 @@ public partial class CategoriesWindow : PageWindow
     }
 
     /// <summary>Reads the categories (and how many songs each has) and selects <paramref name="selectId"/>.</summary>
-    async Task Load(long? selectId)
+    /// <summary>
+    /// The categories again (changed elsewhere: an import, another computer), keeping the one selected — not while the
+    /// selected one has changes not saved yet.
+    /// </summary>
+    public Task Refresh()
+    {
+        if (Selected is { } row && ((NameBox.Text?.Trim() ?? "") != row.Category.Name || _color != (row.Category.Color ?? Palette[0]))) return Task.CompletedTask;
+        return Load(Selected?.Category.Id, quiet: true);
+    }
+
+    /// <param name="quiet">Leaves the status line as it is (a reload in the background).</param>
+    async Task Load(long? selectId, bool quiet = false)
     {
         if (_service?.Db is not { } db)
         {
@@ -102,7 +114,7 @@ public partial class CategoriesWindow : PageWindow
             long? keep = selectId ?? Selected?.Category.Id;
             CategoryList.ItemsSource = _rows;
             CategoryList.SelectedItem = _rows.FirstOrDefault(r => r.Category.Id == keep) ?? _rows.FirstOrDefault();
-            StatusText.Text = L.F("{0} categories", _rows.Count);
+            if (!quiet) StatusText.Text = L.F("{0} categories", _rows.Count);
         }
         catch (Exception ex)
         {
@@ -186,6 +198,24 @@ public partial class CategoriesWindow : PageWindow
         FolderList.ItemsSource = Selected is { } row
             ? _folders.Rules().Where(r => r.Value == row.Category.Id).Select(r => r.Key).Order(StringComparer.CurrentCultureIgnoreCase).ToList()
             : null;
+    }
+
+    /// <summary>The selected category's folders scanned now: songs added there since come into the library (and into it).</summary>
+    async Task ScanFolders()
+    {
+        if (_service == null || _folders == null || Selected is not { } row) return;
+        var folders = _folders.Rules().Where(r => r.Value == row.Category.Id).Select(r => r.Key).ToList();
+        if (folders.Count == 0) { StatusText.Text = L.T("This category has no folders: add one first."); return; }
+        if (_service.IsScanning) { StatusText.Text = L.T("A scan is running already: wait for it to finish."); return; }
+        void Show(string message) => StatusText.Text = message;
+        _service.Message += Show;
+        ScanFoldersButton.IsEnabled = false;
+        try { await _service.ScanAsync(folders, onlyThese: true); }
+        finally
+        {
+            _service.Message -= Show;
+            ScanFoldersButton.IsEnabled = true;
+        }
     }
 
     /// <summary>A folder whose songs go in the selected category (now, and the new ones a scan finds there).</summary>

@@ -70,18 +70,24 @@ public partial class ScheduleWindow
         if (_library != null) SongsView.Attach(_library);
 
         MenuSave.Click += (_, _) => Save();
+        MenuRefresh.Click += (_, _) => Refresh();
+        RefreshButton.Click += (_, _) => Refresh();
+        // The library changed (an import here, Categories, or another program or computer): every page shows it.
+        if (_library != null) _library.Changed += LibraryChanged;
         MenuClose.Click += (_, _) => Close();
         MenuManual.Click += (_, _) =>
         {
             if (Manual.Find() is { } pdf) Updates.OpenInBrowser(pdf);
             else SavedText.Text = L.T("The manual isn't installed with this copy: it is in docs/manual on GitHub.");
         };
+        MenuSupport.Click += (_, _) => Updates.OpenInBrowser(AppInfo.SupportUrl);
         MenuAbout.Click += async (_, _) => await Dialogs.Confirm(this, AppInfo.ScheduleName,
             $"{AppInfo.ScheduleName} — {AppInfo.Name}\n" + (Updates.IsDevBuild ? L.T("Development build (built from source)") : L.F("Version {0}", Updates.CurrentText))
             + "\n\nCésar Araújo · cesararaujo.net", L.T("Close"));
         KeyDown += (_, e) =>
         {
             if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control)) { Save(); e.Handled = true; }
+            else if (e.Key == Key.F5) { Refresh(); e.Handled = true; }
         };
 
         // What doesn't change while it runs.
@@ -364,4 +370,32 @@ public partial class ScheduleWindow
     }
 
     bool _lockWired;
+
+    /// <summary>Refresh (F5): the library (songs, categories) and the daily playlists read again.</summary>
+    void Refresh()
+    {
+        if (_library != null) _library.NotifyChanged();
+        else LibraryChanged();
+        if (_daily != null) _ = _daily.Refresh();
+        SavedText.Text = L.F("Refreshed at {0:HH:mm:ss}.", DateTime.Now);
+    }
+
+    DateTime _categoriesRead;
+
+    void LibraryChanged()
+    {
+        // The templates' category list (not more than every few seconds: a scan may change things often).
+        if (DateTime.Now - _categoriesRead > TimeSpan.FromSeconds(3))
+        {
+            _categoriesRead = DateTime.Now;
+            _ = LoadCategories();
+        }
+        foreach (var page in _pages.Values)
+            switch (page)
+            {
+                case CategoriesWindow categories: _ = categories.Refresh(); break;
+                case ImportWindow import: _ = import.Refresh(); break;
+            }
+        _nextFigures = DateTime.MinValue; // Home's figures too
+    }
 }

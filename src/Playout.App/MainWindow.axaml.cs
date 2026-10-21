@@ -1931,9 +1931,20 @@ public partial class MainWindow : Window
                 : folder == null ? null : folder.Next;
         }
         _engine.ConfigureFill(fill);
-        // Before a break that ends at its time, a gap is filled from the station's music even with fill music off.
+        // Before a break that ends at its time, a gap is filled from the station's music even with fill music off;
+        // a short one from the Fillers category (beds, sweepers) rather than a song cut after a few seconds.
         _engine.GapFill = new LibraryFill(_library, [], TimeSpan.FromHours(Math.Max(1, _settings.FillSongHours)),
             TimeSpan.FromMinutes(Math.Max(10, _settings.FillArtistMinutes)), null).Next;
+        _engine.FillerFill = new LibraryFill(_library, [], TimeSpan.FromMinutes(20), TimeSpan.Zero, null, role: "fillers").Next;
+        _engine.FillerGapSeconds = _settings.FillerGapSeconds;
+        // After the time signal the new hour starts: songs left from the hour before don't.
+        _engine.OldHour = t =>
+        {
+            var soon = DateTime.Now.AddSeconds(30);
+            var hour = new DateTime(soon.Year, soon.Month, soon.Day, soon.Hour, 0, 0);
+            return PlanPlayer.ReadTag(t.Tag) is { } tag && tag.Hour < hour
+                   && t.Kind == TrackKind.Music && t.Lock == ItemLock.Free && !t.InBreak && t.Event == null;
+        };
     }
 
     // ───────────────────────── RDS ─────────────────────────

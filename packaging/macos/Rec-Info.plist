@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Sintoniza Rec.app: the recorder (SintonizaRec, inside Sintoniza Emi.app); build.sh fills in @VERSION@. -->
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>                 <string>Sintoniza Rec</string>
+    <key>CFBundleDisplayName</key>          <string>Sintoniza Rec</string>
+    <key>CFBundleIdentifier</key>           <string>net.cesararaujo.sintoniza.rec</string>
+    <key>CFBundleExecutable</key>           <string>sintoniza-rec</string>
+    <key>CFBundleIconFile</key>             <string>rec</string>
+    <key>CFBundlePackageType</key>          <string>APPL</string>
+    <key>CFBundleShortVersionString</key>   <string>@VERSION@</string>
+    <key>CFBundleVersion</key>              <string>@VERSION@</string>
+    <key>LSMinimumSystemVersion</key>       <string>12.0</string>
+    <key>NSHighResolutionCapable</key>      <true/>
+    <key>NSMicrophoneUsageDescription</key> <string>Sintoniza Rec records the station from an input of this computer.</string>
+    <key>NSHumanReadableCopyright</key>     <string>César Araújo — cesararaujo.net</string>
+</dict>
+</plist>

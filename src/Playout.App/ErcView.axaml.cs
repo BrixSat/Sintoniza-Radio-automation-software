@@ -151,28 +151,40 @@ public partial class ErcView : UserControl
     {
         panel.Children.Clear();
         panel.Children.Add(QuotaRow(L.T("Portuguese music"), L.F("of all {0} songs · at least {1:0} %", f.Songs, Erc.PortugueseMinimum), f.Portuguese));
-        panel.Children.Add(QuotaRow(L.T("In Portuguese, by EU performers"), L.F("of the Portuguese music · at least {0:0} %", Erc.LanguageMinimum), f.Language));
-        panel.Children.Add(QuotaRow(L.T("Recent (last 12 months)"), L.F("of the Portuguese music · at least {0:0} %", Erc.RecentMinimum), f.Recent));
+        // These two are shares of the Portuguese music only (art. 43.º, 44.º): 2 of 2 Portuguese songs is 100 %, yet says
+        // nothing while the Portuguese music itself is short, so then they aren't shown as met.
+        bool base_ = f.Portuguese.Met;
+        panel.Children.Add(QuotaRow(L.T("In Portuguese, by EU performers"), L.F("of the {0} Portuguese songs only · at least {1:0} %", f.Portuguese.Count, Erc.LanguageMinimum), f.Language, base_));
+        panel.Children.Add(QuotaRow(L.T("Recent (last 12 months)"), L.F("of the {0} Portuguese songs only · at least {1:0} %", f.Portuguese.Count, Erc.RecentMinimum), f.Recent, base_));
+        if (!base_ && f.Portuguese.Of > 0)
+            panel.Children.Add(new TextBlock
+            {
+                Text = L.T("These two count only the Portuguese music: they mean little until its 30 % is reached. Songs not classified don't count as Portuguese."),
+                Foreground = Muted, FontSize = 11, TextWrapping = TextWrapping.Wrap,
+            });
     }
 
     static readonly IBrush Good = new SolidColorBrush(Color.Parse("#3ECF8E")), Bad = new SolidColorBrush(Color.Parse("#E5484D")),
         Muted = new SolidColorBrush(Color.Parse("#8B93A3")), Track = new SolidColorBrush(Color.Parse("#262A33"));
 
-    /// <summary>A quota: its name, the percentage (green when met), a bar with the minimum marked.</summary>
-    static Control QuotaRow(string title, string detail, ErcQuota q)
+    /// <summary>
+    /// A quota: its name, the percentage (green when met), a bar with the minimum marked. <paramref name="counts"/> false:
+    /// the quota it is a share of isn't met, so it is shown greyed, without ✓.
+    /// </summary>
+    static Control QuotaRow(string title, string detail, ErcQuota q, bool counts = true)
     {
-        var brush = q.Of == 0 ? Muted : q.Met ? Good : Bad;
+        var brush = q.Of == 0 || (!counts && q.Met) ? Muted : q.Met ? Good : Bad;
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), RowDefinitions = new RowDefinitions("Auto,Auto,Auto") };
         grid.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.SemiBold });
         var value = new TextBlock
         {
-            Text = q.Of == 0 ? "—" : $"{q.Percent:0.0} %  {(q.Met ? "✓" : "✗")}", Foreground = brush, FontSize = 18, FontWeight = FontWeight.SemiBold,
+            Text = q.Of == 0 ? "—" : $"{q.Percent:0.0} %  {(!q.Met ? "✗" : counts ? "✓" : "")}", Foreground = brush, FontSize = 18, FontWeight = FontWeight.SemiBold,
             HorizontalAlignment = HorizontalAlignment.Right,
         };
         Grid.SetColumn(value, 1);
         Grid.SetRowSpan(value, 2);
         grid.Children.Add(value);
-        var sub = new TextBlock { Text = $"{detail} · {q.Count}/{q.Of}", Foreground = Muted, FontSize = 11 };
+        var sub = new TextBlock { Text = $"{detail} · {q.Count}/{q.Of}", Foreground = Muted, FontSize = 11, TextWrapping = TextWrapping.Wrap };
         Grid.SetRow(sub, 1);
         grid.Children.Add(sub);
         // The bar: 0–100 %, the minimum as a white mark

@@ -174,7 +174,7 @@ public sealed record StreamSettings(
     string Password,
     StreamFormat Format = StreamFormat.Mp3,
     int Bitrate = 128,
-    string StationName = "Sintoniza Radio Broadcast system",
+    string StationName = "Sintoniza",
     string Genre = "Various",
     bool Shoutcast = false,
     string? Url = null);

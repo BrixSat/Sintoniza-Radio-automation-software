@@ -71,6 +71,9 @@ public sealed class StationSettings
     /// <summary>The takes (the time, the temperature): their folder and where the station is.</summary>
     public TakesSettings Takes { get; set; } = new();
 
+    /// <summary>A gap before a break that ends at its time up to this long is filled from the Fillers category.</summary>
+    public double FillerGapSeconds { get; set; } = 120;
+
     /// <summary>The programme service's name at the ERC (ALIAS in its file); empty: the station's name.</summary>
     public string ErcAlias { get; set; } = "";
 
@@ -99,7 +102,7 @@ public sealed class StationSettings
             WebNowPlaying = s.WebNowPlaying, Alerts = s.Alerts,
             StreamHost = s.StreamHost, StreamPort = s.StreamPort, StreamMount = s.StreamMount, StreamPassword = s.StreamPassword,
             StreamFormat = s.StreamFormat, StreamBitrateIndex = s.StreamBitrateIndex, Shoutcast = s.Shoutcast,
-            Cartwalls = s.Cartwalls, LibraryFolders = s.Library.Folders.ToList(), VoiceTrackFolder = s.VoiceTrackFolder, Takes = s.Takes,
+            Cartwalls = s.Cartwalls, LibraryFolders = s.Library.Folders.ToList(), VoiceTrackFolder = s.VoiceTrackFolder, Takes = s.Takes, FillerGapSeconds = s.FillerGapSeconds,
         };
     }
 
@@ -122,6 +125,7 @@ public sealed class StationSettings
         if (s.ActiveCartwall is { } active && s.Cartwalls.All(c => c.Name != active)) s.ActiveCartwall = s.Cartwalls.FirstOrDefault()?.Name;
         s.Library.Folders = LibraryFolders?.ToList() ?? new();
         s.Takes = Takes ?? new();
+        s.FillerGapSeconds = FillerGapSeconds;
         s.VoiceTrackFolder = VoiceTrackFolder ?? "";
     }
 

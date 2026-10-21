@@ -56,6 +56,7 @@ public partial class RecWindow : Window
         };
         FolderButton.Click += (_, _) => OpenFolder(_settings.Folder);
         SettingsButton.Click += async (_, _) => await OpenSettings();
+        SupportButton.Click += (_, _) => Updates.OpenInBrowser(AppInfo.SupportUrl);
         FileList.SelectionChanged += (_, _) => PlayButton.IsEnabled = FileList.SelectedItem is RecFile;
         FileList.DoubleTapped += (_, _) => Play();
         PlayButton.Click += (_, _) => { if (_player?.IsPlaying == true) _player.Pause(); else if (_player != null && Equals(_playing, FileList.SelectedItem)) _player.Play(); else Play(); };

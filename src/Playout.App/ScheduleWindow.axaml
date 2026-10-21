@@ -104,6 +104,7 @@
         <Menu DockPanel.Dock="Top" x:Name="MainMenu" Padding="6,2" Background="#15181E">
             <MenuItem Header="_File">
                 <MenuItem x:Name="MenuSave" Header="_Save" InputGesture="Ctrl+S" />
+                <MenuItem x:Name="MenuRefresh" Header="Refresh" InputGesture="F5" />
                 <MenuItem x:Name="MenuSwitchUser" Header="Switch user…" />
                 <MenuItem x:Name="MenuLogout" Header="Log out" />
                 <Separator />
@@ -131,6 +132,7 @@
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem x:Name="MenuManual" Header="User manual" />
+                <MenuItem x:Name="MenuSupport" Header="☕ Support Sintoniza" />
                 <MenuItem x:Name="MenuAbout" Header="About Sintoniza Pro" />
             </MenuItem>
         </Menu>
@@ -140,6 +142,7 @@
             <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button x:Name="ToolHome" Classes="toolbar" Content="⌂  Home" />
                 <Button x:Name="SaveButton" Classes="toolbar" Content="💾  Save" ToolTip.Tip="Save the schedule (Ctrl+S): lights up when something changed" />
+                <Button x:Name="RefreshButton" Classes="toolbar" Content="⟳  Refresh" ToolTip.Tip="Read the library and the daily playlists again (F5): what was changed in another program or computer" />
                 <Rectangle Width="1" Fill="#2A2F3A" Margin="6,4" />
                 <Button x:Name="ToolSongs" Classes="toolbar" Content="♫  Songs" />
                 <Button x:Name="ToolDaily" Classes="toolbar" Content="☰  Daily playlists" />

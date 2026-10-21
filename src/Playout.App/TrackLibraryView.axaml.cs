@@ -41,6 +41,7 @@ public partial class TrackLibraryView : UserControl
         SearchBox.TextChanged += (_, _) => { _searchDelay.Stop(); _searchDelay.Start(); };
         CategoryBox.SelectionChanged += (_, _) => Query();
         EditCategoriesButton.Click += async (_, _) => await EditCategories();
+        RefreshButton.Click += (_, _) => _service?.NotifyChanged(); // everything showing the library reads it again
 
         TrackList.DoubleTapped += (_, e) =>
         {

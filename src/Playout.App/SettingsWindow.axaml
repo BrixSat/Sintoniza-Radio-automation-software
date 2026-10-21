@@ -325,6 +325,11 @@
                                 <Button x:Name="ClearFillButton" Content="Clear" />
                             </StackPanel>
                         </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,4,0,0">
+                            <TextBlock Text="Before a break that ends at its time, gaps up to" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="FillerGapBox" Minimum="0" Maximum="600" Increment="10" FormatString="0" Width="110" />
+                            <TextBlock Text="s are filled from the Fillers category (longer ones with a song)" VerticalAlignment="Center" TextWrapping="Wrap" />
+                        </StackPanel>
                         <TextBlock Classes="note" Margin="28,0,0,0"
                                    Text="Songs are added to the end of the playlist. From the library: songs that may be picked automatically, rested longest first, using the play history of every studio sharing the library; with the library, the folder is used while the library can't be reached or has nothing to pick. From a folder: random songs from it and its subfolders, without recent repeats. Off: the player stops at the end of the playlist." />
                     </StackPanel>
@@ -814,6 +819,7 @@
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="WebsiteButton" Content="cesararaujo.net" Classes="tool" />
                             <Button x:Name="SourceButton" Content="Source and releases on GitHub" Classes="tool" />
+                            <Button x:Name="SupportButton" Content="☕ Support Sintoniza" Classes="tool" ToolTip.Tip="Buy me a coffee: buymeacoffee.com/sintoniza" />
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,6,0,0">
                             <Button x:Name="ManualButton" Content="User manual (PDF)" Classes="accent" />

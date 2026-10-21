@@ -2,7 +2,7 @@
 Type=Application
 Name=Sintoniza Pro
 GenericName=Radio production: station, library, schedule and advertising
-Comment=Events, ad breaks, clients, hour templates and daily playlists for Sintoniza Radio Broadcast system
+Comment=Events, ad breaks, clients, hour templates and daily playlists for Sintoniza Emi
 Exec=sintoniza-pro
 Icon=radio-playout-schedule
 StartupWMClass=SintonizaPro

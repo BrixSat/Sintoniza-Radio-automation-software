@@ -40,7 +40,7 @@ static class SingleInstance
         var window = new Window
         {
             Title = program,
-            Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://RadioPlayout/Assets/icon.ico"))),
+            Icon = new WindowIcon(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SintonizaEmi/Assets/icon.ico"))),
             SizeToContent = SizeToContent.WidthAndHeight,
             CanResize = false,
             WindowStartupLocation = WindowStartupLocation.CenterScreen,

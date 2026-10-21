@@ -18,6 +18,7 @@ sealed class LibraryFill
 
     readonly LibraryService _service;
     readonly IReadOnlyCollection<long> _categories;
+    readonly string? _role;
     readonly TimeSpan _songGap, _artistGap;
     readonly FillMusic? _fallback;
     readonly object _lock = new();
@@ -31,9 +32,11 @@ sealed class LibraryFill
 
     /// <param name="categories">Category ids; empty = every music category.</param>
     /// <param name="fallback">Used while the library has nothing to pick.</param>
-    public LibraryFill(LibraryService service, IReadOnlyCollection<long> categories, TimeSpan songGap, TimeSpan artistGap, FillMusic? fallback)
+    /// <param name="role">Instead of the categories: one of the station's eight (e.g. fillers), with those under it.</param>
+    public LibraryFill(LibraryService service, IReadOnlyCollection<long> categories, TimeSpan songGap, TimeSpan artistGap, FillMusic? fallback, string? role = null)
     {
         _service = service;
+        _role = role;
         _categories = categories.ToList();
         _songGap = songGap;
         _artistGap = artistGap;
@@ -128,9 +131,10 @@ sealed class LibraryFill
                     Candidate[]? found = null;
                     if (tracks)
                     {
-                        var ids = _categories.Count > 0
-                            ? _categories
-                            : db.Categories().Where(c => c.Kind == "music").Select(c => c.Id).ToList();
+                        var all = db.Categories();
+                        var ids = _role != null ? CategoryTree.WithDescendants(all, all.Where(c => c.Role == _role).Select(c => c.Id).ToList()).ToList()
+                            : _categories.Count > 0 ? _categories
+                            : all.Where(c => c.Kind == "music").Select(c => c.Id).ToList();
                         found = db.RotationTracks(ids).Select(t => new Candidate(t, Artist(t.Artist))).ToArray();
                     }
                     lock (_lock)

@@ -1,10 +1,13 @@
 #!/bin/sh
-# Sintoniza Pro: the main app started as the schedule program (--schedule). It is looked for next to this app
-# (both in Applications), then in the user's Applications.
+# Sintoniza Pro: the production program, inside Sintoniza Emi.app (SintonizaPro). Sintoniza Emi.app is looked for next to this app (both in Applications),
+# then in the user's Applications; also under its name before (Sintoniza Radio Broadcast system.app).
 here="$(cd "$(dirname "$0")/../../.." && pwd)"
-for app in "$here/Sintoniza Radio Broadcast system.app" "/Applications/Sintoniza Radio Broadcast system.app" \
+for app in "$here/Sintoniza Emi.app" "/Applications/Sintoniza Emi.app" "$HOME/Applications/Sintoniza Emi.app" \
+           "$here/Sintoniza Radio Broadcast system.app" "/Applications/Sintoniza Radio Broadcast system.app" \
            "$HOME/Applications/Sintoniza Radio Broadcast system.app"; do
-  if [ -x "$app/Contents/MacOS/SintonizaPro" ]; then exec "$app/Contents/MacOS/SintonizaPro" "$@"; fi
+  for exe in SintonizaPro; do
+    if [ -x "$app/Contents/MacOS/$exe" ]; then exec "$app/Contents/MacOS/$exe" "$@"; fi
+  done
 done
-osascript -e 'display alert "Sintoniza Pro" message "Put Sintoniza Pro in the same folder as Sintoniza Radio Broadcast system (Applications)."'
+osascript -e 'display alert "Sintoniza Pro" message "Put Sintoniza Pro in the same folder as Sintoniza Emi (Applications)."'
 exit 1

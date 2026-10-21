@@ -1,5 +1,6 @@
-# Sintoniza Radio Broadcast system
+# Sintoniza
 
+Sintoniza Emi (on air), Sintoniza Pro (production), Sintoniza Rec (the broadcast recorder) and Sintoniza Import.
 A broadcast radio automation / playout app for **Linux, macOS and Windows**, with the same look on all three.
 It is built in C# with [Avalonia](https://avaloniaui.net/) and uses the [BASS](https://www.un4seen.com/) audio
 engine for decoding, mixing and streaming.
@@ -389,9 +390,10 @@ tags the commit `v1.0.0` and uploads them to the repository's Releases page. It 
 
 #### macOS
 
-`./build.sh mac 1.0.0` builds, for Apple Silicon (`arm64`) and Intel (`x64`) Macs, **Sintoniza Radio Broadcast
-system.app**, **Sintoniza Pro.app** and **Sintoniza Import.app** (which start the first's schedule program,
-or it as the import program; keep them in the same folder, normally Applications), with their icons and the
+`./build.sh mac 1.0.0` builds, for Apple Silicon (`arm64`) and Intel (`x64`) Macs, **Sintoniza Emi.app**,
+**Sintoniza Pro.app**, **Sintoniza Rec.app** and **Sintoniza Import.app** (which start the first's production or
+recorder program, or it as the import program; keep them in the same folder, normally Applications; *Sintoniza Radio
+Broadcast system.app*, its name before, can be deleted once Sintoniza Emi.app is there), with their icons and the
 microphone permission text.
 
 - **On a Mac** (best): they are signed and put in `dist/Sintoniza-1.0.0-macos-arm64.dmg` and `-x64.dmg`, a disk image
@@ -399,7 +401,7 @@ microphone permission text.
   Mac, `git pull`, then `./release-mac.sh 1.0.0` (needs `brew install gh` and `gh auth login`).
 - **On Linux**: they go in `.zip` files. An Apple Silicon Mac only starts signed apps, so these are signed ad hoc if
   [`rcodesign`](https://github.com/indygreg/apple-platform-rs) is installed; otherwise sign them once on the Mac after
-  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Radio Broadcast system.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Import.app"`.
+  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Emi.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Rec.app" "/Applications/Sintoniza Import.app"`.
 
 Without an Apple Developer ID the apps are signed *ad hoc*: the first time, macOS says it can't check the developer;
 right-click the app → **Open** (or System Settings → Privacy & Security → **Open Anyway**), once. With a Developer ID
@@ -427,10 +429,10 @@ The build copies the matching libraries into the output folder automatically.
 
 Then start the app:
 
-- **Windows:** `dist\win-x64\RadioPlayout.exe`
-- **macOS:** `dist/osx-arm64/RadioPlayout` (for an app to install, use `./build.sh mac`, above). The build is
+- **Windows:** `dist\win-x64\SintonizaEmi.exe`
+- **macOS:** `dist/osx-arm64/SintonizaEmi` (for an app to install, use `./build.sh mac`, above). The build is
   unsigned, so if macOS blocks it, run `xattr -dr com.apple.quarantine dist/osx-arm64` once.
-- **Linux:** `dist/linux-x64/RadioPlayout`. Audio goes through ALSA, which works with PulseAudio and PipeWire.
+- **Linux:** `dist/linux-x64/SintonizaEmi`. Audio goes through ALSA, which works with PulseAudio and PipeWire.
 
 ## Using it
 
@@ -475,6 +477,12 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 - Live input switching and GPIO, voice tracking
 - RT+ over UECP (it is sent with ASCII commands now)
 - REST API for remote control
+
+## Support
+
+If Sintoniza is useful to your station, you can support it at
+[buymeacoffee.com/sintoniza](https://buymeacoffee.com/sintoniza) — also from the programs: Sintoniza Emi's Settings →
+About, Sintoniza Pro's Help menu and the ☕ button in Sintoniza Rec.
 
 ## Licensing
 

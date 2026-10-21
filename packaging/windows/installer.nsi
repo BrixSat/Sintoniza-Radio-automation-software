@@ -1,12 +1,16 @@
-; Windows installer for Sintoniza Radio Broadcast system. Built by build.sh with:
+; Windows installer for Sintoniza (Emi, Pro, Rec and Import). Built by build.sh with:
 ;   makensis -DVERSION=<version> -DSRCDIR=<publish dir> -DOUTFILE=<setup.exe> installer.nsi
 Unicode true
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 
-!define APPNAME "Sintoniza Radio Broadcast system"
+!define APPNAME "Sintoniza Emi" ; the on-air program
 !define OLDNAME "Radio Playout" ; shortcuts made by versions before the rename
-!define EXENAME "RadioPlayout.exe"
+!define OLDAPPNAME "Sintoniza Radio Broadcast system" ; its name before Sintoniza Emi
+!define EXENAME "SintonizaEmi.exe"
+!define OLDEXE "RadioPlayout" ; its executable before (.exe, .dll…)
+!define RECNAME "Sintoniza Rec" ; the recorder: its own exe and icon
+!define RECEXE "SintonizaRec.exe"
 !define SCHEDNAME "Sintoniza Pro" ; the production program: its own exe (SintonizaPro.exe) and icon
 !define SCHEDEXE "SintonizaPro.exe"
 !define OLDSCHEDNAME "Sintoniza Schedule" ; its names before
@@ -38,13 +42,21 @@ SetCompressor /SOLID lzma
 
 Section "Install"
   SetShellVarContext all
-  ; An in-app update starts this silently and then closes the app: wait (up to 30 s) until its files are free.
+  ; An in-app update starts this silently and then closes the app: wait (up to 30 s) until its files are free
+  ; (the app as it is now, or under its name before when updating from an older version).
   StrCpy $1 0
   wait:
-    IfFileExists "$INSTDIR\${EXENAME}" 0 ready
+    IfFileExists "$INSTDIR\${EXENAME}" 0 waitold
     ClearErrors
     FileOpen $0 "$INSTDIR\${EXENAME}" a
     IfErrors 0 opened
+    Goto busy
+  waitold:
+    IfFileExists "$INSTDIR\${OLDEXE}.exe" 0 ready
+    ClearErrors
+    FileOpen $0 "$INSTDIR\${OLDEXE}.exe" a
+    IfErrors 0 opened
+  busy:
     IntOp $1 $1 + 1
     IntCmp $1 60 ready
     Sleep 500
@@ -60,11 +72,24 @@ Section "Install"
 
   Delete "$SMPROGRAMS\${OLDNAME}.lnk"
   Delete "$DESKTOP\${OLDNAME}.lnk"
+  ; Renamed to Sintoniza Emi: the old executable and its shortcuts go.
+  Delete "$SMPROGRAMS\${OLDAPPNAME}.lnk"
+  Delete "$DESKTOP\${OLDAPPNAME}.lnk"
+  Delete "$INSTDIR\${OLDEXE}.exe"
+  Delete "$INSTDIR\${OLDEXE}.dll"
+  Delete "$INSTDIR\${OLDEXE}.deps.json"
+  Delete "$INSTDIR\${OLDEXE}.runtimeconfig.json"
+  ; Starting at login, set by an older version: now the new executable.
+  ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "RadioPlayout"
+  StrCmp $0 "" +2
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "RadioPlayout" '"$INSTDIR\${EXENAME}"'
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateShortcut "$SMPROGRAMS\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
   CreateShortcut "$DESKTOP\${APPNAME}.lnk" "$INSTDIR\${EXENAME}"
   CreateShortcut "$SMPROGRAMS\${SCHEDNAME}.lnk" "$INSTDIR\${SCHEDEXE}"
   CreateShortcut "$DESKTOP\${SCHEDNAME}.lnk" "$INSTDIR\${SCHEDEXE}"
+  CreateShortcut "$SMPROGRAMS\${RECNAME}.lnk" "$INSTDIR\${RECEXE}"
+  CreateShortcut "$DESKTOP\${RECNAME}.lnk" "$INSTDIR\${RECEXE}"
   CreateShortcut "$SMPROGRAMS\${IMPORTNAME}.lnk" "$INSTDIR\${EXENAME}" "--import" "$INSTDIR\import.ico" 0
   CreateShortcut "$DESKTOP\${IMPORTNAME}.lnk" "$INSTDIR\${EXENAME}" "--import" "$INSTDIR\import.ico" 0
   ; The user manual (PDF), in English and in Portuguese.
@@ -107,6 +132,10 @@ Section "Uninstall"
   Delete "$DESKTOP\${APPNAME}.lnk"
   Delete "$SMPROGRAMS\${SCHEDNAME}.lnk"
   Delete "$DESKTOP\${SCHEDNAME}.lnk"
+  Delete "$SMPROGRAMS\${RECNAME}.lnk"
+  Delete "$DESKTOP\${RECNAME}.lnk"
+  Delete "$SMPROGRAMS\${OLDAPPNAME}.lnk"
+  Delete "$DESKTOP\${OLDAPPNAME}.lnk"
   Delete "$SMPROGRAMS\${IMPORTNAME}.lnk"
   Delete "$DESKTOP\${IMPORTNAME}.lnk"
   Delete "$SMPROGRAMS\${PLAYLISTSNAME}.lnk"
