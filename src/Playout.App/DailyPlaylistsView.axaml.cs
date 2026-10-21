@@ -475,6 +475,9 @@ public partial class DailyPlaylistsView : UserControl
     // ───────────────────────── The day ─────────────────────────
 
     /// <summary>Shows a day: its hours made first if they aren't (from now on), and the template changes caught up.</summary>
+    /// <summary>The day on show read again (changed elsewhere: another computer, the playout keeping time).</summary>
+    public Task Refresh() => ShowDay(_day, quiet: true);
+
     async Task ShowDay(DateTime day, bool quiet = false)
     {
         if (_db is not { } db) return;

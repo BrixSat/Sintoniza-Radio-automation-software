@@ -1,11 +1,11 @@
 [Desktop Entry]
 Type=Application
-Name=Sintoniza Radio Broadcast system
+Name=Sintoniza Emi
 GenericName=Radio automation
-Comment=Radio automation and playout
+Comment=Radio automation and playout: what goes on air
 Exec=radio-playout
 Icon=radio-playout
 Terminal=false
-StartupWMClass=RadioPlayout
+StartupWMClass=SintonizaEmi
 Keywords=radio;playout;broadcast;automation;jingles;streaming;
 Categories=AudioVideo;Audio;

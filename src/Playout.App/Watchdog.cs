@@ -102,7 +102,7 @@ static class Watchdog
         string exe = Environment.ProcessPath!;
         var info = new ProcessStartInfo(exe) { UseShellExecute = false };
         foreach (var (name, value) in GraphicsDriver.Environment) info.Environment.TryAdd(name, value);
-        // Run with "dotnet RadioPlayout.dll" (e.g. dotnet run): pass the dll too.
+        // Run with "dotnet SintonizaEmi.dll" (e.g. dotnet run): pass the dll too.
         if (Path.GetFileNameWithoutExtension(exe).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
             info.ArgumentList.Add(Assembly.GetEntryAssembly()!.Location);
         foreach (var a in args) info.ArgumentList.Add(a);

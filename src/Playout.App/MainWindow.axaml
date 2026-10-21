@@ -4,7 +4,7 @@
         xmlns:app="using:Playout.App"
         x:Class="Playout.App.MainWindow"
         Icon="/Assets/icon.ico"
-        Title="Sintoniza Radio Broadcast system"
+        Title="Sintoniza Emi"
         Width="1480" Height="920" MinWidth="1200" MinHeight="740"
         WindowStartupLocation="CenterScreen">
 

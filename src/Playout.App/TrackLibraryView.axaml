@@ -4,12 +4,14 @@
              x:Class="Playout.App.TrackLibraryView">
 
     <Grid RowDefinitions="Auto,Auto,*,Auto">
-        <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
             <TextBox x:Name="SearchBox" PlaceholderText="Search all songs: artist, title, album…" FontSize="13" />
             <ComboBox Grid.Column="1" x:Name="CategoryBox" Width="170" FontSize="12" MinHeight="0" Margin="6,0,0,0" VerticalAlignment="Stretch" />
             <Button Grid.Column="2" x:Name="EditCategoriesButton" Content="✎" Classes="tool" FontSize="12" Padding="7,3" Margin="4,0,0,0"
                     ToolTip.Tip="Edit categories: add, rename, colour, order, delete" />
-            <TextBlock Grid.Column="3" x:Name="CountText" Classes="muted" FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" />
+            <Button Grid.Column="3" x:Name="RefreshButton" Content="⟳" Classes="tool" FontSize="12" Padding="7,3" Margin="4,0,0,0"
+                    ToolTip.Tip="Read the library again: categories and songs added elsewhere" />
+            <TextBlock Grid.Column="4" x:Name="CountText" Classes="muted" FontSize="11" Margin="8,0,2,0" VerticalAlignment="Center" />
         </Grid>
 
         <Grid Grid.Row="1" ColumnDefinitions="3*,2*,44,96,62" Margin="8,10,8,4">

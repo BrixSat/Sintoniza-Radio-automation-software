@@ -25,6 +25,7 @@ public static class Program
         if (args.Contains(AppInfo.ScheduleArg) || args.Contains(AppInfo.PlaylistsArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.ScheduleWmClass });
         else if (args.Contains(AppInfo.ImportArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.ImportWmClass });
         else if (args.Contains(AppInfo.RecArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.RecWmClass });
+        else builder.With(new X11PlatformOptions { WmClass = AppInfo.WmClass });
         // A mistake in a window must not take the station off air: the engine runs on, so log it and carry on.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {

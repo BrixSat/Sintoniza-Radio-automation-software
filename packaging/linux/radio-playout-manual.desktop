@@ -2,8 +2,8 @@
 Type=Application
 Name=Sintoniza Manual
 Name[pt]=Manual do Sintoniza
-Comment=The user manual of Sintoniza Radio Broadcast system (PDF)
-Comment[pt]=O manual do utilizador do Sintoniza Radio Broadcast system (PDF)
+Comment=The user manual of Sintoniza (PDF)
+Comment[pt]=O manual do utilizador do Sintoniza (PDF)
 Exec=sintoniza-manual
 Icon=radio-playout
 Terminal=false

@@ -62,6 +62,9 @@ sealed class LibraryService
             if (version != _openVersion) return; // settings changed again meanwhile
             Db = db;
             SyncCues();
+            _stamp = null;
+            _readingStamp = false;
+            ReadStamp(db, notify: false); // how it is now, to notice changes made elsewhere
         }
         catch (Exception ex)
         {
@@ -79,7 +82,12 @@ sealed class LibraryService
     string? _lastOpenError;
 
     /// <summary>Tells the views the contents changed (after an edit).</summary>
-    public void NotifyChanged() => Changed?.Invoke();
+    /// <summary>This program changed the library: everything showing it reads it again (and the next check knows it was this).</summary>
+    public void NotifyChanged()
+    {
+        Changed?.Invoke();
+        if (Db is { } db) { _readingStamp = false; ReadStamp(db, notify: false); }
+    }
 
     /// <summary>Runs <paramref name="write"/> after the writes queued before it, off the UI thread.</summary>
     void Queue(Action write)
@@ -124,6 +132,7 @@ sealed class LibraryService
         }
         if (Db == null) return;
         if (DateTime.UtcNow - _cueSynced >= CueSyncInterval) SyncCues();
+        if (DateTime.UtcNow - _stampRead >= StampInterval) ReadStamp(Db);
         if (DateTime.UtcNow - _categoryFoldersRead >= CategoryFoldersInterval) ReadCategoryFolders(Db);
         AutoScan();
     }
@@ -254,10 +263,11 @@ sealed class LibraryService
     }
 
     /// <summary>Scans the music folders into the library in the background, reporting in the status bar.</summary>
-    public async Task ScanAsync(IReadOnlyList<string> folders, bool automatic = false)
+    /// <param name="onlyThese">Only these folders (a category's), not every category's folder too.</param>
+    public async Task ScanAsync(IReadOnlyList<string> folders, bool automatic = false, bool onlyThese = false)
     {
         if (Db is not { } db || _scan != null) return;
-        folders = WithCategoryFolders(folders);
+        folders = onlyThese ? folders.Where(Directory.Exists).ToList() : WithCategoryFolders(folders);
         if (folders.Count == 0)
         {
             if (!automatic) Message?.Invoke(L.T("Choose the music folders to scan in Settings → Library"));
@@ -323,6 +333,33 @@ sealed class LibraryService
     readonly Dictionary<string, CuePoints> _pendingCues = new(PathComparer); // edited here, not in the library yet
     string? _cueSince; // server time of the last sync, less a margin; null = read them all
     DateTime _cueSynced = DateTime.MinValue;
+
+    // ───────────────────────── Changes made elsewhere ─────────────────────────
+
+    static readonly TimeSpan StampInterval = TimeSpan.FromSeconds(30);
+    DateTime _stampRead = DateTime.UtcNow;
+    string? _stamp;
+    bool _readingStamp;
+
+    /// <summary>
+    /// Categories or songs changed by another program or computer (Sintoniza Import, a scan elsewhere, Pro): those
+    /// showing the library read it again. Checked every 30 seconds, in the background.
+    /// </summary>
+    /// <param name="notify">false: only take note of how the library is now (its own change, or just opened).</param>
+    void ReadStamp(LibraryDb db, bool notify = true)
+    {
+        if (_readingStamp) return;
+        _readingStamp = true;
+        _stampRead = DateTime.UtcNow;
+        Task.Run(db.ChangeStamp).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        {
+            _readingStamp = false;
+            if (!t.IsCompletedSuccessfully || db != Db) return;
+            bool changed = notify && _stamp != null && _stamp != t.Result;
+            _stamp = t.Result;
+            if (changed) Changed?.Invoke();
+        }));
+    }
     bool _syncing;
     string? _lastCueError;
 

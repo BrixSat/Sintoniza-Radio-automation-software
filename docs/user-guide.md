@@ -1,14 +1,15 @@
 # User guide
 
-Sintoniza is three programs and a command, sharing one database (the **library**: music, categories, the schedule,
+Sintoniza is four programs and a command, sharing one database (the **library**: music, categories, the schedule,
 the daily playlists and the play history):
 
 | Program | Who uses it | What for |
 | --- | --- | --- |
-| [**Sintoniza Radio Broadcast system**](#1-sintoniza-radio-broadcast-system-on-air) | the host, in the studio | what goes on air: the playlist, cartwall, microphone, streaming |
+| [**Sintoniza Emi**](#1-sintoniza-emi-on-air) | the host, in the studio | what goes on air: the playlist, cartwall, microphone, streaming |
 | [**Sintoniza Pro**](#2-sintoniza-pro) | programming, the commercial department, whoever runs the station | the station's settings, categories and cartwalls; events, ad breaks, clients and campaigns, hour templates, and the **daily playlists** song by song |
 | [**Sintoniza Import**](#3-sintoniza-import) | whoever looks after the music | bringing folders of music into the library, in categories |
-| [**radio-import**](#4-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
+| [**Sintoniza Rec**](#4-sintoniza-rec) | the technician, the station's management | records what the station broadcasts and keeps it (the law asks for 30 days); exports a stretch for the regulator, a client or a complaint |
+| [**radio-import**](#5-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
 
 Each has its own entry in the app menu (Linux), the Start menu and desktop (Windows) or Applications (macOS). Only one
 copy of each runs on a computer. With a MySQL / MariaDB library, Pro and Import can run on other computers (the
@@ -55,7 +56,7 @@ they are changed in Pro only.
 
 ---
 
-## 1. Sintoniza Radio Broadcast system (on air)
+## 1. Sintoniza Emi (on air)
 
 ### The screen
 
@@ -196,7 +197,8 @@ Station, Help) and a **toolbar** at the top; the **tools** on the left (Home · 
 Programming: hour templates, daily playlists, events · Traffic: ad breaks, clients and campaigns · Station: settings,
 cartwalls, users), with **Now playing** (from every studio's play history, and this hour's template) and the **station**
 box under them; the chosen tool in the middle; a **status bar** at the bottom (version, station, database, user,
-unsaved changes, date and time).
+unsaved changes, date and time). What is changed in another program or on another computer (an import, new categories, new songs)
+shows by itself within half a minute; **⟳ Refresh** in the toolbar (F5) reads it all again now.
 
 It opens on **Home**: the clock, what is on air, **today** (hours planned, ad breaks and adverts booked, events,
 voice tracks), what **needs attention** (missing files, songs without a category, hours without a template,
@@ -214,6 +216,8 @@ tempo and energy, tags, listen).
   moved or deleted: **Music**, **Jingles**, **Promos**, **ProgAutor** (shows recorded outside), **Fillers**,
   **Redação** (news), **Spots** (adverts) and **Takes** (voice inserts: the time, the temperature… as if a host were
   there). Make your own under them (*New under it*: Music › 80s, Spots › Clients…), each with its colour and folders.
+  **⟳ Scan its folders now** (with a category selected) looks for songs added to or taken out of its folders straight
+  away; the on-air program also watches those folders and scans them by itself.
 - **Cartwalls** — the cartwalls every studio plays: New, Copy, Rename, Delete; click a cart to give it a file
   (or drop one on it), a colour and an icon, and listen to it.
 - **Import music** — Sintoniza Import, inside Pro.
@@ -324,9 +328,11 @@ minutes), or an internet stream for N minutes. Choose how it starts:
 - **Hard:** on the second (what is on air fades out).
 - **Ends at its time:** it ends exactly then, to the second — never later. The songs before it are adjusted; if the
   music would still run over, what is on air is faded at the moment the break has to start; if it would get there early,
-  a song is put before it (from the station's music, even with fill music off) and faded when the break starts. A break
-  that ends at 10:00 is the last of the 09:00 hour (the daily playlists leave room for it there, and leave its end to
-  it). With the time signal set to stop what plays, a break that ends on the hour ends as the pips start (09:59:54).
+  a short gap (up to 2 minutes: Station settings → Safety) is filled from the **Fillers** category (beds, short
+  instrumentals), and a longer one with a song (from the station's music, even with fill music off) faded when the
+  break starts. A break that ends at 10:00 is the last of the 09:00 hour (the daily playlists leave room for it there,
+  and leave its end to it). With the time signal set to stop what plays, a break that ends on the hour ends as the pips
+  start (09:59:54); after the pips, what was left of the 09:00 hour doesn't play: the 10:00 hour starts.
 
 and what the host may do with it in the playlist (remove/move, only move, or nothing).
 
@@ -423,7 +429,35 @@ Brings a folder of music into the library, in categories. It asks for a user wit
 
 ---
 
-## 4. radio-import (command line)
+## 4. Sintoniza Rec
+
+The station's recorder (from *gravação*): it records what goes out, all day, every day, and keeps it. The Lei da
+Rádio (art. 39.º) asks for the broadcasts to be recorded and kept at least 30 days. It doesn't need the library or a
+user: it can run on the studio computer or on any other.
+
+**What it records** (⚙ Settings → Source): an **input** of the computer — best, the desk's programme output into the
+sound card, so the microphones are in it — or the station's **stream** (a web address), which it opens again by
+itself if it drops. *Start Sintoniza Rec when I log in* makes it start recording on its own after a restart.
+
+**The files** (Settings → Files): a folder with a folder a day inside it (`2026-10-21/RE_2026-10-21_10-00-00.mp3`),
+a new file every 5–60 minutes from a set minute (each new file starts before the old one stops: nothing is lost),
+MP3 (64–320 kbps, mono to halve the space) or WAV. Recordings older than **Kept for** are deleted by themselves; it
+shows how much space a day and the whole period take. An optional **archive copy** (mono, low quality, in another
+folder, e.g. a NAS) can be kept for months or always.
+
+**The window** shows what is recorded (● REC and for how long, the file being written, the meters, the free space),
+**🎧 Listen live** (to the *Listening* output: headphones, never an output that goes on air), and below, the
+**recordings of a day**: pick a file and play it, or **Open folder**. **Export a stretch**: a day, a start and an end
+time, MP3 or WAV → one file, cut to the second, taken from as many recordings as needed (a time the recorder was
+stopped is left out and said so).
+
+**Alerts** (Settings → Alerts): silence (or a stream that dropped) for longer than set, a recording that can't be
+written, less than 2 GB free, and a "still recording" message once a day if wanted; by Telegram, e-mail or a web
+address (**Send a test**). Closing the window asks first, because it stops the recording.
+
+---
+
+## 5. radio-import (command line)
 
 ```
 radio-import                          scan the library's folders (Pro → Station settings → Library)

@@ -29,7 +29,12 @@ public partial class ScheduleWindow
                 var folders = new CategoryFolders(() => _library.Db?.FolderCategories() ?? new(), (folder, id) => _library.Db?.SetFolderRule(folder, id), _ => { }, () => _library.NotifyChanged());
                 Show(tab, new CategoriesWindow(_library, folders), hide: "CloseButton");
             }
-            else if (tab == ImportTab) Show(tab, new ImportWindow(db, null), hide: "CloseButton");
+            else if (tab == ImportTab)
+            {
+                var import = new ImportWindow(db, null);
+                import.Imported += () => _library?.NotifyChanged(); // Songs, Categories and the templates see what came in
+                Show(tab, import, hide: "CloseButton");
+            }
             else if (tab == StationSettingsTab) await ShowStationSettings(new StationStore(db));
             else if (tab == CartwallsTab) await ShowCartwalls(new StationStore(db));
             else if (tab == UsersTab && tab.Content == null) tab.Content = new UsersView(new UserStore(db), _user?.Name ?? "");

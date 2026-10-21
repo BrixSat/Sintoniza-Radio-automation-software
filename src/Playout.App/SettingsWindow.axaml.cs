@@ -78,6 +78,7 @@ public partial class SettingsWindow : PageWindow
         AutoUpdateBox.IsChecked = settings.CheckForUpdates;
         WebsiteButton.Click += (_, _) => Updates.OpenInBrowser("https://cesararaujo.net");
         SourceButton.Click += (_, _) => Updates.OpenInBrowser(Updates.ReleasesPage);
+        SupportButton.Click += (_, _) => Updates.OpenInBrowser(AppInfo.SupportUrl);
         ManualButton.Click += (_, _) =>
         {
             if (Manual.Find() is { } pdf) Updates.OpenInBrowser(pdf);
@@ -117,6 +118,7 @@ public partial class SettingsWindow : PageWindow
         PipsRadio.IsChecked = _signalFile == null;
         ShowSignalFile();
         ChooseSignalButton.Click += async (_, _) => await ChooseSignalFile();
+        FillerGapBox.Value = (decimal)settings.FillerGapSeconds;
         _takesFolder = settings.Takes?.Folder ?? "";
         LatitudeBox.Text = settings.Takes?.Latitude?.ToString(CultureInfo.InvariantCulture) ?? "";
         LongitudeBox.Text = settings.Takes?.Longitude?.ToString(CultureInfo.InvariantCulture) ?? "";
@@ -952,6 +954,7 @@ public partial class SettingsWindow : PageWindow
 
         _settings.TimeSignal = SignalFromUi();
         _settings.Takes = TakesFromUi();
+        _settings.FillerGapSeconds = (double)(FillerGapBox.Value ?? 120);
 
         _settings.Library = LibraryFromUi();
         _settings.Rds = RdsFromUi();

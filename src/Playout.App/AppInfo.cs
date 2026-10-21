@@ -1,9 +1,15 @@
 namespace Playout.App;
 
-/// <summary>The product name shown to users. The executable, package and settings folder keep the name RadioPlayout, so existing installs and settings carry on.</summary>
+/// <summary>
+/// The names shown to users. The on-air program is Sintoniza Emi (its executable SintonizaEmi); the packages, install
+/// folders and settings folder keep the name RadioPlayout / radio-playout, so existing installs and settings carry on.
+/// </summary>
 public static class AppInfo
 {
-    public const string Name = "Sintoniza Radio Broadcast system";
+    /// <summary>The on-air program (from "emissão").</summary>
+    public const string Name = "Sintoniza Emi";
+    /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
+    public const string WmClass = "SintonizaEmi";
     /// <summary>The station's production program: its settings, library, categories, cartwalls, schedule and traffic.</summary>
     public const string ScheduleName = "Sintoniza Pro";
     /// <summary>Starts the app as the schedule program.</summary>
@@ -22,6 +28,8 @@ public static class AppInfo
     public const string RecArg = "--rec";
     /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
     public const string RecWmClass = "SintonizaRec";
+    /// <summary>Where users can support the project (Settings → About, Pro's Help menu, Rec).</summary>
+    public const string SupportUrl = "https://buymeacoffee.com/sintoniza";
     /// <summary>Opens the schedule program on its daily playlists (what was Sintoniza Playlists).</summary>
     public const string PlaylistsArg = "--playlists";
 

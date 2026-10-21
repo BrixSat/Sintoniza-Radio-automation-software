@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Rec
+GenericName=Radio broadcast recorder
+Comment=Records what the station broadcasts and keeps it the days the law asks for; exports stretches
+Exec=sintoniza-rec
+Icon=radio-playout-rec
+StartupWMClass=SintonizaRec
+Terminal=false
+Keywords=radio;recorder;logger;recording;archive;
+Categories=AudioVideo;Audio;

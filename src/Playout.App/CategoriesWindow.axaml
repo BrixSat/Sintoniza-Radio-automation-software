@@ -104,6 +104,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Button x:Name="AddFolderButton" Content="Add folder…" />
                         <Button x:Name="RemoveFolderButton" Content="Remove" />
+                        <Button x:Name="ScanFoldersButton" Content="⟳ Scan its folders now" ToolTip.Tip="Look for songs added to (or taken out of) this category's folders, now" />
                     </StackPanel>
                     <TextBlock Classes="note"
                                Text="The songs in the folder (and its subfolders) go in this category, and so do new songs put there later: the library scans the folder by itself. Remove takes the folder's songs out of the category." />

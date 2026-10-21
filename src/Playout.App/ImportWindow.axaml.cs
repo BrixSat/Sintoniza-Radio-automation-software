@@ -149,6 +149,12 @@ public partial class ImportWindow : PageWindow
             nodes.Count, made, nodes.Sum(n => n.Files), nodes.Sum(n => n.InLibrary), nodes.Sum(n => n.InOtherCategory));
     }
 
+    /// <summary>An import finished (or was stopped): categories and songs may be new.</summary>
+    public event Action? Imported;
+
+    /// <summary>The categories again (made elsewhere meanwhile), keeping the one chosen.</summary>
+    public Task Refresh() => _running != null ? Task.CompletedTask : LoadCategories(ParentId);
+
     async Task Import()
     {
         if (_db is not { } db || _plan is not { } plan || _running != null) return;
@@ -199,6 +205,7 @@ public partial class ImportWindow : PageWindow
             _running = null;
             SetBusy(false);
         }
+        Imported?.Invoke(); // the rest of the program shows the new categories and songs
         // What is in the library now (the new categories are there, so the preview shows them as such).
         _plan = null;
         ImportButton.IsEnabled = false;

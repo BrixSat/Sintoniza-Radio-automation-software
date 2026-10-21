@@ -5,7 +5,7 @@ controls to point at, in order; each gets a number on the picture and the same n
 
 # The manual's own words (cover, contents, notes).
 WORDS = {
-    "title": "Sintoniza Radio Broadcast system",
+    "title": "Sintoniza",
     "subtitle": "User manual",
     "contents": "Contents",
     "tip": "Tip",
@@ -16,13 +16,14 @@ WORDS = {
 
 CHAPTERS = [
 ("Sintoniza at a glance", "intro", [
-    ("p", "Sintoniza is radio automation for stations that are on air around the clock. It is made of three programs that "
+    ("p", "Sintoniza is radio automation for stations that are on air around the clock. It is made of four programs. Three "
           "share one database, the <b>library</b>: the music and its categories, the schedule, the daily playlists and the "
           "history of everything that went on air."),
     ("icons", [
-        ("radio-playout.png", "Sintoniza Radio Broadcast system", "The on-air program, in the studio: the playlist, the cartwall, the microphone and the stream. The host uses it."),
+        ("radio-playout.png", "Sintoniza Emi", "The on-air program (from <i>emissão</i>), in the studio: the playlist, the cartwall, the microphone and the stream. The host uses it."),
         ("radio-playout-schedule.png", "Sintoniza Pro", "The station's production program: its settings, categories and cartwalls; events, ad breaks, clients and campaigns, hour templates for your shows, and the daily playlists song by song."),
         ("radio-playout-import.png", "Sintoniza Import", "Brings folders of music into the library, in categories."),
+        ("radio-playout-rec.png", "Sintoniza Rec", "Records what the station broadcasts and keeps it the days the law asks for; exports a stretch. It works on its own, without the library."),
     ]),
     ("p", "Each has its own entry in the app menu (Linux), the Start menu and desktop (Windows) or Applications (macOS), and "
           "only one copy of each runs on a computer. With a shared MySQL / MariaDB library, Pro and Import can run on "
@@ -69,7 +70,7 @@ CHAPTERS = [
 ]),
 
 ("The on-air program", "onair", [
-    ("p", "<b>Sintoniza Radio Broadcast system</b> is what the host works with. The top half is what is on air now; the bottom "
+    ("p", "<b>Sintoniza Emi</b> is what the host works with. The top half is what is on air now; the bottom "
           "half is what comes next (the playlist) and what is at hand (cartwall, library, folders)."),
     ("h2", "Logging in"),
     ("p", "The program opens <b>locked</b>: the on-air screen shows behind the log-in, but nothing can be clicked and the keys do nothing "
@@ -359,7 +360,7 @@ CHAPTERS = [
     ("p", "An event plays a <b>file</b>, the <b>newest file in a folder</b> (the news: skipped if older than N minutes) or an "
           "internet <b>stream</b> for N minutes. How it starts: <b>Soft</b> (after the item on air ends, at most N minutes "
           "late), <b>Hard</b> (on the second; what is on air fades out) or <b>Ends at its time</b> (it ends exactly then, never "
-          "later: the songs before it are adjusted, and what is on air fades if it would run over; one that ends at 10:00 is the last of 09:00; with the time signal on Stop, it ends as the pips start). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
+          "later: the songs before it are adjusted, and what is on air fades if it would run over; one that ends at 10:00 is the last of 09:00; with the time signal on Stop, it ends as the pips start, and the hour before's songs don't play after them; a short gap before it is filled from the Fillers category). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
     ("h2", "Ad breaks"),
     ("fig", "schedule-breaks", "Ad breaks", [
         ("BreakList", "The breaks."),
@@ -459,6 +460,55 @@ CHAPTERS = [
             "radio-import --mysql user:password@server[:port]/database\n"
             "radio-import --stats                  what is in the library"),
     ("p", "Only new and changed files are read. Deleted files, and the songs of a deleted folder, are taken out; a drive or share that isn't connected is left alone."),
+]),
+
+("Sintoniza Rec", "rec", [
+    ("p", "The station's recorder: it records what goes out, all day, every day, and keeps it. The Lei da Rádio (art. 39.º) "
+          "asks for the broadcasts to be recorded and kept at least 30 days. It doesn't need the library or a user, so it can "
+          "run on the studio computer or on any other; on a computer of its own it keeps recording when the studio's is restarted."),
+    ("fig", "rec", "Sintoniza Rec", [
+        ("RecText", "<b>● REC</b> while it records (STOPPED in red when it doesn't, SILENCE when there has been no sound for a while), and for how long."),
+        ("SourceText", "What it records from, and how."),
+        ("MeterL", "The level of what comes in."),
+        ("DiskText", "The file being written, the free space, how long recordings are kept and how often a new file starts."),
+        ("RecButton", "<b>Record</b> / <b>Stop</b>. Closing the window asks first: it stops the recording."),
+        ("MonitorButton", "<b>Listen live</b>: what is being recorded, on the Listening output (headphones, never an output that goes on air)."),
+        ("SettingsButton", "<b>Settings</b>: the source, the files, listening and alerts."),
+        ("DayBox", "The <b>recordings of a day</b> (Today goes back to today)…"),
+        ("FileList", "…each file with its start and end, length and size. Double-click one, or pick it and…"),
+        ("PlayButton", "…<b>▶</b> to listen to it; the bar under it moves through it, with the time of day it was on air."),
+        ("FromBox", "<b>Export a stretch</b>: a day, a start and an end time and a format…"),
+        ("ExportButton", "…<b>Export…</b> asks where to save one file, cut to the second, taken from as many recordings as needed. A time the recorder was stopped is left out, and it says so."),
+    ]),
+    ("h2", "Where it records from"),
+    ("fig", "rec-settings", "Settings → Source", [
+        ("StationBox", "The station's name, in the window and in the alerts."),
+        ("InputRadio", "An <b>input</b> of this computer…"),
+        ("InputBox", "…which one: best, the desk's programme output into the sound card, so the microphones are in it (the playout's own sound has no microphones)."),
+        ("StreamRadio", "Or the station's <b>stream</b>…"),
+        ("StreamBox", "…its address. If the stream drops it is opened again by itself, in a new file."),
+        ("AutostartBox", "<b>Start Sintoniza Rec when I log in</b>: after a power cut or a restart it records again by itself."),
+    ]),
+    ("h2", "The files"),
+    ("fig", "rec-files", "Settings → Files", [
+        ("FolderBox", "The <b>folder</b>: inside it, a folder a day (2026-10-21) with the files (RE_2026-10-21_10-00-00.mp3). A shared folder works too."),
+        ("FormatBox", "MP3, or WAV (no compression: about 10 GB a day)."),
+        ("BitrateBox", "The MP3 quality; <b>Mono</b> takes half the space."),
+        ("MinutesBox", "<b>A new file every</b> 5 to 60 minutes, from a set minute. The new file starts before the old one stops: nothing is lost between them."),
+        ("KeepDaysBox", "<b>Kept for</b>: older recordings are deleted by themselves. 30 days at least."),
+        ("SpaceText", "How much space a day and the whole period take."),
+        ("ArchiveBox", "An <b>archive copy</b> as well: mono and low quality, in another folder (a NAS, another disk), kept for months or always."),
+    ]),
+    ("h2", "Alerts"),
+    ("fig", "rec-alerts", "Settings → Alerts", [
+        ("SilenceDbBox", "<b>Silence</b>: below this level for this long (or a stream that sends nothing). It says again when the sound is back."),
+        ("AliveBox", "A <b>still recording</b> message once a day: a day without one means something is wrong with the computer."),
+        ("TelegramTokenBox", "Sent by <b>Telegram</b>…"),
+        ("SmtpServerBox", "…by <b>e-mail</b>…"),
+        ("WebhookBox", "…or to a <b>web address</b> (JSON). Whatever is filled in is used."),
+        ("TestAlertButton", "<b>Send a test</b>."),
+    ]),
+    ("p", "Also sent: a recording that can't be written (a full or missing disk, a share that went away: it tries again with a new file) and less than 2 GB free."),
 ]),
 
 ("How do I…", "howto", [

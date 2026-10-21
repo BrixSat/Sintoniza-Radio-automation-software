@@ -6,7 +6,7 @@ def _date(d):
     return f"{d.day} de {months[d.month - 1]} de {d.year}"
 
 WORDS = {
-    "title": "Sintoniza Radio Broadcast system",
+    "title": "Sintoniza",
     "subtitle": "Manual do utilizador",
     "contents": "Índice",
     "tip": "Dica",
@@ -18,13 +18,14 @@ WORDS = {
 
 CHAPTERS = [
 ("O Sintoniza num relance", "intro", [
-    ("p", "O Sintoniza é automação de rádio para estações que estão no ar a toda a hora. São três programas que partilham "
+    ("p", "O Sintoniza é automação de rádio para estações que estão no ar a toda a hora. São quatro programas. Três partilham "
           "uma base de dados, a <b>biblioteca</b>: a música e as suas categorias, a programação, as playlists diárias e o "
           "histórico de tudo o que foi para o ar."),
     ("icons", [
-        ("radio-playout.png", "Sintoniza Radio Broadcast system", "O programa de emissão, no estúdio: a playlist, o cartwall, o microfone e o stream. É o que o locutor usa."),
+        ("radio-playout.png", "Sintoniza Emi", "O programa de emissão, no estúdio: a playlist, o cartwall, o microfone e o stream. É o que o locutor usa."),
         ("radio-playout-schedule.png", "Sintoniza Pro", "O programa de produção da estação: as suas definições, categorias e cartwalls; eventos, blocos publicitários, clientes e campanhas, modelos de hora para os programas e as playlists diárias, música a música."),
         ("radio-playout-import.png", "Sintoniza Importação", "Traz pastas de música para a biblioteca, em categorias."),
+        ("radio-playout-rec.png", "Sintoniza Rec", "Grava o que a estação emite e guarda-o os dias que a lei pede; exporta excertos. Trabalha sozinho, sem a biblioteca."),
     ]),
     ("p", "Cada um tem a sua entrada no menu das aplicações (Linux), no menu Iniciar e no ambiente de trabalho (Windows) ou "
           "em Aplicações (macOS), e só corre uma cópia de cada um por computador. Com uma biblioteca MySQL / MariaDB "
@@ -72,7 +73,7 @@ CHAPTERS = [
 ]),
 
 ("O programa de emissão", "onair", [
-    ("p", "O <b>Sintoniza Radio Broadcast system</b> é o programa com que o locutor trabalha. A metade de cima é o que está "
+    ("p", "O <b>Sintoniza Emi</b> é o programa com que o locutor trabalha. A metade de cima é o que está "
           "no ar agora; a de baixo é o que vem a seguir (a playlist) e o que está à mão (cartwall, biblioteca, pastas)."),
     ("h2", "Entrar"),
     ("p", "O programa abre <b>bloqueado</b>: o ecrã de emissão vê-se por trás da entrada, mas não se pode clicar em nada e as teclas não fazem "
@@ -364,7 +365,7 @@ CHAPTERS = [
     ("p", "Um evento toca um <b>ficheiro</b>, o <b>ficheiro mais recente de uma pasta</b> (o noticiário: saltado se tiver mais de "
           "N minutos) ou um <b>stream</b> durante N minutos. Como começa: <b>Flexível</b> (depois de acabar o que está no ar, no "
           "máximo N minutos atrasado), <b>Rígido</b> (ao segundo; o que está no ar desvanece) ou <b>Acaba à sua hora</b> (acaba exatamente "
-          "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00; com o sinal horário em Parar, acaba quando começam os bips). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
+          "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00; com o sinal horário em Parar, acaba quando começam os bips, e as músicas da hora anterior já não tocam depois deles; um intervalo curto antes dele é preenchido com a categoria Fillers). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
     ("h2", "Blocos publicitários"),
     ("fig", "schedule-breaks", "Blocos publicitários", [
         ("BreakList", "Os blocos."),
@@ -464,6 +465,55 @@ CHAPTERS = [
             "radio-import --mysql utilizador:palavra-passe@servidor[:porta]/basededados\n"
             "radio-import --stats                  o que está na biblioteca"),
     ("p", "Só são lidos os ficheiros novos e alterados. Os ficheiros apagados, e as músicas de uma pasta apagada, saem da biblioteca; um disco ou partilha que não está ligado fica como está."),
+]),
+
+("Sintoniza Rec", "rec", [
+    ("p", "O gravador da estação: grava o que vai para o ar, todo o dia, todos os dias, e guarda-o. A Lei da Rádio (art. 39.º) "
+          "obriga a gravar as emissões e a guardá-las pelo menos 30 dias. Não precisa da biblioteca nem de um utilizador, por isso "
+          "pode correr no computador do estúdio ou noutro qualquer; num computador só para ele continua a gravar quando o do estúdio é reiniciado."),
+    ("fig", "rec", "Sintoniza Rec", [
+        ("RecText", "<b>● REC</b> enquanto grava (PARADO a vermelho quando não grava, SILÊNCIO quando não há som há algum tempo), e há quanto tempo."),
+        ("SourceText", "De onde grava, e como."),
+        ("MeterL", "O nível do que entra."),
+        ("DiskText", "O ficheiro que está a ser escrito, o espaço livre, quanto tempo as gravações são guardadas e de quanto em quanto tempo começa um ficheiro novo."),
+        ("RecButton", "<b>Gravar</b> / <b>Parar</b>. Fechar a janela pergunta primeiro: para a gravação."),
+        ("MonitorButton", "<b>Ouvir em direto</b>: o que está a ser gravado, na saída de escuta (auscultadores, nunca uma saída que vá para o ar)."),
+        ("SettingsButton", "<b>Definições</b>: a origem, os ficheiros, a escuta e os alertas."),
+        ("DayBox", "As <b>gravações de um dia</b> (Hoje volta a hoje)…"),
+        ("FileList", "…cada ficheiro com o início e o fim, a duração e o tamanho. Faça duplo clique num, ou escolha-o e…"),
+        ("PlayButton", "…<b>▶</b> para o ouvir; a barra por baixo percorre-o, com a hora a que esteve no ar."),
+        ("FromBox", "<b>Exportar um excerto</b>: um dia, uma hora de início e de fim e um formato…"),
+        ("ExportButton", "…<b>Exportar…</b> pergunta onde guardar um só ficheiro, cortado ao segundo, feito de quantas gravações forem precisas. Um tempo em que o gravador esteve parado fica de fora, e é dito."),
+    ]),
+    ("h2", "De onde grava"),
+    ("fig", "rec-settings", "Definições → Origem", [
+        ("StationBox", "O nome da estação, na janela e nos alertas."),
+        ("InputRadio", "Uma <b>entrada</b> deste computador…"),
+        ("InputBox", "…qual: de preferência a saída de programa da mesa ligada à placa de som, para os microfones irem na gravação (o som do próprio playout não tem os microfones)."),
+        ("StreamRadio", "Ou o <b>stream</b> da estação…"),
+        ("StreamBox", "…o seu endereço. Se o stream cair, é aberto outra vez sozinho, num ficheiro novo."),
+        ("AutostartBox", "<b>Abrir o Sintoniza Rec quando entro neste computador</b>: depois de uma falha de luz ou de reiniciar, volta a gravar sozinho."),
+    ]),
+    ("h2", "Os ficheiros"),
+    ("fig", "rec-files", "Definições → Ficheiros", [
+        ("FolderBox", "A <b>pasta</b>: lá dentro, uma pasta por dia (2026-10-21) com os ficheiros (RE_2026-10-21_10-00-00.mp3). Também pode ser uma pasta partilhada."),
+        ("FormatBox", "MP3, ou WAV (sem compressão: cerca de 10 GB por dia)."),
+        ("BitrateBox", "A qualidade do MP3; <b>Mono</b> ocupa metade do espaço."),
+        ("MinutesBox", "<b>Um ficheiro novo a cada</b> 5 a 60 minutos, a partir de um minuto escolhido. O ficheiro novo começa antes de o anterior acabar: nada se perde entre eles."),
+        ("KeepDaysBox", "<b>Guardadas durante</b>: as gravações mais antigas são apagadas sozinhas. Pelo menos 30 dias."),
+        ("SpaceText", "Quanto espaço ocupa um dia e o período todo."),
+        ("ArchiveBox", "Também uma <b>cópia de arquivo</b>: mono e de baixa qualidade, noutra pasta (um NAS, outro disco), guardada meses ou para sempre."),
+    ]),
+    ("h2", "Alertas"),
+    ("fig", "rec-alerts", "Definições → Alertas", [
+        ("SilenceDbBox", "<b>Silêncio</b>: abaixo deste nível durante este tempo (ou um stream que não manda nada). Volta a avisar quando há som."),
+        ("AliveBox", "Uma mensagem <b>continuo a gravar</b> uma vez por dia: um dia sem ela quer dizer que algo se passa com o computador."),
+        ("TelegramTokenBox", "Enviados por <b>Telegram</b>…"),
+        ("SmtpServerBox", "…por <b>e-mail</b>…"),
+        ("WebhookBox", "…ou para um <b>endereço web</b> (JSON). É usado o que estiver preenchido."),
+        ("TestAlertButton", "<b>Enviar um teste</b>."),
+    ]),
+    ("p", "Também avisa de uma gravação que não pode ser escrita (um disco cheio ou que falta, uma partilha que desapareceu: tenta outra vez com um ficheiro novo) e de menos de 2 GB livres."),
 ]),
 
 ("Como faço…", "howto", [

@@ -344,6 +344,18 @@ public sealed partial class LibraryDb
         return c.QueryFirstOrDefault<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE {PathIs("path")} ORDER BY id", new { path });
     }
 
+    /// <summary>
+    /// A fingerprint of the categories and of the songs (how many, and the latest change): when it differs from the
+    /// last one, another program or computer changed the library.
+    /// </summary>
+    public string ChangeStamp()
+    {
+        var categories = Categories();
+        using var c = Connect();
+        var (count, latest) = c.QueryFirst<(long, string?)>("SELECT COUNT(*), MAX(updated_at) FROM tracks");
+        return string.Join("|", categories.Select(x => $"{x.Id}:{x.ParentId}:{x.Name}:{x.Kind}:{x.Color}:{x.SortOrder}")) + $"#{count}#{latest}";
+    }
+
     public LibraryStats Stats()
     {
         using var c = Connect();

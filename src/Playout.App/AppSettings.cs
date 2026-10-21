@@ -127,6 +127,9 @@ public sealed class AppSettings
     /// <summary>The station's takes (the time, the temperature): their folder and where the station is.</summary>
     public TakesSettings Takes { get; set; } = new();
 
+    /// <summary>A gap before a break that ends at its time up to this long is filled from the Fillers category.</summary>
+    public double FillerGapSeconds { get; set; } = 120;
+
     public string StreamHost { get; set; } = "localhost";
     public int StreamPort { get; set; } = 8000;
     public string StreamMount { get; set; } = "/live";

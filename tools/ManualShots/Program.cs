@@ -112,7 +112,7 @@ settings.Cartwalls = [new CartwallPage { Name = T("Morning show", "Manhãs"), Ca
 settings.ActiveCartwall = T("Morning show", "Manhãs");
 // A logo: the app's own icon
 string logo = Path.Combine(work, "logo.png");
-if (!File.Exists(logo)) using (var s = File.Create(logo)) new Avalonia.Media.Imaging.Bitmap(Avalonia.Platform.AssetLoader.Open(new Uri("avares://RadioPlayout/Assets/icon.ico"))).Save(s);
+if (!File.Exists(logo)) using (var s = File.Create(logo)) new Avalonia.Media.Imaging.Bitmap(Avalonia.Platform.AssetLoader.Open(new Uri("avares://SintonizaEmi/Assets/icon.ico"))).Save(s);
 settings.LogoPath = logo;
 // Takes: the hours, some minutes and temperatures (silent: only their names matter here)
 string takesDir = Path.Combine(media, "Takes");
@@ -520,6 +520,42 @@ WaitFor(() => import.FindControl<ListBox>("PlanList")!.ItemCount > 1, 30);
 Pump(20);
 Shot(import, "import", "FolderBox", "ChooseButton", "NameBox", "ParentBox", "KindBox", "LevelsBox", "AlsoInRadio", "PreviewButton", "PlanList", "ImportButton");
 import.Close();
+
+// ───────────────────────── Sintoniza Rec ─────────────────────────
+
+// The recordings of this morning, an hour a file, in a folder of the demo station (never the user's Music folder).
+string recFolder = Path.Combine(work, T("Recordings", "Gravações"));
+for (int h = 6; h < 10; h++)
+{
+    var start = DateTime.Today.AddHours(h);
+    string recFile = RecService.FileFor(recFolder, "RE_", start, ".mp3");
+    if (File.Exists(recFile)) continue;
+    Directory.CreateDirectory(Path.GetDirectoryName(recFile)!);
+    Process.Start(new ProcessStartInfo("ffmpeg", ["-loglevel", "error", "-y", "-f", "lavfi", "-i", "anoisesrc=d=3600:c=pink:a=0.3",
+        "-ac", "1", "-b:a", "32k", recFile]) { RedirectStandardError = true })!.WaitForExit();
+}
+new RecSettings { Folder = recFolder, Prefix = "RE_", Bitrate = 128, KeepDays = 45, SilenceSeconds = 60 }.Save();
+var rec = new RecWindow(start: false);
+rec.Show();
+Pump(20);
+rec.FindControl<ListBox>("FileList")!.SelectedIndex = 2;
+rec.FindControl<TextBox>("FromBox")!.Text = "08:15";
+rec.FindControl<TextBox>("ToBox")!.Text = "08:45";
+Pump(20);
+Shot(rec, "rec", "RecText", "SourceText", "MeterL", "DiskText", "RecButton", "MonitorButton", "SettingsButton", "DayBox", "FileList", "PlayButton", "FromBox", "ExportButton");
+var recSettings = new RecSettingsWindow(RecSettings.Load());
+recSettings.Show();
+Pump(20);
+Shot(recSettings, "rec-settings", "StationBox", "InputRadio", "InputBox", "StreamRadio", "StreamBox", "AutostartBox");
+var recTabs = recSettings.GetVisualDescendants().OfType<TabControl>().First();
+recTabs.SelectedIndex = 1;
+Pump(20);
+Shot(recSettings, "rec-files", "FolderBox", "FormatBox", "BitrateBox", "MinutesBox", "KeepDaysBox", "SpaceText", "ArchiveBox");
+recTabs.SelectedIndex = 3;
+Pump(20);
+Shot(recSettings, "rec-alerts", "SilenceDbBox", "AliveBox", "TelegramTokenBox", "SmtpServerBox", "WebhookBox", "TestAlertButton");
+recSettings.Close();
+rec.Close();
 
 File.WriteAllText(Path.Combine(outDir, "callouts.json"), JsonSerializer.Serialize(callouts, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine("Done.");
