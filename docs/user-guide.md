@@ -242,6 +242,32 @@ with the log-in until someone logs in (or **Close**). Each user has a name, a pa
 deleting them. You can't delete or lock out yourself, nor take away your own *Users*. Passwords are kept only as a
 secure hash (PBKDF2): a forgotten one is set again by another user with *Users*.
 
+### ERC quotas (Portuguese music)
+
+The Lei da Rádio (Lei n.º 54/2010, changed by Lei n.º 16/2024, art. 41.º–47.º) asks, of the songs a station plays in a
+month: at least **30 %** Portuguese music; of the Portuguese music, at least **60 %** in Portuguese performed by EU
+citizens and at least **35 %** first edited in the last 12 months. The same percentages must also be met **Monday to
+Friday from 7:00 to 20:00**. Every month the station sends the ERC the list of what it played (art. 47.º-B), through
+its portal (portalradios.erc.pt).
+
+**Classifying the songs.** Each song has: *Portuguese music* (yes / no), the *language* it is sung in (pt-PT, pt-BR,
+en…), the *performer's country* and its *first edition* (yyyy-mm-dd, yyyy-mm or yyyy; empty: the year tag). Give them
+to a whole category in **Categories** (e.g. Music › Portuguese: Portuguese music, pt-PT, Portugal): its songs, new
+ones too, and the categories under it take them. A song can say otherwise: **Songs** → select → right-click → **ERC
+classification…** (several at once: what differs between them can be left as it is).
+
+**Pro → Programming → ERC quotas** shows, for a period (*Last month*, *This month* or any dates), the three quotas for
+the whole period and for Monday–Friday 7–20h, green when met and red when not, with how many songs of how many.
+When the period isn't over yet it also shows them **with the daily playlists still to play**, so a shortfall can be
+fixed before the month ends. **Songs to classify** lists what went on air (or is planned) without the ERC's details —
+until classified they count as not Portuguese — select them and **Classify…**.
+
+**Export for the ERC (XML)…** saves the file the ERC's portal takes: `ERCRATIO`, the station's **ALIAS**, a
+`PLAYLIST` a day with each song's time, duration, artist, title, nationality, language, first edition, whether it is
+Portuguese music and ISRC (ISO-8859-1). On the right: the programme service's name at the ERC (ALIAS) and the
+**countries with their ERC codes** (the ERC numbers countries its own way: Portugal is 045; copy the others from the
+portal), and which are in the EU.
+
 ### The schedule
 
 Five tools, on the left under Programming and Traffic. **Save** (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database; the playout takes it
@@ -384,6 +410,8 @@ the songs of deleted folders are taken out; a drive or share that isn't connecte
   Or in the on-air program: Folders tab → right-click the folder → Category → Gold.
 - **…give a presenter their own login?** Pro → Station → Users → New user → their name and a password → **Presenter**
   → Save user. They can work on air, record voice tracks in Pro and use the web remote, nothing else.
+- **…send the ERC last month's music?** Pro → ERC quotas → *Last month* → check the quotas and classify what is
+  listed under *Songs to classify* → **Export for the ERC (XML)…** → upload the file in the ERC's portal.
 - **…get the music report for the collecting society?** On-air program → Reports → Music played (royalties) → the
   month → Save as CSV.
 - **…send an advertiser the proof of broadcast?** Reports → Adverts → the advertiser and dates → Save as a page to

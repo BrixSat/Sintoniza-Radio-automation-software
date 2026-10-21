@@ -431,6 +431,49 @@ if (firstSong?.Item is { } vtSong)
     vtDeck.Dispose();
 }
 
+// ERC quotas: last month as it went on air, the Portuguese artists classified (by artist), a few songs left to do
+{
+    string[] portugueseArtists = ["Sofia Mar", "Ana Brisa", "Mila Reis", "Tiago Sol", "Rui Navarro"];
+    var demoSongs = db.Search("", CategoryFilter.All, 1000).Tracks.Where(t => t.Path.StartsWith(music)).OrderBy(t => t.Path).ToList();
+    var ptSongs = demoSongs.Where(t => portugueseArtists.Contains(t.Artist)).ToList();
+    for (int i = 0; i < ptSongs.Count; i++)
+        db.SetAttributes([ptSongs[i].Id], new TrackAttributes(ErcPortuguese: true, Language: i % 5 == 4 ? "en" : "pt-PT", ErcNationality: "045",
+            ErcRelease: (i % 3 == 0 ? DateTime.Today.AddMonths(-4) : new DateTime(2019 + i % 4, 1 + i % 12, 1)).ToString("yyyy-MM")));
+    var foreign = demoSongs.Where(t => !portugueseArtists.Contains(t.Artist)).ToList();
+    db.SetAttributes(foreign.Skip(3).Select(t => t.Id), new TrackAttributes(ErcPortuguese: false)); // three left to classify
+    var monthStart = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+    var month = new List<AsRunEntry>();
+    int n = 0;
+    for (var d = monthStart; d < monthStart.AddMonths(1); d = d.AddDays(1))
+        for (var at = d.AddHours(6); at < d.AddHours(23); at = at.AddMinutes(4))
+        {
+            // A Portuguese song about every third, a little more in the daytime
+            var pick = n++ % (Erc.InWeekdayHours(at) ? 2 : 3) == 0 ? ptSongs : demoSongs;
+            var t = pick[n * 7 % pick.Count];
+            month.Add(new AsRunEntry(at, at.AddSeconds(t.Duration), "Music", "playlist", "", "", t.Artist, t.Title, "", "", "", "", "", t.Path));
+        }
+    AsRunDb.Add(db, month);
+    var ercStore = new StationStore(db);
+    var (ercStation, ercVersion) = ercStore.Load();
+    if (ercStation != null)
+    {
+        ercStation.ErcAlias = T("EXAMPLE RADIO 99.9", "RADIO EXEMPLO 99.9");
+        ercStation.ErcCountries = [new ErcCountry { Name = "Portugal", Code = "045", Eu = true }];
+        ercStore.Save(ercStation, ercVersion, "manual");
+    }
+    stabs.SelectedItem = schedule.FindControl<TabItem>("ErcTab");
+    Pump(10);
+    var ercView = (ErcView)schedule.FindControl<TabItem>("ErcTab")!.Content!;
+    WaitFor(() => ercView.FindControl<StackPanel>("AllPanel")!.Children.Count == 3 && ercView.FindControl<ListBox>("MissingList")!.ItemCount > 0, 60);
+    Pump(20);
+    Shot(schedule, "erc", "FromBox", "CheckButton", "AllPanel", "DaytimePanel", "MissingList", "ClassifyButton", "ExportButton", "AliasBox", "CountryPanel");
+    var ercSong = new ErcSongWindow(db, [ptSongs[0].Id], [new ErcCountry { Name = "Portugal", Code = "045", Eu = true }]) { Width = 520 };
+    ercSong.Show();
+    Pump(20);
+    Shot(ercSong, "erc-song", "PortugueseBox", "LanguageBox", "CountryBox", "ReleaseBox");
+    ercSong.Close();
+}
+
 // The station's users: a presenter of the demo station next to the first two
 if (users.All().All(u => u.Name != "ana")) users.Save(new SintonizaUser { Name = "ana", Permissions = [.. Permission.Presenter] }, "demo");
 stabs.SelectedItem = schedule.FindControl<TabItem>("UsersTab");

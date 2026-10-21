@@ -298,6 +298,29 @@ CHAPTERS = [
         ["Controlo remoto web", "Controlar um playout a partir de um telemóvel"],
     ]),
     ("tip", "As palavras-passe só são guardadas como um hash seguro: uma esquecida é definida de novo por outro utilizador com <b>Utilizadores</b>. Ninguém se pode apagar ou bloquear a si próprio, nem tirar a sua própria permissão <b>Utilizadores</b>."),
+    ("h2", "Quotas ERC (música portuguesa)"),
+    ("p", "A Lei da Rádio (art. 41.º–47.º, na redação de 2024) pede, das músicas emitidas num mês: pelo menos <b>30 %</b> de música portuguesa; da "
+          "música portuguesa, pelo menos <b>60 %</b> em língua portuguesa interpretada por cidadãos da UE e pelo menos <b>35 %</b> editada pela primeira vez "
+          "nos últimos 12 meses — no mês inteiro e também <b>de segunda a sexta, das 7:00 às 20:00</b>. Todos os meses a estação envia à ERC o que emitiu, pelo portal."),
+    ("p", "Cada música precisa de: se é música portuguesa, a língua em que é cantada, o país do intérprete e a primeira edição. Dê-os a uma categoria inteira "
+          "em <b>Categorias</b> (as suas músicas e as categorias abaixo ficam com eles), ou a músicas em <b>Músicas</b> → botão direito → <b>Classificação ERC…</b>."),
+    ("fig", "erc-song", "Classificação ERC de uma música", [
+        ("PortugueseBox", "<b>Música portuguesa</b>: sim, não, ou como diz a categoria."),
+        ("LanguageBox", "A <b>língua</b> em que é cantada (pt-PT, pt-BR, en…)."),
+        ("CountryBox", "O <b>país do intérprete</b>, da lista da estação com os códigos da ERC."),
+        ("ReleaseBox", "A <b>primeira edição</b>: aaaa-mm-dd, aaaa-mm ou aaaa (vazio: a etiqueta do ano)."),
+    ]),
+    ("fig", "erc", "Programação → Quotas ERC", [
+        ("FromBox", "O período: <b>Mês passado</b>, <b>Este mês</b> ou quaisquer datas…"),
+        ("CheckButton", "…e <b>Verificar</b>."),
+        ("AllPanel", "As três quotas em todo o período: verde quando cumpridas, vermelho quando não, com quantas de quantas."),
+        ("DaytimePanel", "O mesmo, de segunda a sexta das 7:00 às 20:00. Enquanto o período não acabou, um terceiro cartão junta as playlists diárias ainda por emitir."),
+        ("MissingList", "<b>Músicas por classificar</b>: emitidas (ou planeadas) sem os dados da ERC; até lá contam como não portuguesas."),
+        ("ClassifyButton", "<b>Classificar…</b> as selecionadas."),
+        ("ExportButton", "<b>Exportar para a ERC (XML)…</b>: o ficheiro que o portal da ERC aceita, uma PLAYLIST por dia."),
+        ("AliasBox", "O nome do serviço de programas na ERC (ALIAS)."),
+        ("CountryPanel", "Os países e os seus códigos ERC (Portugal é 045; copie os outros do portal), e quais são da UE."),
+    ]),
     ("h2", "A programação"),
     ("p", "Tudo o que se planeia com antecedência: Eventos, Blocos publicitários, Clientes e campanhas, Modelos de hora e Playlists diárias, escolhidos à esquerda. <b>Guardar</b> (na barra de ferramentas, acesa quando algo mudou, ou Ctrl+S) grava na base de "
           "dados e o programa de emissão recebe-o em poucos segundos. Se outra pessoa gravou entretanto, é-lhe perguntado antes de substituir o que ela fez."),
@@ -430,6 +453,9 @@ CHAPTERS = [
     ("steps", ["Pro → <b>Playlists diárias</b> → ▶ até amanhã → <b>09:00</b>.", "Selecione a música → <b>Outra música</b>, ou <b>Remover</b> e duplo clique numa da biblioteca."]),
     ("h3", "…para pôr uma pasta de músicas no Gold?"),
     ("p", "Sintoniza Importação com essa pasta, <i>na categoria</i> Gold, sem subcategorias. Ou no programa de emissão: separador Pastas → botão direito na pasta → Categoria → Gold."),
+    ("h3", "…para enviar à ERC a música do mês passado?"),
+    ("steps", ["Pro → <b>Quotas ERC</b> → <b>Mês passado</b>.", "Veja as quotas; classifique o que está em <i>Músicas por classificar</i>.",
+               "<b>Exportar para a ERC (XML)…</b> e depois envie o ficheiro no portal da ERC."]),
     ("h3", "…para tirar o relatório de música para a sociedade de autores?"),
     ("p", "Programa de emissão → <b>Relatórios</b> → <i>Música emitida (direitos de autor)</i> → o mês → <b>Guardar como CSV…</b>."),
     ("h3", "…para enviar a um anunciante o comprovativo de emissão?"),

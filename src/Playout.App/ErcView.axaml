@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Playout.App.ErcView">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#1A1D24" />
+            <Setter Property="BorderBrush" Value="#2A2F3A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+        <Style Selector="TextBlock.cardtitle">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="#7D8594" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="*,18,300">
+        <DockPanel>
+            <!-- The period -->
+            <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="8" Margin="0,0,0,12">
+                <TextBlock Text="From" VerticalAlignment="Center" />
+                <CalendarDatePicker x:Name="FromBox" Width="150" SelectedDateFormat="Short" />
+                <TextBlock Text="to" VerticalAlignment="Center" />
+                <CalendarDatePicker x:Name="ToBox" Width="150" SelectedDateFormat="Short" />
+                <Button x:Name="LastMonthButton" Content="Last month" />
+                <Button x:Name="ThisMonthButton" Content="This month" />
+                <Button x:Name="CheckButton" Content="Check" Classes="accent" />
+                <TextBlock x:Name="StatusText" Classes="note" VerticalAlignment="Center" MaxWidth="420" />
+            </WrapPanel>
+
+            <!-- Export -->
+            <Border DockPanel.Dock="Bottom" Classes="card" Margin="0,12,0,0">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="note" VerticalAlignment="Center" Margin="0,0,12,0"
+                               Text="The file for the ERC's portal (portalradios.erc.pt): every song that went on air in the period, day by day, with its nationality, language, first edition and whether it is Portuguese music. Usually last month, by the deadline the ERC sets." />
+                    <Button Grid.Column="1" x:Name="ExportButton" Content="Export for the ERC (XML)…" Classes="accent" />
+                </Grid>
+            </Border>
+
+            <ScrollViewer>
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,12,*">
+                        <Border Classes="card">
+                            <StackPanel>
+                                <TextBlock Classes="cardtitle" Text="THE WHOLE PERIOD" />
+                                <StackPanel x:Name="AllPanel" Spacing="10" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Classes="card">
+                            <StackPanel>
+                                <TextBlock Classes="cardtitle" Text="MONDAY TO FRIDAY, 7:00–20:00" />
+                                <StackPanel x:Name="DaytimePanel" Spacing="10" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <Border Classes="card" x:Name="PlannedCard" IsVisible="False">
+                        <StackPanel>
+                            <TextBlock Classes="cardtitle" Text="WITH THE DAILY PLAYLISTS STILL TO PLAY, TO THE END OF THE PERIOD" />
+                            <Grid ColumnDefinitions="*,12,*">
+                                <StackPanel x:Name="PlannedAllPanel" Spacing="10" />
+                                <StackPanel Grid.Column="2" x:Name="PlannedDaytimePanel" Spacing="10" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="card">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Classes="cardtitle" Text="SONGS TO CLASSIFY" />
+                            <TextBlock DockPanel.Dock="Top" Classes="note" Margin="0,0,0,8"
+                                       Text="Songs that went on air (or are planned) without what the ERC needs: whether they are Portuguese music, and for Portuguese music the language, the performer's country and the first edition. Until then they count as not Portuguese. Select them and Classify… (or give their category defaults in Categories)." />
+                            <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="8" Margin="0,8,0,0">
+                                <Button x:Name="ClassifyButton" Content="Classify…" IsEnabled="False" />
+                                <Button x:Name="SelectAllButton" Content="Select all" />
+                            </WrapPanel>
+                            <ListBox x:Name="MissingList" SelectionMode="Multiple" MinHeight="120" MaxHeight="420" Background="#13161C" />
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+
+        <!-- The station's ERC details -->
+        <Border Grid.Column="2" Classes="card" VerticalAlignment="Top">
+            <StackPanel Spacing="12">
+                <TextBlock Classes="cardtitle" Text="THE STATION AT THE ERC" />
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Programme service name (ALIAS)" />
+                    <TextBox x:Name="AliasBox" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="Countries and their ERC codes" />
+                    <StackPanel x:Name="CountryPanel" Spacing="6" />
+                    <Button x:Name="AddCountryButton" Content="Add a country" Margin="0,6,0,0" />
+                </StackPanel>
+                <TextBlock Classes="note"
+                           Text="The ERC codes the performer's country with its own numbers (Portugal is 045): copy them from the ERC's portal. EU: the country is in the European Union (Portuguese-language quota)." />
+                <Button x:Name="SaveDetailsButton" Content="Save" Classes="accent" HorizontalAlignment="Left" />
+                <TextBlock x:Name="DetailsText" Classes="note" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -90,6 +90,14 @@
                     <TextBlock Classes="label" Text="Colour" />
                     <WrapPanel x:Name="Swatches" ItemSpacing="6" LineSpacing="6" />
                 </StackPanel>
+                <StackPanel Spacing="4">
+                    <TextBlock Classes="label" Text="ERC: its songs are (unless a song says otherwise)" />
+                    <Grid ColumnDefinitions="*,6,*,6,*">
+                        <ComboBox x:Name="ErcPortugueseBox" HorizontalAlignment="Stretch" ToolTip.Tip="Portuguese music (Lei da Rádio, art. 41.º)" />
+                        <ComboBox Grid.Column="2" x:Name="ErcLanguageBox" HorizontalAlignment="Stretch" ToolTip.Tip="Language it is sung in" />
+                        <ComboBox Grid.Column="4" x:Name="ErcCountryBox" HorizontalAlignment="Stretch" ToolTip.Tip="Performer's country" />
+                    </Grid>
+                </StackPanel>
                 <StackPanel x:Name="FoldersPanel" Spacing="6">
                     <TextBlock Classes="label" Text="Folders: their songs are in this category" />
                     <ListBox x:Name="FolderList" Height="110" Background="#13161C" />

@@ -22,6 +22,10 @@ public sealed class LibraryCategory
     /// <summary>One of the eight fixed top-level categories (<see cref="FixedCategories"/>): it can't be deleted, renamed or moved.</summary>
     public string? Role { get; set; }
     public bool IsFixed => Role != null;
+    /// <summary>ERC defaults for its songs (and the categories under it); null: as the category above says.</summary>
+    public bool? ErcPortuguese { get; set; }
+    public string? ErcLanguage { get; set; }
+    public string? ErcNationality { get; set; }
 }
 
 public sealed class LibraryTrack
@@ -49,6 +53,12 @@ public sealed class LibraryTrack
     public string? Language { get; set; }
     public bool Enabled { get; set; } = true;
     public bool Missing { get; set; }
+    /// <summary>ERC: Portuguese music (null: as its categories say).</summary>
+    public bool? ErcPortuguese { get; set; }
+    /// <summary>ERC: the performer's country, as the ERC's code (null: as its categories say).</summary>
+    public string? ErcNationality { get; set; }
+    /// <summary>ERC: first edition, yyyy-mm-dd, yyyy-mm or yyyy (null: the year tag).</summary>
+    public string? ErcRelease { get; set; }
 }
 
 /// <summary>Which tracks to list: all, those without a category, those whose file is missing, or one category.</summary>
@@ -73,7 +83,9 @@ public sealed record LibraryStats(int Tracks, int Missing, int Uncategorised, do
 
 /// <summary>Attributes to set on several tracks at once; null = leave as it is.</summary>
 public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, string? Language = null, bool? Enabled = null,
-    bool ClearTempo = false, bool ClearVoice = false, bool ClearLanguage = false, int? Energy = null, bool ClearEnergy = false);
+    bool ClearTempo = false, bool ClearVoice = false, bool ClearLanguage = false, int? Energy = null, bool ClearEnergy = false,
+    bool? ErcPortuguese = null, bool ClearErcPortuguese = false, string? ErcNationality = null, bool ClearErcNationality = false,
+    string? ErcRelease = null, bool ClearErcRelease = false);
 
 /// <summary>
 /// The music library, in SQLite (a file) or MySQL / MariaDB (a server several studios share). Every call opens its
@@ -82,7 +94,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 12;
+    public const int SchemaVersion = 13;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -90,7 +102,8 @@ public sealed partial class LibraryDb
     const string TrackColumns = """
         id AS Id, path AS Path, file_size AS FileSize, file_modified AS FileModified, title AS Title, artist AS Artist,
         album AS Album, genre AS Genre, year AS Year, isrc AS Isrc, duration AS Duration, category_id AS CategoryId,
-        tempo AS Tempo, energy AS Energy, voice AS Voice, language AS Language, enabled AS Enabled, missing AS Missing
+        tempo AS Tempo, energy AS Energy, voice AS Voice, language AS Language, enabled AS Enabled, missing AS Missing,
+        erc_portuguese AS ErcPortuguese, erc_nationality AS ErcNationality, erc_release AS ErcRelease
         """;
 
     readonly string _connectionString;
@@ -302,6 +315,16 @@ public sealed partial class LibraryDb
     /// <summary>Tracks in no other category either.</summary>
     const string NotAlsoIn = "NOT EXISTS (SELECT 1 FROM track_categories tc WHERE tc.track_id = tracks.id)";
 
+    /// <summary>The tracks with these ids (those that are still there).</summary>
+    public List<LibraryTrack> GetByIds(IEnumerable<long> ids)
+    {
+        using var c = Connect();
+        var list = new List<LibraryTrack>();
+        foreach (var chunk in ids.Distinct().Chunk(400))
+            list.AddRange(c.Query<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE id IN @ids", new { ids = chunk }));
+        return list;
+    }
+
     public LibraryTrack? GetByPath(string path)
     {
         using var c = Connect();
@@ -327,7 +350,8 @@ public sealed partial class LibraryDb
     {
         using var c = Connect();
         return c.Query<LibraryCategory>(
-            "SELECT id AS Id, parent_id AS ParentId, name AS Name, kind AS Kind, color AS Color, sort_order AS SortOrder, role AS Role FROM categories ORDER BY sort_order, name")
+            "SELECT id AS Id, parent_id AS ParentId, name AS Name, kind AS Kind, color AS Color, sort_order AS SortOrder, role AS Role, "
+            + "erc_portuguese AS ErcPortuguese, erc_language AS ErcLanguage, erc_nationality AS ErcNationality FROM categories ORDER BY sort_order, name")
             .ToList();
     }
 
@@ -373,14 +397,16 @@ public sealed partial class LibraryDb
         if (Categories().FirstOrDefault(x => x.Id == category.Id) is { IsFixed: true } fixedOne)
         {
             using var f = Connect();
-            f.Execute("UPDATE categories SET color = @Color WHERE id = @Id", new { category.Color, fixedOne.Id });
+            f.Execute("UPDATE categories SET color = @Color, erc_portuguese = @ErcPortuguese, erc_language = @ErcLanguage, erc_nationality = @ErcNationality WHERE id = @Id",
+                new { category.Color, category.ErcPortuguese, category.ErcLanguage, category.ErcNationality, fixedOne.Id });
             return;
         }
         if (category.ParentId == null) throw new InvalidOperationException("A category goes under one of the station's eight.");
         using var c = Connect();
         if (category.ParentId is { } parent && CategoryTree.WithDescendants(Categories(), [category.Id]).Contains(parent))
             throw new InvalidOperationException("A category can't go under itself or one of its own sub-categories.");
-        c.Execute("UPDATE categories SET parent_id = @ParentId, name = @Name, kind = @Kind, color = @Color, sort_order = @SortOrder WHERE id = @Id", category);
+        c.Execute("UPDATE categories SET parent_id = @ParentId, name = @Name, kind = @Kind, color = @Color, sort_order = @SortOrder, "
+                  + "erc_portuguese = @ErcPortuguese, erc_language = @ErcLanguage, erc_nationality = @ErcNationality WHERE id = @Id", category);
     }
 
     /// <summary>Deletes a category: its songs lose it, its sub-categories move up to where it was.</summary>
@@ -507,10 +533,13 @@ public sealed partial class LibraryDb
         if (a.ClearVoice) sets.Add("voice = NULL"); else if (a.Voice != null) sets.Add("voice = @Voice");
         if (a.ClearLanguage) sets.Add("language = NULL"); else if (a.Language != null) sets.Add("language = @Language");
         if (a.Enabled != null) sets.Add("enabled = @Enabled");
+        if (a.ClearErcPortuguese) sets.Add("erc_portuguese = NULL"); else if (a.ErcPortuguese != null) sets.Add("erc_portuguese = @ErcPortuguese");
+        if (a.ClearErcNationality) sets.Add("erc_nationality = NULL"); else if (a.ErcNationality != null) sets.Add("erc_nationality = @ErcNationality");
+        if (a.ClearErcRelease) sets.Add("erc_release = NULL"); else if (a.ErcRelease != null) sets.Add("erc_release = @ErcRelease");
         using var c = Connect();
         using var tx = c.BeginTransaction();
         c.Execute($"UPDATE tracks SET {string.Join(", ", sets)} WHERE id = @id",
-            trackIds.Select(id => new { id, now = Now(), a.Tempo, a.Energy, a.Voice, a.Language, a.Enabled }), tx);
+            trackIds.Select(id => new { id, now = Now(), a.Tempo, a.Energy, a.Voice, a.Language, a.Enabled, a.ErcPortuguese, a.ErcNationality, a.ErcRelease }), tx);
         tx.Commit();
     }
 

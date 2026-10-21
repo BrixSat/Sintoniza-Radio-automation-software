@@ -233,12 +233,23 @@ public partial class TrackLibraryView : UserControl
         {
             if (TopLevel.GetTopLevel(this) is not Window owner) return;
             string initial = rows.Select(r => r.Track.Language).Distinct().Count() == 1 ? rows[0].Track.Language ?? "" : "";
-            var text = await Dialogs.AskText(owner, L.T("Language"), L.T("Language code, e.g. pt, en, es (empty: not set)"), initial,
-                t => t.Length > 10 ? L.T("Use a short code such as pt or en") : null);
+            var text = await Dialogs.AskText(owner, L.T("Language"), L.T("Language code, e.g. pt-PT, pt-BR, en, es (empty: not set)"), initial,
+                t => t.Length > 10 ? L.T("Use a short code such as pt-PT or en") : null);
             if (text == null) return;
-            Edit(db => db.SetAttributes(ids, text.Length == 0
+            // pt-pt → pt-PT, EN → en
+            string code = text.Trim().Replace('_', '-') is var t2 && t2.Split('-', 2) is [var lang, var region] ? $"{lang.ToLowerInvariant()}-{region.ToUpperInvariant()}" : text.Trim().ToLowerInvariant();
+            Edit(db => db.SetAttributes(ids, code.Length == 0
                 ? new TrackAttributes(ClearLanguage: true)
-                : new TrackAttributes(Language: text.ToLowerInvariant())));
+                : new TrackAttributes(Language: code)));
+        }));
+
+        menu.Items.Add(Item(L.T("ERC classification") + many + "…", async () =>
+        {
+            if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db) return;
+            List<ErcCountry> countries;
+            try { countries = (await Task.Run(() => new StationStore(db).Load().Settings?.ErcCountries)) ?? Erc.DefaultCountries(); }
+            catch { countries = Erc.DefaultCountries(); }
+            if (await new ErcSongWindow(db, ids, countries).ShowDialog<bool>(owner)) _service.NotifyChanged();
         }));
 
         bool allEnabled = rows.All(r => r.Track.Enabled);
