@@ -538,6 +538,8 @@
                                 <TextBlock x:Name="SpotOrphanText" Foreground="{StaticResource OnAir}" FontSize="12" TextWrapping="Wrap" />
                                 <WrapPanel ItemSpacing="6" LineSpacing="6">
                                     <Button x:Name="SpotEveryBreakButton" Content="In every break" ToolTip.Tip="Every week, in every break that has its section" />
+                                    <Button x:Name="SpotMoveOrphansButton" Content="Move them to the nearest break" Classes="accent"
+                                            ToolTip.Tip="Each to the break nearest its time on the same day (e.g. 10:50 → 11:00)" />
                                     <Button x:Name="SpotOrphanButton" Content="Remove the places with no break" />
                                     <Button x:Name="SpotClearPlacesButton" Content="Take it out of the calendar" />
                                 </WrapPanel>

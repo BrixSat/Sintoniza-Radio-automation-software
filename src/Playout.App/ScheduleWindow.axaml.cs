@@ -761,6 +761,7 @@ public partial class ScheduleWindow : Window
                         k.Placements.Add(new AdPlacement { Day = slot.Day, Time = slot.Time });
         });
         SpotOrphanButton.Click += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Placements.RemoveAll(p => !HasBreak(k, p)));
+        SpotMoveOrphansButton.Click += (_, _) => Edit<AdCampaign>(CampaignList, k => MoveToBreaks(k));
 
         // The week calendar of breaks.
         SpotGrid.CellOf = SpotCell;
@@ -847,9 +848,32 @@ public partial class ScheduleWindow : Window
             : L.F("{0} with no break that has its section (e.g. {1}): it doesn't play there. A break moved to another time? Place it again.",
                 Plural(orphans.Count, "{0} place", "{0} places"),
                 string.Join(", ", orphans.Select(p => p.Date is { } d ? d.ToString("d/M ", CultureInfo.CurrentCulture) + WeekGrid.Time(p.At.TotalSeconds) : DayShort(p.Day ?? DayOfWeek.Monday) + " " + WeekGrid.Time(p.At.TotalSeconds)).Distinct().Take(3)));
-        SpotOrphanButton.IsVisible = orphans.Count > 0;
+        SpotOrphanButton.IsVisible = SpotMoveOrphansButton.IsVisible = orphans.Count > 0;
         SpotEveryBreakButton.IsVisible = k != null;
     }
+
+    /// <summary>
+    /// A campaign's places with no break (a break moved to another time) each to the break nearest it on the same day
+    /// that has its section (10:50 → 11:00); two that land on the same break are one.
+    /// </summary>
+    void MoveToBreaks(AdCampaign k)
+    {
+        var breaks = _data.Breaks.Where(b => b.Enabled && b.SectionOf(k) != null).ToList();
+        foreach (var p in k.Placements.Where(p => !HasBreak(k, p)).ToList())
+        {
+            var times = p.Date is { } d
+                ? breaks.SelectMany(b => b.TimesOn(d.Date)).Select(t => t.TimeOfDay)
+                : breaks.SelectMany(b => b.Slots.Where(s => s.Day == p.Day)).Select(s => s.At);
+            if (times.OrderBy(t => (t - p.At).Duration()).ThenByDescending(t => t).Cast<TimeSpan?>().FirstOrDefault() is { } nearest)
+                p.Time = WeekTime.Text(nearest);
+        }
+        k.Placements = k.Placements.GroupBy(p => (p.Day, p.Date?.Date, p.Time)).Select(g => g.First()).ToList();
+    }
+
+    /// <summary>The campaigns with places where there is no break: they don't play there (for Home).</summary>
+    internal List<(AdClient Client, AdCampaign Campaign, int Places)> Unplaced() =>
+        _data.Clients.Where(c => c.Enabled).SelectMany(c => c.Campaigns.Where(k => k.Enabled && (k.To == null || k.To >= DateTime.Today))
+            .Select(k => (c, k, k.Placements.Count(p => !HasBreak(k, p))))).Where(x => x.Item3 > 0).ToList();
 
     /// <summary>Whether there is a break at a place of the campaign that has its section.</summary>
     bool HasBreak(AdCampaign k, AdPlacement p) => _data.Breaks.Any(b => b.Enabled && b.SectionOf(k) != null
