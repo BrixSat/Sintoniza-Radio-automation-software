@@ -24,6 +24,7 @@ public static class Program
         // The schedule program groups apart from the playout in the Linux taskbar, under its own icon.
         if (args.Contains(AppInfo.ScheduleArg) || args.Contains(AppInfo.PlaylistsArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.ScheduleWmClass });
         else if (args.Contains(AppInfo.ImportArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.ImportWmClass });
+        else if (args.Contains(AppInfo.RecArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.RecWmClass });
         // A mistake in a window must not take the station off air: the engine runs on, so log it and carry on.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {

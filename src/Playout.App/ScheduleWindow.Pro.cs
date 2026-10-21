@@ -206,6 +206,17 @@ public partial class ScheduleWindow
         foreach (var c in data.Clients.Where(c => c.Enabled))
             foreach (var k in c.Campaigns.Where(k => k.Enabled && k.To is { } to && to.Date >= now.Date && to.Date <= now.Date.AddDays(7)))
                 warnings.Add(L.F("€ {0}: campaign {1} ends {2:dd/MM}", c.Name, k.Name, k.To!.Value));
+        foreach (var (c, k, places) in Unplaced())
+            warnings.Add(L.F("€ {0} · {1}: booked at {2} with no ad break — it won't play there (Clients: Move them to the nearest break)",
+                c.Name, k.Name, Plural(places, "{0} time", "{0} times")));
+        // Breaks still to come today with no advert: they are skipped, jingles and all.
+        foreach (var b in data.Breaks.Where(b => b.Enabled))
+        {
+            var empty = b.TimesOn(now.Date).Where(t => t > now && data.InBreak(b, t).Count == 0).ToList();
+            if (empty.Count > 0)
+                warnings.Add(L.F("€ {0}: no adverts booked at {1} — it is skipped then", b.Name,
+                    string.Join(", ", empty.Take(4).Select(t => t.ToString("HH:mm"))) + (empty.Count > 4 ? " …" : "")));
+        }
         if (Changed) warnings.Add(L.T("● The schedule has unsaved changes"));
         HomeWarnings.Text = warnings.Count > 0 ? string.Join("\n", warnings.Take(8)) : L.T("✓ Nothing: all in order.");
 

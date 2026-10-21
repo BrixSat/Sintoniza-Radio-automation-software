@@ -16,6 +16,12 @@ public static class AppInfo
     public const string ImportArg = "--import";
     /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
     public const string ImportWmClass = "SintonizaImport";
+    /// <summary>The recorder: the station's sound kept as the law asks (its own program, SintonizaRec).</summary>
+    public const string RecName = "Sintoniza Rec";
+    /// <summary>Starts the app as the recorder.</summary>
+    public const string RecArg = "--rec";
+    /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
+    public const string RecWmClass = "SintonizaRec";
     /// <summary>Opens the schedule program on its daily playlists (what was Sintoniza Playlists).</summary>
     public const string PlaylistsArg = "--playlists";
 

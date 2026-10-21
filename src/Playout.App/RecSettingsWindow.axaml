@@ -1,0 +1,161 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.RecSettingsWindow"
+        Icon="/Assets/rec.ico"
+        Title="Sintoniza Rec — Settings"
+        Width="760" Height="620" MinWidth="680" MinHeight="520"
+        WindowStartupLocation="CenterOwner">
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </Window.Styles>
+    <DockPanel Margin="18">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,14,0,0">
+            <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <Button Grid.Column="1" x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" Margin="8,0,0,0" IsCancel="True" />
+            <Button Grid.Column="2" x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" Margin="8,0,0,0" Classes="accent" />
+        </Grid>
+        <TabControl>
+            <TabItem Header="Source">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Station" />
+                        <TextBox x:Name="StationBox" PlaceholderText="Rádio Exemplo 99.9" />
+                    </StackPanel>
+                    <RadioButton x:Name="InputRadio" GroupName="Source" Content="An input of this computer (the desk's programme output into the sound card)" />
+                    <ComboBox x:Name="InputBox" HorizontalAlignment="Stretch" Margin="28,0,0,0" />
+                    <RadioButton x:Name="StreamRadio" GroupName="Source" Content="The station's stream (a web address)" />
+                    <TextBox x:Name="StreamBox" Margin="28,0,0,0" PlaceholderText="http://stream.example.com:8000/radio.mp3" />
+                    <TextBlock Classes="note"
+                               Text="Record what really goes out: the desk's programme output (with the microphones), or the station's stream. The playout's own sound has no microphones." />
+                    <CheckBox x:Name="AutostartBox" Content="Start Sintoniza Rec when I log in to this computer (it starts recording by itself)" />
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Files">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Margin="0,12,16,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Folder (a folder a day inside it; a shared folder works too)" />
+                        <Grid ColumnDefinitions="*,8,Auto">
+                            <TextBox x:Name="FolderBox" />
+                            <Button Grid.Column="2" x:Name="FolderButton" Content="Choose…" />
+                        </Grid>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,12,*,12,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Name starts with" />
+                            <TextBox x:Name="PrefixBox" PlaceholderText="RE_" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Format" />
+                            <ComboBox x:Name="FormatBox" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Classes="label" Text="MP3 quality" />
+                            <ComboBox x:Name="BitrateBox" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </Grid>
+                    <CheckBox x:Name="MonoBox" Content="Mono (half the space)" />
+                    <Grid ColumnDefinitions="*,12,*,12,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="A new file every" />
+                            <ComboBox x:Name="MinutesBox" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Starting at minute" />
+                            <NumericUpDown x:Name="StartMinuteBox" Minimum="0" Maximum="59" Increment="1" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Classes="label" Text="Kept for (days)" />
+                            <NumericUpDown x:Name="KeepDaysBox" Minimum="1" Maximum="3650" Increment="1" FormatString="0" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock x:Name="SpaceText" Classes="note" FontWeight="SemiBold" />
+                    <TextBlock Classes="note"
+                               Text="Older recordings are deleted by themselves. The Lei da Rádio (art. 39.º) asks for the broadcasts to be recorded and kept at least 30 days. MP3 at 128 kbps takes about 1.4 GB a day." />
+                    <StackPanel Spacing="8">
+                        <CheckBox x:Name="ArchiveBox" Content="Also keep a small archive copy (mono, low quality), for much longer" FontWeight="SemiBold" />
+                        <Grid ColumnDefinitions="*,8,Auto" Margin="28,0,0,0">
+                            <TextBox x:Name="ArchiveFolderBox" PlaceholderText="Folder for the archive" />
+                            <Button Grid.Column="2" x:Name="ArchiveFolderButton" Content="Choose…" />
+                        </Grid>
+                        <Grid ColumnDefinitions="*,12,*" Margin="28,0,0,0">
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Archive quality" />
+                                <ComboBox x:Name="ArchiveBitrateBox" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Classes="label" Text="Archive kept for (months, 0 = always)" />
+                                <NumericUpDown x:Name="ArchiveMonthsBox" Minimum="0" Maximum="600" Increment="1" FormatString="0" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+            <TabItem Header="Listening">
+                <StackPanel Spacing="14" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Output for listening live and for listening back" />
+                        <ComboBox x:Name="OutputBox" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <TextBlock Classes="note" Text="Headphones or a monitor speaker: never an output that goes on air." />
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="Alerts">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Margin="0,12,16,0">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="Silence: below" VerticalAlignment="Center" />
+                        <NumericUpDown x:Name="SilenceDbBox" Minimum="-80" Maximum="-10" Increment="1" FormatString="0" Width="110" />
+                        <TextBlock Text="dB for" VerticalAlignment="Center" />
+                        <NumericUpDown x:Name="SilenceSecondsBox" Minimum="5" Maximum="600" Increment="5" FormatString="0" Width="110" />
+                        <TextBlock Text="seconds" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <CheckBox x:Name="AliveBox" Content="&quot;Still recording&quot; once a day at" />
+                        <NumericUpDown x:Name="AliveHourBox" Minimum="0" Maximum="23" Increment="1" FormatString="00" Width="100" />
+                        <TextBlock Text="h (no message one day: something is wrong)" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Classes="note" Text="Alerts: silence (or a stream that dropped), a recording that can't be written, less than 2 GB free. Sent wherever is filled in below." />
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Telegram: bot token and chat" />
+                        <Grid ColumnDefinitions="*,8,*">
+                            <TextBox x:Name="TelegramTokenBox" PlaceholderText="123456:ABC…" />
+                            <TextBox Grid.Column="2" x:Name="TelegramChatBox" PlaceholderText="-100123…" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="E-mail: server, port, user, password, from, to (several: separated by commas)" />
+                        <Grid ColumnDefinitions="*,8,90,8,Auto" RowDefinitions="Auto,6,Auto,6,Auto">
+                            <TextBox x:Name="SmtpServerBox" PlaceholderText="smtp.example.com" />
+                            <NumericUpDown Grid.Column="2" x:Name="SmtpPortBox" Minimum="1" Maximum="65535" FormatString="0" />
+                            <CheckBox Grid.Column="4" x:Name="SmtpSslBox" Content="SSL" />
+                            <TextBox Grid.Row="2" x:Name="SmtpUserBox" PlaceholderText="user" />
+                            <TextBox Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" x:Name="SmtpPasswordBox" PasswordChar="•" PlaceholderText="password" />
+                            <TextBox Grid.Row="4" x:Name="MailFromBox" PlaceholderText="from@example.com" />
+                            <TextBox Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" x:Name="MailToBox" PlaceholderText="to@example.com" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="A web address (JSON POST)" />
+                        <TextBox x:Name="WebhookBox" PlaceholderText="https://…" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="TestAlertButton" Content="Send a test" />
+                        <TextBlock x:Name="TestAlertText" Classes="note" VerticalAlignment="Center" MaxWidth="480" />
+                    </StackPanel>
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

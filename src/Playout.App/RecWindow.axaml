@@ -1,0 +1,130 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Playout.App.Controls"
+        x:Class="Playout.App.RecWindow"
+        Icon="/Assets/rec.ico"
+        Title="Sintoniza Rec"
+        Width="1040" Height="760" MinWidth="860" MinHeight="620"
+        WindowStartupLocation="CenterScreen">
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Border.rec">
+            <Setter Property="Background" Value="#3A3F4B" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="14,6" />
+        </Style>
+        <Style Selector="Border.rec.on">
+            <Setter Property="Background" Value="{StaticResource OnAir}" />
+        </Style>
+        <Style Selector="Border.rec.silent">
+            <Setter Property="Background" Value="#A8700F" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="12">
+        <!-- Status line -->
+        <TextBlock DockPanel.Dock="Bottom" x:Name="LastLog" Classes="muted" FontSize="12" Margin="2,10,2,0" TextTrimming="CharacterEllipsis" />
+
+        <!-- What it is doing -->
+        <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto,18,*,18,Auto" RowDefinitions="Auto,Auto,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Image Source="/Assets/rec.ico" Width="44" Height="44" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="StationText" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Classes="muted" FontSize="12" Text="Sintoniza Rec" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <Border x:Name="RecBadge" Classes="rec">
+                        <TextBlock x:Name="RecText" Text="STOPPED" FontSize="15" FontWeight="Bold" LetterSpacing="1.5" Foreground="White" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="SinceText" Classes="digits" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock x:Name="SourceText" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="460" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Grid.Column="4" x:Name="ClockText" Classes="digits" FontSize="34" FontWeight="Light" VerticalAlignment="Center" />
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="5" ColumnDefinitions="18,*" RowDefinitions="Auto,Auto" Margin="0,14,0,0">
+                    <TextBlock Classes="caption" Text="L" VerticalAlignment="Center" />
+                    <c:VuMeter Grid.Column="1" x:Name="MeterL" Height="16" />
+                    <TextBlock Grid.Row="1" Classes="caption" Text="R" VerticalAlignment="Center" Margin="0,4,0,0" />
+                    <c:VuMeter Grid.Row="1" Grid.Column="1" x:Name="MeterR" Height="16" Margin="0,4,0,0" />
+                </Grid>
+
+                <Grid Grid.Row="2" Grid.ColumnSpan="5" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock x:Name="FileText" FontSize="12" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="DiskText" Classes="muted" FontSize="12" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="RecButton" Content="● Record" Classes="accent" MinWidth="110" HorizontalContentAlignment="Center" />
+                        <ToggleButton x:Name="MonitorButton" Content="🎧 Listen live" ToolTip.Tip="Hear what is being recorded (Settings → Monitor output)" />
+                        <Button x:Name="FolderButton" Content="📁 Open folder" />
+                        <Button x:Name="SettingsButton" Content="⚙ Settings" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- The recordings -->
+        <Border Classes="panel">
+            <Grid ColumnDefinitions="*,18,330">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                        <TextBlock Classes="caption" Text="RECORDINGS OF" VerticalAlignment="Center" />
+                        <CalendarDatePicker x:Name="DayBox" Width="160" />
+                        <Button x:Name="TodayButton" Content="Today" />
+                        <TextBlock x:Name="DayInfo" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <!-- Player -->
+                    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,8,Auto,12,*,12,Auto" Margin="0,10,0,0">
+                        <Button x:Name="PlayButton" Content="▶" MinWidth="44" HorizontalContentAlignment="Center" IsEnabled="False" />
+                        <Button Grid.Column="2" x:Name="StopPlayButton" Content="■" MinWidth="44" HorizontalContentAlignment="Center" IsEnabled="False" />
+                        <Slider Grid.Column="4" x:Name="PositionSlider" Minimum="0" Maximum="1" IsEnabled="False" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="6" x:Name="PositionText" Classes="digits" VerticalAlignment="Center" MinWidth="150" TextAlignment="Right" />
+                    </Grid>
+                    <ListBox x:Name="FileList" Background="#13161C" />
+                </DockPanel>
+
+                <!-- Export -->
+                <StackPanel Grid.Column="2" Spacing="12">
+                    <TextBlock Classes="caption" Text="EXPORT A STRETCH" />
+                    <TextBlock Classes="note" Text="From a time to a time, in one file: for the ERC, a client or a complaint. It takes it from as many recording files as needed." />
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Day" />
+                        <CalendarDatePicker x:Name="ExportDayBox" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,10,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="From" />
+                            <TextBox x:Name="FromBox" PlaceholderText="10:00:00" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="To" />
+                            <TextBox x:Name="ToBox" PlaceholderText="11:30:00" />
+                        </StackPanel>
+                    </Grid>
+                    <ComboBox x:Name="ExportFormatBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                        <ComboBoxItem Content="MP3, 128 kbps" />
+                        <ComboBoxItem Content="MP3, 192 kbps" />
+                        <ComboBoxItem Content="WAV" />
+                    </ComboBox>
+                    <Button x:Name="ExportButton" Content="Export…" Classes="accent" HorizontalAlignment="Left" />
+                    <ProgressBar x:Name="ExportProgress" Minimum="0" Maximum="1" IsVisible="False" Height="6" />
+                    <TextBlock x:Name="ExportText" Classes="note" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </DockPanel>
+</Window>

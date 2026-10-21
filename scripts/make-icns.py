@@ -22,3 +22,4 @@ def make(svg, icns):
 make(os.path.join(ROOT, "packaging", "icon.svg"), os.path.join(ROOT, "packaging", "macos", "icon.icns"))
 make(os.path.join(ROOT, "packaging", "icon-schedule.svg"), os.path.join(ROOT, "packaging", "macos", "schedule.icns"))
 make(os.path.join(ROOT, "packaging", "icon-import.svg"), os.path.join(ROOT, "packaging", "macos", "import.icns"))
+make(os.path.join(ROOT, "packaging", "icon-rec.svg"), os.path.join(ROOT, "packaging", "macos", "rec.icns"))

@@ -22,7 +22,10 @@ public partial class App : Application
             bool schedule = playlists || desktop.Args?.Contains(AppInfo.ScheduleArg) == true;
             // The import program (its own menu entry): folders of audio into the library, in categories.
             bool import = !schedule && desktop.Args?.Contains(AppInfo.ImportArg) == true;
-            var (lockName, name) = schedule ? ("schedule", AppInfo.ScheduleName) : import ? ("import", AppInfo.ImportName) : ("playout", AppInfo.Name);
+            // The recorder (its own program, Sintoniza Rec): the station's sound, kept as the law asks.
+            bool rec = !schedule && !import && desktop.Args?.Contains(AppInfo.RecArg) == true;
+            var (lockName, name) = schedule ? ("schedule", AppInfo.ScheduleName) : import ? ("import", AppInfo.ImportName)
+                : rec ? ("rec", AppInfo.RecName) : ("playout", AppInfo.Name);
             // One of each per computer: a second start says so instead of opening another (two playouts would fight
             // over the sound card and the playlist).
             desktop.MainWindow = !SingleInstance.Acquire(lockName) ? SingleInstance.AlreadyRunning(name)
@@ -30,9 +33,24 @@ public partial class App : Application
                     error => ScheduleOffline(settings, error))
                 : import ? WithLogin(desktop, settings, AppInfo.ImportName, Permission.Library, (db, user) => new ImportWindow(db, null),
                     error => new ImportWindow(null, error))
-                : new MainWindow();
+                : rec ? RecProgram()
+                : PlayoutProgram();
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>The recorder: recording as soon as it opens (it may be started at login), set to start there again if it moved.</summary>
+    static RecWindow RecProgram()
+    {
+        Autostart.Rec.Refresh();
+        return new RecWindow(start: true);
+    }
+
+    /// <summary>The on-air program; starting at login follows it if it was renamed or moved by an update.</summary>
+    static MainWindow PlayoutProgram()
+    {
+        Autostart.Playout.Refresh();
+        return new MainWindow();
     }
 
     /// <summary>

@@ -1608,5 +1608,10 @@
  "until {0:d}": "jusqu'au {0:d}",
  "{0}× a day": "{0}× par jour",
  "{0}× a week": "{0}× par semaine",
- "no take files for it": "pas de fichiers de prise pour elle"
+ "no take files for it": "pas de fichiers de prise pour elle",
+ "Move them to the nearest break": "Les déplacer vers l'écran le plus proche",
+ "Each to the break nearest its time on the same day (e.g. 10:50 → 11:00)": "Chacun vers l'écran le plus proche de son heure le même jour (p. ex. 10:50 → 11:00)",
+ "€ {0} · {1}: booked at {2} with no ad break — it won't play there (Clients: Move them to the nearest break)": "€ {0} · {1} : réservé à {2} sans écran publicitaire — il n'y passe pas (Clients : Les déplacer vers l'écran le plus proche)",
+ "{0} time": "{0} heure",
+ "€ {0}: no adverts booked at {1} — it is skipped then": "€ {0} : aucune publicité réservée à {1} — il est sauté alors"
 }

@@ -205,9 +205,9 @@ public partial class SettingsWindow : PageWindow
             BackupNowButton.IsEnabled = true;
         };
         WatchdogBox.IsChecked = settings.RestartAfterCrash;
-        AutostartBox.IsChecked = Autostart.IsEnabled;
-        AutostartBox.IsEnabled = Autostart.IsSupported;
-        if (!Autostart.IsSupported) ToolTip.SetTip(AutostartBox, L.T("Only in an installed copy of the app"));
+        AutostartBox.IsChecked = Autostart.Playout.IsEnabled;
+        AutostartBox.IsEnabled = Autostart.Playout.IsSupported;
+        if (!Autostart.Playout.IsSupported) ToolTip.SetTip(AutostartBox, L.T("Only in an installed copy of the app"));
         OpenLogsButton.Click += (_, _) =>
         {
             Directory.CreateDirectory(AppLog.Folder);
@@ -968,9 +968,9 @@ public partial class SettingsWindow : PageWindow
         _settings.ResumeOnStart = ResumeBox.IsChecked == true;
         _settings.Backup = BackupFromUi();
         _settings.RestartAfterCrash = WatchdogBox.IsChecked == true;
-        if (Autostart.IsSupported && _scope == SettingsScope.Computer)
+        if (Autostart.Playout.IsSupported && _scope == SettingsScope.Computer)
         {
-            try { Autostart.Set(AutostartBox.IsChecked == true); }
+            try { Autostart.Playout.Set(AutostartBox.IsChecked == true); }
             catch (Exception ex) { AppLog.Write($"Start at login: {ex.Message}"); }
         }
 
