@@ -74,6 +74,9 @@ public sealed class PlayoutEngine : IDisposable
     bool _waitingForFill;    // AUTO ran out with nothing to fill yet: start something as soon as there is
     DateTime _nextFillTry;
     DateTime _nextTimedCheck;      // items with a latest start are looked at twice a second
+    Timer? _exactTimer;            // the start of an item that ends at a time, on the dot
+    Guid? _exactFor;
+    const double Exact = 0.005;    // that close to its start time is on time
     DateTime _nextBacktimeFill;    // looking for a song to fill a gap before a backtimed break: not too often
     bool _backtimeFilling;         // that search is running (off the engine thread)
     Guid? _backtimeReported;       // the backtimed item whose unfillable gap has been reported
@@ -350,7 +353,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         _loudness = settings;
         if (!settings.Enabled) return;
-        foreach (var t in _playlist.Skip(Math.Max(0, _cursorIndex))) if (!t.IsStream) _loudnessWorker.Add(t.Path);
+        foreach (var t in _playlist.Skip(Math.Max(0, _cursorIndex))) if (!t.IsStream && !t.IsTake) _loudnessWorker.Add(t.Path);
     });
 
     /// <summary>Measures these files' loudness in the background (carts, scheduled items), if levelling is on.</summary>
@@ -377,13 +380,14 @@ public sealed class PlayoutEngine : IDisposable
     /// </summary>
     public void InsertEvent(string label, IReadOnlyList<ScheduledItem> items, EventTiming timing) => Post(() =>
     {
-        var tracks = Scheduled(label, items);
+        // One that has to end at a time: its files measured exactly (a length from the file's header may be off by seconds).
+        var tracks = Scheduled(label, items, exact: timing.Start == EventStart.EndAt);
         if (tracks.Count == 0)
         {
             Emit(L.F("{0}: nothing to play", label));
             return;
         }
-        if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
+        if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream && !t.IsTake) _loudnessWorker.Add(t.Path);
         bool playing = State == PlayerState.Playing;
         if (!playing) DropStale(); // what came due earlier while stopped doesn't pile up
 
@@ -468,7 +472,7 @@ public sealed class PlayoutEngine : IDisposable
     });
 
     /// <summary>Opens the items of a scheduled event (files that can't be read are left out), labelled with it.</summary>
-    List<Track> Scheduled(string? label, IReadOnlyList<ScheduledItem> items)
+    List<Track> Scheduled(string? label, IReadOnlyList<ScheduledItem> items, bool exact = false)
     {
         var tracks = new List<Track>();
         foreach (var item in items)
@@ -476,7 +480,9 @@ public sealed class PlayoutEngine : IDisposable
             Volatile.Write(ref _heartbeat, Environment.TickCount64);
             var track = item.StreamName != null
                 ? new Track(Guid.NewGuid(), item.Path.Trim(), "", item.StreamName, Math.Max(0, item.StreamSeconds), TrackKind.Stream)
-                : SafeProbe(item.Path);
+                : Takes.KindOf(item.Path) is { } take
+                    ? new Track(Guid.NewGuid(), item.Path, "", TakeTitle(take), Takes.Estimate(take), TrackKind.Jingle)
+                : SafeProbe(item.Path, exact);
             if (track != null)
                 tracks.Add(track with
                 {
@@ -562,7 +568,7 @@ public sealed class PlayoutEngine : IDisposable
         int at = insertAt < 0 || insertAt > _playlist.Count ? _playlist.Count : insertAt;
         _playlist.InsertRange(at, tracks);
         if (at <= _cursorIndex) _cursorIndex += tracks.Count;
-        if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream) _loudnessWorker.Add(t.Path);
+        if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream && !t.IsTake) _loudnessWorker.Add(t.Path);
         PlaylistUpdated();
     }
 
@@ -868,6 +874,7 @@ public sealed class PlayoutEngine : IDisposable
 
     public void Dispose()
     {
+        _exactTimer?.Dispose();
         StopStreaming();
         _commands.CompleteAdding();
         _thread.Join(2000);
@@ -949,6 +956,35 @@ public sealed class PlayoutEngine : IDisposable
         Post(() => After(delay, () => ConnectStreaming(retry, failed)));
     }
 
+    /// <summary>
+    /// Where takes are and what the temperature is (null: no takes). Read on the engine thread when a take starts: must
+    /// not wait (the temperature is the last one fetched).
+    /// </summary>
+    public Func<(string Folder, int? Temperature)>? TakeSource { get; set; }
+
+    static string TakeTitle(TakeKind kind) => kind switch
+    {
+        TakeKind.Time => L.T("Take: the time"),
+        TakeKind.Temperature => L.T("Take: the temperature"),
+        _ => L.T("Take: the time and temperature"),
+    };
+
+    /// <summary>A take's files for now, as tracks in its place (the others follow the first); empty if there are none.</summary>
+    List<Track> ResolveTake(Track take)
+    {
+        if (Takes.KindOf(take.Path) is not { } kind || TakeSource?.Invoke() is not var (folder, temperature)) return [];
+        var parts = new List<Track>();
+        foreach (var file in Takes.Files(folder, kind, DateTime.Now, temperature))
+            if (SafeProbe(file, exact: true) is { } t)
+                parts.Add(t with
+                {
+                    Kind = TrackKind.Jingle, Event = take.Event, Lock = take.Lock, Tag = take.Tag, InBreak = take.InBreak,
+                    FollowsPrevious = parts.Count > 0 || take.FollowsPrevious, StartBy = parts.Count == 0 ? take.StartBy : null,
+                });
+        if (parts.Count > 0) Emit(L.F("{0}: {1}", take.Title, string.Join(" + ", parts.Select(p => Path.GetFileNameWithoutExtension(p.Path)))));
+        return parts;
+    }
+
     Track? NextTrack()
     {
         int i = _cursorIndex + 1;
@@ -1016,6 +1052,21 @@ public sealed class PlayoutEngine : IDisposable
         _connectAttempt++;
         _connecting = null;
         if (track.IsStream) { ConnectStream(track, outgoingFade); return; }
+        if (track.IsTake)
+        {
+            // Put together now, for the time it goes on air: its files in its place, the first started.
+            var parts = ResolveTake(track);
+            int at = _playlist.FindIndex(t => t.Id == track.Id);
+            if (parts.Count == 0 || at < 0)
+            {
+                Skip(track, outgoingFade, L.T("no take files for it"));
+                return;
+            }
+            _playlist.RemoveAt(at);
+            _playlist.InsertRange(at, parts);
+            if (at <= _cursorIndex) _cursorIndex += parts.Count - 1;
+            track = parts[0];
+        }
 
         int handle = TakePreload(track.Id) ?? OpenStream(track.Path, prescan: true);
         if (handle == 0)
@@ -1451,7 +1502,18 @@ public sealed class PlayoutEngine : IDisposable
         var timed = _playlist[ti];
         if (timed.Id == _connecting) return; // on its way
         double left = (timed.StartBy!.Value - now).TotalSeconds;
-        if (left <= 0)
+        // One that ends at a time starts on the dot: a timer for the last moment (the loop looks only twice a second).
+        if (timed.Backtime && left > Exact && left <= 0.6 && _exactFor != timed.Id)
+        {
+            _exactFor = timed.Id;
+            var id = timed.Id;
+            _exactTimer?.Dispose();
+            _exactTimer = new Timer(_ => Post(() =>
+            {
+                if (_playlist.FindIndex(t => t.Id == id) is var i && i > _cursorIndex && !_played.Contains(id)) { _nextTimedCheck = DateTime.MinValue; CheckTimed(); }
+            }), null, TimeSpan.FromSeconds(left), Timeout.InfiniteTimeSpan);
+        }
+        if (left <= (timed.Backtime ? Exact : 0))
         {
             Emit(L.F("{0}: on air (its latest start time)", timed.Event ?? timed.Display));
             KeepSkipped(timed);
@@ -1531,7 +1593,7 @@ public sealed class PlayoutEngine : IDisposable
         if (candidates.Count == 0) return;
         _backtimeFilling = true;
         var timedId = timed.Id;
-        Task.Run(() => candidates.Select(SafeProbe).OfType<Track>().ToList()).ContinueWith(probed => Post(() =>
+        Task.Run(() => candidates.Select(p => SafeProbe(p)).OfType<Track>().ToList()).ContinueWith(probed => Post(() =>
         {
             _backtimeFilling = false;
             int index = _playlist.FindIndex(t => t.Id == timedId);
@@ -1721,7 +1783,7 @@ public sealed class PlayoutEngine : IDisposable
             _preload = null;
         }
         if (_streamConnection is { } sc && sc.Id != next?.Id) DropConnection();
-        if (next != null && !next.IsStream && _preload == null && _current != null && !_tagWriting.Contains(next.Path))
+        if (next != null && !next.IsStream && !next.IsTake && _preload == null && _current != null && !_tagWriting.Contains(next.Path))
         {
             int h = OpenStream(next.Path, prescan: true);
             if (h != 0) _preload = (next.Id, h);
@@ -1749,9 +1811,10 @@ public sealed class PlayoutEngine : IDisposable
     }
 
     /// <summary>Like <see cref="Probe"/>, but a file that fails is reported and skipped instead of failing the whole add.</summary>
-    Track? SafeProbe(string path)
+    /// <param name="exact">The length read through the whole file (slower) rather than from its header.</param>
+    Track? SafeProbe(string path, bool exact = false)
     {
-        try { return Probe(path); }
+        try { return Probe(path, exact); }
         catch (Exception ex)
         {
             Emit(L.F("Skipped {0}: {1}", Path.GetFileName(path), ex.Message));
@@ -1759,9 +1822,9 @@ public sealed class PlayoutEngine : IDisposable
         }
     }
 
-    Track? Probe(string path)
+    Track? Probe(string path, bool exact = false)
     {
-        int h = OpenStream(path, prescan: false);
+        int h = OpenStream(path, prescan: exact);
         if (h == 0)
         {
             Emit(L.F("Unsupported or unreadable: {0} ({1})", Path.GetFileName(path), Bass.LastError));

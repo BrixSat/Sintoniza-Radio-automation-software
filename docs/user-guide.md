@@ -208,7 +208,7 @@ tempo and energy, tags, listen).
 
 - **Station settings** — name and logo, genre, website, FM or web radio, money sign; crossfades and loudness; time
   signal; silence detection and fill music; other music folders; streaming server; RDS texts (PS, radio text, RT+);
-  website now playing; alerts; days of daily playlists made ahead and row colours. Saved for every studio: each
+  website now playing; alerts; **takes** (below); days of daily playlists made ahead and row colours. Saved for every studio: each
   playout takes them within a minute.
 - **Categories** — the library's categories. Every station has the same eight at the top, which can't be renamed,
   moved or deleted: **Music**, **Jingles**, **Promos**, **ProgAutor** (shows recorded outside), **Fillers**,
@@ -268,6 +268,43 @@ Portuguese music and ISRC (ISO-8859-1). On the right: the programme service's na
 **countries with their ERC codes** (the ERC numbers countries its own way: Portugal is 045; copy the others from the
 portal), and which are in the EU.
 
+**Planning to the quotas.** With *Make the daily playlists meet the quotas* ticked (on the right; on by default), each
+hour of the daily playlists is made to meet the three quotas on its own (a little above the minimums): when it has too
+little Portuguese music, the next music line picks a Portuguese song (about one in three), and among those, songs in
+Portuguese by EU performers and recent ones where those fall short — from the classified songs of each line's
+category, as the rest rules allow. So Monday–Friday 7–20h is met too. A line whose category has no such songs is left
+as it is; put Portuguese music in the categories your templates use.
+
+### Song restrictions
+
+**Songs** → select → right-click → **Restrictions…**: when a song may be picked automatically —
+
+- **only from … until …** (a Christmas song in December; a new release from its release date);
+- **on these days** and **at these hours** (no ballads before 10:00: untick 00–09);
+- **at most N times a day** and **N times a week** (Monday to Sunday).
+
+The daily playlists keep them always (a line whose songs are all restricted at that time is skipped and reported);
+fill music keeps the dates, days and hours. Put in by hand (Daily playlists, the on-air playlist), a song plays all
+the same. Songs with restrictions show ⏱ in the list; hover for what they are.
+
+### Takes (the time and the temperature)
+
+Takes are short recorded inserts the playout puts together **when they go on air**, so they are always right.
+**Station settings → Takes**: the **folder** with them, and where the station is (latitude and longitude) for the
+temperature, read every 10 minutes from Open-Meteo (free, no account).
+
+| File | Says |
+| --- | --- |
+| `HRS00` … `HRS23` | the hour |
+| `MIN01` … `MIN59` (`MIN00` optional) | the minutes |
+| `HRS10_15` (optional) | the whole time in one file |
+| `TMP0` … `TMP45`, `TMPM1` … `TMPM10` | the temperature (M: below zero) |
+
+Any audio format; several recordings of the same (`HRS10a`, `HRS10b`) are taken at random. The time said is the
+nearest minute when the take starts. In an hour template: **Add a line → A take ▾** → *The time*, *The temperature* or
+*The time and the temperature*. A take whose files are missing is skipped; without the temperature, a time-and-
+temperature take says the time only.
+
 ### The schedule
 
 Five tools, on the left under Programming and Traffic. **Save** (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database; the playout takes it
@@ -285,7 +322,9 @@ minutes), or an internet stream for N minutes. Choose how it starts:
 
 - **Soft:** after the item on air ends (at most N minutes late).
 - **Hard:** on the second (what is on air fades out).
-- **Ends at its time:** the songs before it are adjusted so it ends exactly then.
+- **Ends at its time:** it ends exactly then, to the second — never later. The songs before it are adjusted; if the
+  music would still run over, what is on air is faded at the moment the break has to start. A break that ends at 10:00
+  is the last of the 09:00 hour (the daily playlists leave room for it there).
 
 and what the host may do with it in the playlist (remove/move, only move, or nothing).
 
@@ -402,8 +441,8 @@ the songs of deleted folders are taken out; a drive or share that isn't connecte
 - **…set up a weekday morning show?** Pro → Playlists → New → name it, add its lines (e.g. Music, Music,
   Jingles, Gold), click the hours 07–10 Monday to Friday → Save. Check it on Daily playlists.
 - **…put the adverts last in the hour?** Pro → Ad breaks → New → running order with a section → Add row
-  `*:59:00` (or the time that suits) and click it for every day → choose *Ends at its time* so it ends on the hour →
-  book the campaigns on the Clients tab.
+  `*:00:00` and click it for every day → choose *Ends at its time*: it ends exactly on the hour, the last thing of the
+  hour before → book the campaigns on the Clients tab.
 - **…change a song in tomorrow's 09:00?** Pro → Daily playlists → ▶ to tomorrow → 09:00 → select the song →
   Another song (or Remove and double-click one in the library).
 - **…put a folder of songs in Gold?** Sintoniza Import with that folder, *Into the category* Gold, no sub-categories.

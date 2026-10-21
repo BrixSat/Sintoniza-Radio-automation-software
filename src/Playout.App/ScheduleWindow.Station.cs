@@ -60,6 +60,7 @@ public partial class ScheduleWindow
             updated.Cartwalls = station.Cartwalls; // edited on their own (Cartwalls)
             updated.ErcAlias = station.ErcAlias; // and on the ERC page
             updated.ErcCountries = station.ErcCountries;
+            updated.ErcPlan = station.ErcPlan;
             return SaveStation(store, updated, version);
         });
         window.Finished += async saved =>

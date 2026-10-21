@@ -640,7 +640,18 @@
                                     <ComboBox x:Name="LineCategoryBox" HorizontalAlignment="Stretch" PlaceholderText="Library category" />
                                     <Button Grid.Column="2" x:Name="AddCategoryLineButton" Content="Add" />
                                 </Grid>
-                                <Button x:Name="AddFolderLineButton" Content="A folder…" ToolTip.Tip="A file from a folder (and its subfolders)" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Button x:Name="AddFolderLineButton" Content="A folder…" ToolTip.Tip="A file from a folder (and its subfolders)" />
+                                    <Button x:Name="AddTakeLineButton" Content="A take ▾" ToolTip.Tip="The time and/or the temperature, put together when it goes on air (Station settings → Takes)">
+                                        <Button.Flyout>
+                                            <MenuFlyout>
+                                                <MenuItem x:Name="TakeTimeItem" Header="The time" />
+                                                <MenuItem x:Name="TakeTemperatureItem" Header="The temperature" />
+                                                <MenuItem x:Name="TakeBothItem" Header="The time and the temperature" />
+                                            </MenuFlyout>
+                                        </Button.Flyout>
+                                    </Button>
+                                </StackPanel>
                                 <TextBlock x:Name="LibraryNote" Classes="note" />
                             </StackPanel>
                             <!-- The template's music rules -->

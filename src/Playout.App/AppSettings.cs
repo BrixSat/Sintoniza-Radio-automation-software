@@ -124,6 +124,9 @@ public sealed class AppSettings
     /// <summary>Where voice tracks are kept (the station's; a folder every studio can reach). Empty: not chosen yet.</summary>
     public string VoiceTrackFolder { get; set; } = "";
 
+    /// <summary>The station's takes (the time, the temperature): their folder and where the station is.</summary>
+    public TakesSettings Takes { get; set; } = new();
+
     public string StreamHost { get; set; } = "localhost";
     public int StreamPort { get; set; } = 8000;
     public string StreamMount { get; set; } = "/live";

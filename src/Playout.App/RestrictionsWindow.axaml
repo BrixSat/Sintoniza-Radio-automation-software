@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Playout.App.RestrictionsWindow"
+        Icon="/Assets/schedule.ico"
+        Title="Restrictions"
+        Width="640" SizeToContent="Height" CanResize="False"
+        WindowStartupLocation="CenterOwner">
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="ToggleButton.slot">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Padding" Value="0,6" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style Selector="ToggleButton.slot:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1F6F4A" />
+            <Setter Property="BorderBrush" Value="#3ECF8E" />
+        </Style>
+    </Window.Styles>
+    <StackPanel Margin="20" Spacing="14">
+        <TextBlock x:Name="SongsText" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <StackPanel>
+            <TextBlock Classes="label" Text="Only from … until … (empty: no limit)" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <CalendarDatePicker x:Name="FromBox" Width="160" />
+                <Button x:Name="ClearFromButton" Content="✕" Padding="8,4" />
+                <TextBlock Text="until" VerticalAlignment="Center" Margin="8,0" />
+                <CalendarDatePicker x:Name="UntilBox" Width="160" />
+                <Button x:Name="ClearUntilButton" Content="✕" Padding="8,4" />
+            </StackPanel>
+        </StackPanel>
+        <StackPanel>
+            <TextBlock Classes="label" Text="On these days" />
+            <UniformGrid x:Name="DayGrid" Columns="7" />
+        </StackPanel>
+        <StackPanel>
+            <DockPanel Margin="0,0,0,4">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                    <Button x:Name="AllHoursButton" Content="All" FontSize="12" Padding="10,3" />
+                    <Button x:Name="DayHoursButton" Content="7:00–20:00" FontSize="12" Padding="10,3" />
+                    <Button x:Name="NightHoursButton" Content="20:00–7:00" FontSize="12" Padding="10,3" />
+                </StackPanel>
+                <TextBlock Classes="label" Text="At these hours" VerticalAlignment="Bottom" />
+            </DockPanel>
+            <UniformGrid x:Name="HourGrid" Columns="12" />
+        </StackPanel>
+        <WrapPanel ItemSpacing="8" LineSpacing="8">
+            <TextBlock Text="At most" VerticalAlignment="Center" />
+            <NumericUpDown x:Name="MaxDayBox" Minimum="0" Maximum="99" Increment="1" FormatString="0" Width="120" />
+            <TextBlock Text="times a day," VerticalAlignment="Center" />
+            <NumericUpDown x:Name="MaxWeekBox" Minimum="0" Maximum="999" Increment="1" FormatString="0" Width="120" />
+            <TextBlock Text="times a week (0: no limit)" VerticalAlignment="Center" />
+        </WrapPanel>
+        <TextBlock Classes="note"
+                   Text="The daily playlists and fill music pick the song only within these; a week is Monday to Sunday. Put in by hand (Daily playlists, the on-air playlist), it plays all the same." />
+        <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" TextWrapping="Wrap" />
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <Button x:Name="RemoveButton" Content="No restrictions" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+                <Button x:Name="CancelButton" Content="Cancel" MinWidth="90" HorizontalContentAlignment="Center" IsCancel="True" />
+                <Button x:Name="SaveButton" Content="Save" MinWidth="90" HorizontalContentAlignment="Center" Classes="accent" IsDefault="True" />
+            </StackPanel>
+        </Grid>
+    </StackPanel>
+</Window>

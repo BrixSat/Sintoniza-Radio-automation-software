@@ -243,6 +243,11 @@ public partial class TrackLibraryView : UserControl
                 : new TrackAttributes(Language: code)));
         }));
 
+        menu.Items.Add(Item(L.T("Restrictions") + many + "…", async () =>
+        {
+            if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db) return;
+            if (await new RestrictionsWindow(db, ids).ShowDialog<bool>(owner)) _service.NotifyChanged();
+        }));
         menu.Items.Add(Item(L.T("ERC classification") + many + "…", async () =>
         {
             if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db) return;
@@ -324,6 +329,8 @@ public sealed class LibraryRow(LibraryTrack track, IReadOnlyList<LibraryCategory
     /// <summary>Its own category, and "+2" when it is in two more.</summary>
     public string Category => _category == null ? "" : Track.AlsoIn.Count > 0 ? $"{_category.Name} +{Track.AlsoIn.Count}" : _category.Name;
     public bool HasCategory => Category.Length > 0;
+    /// <summary>The title, marked ⏱ when the song has restrictions.</summary>
+    public string ShownTitle => Track.Restrictions != null ? "⏱ " + Track.Title : Track.Title;
     /// <summary>The album, its tempo and energy, every category it is in (full names), and the file, on hover.</summary>
     public string Tip
     {
@@ -336,9 +343,40 @@ public sealed class LibraryRow(LibraryTrack track, IReadOnlyList<LibraryCategory
             var all = (Track.CategoryId is { } own ? [own] : Array.Empty<long>()).Concat(Track.AlsoIn)
                 .Select(id => CategoryTree.PathOf(categories, id)).Where(n => n.Length > 0).ToList();
             if (all.Count > 0) lines.Add(string.Join(", ", all));
+            if (Track.Restrictions is { } r) lines.Add("⏱ " + Describe(r));
             lines.Add(Track.Path);
             return string.Join("\n", lines);
         }
     }
+    /// <summary>A song's restrictions in words: "from 1/12 · until 6/1 · Mon–Fri · 07–19h · 2× a day".</summary>
+    public static string Describe(SongRestrictions r)
+    {
+        var parts = new List<string>();
+        if (r.From is { } from) parts.Add(L.F("from {0:d}", from));
+        if (r.Until is { } until) parts.Add(L.F("until {0:d}", until));
+        if (r.Days is { } days)
+        {
+            var names = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat;
+            parts.Add(string.Join(" ", Enumerable.Range(0, 7).Where(i => days[i] == '1').Select(i => names.GetAbbreviatedDayName((DayOfWeek)((i + 1) % 7)))));
+        }
+        if (r.Hours is { } hours)
+        {
+            // Runs of hours: 07–19h, 22–23h
+            var runs = new List<string>();
+            for (int h = 0; h < 24; h++)
+            {
+                if (hours[h] != '1') continue;
+                int end = h;
+                while (end + 1 < 24 && hours[end + 1] == '1') end++;
+                runs.Add(end == h ? $"{h:00}h" : $"{h:00}–{end:00}h");
+                h = end;
+            }
+            parts.Add(string.Join(", ", runs));
+        }
+        if (r.MaxPerDay is { } d) parts.Add(L.F("{0}× a day", d));
+        if (r.MaxPerWeek is { } w) parts.Add(L.F("{0}× a week", w));
+        return string.Join(" · ", parts);
+    }
+
     public IBrush CategoryBrush => _category?.Color is { } c && Color.TryParse(c, out var color) ? new SolidColorBrush(color) : new SolidColorBrush(Color.Parse("#4A5160"));
 }

@@ -46,6 +46,78 @@ public sealed class PlaylistGenerator
     /// <summary>Lines whose tempo or energy found no song (the whole category played instead).</summary>
     readonly HashSet<string> _relaxed = new();
 
+    // ───── The ERC quotas: each hour is made to meet them (a little above the minimums) ─────
+    const double AimPortuguese = 0.32, AimLanguage = 0.62, AimRecent = 0.37;
+    sealed record QuotaPlan(Dictionary<long, ErcSong> Songs, HashSet<string> Eu);
+    QuotaPlan? _quota;
+    bool _quotaRead;
+    /// <summary>This hour's music so far: songs, Portuguese, Portuguese in Portuguese by EU performers, Portuguese and recent.</summary>
+    int _qSongs, _qPortuguese, _qLanguage, _qRecent;
+
+    /// <summary>What the library says of each song for the ERC, when the station plans to the quotas and has classified songs.</summary>
+    QuotaPlan? Quota()
+    {
+        if (_quotaRead) return _quota;
+        _quotaRead = true;
+        try
+        {
+            var station = new StationStore(_db).Load().Settings;
+            if (station?.ErcPlan == false) return null;
+            var songs = _db.ErcAll();
+            if (!songs.Values.Any(s => s.Portuguese == true)) return null; // nothing classified yet
+            var eu = (station?.ErcCountries ?? Erc.DefaultCountries()).Where(c => c.Eu).Select(c => c.Code.Trim()).ToHashSet();
+            _quota = new QuotaPlan(songs, eu);
+        }
+        catch { _quota = null; }
+        return _quota;
+    }
+
+    bool QuotaLanguage(QuotaPlan q, ErcSong s) => Erc.IsPortugueseLanguage(s.Language) && s.Nationality != null && q.Eu.Contains(s.Nationality.Trim());
+
+    /// <summary>
+    /// The songs of a music line that keep the hour to the quotas: Portuguese music when there is too little of it so
+    /// far (one about every third song), and then, among it, in Portuguese by EU performers and recent where those fall
+    /// short. Only when the line has such songs that may play now (rested): otherwise the line is left as it is and a
+    /// later one makes up for it.
+    /// </summary>
+    List<RotationTrack> Steer(List<RotationTrack> pool, QuotaPlan q, DateTime at, Func<RotationTrack, bool> rested)
+    {
+        ErcSong? Song(RotationTrack t) => q.Songs.GetValueOrDefault(t.Id);
+        bool languageShort = _qLanguage < AimLanguage * (_qPortuguese + 1), recentShort = _qRecent < AimRecent * (_qPortuguese + 1);
+        if (_qPortuguese >= AimPortuguese * (_qSongs + 1))
+        {
+            // Enough Portuguese music: any song, but not a Portuguese one that would bring the language or recent share down.
+            if (!languageShort && !recentShort) return pool;
+            var keep = pool.Where(t => Song(t) is not { Portuguese: true } s
+                                       || ((!languageShort || QuotaLanguage(q, s)) && (!recentShort || Erc.IsRecent(s.Release, at.Date)))).ToList();
+            return keep.Any(rested) ? keep : pool;
+        }
+        var portuguese = pool.Where(t => Song(t)?.Portuguese == true).ToList();
+        if (!portuguese.Any(rested)) return pool;
+        if (languageShort)
+        {
+            var language = portuguese.Where(t => QuotaLanguage(q, Song(t)!)).ToList();
+            if (language.Any(rested)) portuguese = language;
+        }
+        if (recentShort)
+        {
+            var recent = portuguese.Where(t => Erc.IsRecent(Song(t)!.Release, at.Date)).ToList();
+            if (recent.Any(rested)) portuguese = recent;
+        }
+        return portuguese;
+    }
+
+    /// <summary>Counts a song put in the hour, for the quotas.</summary>
+    void CountQuota(PlanItem item, DateTime at)
+    {
+        if (item.Kind != TrackKind.Music || _quota is not { } q) return;
+        _qSongs++;
+        if (item.TrackId is not { } id || q.Songs.GetValueOrDefault(id) is not { Portuguese: true } s) return;
+        _qPortuguese++;
+        if (QuotaLanguage(q, s)) _qLanguage++;
+        if (Erc.IsRecent(s.Release, at.Date)) _qRecent++;
+    }
+
     public PlaylistGenerator(LibraryDb db, ScheduleData data, Options options)
     {
         _db = db;
@@ -69,7 +141,9 @@ public sealed class PlaylistGenerator
             .Concat(_data.Templates.SelectMany(t => new[] { TimeSpan.FromHours(t.ArtistHours), TimeSpan.FromHours(t.AlbumHours) })).Max();
         try
         {
-            foreach (var p in _db.PlaysSince((from - window).ToUniversalTime()))
+            // Back to the Monday too, for songs that may play only so many times a week.
+            var since = new[] { from - window, SongRestrictions.WeekStart(from) }.Min();
+            foreach (var p in _db.PlaysSince(since.ToUniversalTime()))
                 Note(p.TrackId, p.Artist, null, p.At.ToLocalTime(), p.Album, p.Tempo, p.TrackId != null);
         }
         catch { /* no history: the rest times count only what is planned */ }
@@ -172,6 +246,7 @@ public sealed class PlaylistGenerator
 
         // The hour less what the breaks and events booked in it take.
         double target = 3600 - Entries(hour).Sum(e => e.Seconds);
+        _qSongs = _qPortuguese = _qLanguage = _qRecent = 0; // each hour meets the quotas on its own
         double used = 0;
         int line = 0, misses = 0;
         var lines = template.Lines;
@@ -184,7 +259,7 @@ public sealed class PlaylistGenerator
             var at = hour.AddSeconds(used);
             if (Pick(l, next, at, null, template) is not { } item)
             {
-                string what = l.Source == LineSource.Folder ? l.Folder : l.CategoryName;
+                string what = l.Source is LineSource.Folder or LineSource.Take ? l.Folder : l.CategoryName;
                 if (!problems.Contains(what)) problems.Add(what);
                 misses++;
                 continue;
@@ -202,6 +277,7 @@ public sealed class PlaylistGenerator
             }
             items.Add(item);
             Remember(item, at);
+            CountQuota(item, at);
             used += item.Seconds;
             if (used >= target)
             {
@@ -246,6 +322,11 @@ public sealed class PlaylistGenerator
     PlanItem? Pick(TemplateLine l, TemplateLine next, DateTime at, IReadOnlyCollection<string>? avoid, PlaylistTemplate? template)
     {
         var kind = l.TrackKind;
+        // A take: a placeholder the playout puts together when it goes on air (the time is known only then).
+        if (l.Source == LineSource.Take)
+            return Takes.KindOf(l.Folder) is { } take
+                ? new PlanItem { Kind = TrackKind.Jingle, Path = l.Folder, Title = ScheduleWindow.TakeName(l.Folder), Seconds = Takes.Estimate(take) }
+                : null;
         if (l.Source == LineSource.Folder)
         {
             if (!_folders.TryGetValue(l.Folder, out var folder)) _folders[l.Folder] = folder = new FillMusic(l.Folder);
@@ -289,10 +370,23 @@ public sealed class PlaylistGenerator
         bool AlbumRested(RotationTrack t) => albumGap == TimeSpan.Zero || AlbumKey(t.Artist, t.Album) is not { } b || _albumTimes.Away(b, at) >= albumGap;
         bool TempoOk(RotationTrack t) => !slowFull || !Slow(t.Tempo);
 
+        // A song's own restrictions are kept whatever happens: its dates, days and hours, and how often a day and a week.
+        bool Allowed(RotationTrack t)
+        {
+            if (t.Rules is not { } r) return true;
+            if (!r.AllowsAt(at)) return false;
+            if (r.MaxPerDay is { } day && _trackTimes.Count(t.Id, at.Date, at.Date.AddDays(1)) >= day) return false;
+            var week = SongRestrictions.WeekStart(at);
+            return r.MaxPerWeek is not { } perWeek || _trackTimes.Count(t.Id, week, week.AddDays(7)) < perWeek;
+        }
         for (int tries = 0; tries < 50 && tracks.Count > 0; tries++)
         {
-            var pool = tracks.Where(t => avoid?.Contains(t.Path) != true).ToList();
-            if (pool.Count == 0) return null;
+            var pool = tracks.Where(t => avoid?.Contains(t.Path) != true && Allowed(t)).ToList();
+            if (pool.Count == 0)
+            {
+                if (tracks.Any(t => avoid?.Contains(t.Path) != true)) _relaxed.Add(L.F("{0}: every song restricted at {1:HH:mm}", l.CategoryName, at));
+                return null;
+            }
             // The line's tempo and energy; none of its songs has them: the whole category (and the line is reported).
             if (l.HasFilter)
             {
@@ -300,6 +394,8 @@ public sealed class PlaylistGenerator
                 if (wanted.Count > 0) pool = wanted;
                 else _relaxed.Add(L.F("{0}: no song with that tempo or energy", l.CategoryName));
             }
+            // The ERC quotas: Portuguese music (and among it in Portuguese, and recent) where the hour has too little.
+            if (music && Quota() is { } quota) pool = Steer(pool, quota, at, SongRested);
             // Whatever the rules allow, not the artists of the last two songs while others can play (two: the last of an
             // hour may be an optional one that is dropped on air).
             if (music)
@@ -364,6 +460,10 @@ sealed class Times<TKey>(IEqualityComparer<TKey>? comparer = null) where TKey : 
     /// <summary>How far <paramref name="at"/> is from its nearest time (before or after); the longest span if none.</summary>
     public TimeSpan Away(TKey key, DateTime at) =>
         _times.TryGetValue(key, out var list) ? list.Min(t => (at - t).Duration()) : TimeSpan.MaxValue;
+
+    /// <summary>How many times <paramref name="key"/> has from <paramref name="from"/> (inclusive) to <paramref name="to"/> (exclusive).</summary>
+    public int Count(TKey key, DateTime from, DateTime to) =>
+        _times.TryGetValue(key, out var list) ? list.Count(t => t >= from && t < to) : 0;
 
     /// <summary>The keys with a time at or before <paramref name="at"/>, the latest first.</summary>
     public List<TKey> LatestBefore(DateTime at, int count) =>

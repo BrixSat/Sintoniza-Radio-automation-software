@@ -101,6 +101,10 @@ public partial class MainWindow : Window
             _engine.AutoAdvance = _settings.AutoAdvance;
             _engine.ConfigureMic(_settings.ActiveMic);
             _engine.ConfigureTimeSignal(_settings.TimeSignal);
+            // Takes: the time and temperature, put together when they go on air
+            _takes.Settings = _settings.Takes ?? new();
+            _takes.Message += message => AppLog.Write(message);
+            _engine.TakeSource = _takes.Source;
             ApplySafety();
             ApplyRds();
             ApplyLoudness();
@@ -316,6 +320,7 @@ public partial class MainWindow : Window
             _saveTimer.Stop();
             _updateTimer?.Stop();
             _health?.Dispose();
+            _takes.Dispose();
             _backups?.Dispose();
             _scheduler?.Dispose();
             LogCartsOnAir();
@@ -1323,6 +1328,9 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>A saved item that can still play: a file that is there, a stream, a take (put together when it plays).</summary>
+    static bool Playable(PlaylistEntry e) => e.IsStream || Takes.IsTake(e.Path) || File.Exists(e.Path);
+
     /// <summary>Adds saved or loaded playlist items in order: files that still exist, and streams.</summary>
     void AddEntries(IEnumerable<PlaylistEntry> entries)
     {
@@ -1332,25 +1340,26 @@ public partial class MainWindow : Window
         {
             if (e.Event != null)
             {
-                if (!e.IsStream && !File.Exists(e.Path)) continue;
+                if (!Playable(e)) continue;
                 Flush();
                 engine.AddScheduled(e.Event, [e.ToScheduled()]);
                 continue;
             }
             if (e.HasDetails)
             {
-                if (!e.IsStream && !File.Exists(e.Path)) continue;
+                if (!Playable(e)) continue;
                 Flush();
                 engine.AddItems([e.ToScheduled()]);
                 continue;
             }
-            if (!e.IsStream)
+            if (!e.IsStream && !Takes.IsTake(e.Path))
             {
                 if (File.Exists(e.Path)) files.Add(e.Path);
                 continue;
             }
             Flush();
-            engine.AddStream(e.Path, e.StreamName!, e.StreamSeconds);
+            if (Takes.IsTake(e.Path)) engine.AddItems([e.ToScheduled()]);
+            else engine.AddStream(e.Path, e.StreamName!, e.StreamSeconds);
         }
         Flush();
 
@@ -1745,6 +1754,7 @@ public partial class MainWindow : Window
     // ───────────────────────── Library ─────────────────────────
 
     readonly LibraryService _library = new();
+    readonly TakeService _takes = new();
 
     /// <summary>The music library (for the settings window).</summary>
     internal LibraryService MusicLibrary => _library;
@@ -1898,7 +1908,7 @@ public partial class MainWindow : Window
     async Task CarryOn()
     {
         // Missing files are not added again: count what's left up to the item that was on air.
-        int index = _settings.PlaylistItems.Take(_settings.OnAirIndex + 1).Count(e => e.IsStream || File.Exists(e.Path)) - 1;
+        int index = _settings.PlaylistItems.Take(_settings.OnAirIndex + 1).Count(Playable) - 1;
         // In AUTO it plays (as when it closed, or when it was stopped and closed: AUTO is what the station runs on).
         bool play = _settings.ResumeOnStart && _settings.AutoAdvance && (_settings.WasPlaying || _settings.PlaylistItems.Count > 0);
         await _engine!.Resume(index, play);

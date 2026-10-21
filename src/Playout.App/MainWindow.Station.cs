@@ -58,6 +58,7 @@ public partial class MainWindow
             _engine.CrossfadeSeconds = _settings.Crossfade;
             _engine.OtherCrossfadeSeconds = _settings.OtherCrossfade;
             _engine.ConfigureTimeSignal(_settings.TimeSignal);
+            _takes.Settings = _settings.Takes ?? new();
             ApplySafety();
             ApplyRds();
             ApplyLoudness();

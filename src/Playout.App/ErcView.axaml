@@ -107,6 +107,11 @@
                 </StackPanel>
                 <TextBlock Classes="note"
                            Text="The ERC codes the performer's country with its own numbers (Portugal is 045): copy them from the ERC's portal. EU: the country is in the European Union (Portuguese-language quota)." />
+                <CheckBox x:Name="PlanBox" IsChecked="True">
+                    <TextBlock Text="Make the daily playlists meet the quotas" TextWrapping="Wrap" />
+                </CheckBox>
+                <TextBlock Classes="note"
+                           Text="Each hour gets Portuguese music when it has too little (about one song in three), in Portuguese by EU performers and recent where those fall short — from the songs of each line's category that are classified, as the rest rules allow." />
                 <Button x:Name="SaveDetailsButton" Content="Save" Classes="accent" HorizontalAlignment="Left" />
                 <TextBlock x:Name="DetailsText" Classes="note" />
             </StackPanel>

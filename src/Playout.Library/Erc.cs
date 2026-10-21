@@ -176,12 +176,10 @@ public sealed partial class LibraryDb
         var wanted = paths.Where(p => !string.IsNullOrEmpty(p)).Distinct(comparer).ToList();
         var result = new Dictionary<string, ErcSong>(comparer);
         if (wanted.Count == 0) return result;
-        var categories = Categories().ToDictionary(c => c.Id);
         using var c = Connect();
         var tracks = new List<LibraryTrack>();
         foreach (var chunk in wanted.Chunk(400))
-            tracks.AddRange(c.Query<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE path IN @paths",
-                new { paths = chunk }));
+            tracks.AddRange(c.Query<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE path IN @paths", new { paths = chunk }));
         // On Windows and macOS a path may differ in case from the library's.
         if (!OperatingSystem.IsLinux())
             foreach (var path in wanted.Where(p => !tracks.Any(t => comparer.Equals(t.Path, p))))
@@ -191,8 +189,29 @@ public sealed partial class LibraryDb
         foreach (var chunk in tracks.Select(t => t.Id).Distinct().Chunk(400))
             foreach (var (track, category) in c.Query<(long, long)>("SELECT track_id, category_id FROM track_categories WHERE track_id IN @ids", new { ids = chunk }))
                 (also.TryGetValue(track, out var list) ? list : also[track] = new()).Add(category);
+        foreach (var song in Erc(tracks, also)) result[song.Path] = song;
+        // The paths as asked (they may differ in case from the library's).
+        foreach (var path in wanted)
+            if (!result.ContainsKey(path) && result.Values.FirstOrDefault(s => comparer.Equals(s.Path, path)) is { } s)
+                result[path] = s;
+        return result;
+    }
 
-        // The categories to ask, in order: its own and those above it, then each other one and those above it.
+    /// <summary>Every song in the library (not missing) as the ERC sees it, by track id: for planning to the quotas.</summary>
+    public Dictionary<long, ErcSong> ErcAll()
+    {
+        using var c = Connect();
+        var tracks = c.Query<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE missing = 0").ToList();
+        var also = new Dictionary<long, List<long>>();
+        foreach (var (track, category) in c.Query<(long, long)>("SELECT track_id, category_id FROM track_categories"))
+            (also.TryGetValue(track, out var list) ? list : also[track] = new()).Add(category);
+        return Erc(tracks, also).ToDictionary(s => s.TrackId);
+    }
+
+    /// <summary>Each track's own ERC values, or else its categories': its own category and those above it first, then the others.</summary>
+    IEnumerable<ErcSong> Erc(List<LibraryTrack> tracks, Dictionary<long, List<long>> also)
+    {
+        var categories = Categories().ToDictionary(c => c.Id);
         IEnumerable<LibraryCategory> Chain(LibraryTrack t)
         {
             foreach (var start in new[] { t.CategoryId }.Concat(also.GetValueOrDefault(t.Id, []).Select(x => (long?)x)))
@@ -208,13 +227,8 @@ public sealed partial class LibraryDb
             bool? portuguese = t.ErcPortuguese ?? chain.FirstOrDefault(x => x.ErcPortuguese != null)?.ErcPortuguese;
             string? language = !string.IsNullOrWhiteSpace(t.Language) ? t.Language : chain.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ErcLanguage))?.ErcLanguage;
             string? nationality = !string.IsNullOrWhiteSpace(t.ErcNationality) ? t.ErcNationality : chain.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.ErcNationality))?.ErcNationality;
-            result[t.Path] = new ErcSong(t.Id, t.Path, portuguese, language, nationality, Erc.ReleaseDate(t.ErcRelease, t.Year), t.Isrc,
+            yield return new ErcSong(t.Id, t.Path, portuguese, language, nationality, Playout.Library.Erc.ReleaseDate(t.ErcRelease, t.Year), t.Isrc,
                 t.Artist, t.Title, t.Duration);
         }
-        // The paths as asked (they may differ in case from the library's).
-        foreach (var path in wanted)
-            if (!result.ContainsKey(path) && result.Values.FirstOrDefault(s => comparer.Equals(s.Path, path)) is { } s)
-                result[path] = s;
-        return result;
     }
 }

@@ -114,6 +114,12 @@ settings.ActiveCartwall = T("Morning show", "Manhãs");
 string logo = Path.Combine(work, "logo.png");
 if (!File.Exists(logo)) using (var s = File.Create(logo)) new Avalonia.Media.Imaging.Bitmap(Avalonia.Platform.AssetLoader.Open(new Uri("avares://RadioPlayout/Assets/icon.ico"))).Save(s);
 settings.LogoPath = logo;
+// Takes: the hours, some minutes and temperatures (silent: only their names matter here)
+string takesDir = Path.Combine(media, "Takes");
+for (int h = 0; h < 24; h++) Audio(Path.Combine(takesDir, $"HRS{h:00}.mp3"), 1.5, "", "", "", false);
+for (int m = 1; m < 60; m++) Audio(Path.Combine(takesDir, $"MIN{m:00}.mp3"), 1, "", "", "", false);
+for (int t = 0; t <= 35; t++) Audio(Path.Combine(takesDir, $"TMP{t}.mp3"), 1, "", "", "", false);
+settings.Takes = new TakesSettings(takesDir, 38.7223, -9.1393);
 settings.Save();
 Localization.Load(lang);
 
@@ -147,7 +153,7 @@ var weekdays = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
 List<WeekTime> Hours(IEnumerable<DayOfWeek> days, int from, int to) => days.SelectMany(d => Enumerable.Range(from, to - from).Select(h => new WeekTime { Day = d, Time = $"{h:00}:00:00" })).ToList();
 string current = T("Music › Current", "Music › Atuais"), gold = "Music › Gold", eighties = T("Music › 80s", "Music › Anos 80");
 var morning = new PlaylistTemplate { Name = T("Morning show", "Manhãs"), Slots = Hours(weekdays, 7, 10), ArtistHours = 2, MaxSlowInRow = 2, Lines =
-    [Line(current), Line(gold), Line("Jingles", "jingle"), Line(current), Line(eighties), Line("Jingles", "jingle")] };
+    [Line(current), Line(gold), Line("Jingles", "jingle"), Line(current), Line(eighties), new TemplateLine { Source = LineSource.Take, Folder = Takes.PathFor(TakeKind.TimeAndTemperature), Kind = "jingle" }, Line("Jingles", "jingle")] };
 morning.Lines[0].TempoMin = 3; // the morning starts lively
 morning.Lines[0].EnergyMin = 3;
 var afternoons = new PlaylistTemplate { Name = T("Afternoons", "Tardes"), Slots = Hours(weekdays, 14, 19), Lines =
@@ -266,7 +272,7 @@ main.FindControl<Avalonia.Controls.Primitives.ToggleButton>("CartwallTab")!.Rais
 Pump(10);
 
 // Settings, tab by tab: this computer's (the on-air program) and the station's (Sintoniza Pro)
-string[] settingsTabs = ["station", "audio", "microphone", "timesignal", "safety", "library", "shortcuts", "streaming", "rds", "website", "alerts", "playlist", "remote", "about"];
+string[] settingsTabs = ["station", "audio", "microphone", "timesignal", "takes", "safety", "library", "shortcuts", "streaming", "rds", "website", "alerts", "playlist", "remote", "about"];
 void SettingsShots(SettingsWindow sw, string prefix)
 {
     sw.Show();
@@ -279,7 +285,7 @@ void SettingsShots(SettingsWindow sw, string prefix)
         tabs.SelectedIndex = i;
         Pump(15);
         Shot(sw, prefix + settingsTabs[i], "LibraryFoldersList", "MusicDeviceBox", "PreviewDeviceBox", "CrossfadeBox", "OtherCrossfadeBox", "StationNameBox",
-            "NextMinutesBox", "PlanDaysBox", "LanguageBox", "LibraryTypeBox", "TestLibraryButton", "ResumeBox", "BackupBox", "SilenceBox", "FillBox", "RdsPsBox", "LoudnessBox", "RemoteBox", "RemotePortBox", "RemoteAddressText");
+            "NextMinutesBox", "PlanDaysBox", "LanguageBox", "LibraryTypeBox", "TestLibraryButton", "ResumeBox", "BackupBox", "SilenceBox", "FillBox", "RdsPsBox", "LoudnessBox", "RemoteBox", "RemotePortBox", "RemoteAddressText", "TakesFolderText", "TakesFolderNote", "LatitudeBox", "TemperatureButton");
     }
     sw.Close();
 }
@@ -472,6 +478,15 @@ if (firstSong?.Item is { } vtSong)
     Pump(20);
     Shot(ercSong, "erc-song", "PortugueseBox", "LanguageBox", "CountryBox", "ReleaseBox");
     ercSong.Close();
+    // A Christmas song: only in December, from 7:00 to 20:00, twice a day at most
+    db.SetRestrictions([demoSongs[0].Id], new SongRestrictions(new DateTime(DateTime.Today.Year, 12, 1), new DateTime(DateTime.Today.Year, 12, 31), null,
+        SongRestrictions.Mask(Enumerable.Range(0, 24).Select(h => h is >= 7 and < 20).ToList()), 2, null));
+    var restrict = new RestrictionsWindow(db, [demoSongs[0].Id]) { Width = 640 };
+    restrict.Show();
+    Pump(20);
+    Shot(restrict, "restrictions", "FromBox", "UntilBox", "DayGrid", "HourGrid", "DayHoursButton", "MaxDayBox", "MaxWeekBox", "RemoveButton");
+    restrict.Close();
+    db.SetRestrictions([demoSongs[0].Id], null);
 }
 
 // The station's users: a presenter of the demo station next to the first two
