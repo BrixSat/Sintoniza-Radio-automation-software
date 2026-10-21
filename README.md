@@ -112,6 +112,10 @@ engine for decoding, mixing and streaming.
   (on air, voice tracks and the web remote); Pro's Home reminds you to change those passwords. The on-air program
   opens locked behind its log-in — what is on air carries on, and in AUTO it starts playing by itself — and
   **Log out** locks it again; Pro has File → Log out.
+- **ERC quotas (Portuguese music)** (Sintoniza Pro → Programming → ERC quotas): the Lei da Rádio's quotas for a period —
+  at least 30 % Portuguese music, of it 60 % in Portuguese by EU performers and 35 % recent — over the whole month and
+  Monday–Friday 7–20h, from what went on air and the daily playlists still to play, with the songs still to classify;
+  and the monthly XML file for the ERC's portal. Songs are classified one by one or through their category's defaults.
 - **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network, laid out as the
   on-air screen — the deck with the waveform and countdowns, ▶ ❚❚ ⏭ ■ and AUTO, the clock and level meters, the
   playlist (play now / remove), the cartwalls, and a library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong

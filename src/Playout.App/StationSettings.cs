@@ -68,6 +68,12 @@ public sealed class StationSettings
     /// <summary>Where voice tracks are recorded to: a folder every studio can reach. Empty: asked the first time.</summary>
     public string VoiceTrackFolder { get; set; } = "";
 
+    /// <summary>The programme service's name at the ERC (ALIAS in its file); empty: the station's name.</summary>
+    public string ErcAlias { get; set; } = "";
+
+    /// <summary>The countries songs' performers are from, with the ERC's code for each and whether it is in the EU.</summary>
+    public List<ErcCountry> ErcCountries { get; set; } = Erc.DefaultCountries();
+
     /// <summary>This computer's settings as the station's (the first studio after the upgrade publishes its own).</summary>
     public static StationSettings From(AppSettings s)
     {

@@ -118,6 +118,7 @@
                 <MenuItem x:Name="MenuTemplates" Header="Hour templates" />
                 <MenuItem x:Name="MenuDaily" Header="Daily playlists" />
                 <MenuItem x:Name="MenuEvents" Header="Events" />
+                <MenuItem x:Name="MenuErc" Header="ERC quotas" />
             </MenuItem>
             <MenuItem Header="_Traffic">
                 <MenuItem x:Name="MenuBreaks" Header="Ad breaks" />
@@ -206,6 +207,7 @@
                         <Button x:Name="NavTemplates" Classes="nav" Content="▦   Hour templates" />
                         <Button x:Name="NavDaily" Classes="nav" Content="☰   Daily playlists" />
                         <Button x:Name="NavEvents" Classes="nav" Content="⏰   Events" />
+                        <Button x:Name="NavErc" Classes="nav" Content="⚖   ERC quotas" />
                         <TextBlock Classes="navgroup" Text="TRAFFIC" />
                         <Button x:Name="NavBreaks" Classes="nav" Content="€   Ad breaks" />
                         <Button x:Name="NavClients" Classes="nav" Content="👥   Clients and campaigns" />
@@ -731,6 +733,7 @@
             <TabItem Header="Station settings" x:Name="StationSettingsTab" />
             <TabItem Header="Cartwalls" x:Name="CartwallsTab" />
             <TabItem Header="Users" x:Name="UsersTab" />
+            <TabItem Header="ERC quotas" x:Name="ErcTab" />
             <!-- ───────── The library: every song ───────── -->
             <TabItem Header="Songs" x:Name="SongsTab">
                 <app:TrackLibraryView x:Name="SongsView" />

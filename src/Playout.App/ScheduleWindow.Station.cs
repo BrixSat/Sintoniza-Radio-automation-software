@@ -33,6 +33,7 @@ public partial class ScheduleWindow
             else if (tab == StationSettingsTab) await ShowStationSettings(new StationStore(db));
             else if (tab == CartwallsTab) await ShowCartwalls(new StationStore(db));
             else if (tab == UsersTab && tab.Content == null) tab.Content = new UsersView(new UserStore(db), _user?.Name ?? "");
+            else if (tab == ErcTab && tab.Content == null) tab.Content = new ErcView(db, Who);
         };
         Closed += (_, _) => { foreach (var page in _pages.Values) page.Discard(); };
     }
@@ -57,6 +58,8 @@ public partial class ScheduleWindow
         {
             var updated = StationSettings.From(s);
             updated.Cartwalls = station.Cartwalls; // edited on their own (Cartwalls)
+            updated.ErcAlias = station.ErcAlias; // and on the ERC page
+            updated.ErcCountries = station.ErcCountries;
             return SaveStation(store, updated, version);
         });
         window.Finished += async saved =>

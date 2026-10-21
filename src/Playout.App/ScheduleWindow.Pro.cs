@@ -36,6 +36,7 @@ public partial class ScheduleWindow
             (NavTemplates, ToolTemplates, MenuTemplates, (TabItem)Tabs.Items[3]!, L.T("Programming ›"), L.T("Hour templates")),
             (NavDaily, ToolDaily, MenuDaily, DailyTab, L.T("Programming ›"), L.T("Daily playlists")),
             (NavEvents, null, MenuEvents, (TabItem)Tabs.Items[0]!, L.T("Programming ›"), L.T("Events")),
+            (NavErc, null, MenuErc, ErcTab, L.T("Programming ›"), L.T("ERC quotas")),
             (NavBreaks, ToolBreaks, MenuBreaks, (TabItem)Tabs.Items[1]!, L.T("Traffic ›"), L.T("Ad breaks")),
             (NavClients, null, MenuClients, (TabItem)Tabs.Items[2]!, L.T("Traffic ›"), L.T("Clients and campaigns")),
             (NavCategories, CategoriesButton, MenuCategories, CategoriesTab, L.T("Library ›"), L.T("Categories")),
@@ -290,6 +291,7 @@ public partial class ScheduleWindow
             : tab == Tabs.Items[1] || tab == Tabs.Items[2] ? May(Permission.Traffic)
             : tab == StationSettingsTab || tab == CartwallsTab ? May(Permission.Station)
             : tab == UsersTab ? May(Permission.Users)
+            : tab == ErcTab ? May(Permission.Programming) && _store != null
             : true;
         foreach (var (nav, tool, menu, tab) in _gates)
         {

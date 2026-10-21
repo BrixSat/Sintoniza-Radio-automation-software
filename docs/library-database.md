@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **12**. The scripts that create the tables are
+Schema version **13**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -36,7 +36,8 @@ settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) a
 [`mysql-11.sql`](../src/Playout.Library/Schema/mysql-11.sql) (the station's users), then
 [`sqlite-12.sql`](../src/Playout.Library/Schema/sqlite-12.sql) and
 [`mysql-12.sql`](../src/Playout.Library/Schema/mysql-12.sql) (the on-air program's log-in: every user so far gets
-`onair`). The app creates the tables itself the
+`onair`), then [`sqlite-13.sql`](../src/Playout.Library/Schema/sqlite-13.sql) and
+[`mysql-13.sql`](../src/Playout.Library/Schema/mysql-13.sql) (what the ERC needs about each song). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -81,6 +82,10 @@ one of these.
 | `color` | text, null | `#RRGGBB`, shown in the app |
 | `sort_order` | integer | order in lists |
 | `role` | text, null | one of the eight above for the fixed top-level categories; null for the rest |
+| `erc_portuguese`, `erc_language`, `erc_nationality` | 0/1, text, text; null | ERC defaults for its songs and the categories under it (see `tracks`); null: as the category above says |
+
+A song's ERC values are its own, or else the first set on its own category or the categories above it, then on the
+other categories it is in (and those above them).
 
 ### `tracks`
 
@@ -99,12 +104,15 @@ One row per audio file.
 | `tempo` | integer, null | 1 (slow) … 5 (fast) |
 | `energy` | integer, null | 1 (calm) … 5 (lively) |
 | `voice` | text, null | `male`, `female`, `duo`, `group` or `instrumental` |
-| `language` | text, null | short code: `pt`, `en`, … |
+| `language` | text, null | the language it is sung in: `pt-PT`, `pt-BR`, `en`, … (`pt` is taken as `pt-PT`) |
 | `enabled` | 0/1 | 0 = never picked automatically (rotation) |
 | `missing` | 0/1 | 1 = not found, but kept (only when the row can't be deleted). A scan takes files that are gone out of the library: deleted files, and every song of a deleted folder. Moved and renamed files are followed and keep their row |
 | `added_at`, `updated_at` | time | |
 | `search` | text | what search matches against. **Insert `''`**: the app fills it in (lower case, accents removed) when it opens the library |
 | `cue_in`, `intro`, `outro`, `mix`, `cue_out` | real, null | cue points in seconds from the start of the file; null = not set (see the README) |
+| `erc_portuguese` | 0/1, null | ERC: Portuguese music (Lei da Rádio art. 41.º); null: as its categories say |
+| `erc_nationality` | text, null | ERC: the performer's country, as the ERC's code (`045` = Portugal); null: as its categories say |
+| `erc_release` | text, null | ERC: first edition, `yyyy-mm-dd`, `yyyy-mm` or `yyyy`; null: the `year` |
 | `cues_updated_at` | time, null | when the cue points were last set or cleared, by the **database server's** clock; null = never |
 
 The app reads the cue points of files whose `cues_updated_at` changed every 30 seconds. A program that changes cue
@@ -166,7 +174,8 @@ advertisers) are made from. Each studio also keeps its own CSV files and puts in
 
 `station_settings` (one row per station): `settings` is a JSON object with what every studio shares — station name,
 logo (base64), crossfades, loudness, silence detection, fill music, time signal, RDS texts, website now playing,
-alerts, streaming server, cartwalls and the library's other folders — saved by Sintoniza Pro; `version` goes up
+alerts, streaming server, cartwalls, the library's other folders, and for the ERC its `ErcAlias` (the programme
+service's name in the ERC's file) and `ErcCountries` (`Name`, `Code` — the ERC's code — and `Eu`) — saved by Sintoniza Pro; `version` goes up
 by one on every save and the playouts read it again; `updated_at` (UTC) and `updated_by`. What belongs to one
 computer (sound cards, microphone, the database login, keys) stays in that computer's settings file.
 

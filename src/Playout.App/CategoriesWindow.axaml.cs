@@ -138,8 +138,44 @@ public partial class CategoriesWindow : PageWindow
         ParentBox.ItemsSource = parents;
         ParentBox.SelectedItem = parents.FirstOrDefault(p => p.Id == row.Category.ParentId) ?? parents[0];
         KindBox.SelectedIndex = Math.Max(0, Array.IndexOf(Kinds, row.Category.Kind));
+        ShowErc(row.Category);
         ShowColor(row.Category.Color ?? Palette[0]);
         ShowFolders();
+    }
+
+    // ───────────────────────── ERC ─────────────────────────
+
+    /// <summary>An ERC default in a list: what it shows and what it sets (null: as the category above says).</summary>
+    sealed record ErcChoice(string Label, object? Value)
+    {
+        public override string ToString() => Label;
+    }
+
+    List<ErcCountry>? _ercCountries;
+
+    void ShowErc(LibraryCategory category)
+    {
+        _ercCountries ??= _service?.Db is { } db ? TryCountries(db) : Erc.DefaultCountries();
+        var above = new ErcChoice(L.T("As the category above"), null);
+        var portuguese = new List<ErcChoice> { above, new(L.T("Portuguese music"), true), new(L.T("Not Portuguese music"), false) };
+        ErcPortugueseBox.ItemsSource = portuguese;
+        ErcPortugueseBox.SelectedItem = portuguese.FirstOrDefault(c => Equals(c.Value, category.ErcPortuguese)) ?? above;
+        var languages = new List<ErcChoice> { above };
+        languages.AddRange(ErcSongWindow.Languages.Select(l => new ErcChoice($"{L.T(l.Name)} · {l.Code}", l.Code)));
+        if (category.ErcLanguage is { Length: > 0 } own && languages.All(l => !Equals(l.Value, own))) languages.Add(new ErcChoice(own, own));
+        ErcLanguageBox.ItemsSource = languages;
+        ErcLanguageBox.SelectedItem = languages.FirstOrDefault(c => Equals(c.Value, category.ErcLanguage)) ?? above;
+        var countries = new List<ErcChoice> { above };
+        countries.AddRange(_ercCountries.Select(c => new ErcChoice($"{c.Name} · {c.Code}", c.Code)));
+        if (category.ErcNationality is { Length: > 0 } code && countries.All(c => !Equals(c.Value, code))) countries.Add(new ErcChoice(L.F("Code {0}", code), code));
+        ErcCountryBox.ItemsSource = countries;
+        ErcCountryBox.SelectedItem = countries.FirstOrDefault(c => Equals(c.Value, category.ErcNationality)) ?? above;
+    }
+
+    static List<ErcCountry> TryCountries(LibraryDb db)
+    {
+        try { return new StationStore(db).Load().Settings?.ErcCountries is { Count: > 0 } list ? list : Erc.DefaultCountries(); }
+        catch { return Erc.DefaultCountries(); }
     }
 
     // ───────────────────────── Folders ─────────────────────────
@@ -258,6 +294,9 @@ public partial class CategoriesWindow : PageWindow
             Kind = Kinds[Math.Max(0, KindBox.SelectedIndex)],
             Color = _color,
             SortOrder = row.Category.SortOrder,
+            ErcPortuguese = (ErcPortugueseBox.SelectedItem as ErcChoice)?.Value as bool?,
+            ErcLanguage = (ErcLanguageBox.SelectedItem as ErcChoice)?.Value as string,
+            ErcNationality = (ErcCountryBox.SelectedItem as ErcChoice)?.Value as string,
         };
         if (await Change(db => db.UpdateCategory(updated), row.Category.Id)) StatusText.Text = L.F("Saved {0}", name);
     }

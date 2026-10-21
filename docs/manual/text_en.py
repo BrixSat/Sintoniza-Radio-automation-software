@@ -293,6 +293,29 @@ CHAPTERS = [
         ["Web remote", "Control a playout from a phone"],
     ]),
     ("tip", "Passwords are kept only as a secure hash: a forgotten one is set again by another user with <b>Users</b>. Nobody can delete or lock out themselves, nor take away their own <b>Users</b>."),
+    ("h2", "ERC quotas (Portuguese music)"),
+    ("p", "The Lei da Rádio (art. 41.º–47.º, as changed in 2024) asks, of the songs played in a month: at least <b>30 %</b> Portuguese music; of the "
+          "Portuguese music, at least <b>60 %</b> in Portuguese performed by EU citizens and at least <b>35 %</b> first edited in the last 12 months — over "
+          "the whole month and also <b>Monday to Friday, 7:00–20:00</b>. Every month the station sends the ERC what it played, through its portal."),
+    ("p", "Each song needs: Portuguese music or not, the language it is sung in, the performer's country and its first edition. Give them to a whole "
+          "category in <b>Categories</b> (its songs and the categories under it take them), or to songs in <b>Songs</b> → right-click → <b>ERC classification…</b>."),
+    ("fig", "erc-song", "ERC classification of a song", [
+        ("PortugueseBox", "<b>Portuguese music</b>: yes, no, or as its category says."),
+        ("LanguageBox", "The <b>language</b> it is sung in (pt-PT, pt-BR, en…)."),
+        ("CountryBox", "The <b>performer's country</b>, from the station's list with the ERC's codes."),
+        ("ReleaseBox", "The <b>first edition</b>: yyyy-mm-dd, yyyy-mm or yyyy (empty: the year tag)."),
+    ]),
+    ("fig", "erc", "Programming → ERC quotas", [
+        ("FromBox", "The period: <b>Last month</b>, <b>This month</b> or any dates…"),
+        ("CheckButton", "…and <b>Check</b>."),
+        ("AllPanel", "The three quotas over the whole period: green when met, red when not, with how many of how many."),
+        ("DaytimePanel", "The same, Monday to Friday from 7:00 to 20:00. While the period isn't over, a third card adds the daily playlists still to play."),
+        ("MissingList", "<b>Songs to classify</b>: played (or planned) without the ERC's details; until then they count as not Portuguese."),
+        ("ClassifyButton", "<b>Classify…</b> the selected ones."),
+        ("ExportButton", "<b>Export for the ERC (XML)…</b>: the file the ERC's portal takes, a PLAYLIST a day."),
+        ("AliasBox", "The programme service's name at the ERC (ALIAS)."),
+        ("CountryPanel", "The countries and their ERC codes (Portugal is 045; copy the others from the portal), and which are in the EU."),
+    ]),
     ("h2", "The schedule"),
     ("p", "Everything planned ahead: Events, Ad breaks, Clients and campaigns, Hour templates and Daily playlists, chosen on the left. <b>Save</b> (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database and the on-air program "
           "takes it within a few seconds. If someone else saved meanwhile, you are asked before theirs is replaced."),
@@ -425,6 +448,9 @@ CHAPTERS = [
     ("steps", ["Pro → <b>Daily playlists</b> → ▶ to tomorrow → <b>09:00</b>.", "Select the song → <b>Another song</b>, or <b>Remove</b> it and double-click one in the library."]),
     ("h3", "…put a folder of songs in Gold?"),
     ("p", "Sintoniza Import with that folder, <i>into the category</i> Gold, no sub-categories. Or in the on-air program: Folders tab → right-click the folder → Category → Gold."),
+    ("h3", "…send the ERC last month's music?"),
+    ("steps", ["Pro → <b>ERC quotas</b> → <b>Last month</b>.", "Check the quotas; classify what is under <i>Songs to classify</i>.",
+               "<b>Export for the ERC (XML)…</b>, then upload the file in the ERC's portal."]),
     ("h3", "…get the music report for the collecting society?"),
     ("p", "On-air program → <b>Reports</b> → <i>Music played (royalties)</i> → the month → <b>Save as CSV…</b>."),
     ("h3", "…send an advertiser the proof of broadcast?"),
