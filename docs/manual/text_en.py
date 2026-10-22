@@ -313,11 +313,13 @@ CHAPTERS = [
         ("AllPanel", "The three quotas over the whole period: green when met, red when not, with how many of how many."),
         ("DaytimePanel", "The same, Monday to Friday from 7:00 to 20:00. While the period isn't over, a third card adds the daily playlists still to play."),
         ("MissingList", "<b>Songs to classify</b>: played (or planned) without the ERC's details; until then they count as not Portuguese."),
-        ("ClassifyButton", "<b>Classify…</b> the selected ones."),
+        ("ClassifyButton", "<b>Classify…</b> the selected ones, or <b>🔎 Look up on MusicBrainz…</b>: their performer's country, language and first edition from MusicBrainz (internet), with what that suggests; you untick what isn't right and save the rest."),
+        ("AddToLibraryButton", "Songs played from <b>files outside the library</b>: <b>Add to the library, in</b> a category, so they can be classified."),
         ("ExportButton", "<b>Export for the ERC (XML)…</b>: the file the ERC's portal takes, a PLAYLIST a day."),
         ("AliasBox", "The programme service's name at the ERC (ALIAS)."),
         ("CountryPanel", "The countries and their ERC codes (Portugal is 045; copy the others from the portal), and which are in the EU."),
     ]),
+    ("tip", "The daily playlists can only plan to the quotas with <b>classified songs</b> to choose from: in <b>Songs</b>, select a category's songs → right-click → <b>ERC: look up on MusicBrainz…</b> (about 3 seconds a song)."),
     ("p", "<b>Planning to the quotas</b> (on the right, on by default): each hour of the daily playlists is made to meet the three quotas on its own — a "
           "Portuguese song about every third song when there is too little, and among them songs in Portuguese by EU performers and recent ones where those "
           "fall short — from the classified songs of each line's category, as the rest rules allow."),

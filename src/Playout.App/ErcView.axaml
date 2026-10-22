@@ -81,9 +81,15 @@
                             <TextBlock DockPanel.Dock="Top" Classes="cardtitle" Text="SONGS TO CLASSIFY" />
                             <TextBlock DockPanel.Dock="Top" Classes="note" Margin="0,0,0,8"
                                        Text="Songs that went on air (or are planned) without what the ERC needs: whether they are Portuguese music, and for Portuguese music the language, the performer's country and the first edition. Until then they count as not Portuguese. Select them and Classify… (or give their category defaults in Categories)." />
-                            <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="8" Margin="0,8,0,0">
+                            <WrapPanel DockPanel.Dock="Bottom" ItemSpacing="8" LineSpacing="8" Margin="0,8,0,0">
                                 <Button x:Name="ClassifyButton" Content="Classify…" IsEnabled="False" />
+                                <Button x:Name="LookupButton" Content="🔎 Look up on MusicBrainz…" IsEnabled="False"
+                                        ToolTip.Tip="The performer's country, the language and the first edition of the selected songs, from MusicBrainz (internet): you check them before they are saved" />
                                 <Button x:Name="SelectAllButton" Content="Select all" />
+                                <Border Width="12" />
+                                <Button x:Name="AddToLibraryButton" Content="Add to the library, in" IsEnabled="False"
+                                        ToolTip.Tip="Songs that went on air from files outside the library: put them in the library, in this category, so they can be classified" />
+                                <ComboBox x:Name="AddCategoryBox" MinWidth="200" />
                             </WrapPanel>
                             <ListBox x:Name="MissingList" SelectionMode="Multiple" MinHeight="120" MaxHeight="420" Background="#13161C" />
                         </DockPanel>

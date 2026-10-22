@@ -264,7 +264,15 @@ classification…** (several at once: what differs between them can be left as i
 the whole period and for Monday–Friday 7–20h, green when met and red when not, with how many songs of how many.
 When the period isn't over yet it also shows them **with the daily playlists still to play**, so a shortfall can be
 fixed before the month ends. **Songs to classify** lists what went on air (or is planned) without the ERC's details —
-until classified they count as not Portuguese — select them and **Classify…**.
+until classified they count as not Portuguese — select them and **Classify…**, or **🔎 Look up on MusicBrainz…**:
+each song is looked for on MusicBrainz (musicbrainz.org, over the internet; the title is cleaned of what DJ edits add,
+such as *[Extended Mix]* or *124 -*) for the performer's country, the language of the lyrics and the first edition, and
+it suggests Portuguese music when the song is sung in Portuguese or by a Portuguese performer. You see what it found
+for each song and untick what isn't right; only what is ticked is saved, and what MusicBrainz doesn't know isn't
+changed. Songs that went on air from **files outside the library** can't be classified until they are in it: select
+them and **Add to the library, in** a category. For the daily playlists to plan to the quotas they need classified
+songs to choose from: in **Songs**, select a category's songs → right-click → **ERC: look up on MusicBrainz…**
+(about 3 seconds a song: MusicBrainz takes one question a second).
 
 **Export for the ERC (XML)…** saves the file the ERC's portal takes: `ERCRATIO`, the station's **ALIAS**, a
 `PLAYLIST` a day with each song's time, duration, artist, title, nationality, language, first edition, whether it is

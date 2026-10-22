@@ -318,11 +318,13 @@ CHAPTERS = [
         ("AllPanel", "As três quotas em todo o período: verde quando cumpridas, vermelho quando não, com quantas de quantas."),
         ("DaytimePanel", "O mesmo, de segunda a sexta das 7:00 às 20:00. Enquanto o período não acabou, um terceiro cartão junta as playlists diárias ainda por emitir."),
         ("MissingList", "<b>Músicas por classificar</b>: emitidas (ou planeadas) sem os dados da ERC; até lá contam como não portuguesas."),
-        ("ClassifyButton", "<b>Classificar…</b> as selecionadas."),
+        ("ClassifyButton", "<b>Classificar…</b> as selecionadas, ou <b>🔎 Procurar no MusicBrainz…</b>: o país do intérprete, a língua e a primeira edição a partir do MusicBrainz (internet), com o que isso sugere; desmarca o que não estiver certo e guarda o resto."),
+        ("AddToLibraryButton", "Músicas tocadas a partir de <b>ficheiros fora da biblioteca</b>: <b>Juntar à biblioteca, em</b> uma categoria, para poderem ser classificadas."),
         ("ExportButton", "<b>Exportar para a ERC (XML)…</b>: o ficheiro que o portal da ERC aceita, uma PLAYLIST por dia."),
         ("AliasBox", "O nome do serviço de programas na ERC (ALIAS)."),
         ("CountryPanel", "Os países e os seus códigos ERC (Portugal é 045; copie os outros do portal), e quais são da UE."),
     ]),
+    ("tip", "As playlists diárias só conseguem cumprir as quotas com <b>músicas classificadas</b> por onde escolher: em <b>Músicas</b>, selecione as músicas de uma categoria → botão direito → <b>ERC: procurar no MusicBrainz…</b> (cerca de 3 segundos por música)."),
     ("p", "<b>Planear para as quotas</b> (à direita, ligado por omissão): cada hora das playlists diárias é feita para cumprir as três quotas sozinha — "
           "uma música portuguesa cerca de uma em cada três quando há pouca, e entre elas músicas em português por intérpretes da UE e recentes onde estas "
           "faltam — das músicas classificadas da categoria de cada linha, conforme as regras de descanso permitem."),
