@@ -55,14 +55,34 @@ public sealed class GpioSettings
     /// <summary>An output not used (<see cref="GpioSignal.None"/>) is held on: the supply of the input contacts.</summary>
     public GpioSignal Dtr { get; set; } = GpioSignal.None;
     public GpioSignal Rts { get; set; } = GpioSignal.None;
+    /// <summary>GPIO over the network: texts in, texts out (a GPIO box, a desk that sends strings).</summary>
+    public NetGpioSettings Network { get; set; } = new();
+    /// <summary>GPIO from a MIDI desk or controller: notes and controllers in, notes out (its lights).</summary>
+    public MidiGpioSettings Midi { get; set; } = new();
 
-    public GpioSettings Clone() => new()
+    public GpioSettings Clone() => System.Text.Json.JsonSerializer.Deserialize<GpioSettings>(System.Text.Json.JsonSerializer.Serialize(this))!;
+}
+
+/// <summary>What the GPIO outputs show: what is on air now.</summary>
+public readonly record struct GpioState(bool Playing, bool Advert, bool Live, bool Silence)
+{
+    public bool Is(GpioSignal signal) => signal switch
     {
-        Enabled = Enabled, Port = Port, Dtr = Dtr, Rts = Rts,
-        Cts = new() { OnClose = Cts.OnClose, OnOpen = Cts.OnOpen, Cart = Cts.Cart },
-        Dsr = new() { OnClose = Dsr.OnClose, OnOpen = Dsr.OnOpen, Cart = Dsr.Cart },
-        Dcd = new() { OnClose = Dcd.OnClose, OnOpen = Dcd.OnOpen, Cart = Dcd.Cart },
+        GpioSignal.OnAir => Playing,
+        GpioSignal.Advert => Advert,
+        GpioSignal.Live => Live,
+        GpioSignal.Silence => Silence,
+        _ => false,
     };
+}
+
+/// <summary>A source of GPIO: the serial port, the network, MIDI. Its inputs fire actions; its outputs show the state.</summary>
+public interface IGpioSource : IDisposable
+{
+    /// <summary>An input fired: the action and, for a cart, which (1 = first). Raised off the UI thread.</summary>
+    event Action<GpioAction, int>? Fired;
+    /// <summary>Sets the outputs (called when what is on air changes).</summary>
+    void Show(GpioState state);
 }
 
 /// <summary>The lines of a GPIO port (a serial port, or a stand-in for testing).</summary>
@@ -99,7 +119,7 @@ sealed class SerialPins : IGpioPins
 /// Watches the GPIO inputs (every 20 ms; a change must hold for two looks, so a bouncing contact counts once) and sets
 /// the outputs. <see cref="Poll"/> runs on a timer of its own; <see cref="Fired"/> is raised from it.
 /// </summary>
-public sealed class GpioService : IDisposable
+public sealed class GpioService : IGpioSource
 {
     readonly IGpioPins _pins;
     readonly GpioSettings _s;
@@ -146,6 +166,8 @@ public sealed class GpioService : IDisposable
             _started = true;
         }
     }
+
+    public void Show(GpioState state) => Show(state.Playing, state.Advert, state.Live, state.Silence);
 
     /// <summary>Sets the outputs from what is on air now.</summary>
     public void Show(bool playing, bool advert, bool live, bool silence)

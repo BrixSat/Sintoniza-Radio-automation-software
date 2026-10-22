@@ -183,6 +183,12 @@ CHAPTERS = [
           "something plays, an advert is on air, a live input or stream is on air, or there is silence (one not used is held on, as the supply of the inputs)."),
     ("tip", "The usual fader start: CTS closes → Play; opens (fader down) → Next or nothing. A contact that bounces counts once; Next, Stop and Pause "
             "aren't done while an advert is on air. <b>Test the inputs</b> shows them as you move the faders."),
+    ("p", "<b>Network</b>: a GPIO-to-network box or a desk that sends texts, on a port (TCP or UDP). Each <b>text</b> does something (FADER1_ON → Play), "
+          "and texts are <b>sent</b> when a signal starts and ends (ONAIR_ON / ONAIR_OFF), to every TCP connection and, if set, by UDP. <b>Only from</b>: "
+          "the addresses allowed — anyone who can reach the port can press Play."),
+    ("p", "<b>MIDI</b> (Linux and Windows): a digital mixer or a controller. Each <b>note</b> or <b>controller</b> (channel and number) does something "
+          "when <b>pressed</b> and when <b>released</b> (a fader: from the middle up, once each way); <b>lights</b> are notes sent on and off. For both, "
+          "<b>Listen</b> shows what arrives and <b>Add the last received</b> puts it in the list. Serial, network and MIDI can be used together."),
     ("h2", "Web remote"),
     ("p", "Control the playout from a phone or another computer on the station's network: a web page, no app to install."),
     ("fig", "settings-remote", "Settings → Remote", [

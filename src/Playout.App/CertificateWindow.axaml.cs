@@ -73,11 +73,11 @@ public partial class CertificateWindow : Window
         SetMonth(0);
         ShowRecordings();
 
-        CampaignBox.SelectionChanged += async (_, _) => await Show();
-        FromBox.SelectedDateChanged += async (_, _) => await Show();
-        ToBox.SelectedDateChanged += async (_, _) => await Show();
-        LastMonthButton.Click += async (_, _) => { SetMonth(-1); await Show(); };
-        ThisMonthButton.Click += async (_, _) => { SetMonth(0); await Show(); };
+        CampaignBox.SelectionChanged += async (_, _) => await Reload();
+        FromBox.SelectedDateChanged += async (_, _) => await Reload();
+        ToBox.SelectedDateChanged += async (_, _) => await Reload();
+        LastMonthButton.Click += async (_, _) => { SetMonth(-1); await Reload(); };
+        ThisMonthButton.Click += async (_, _) => { SetMonth(0); await Reload(); };
         LineList.SelectionChanged += (_, _) => Selected();
         LineList.DoubleTapped += (_, _) => Listen();
         ListenButton.Click += (_, _) => Listen();
@@ -88,7 +88,7 @@ public partial class CertificateWindow : Window
         HtmlButton.Click += async (_, _) => await Save(csv: false);
         CloseButton.Click += (_, _) => Close();
         _stopAt.Tick += (_, _) => StopListening();
-        Opened += async (_, _) => await Show();
+        Opened += async (_, _) => await Reload();
         Closed += (_, _) =>
         {
             StopListening();
@@ -112,7 +112,7 @@ public partial class CertificateWindow : Window
         return to < from ? (to.Date, from.Date) : (from.Date, to.Date);
     }
 
-    async Task Show()
+    async Task Reload()
     {
         var (from, to) = Period();
         int version = ++_version;

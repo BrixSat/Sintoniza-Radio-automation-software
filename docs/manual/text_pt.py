@@ -186,6 +186,12 @@ CHAPTERS = [
           "enquanto algo toca, um anúncio está no ar, uma entrada em direto ou stream está no ar, ou há silêncio (uma não usada fica sempre ligada, como alimentação das entradas)."),
     ("tip", "O arranque pelo fader habitual: CTS fecha → Tocar; abre (fader em baixo) → Seguinte ou nada. Um contacto que oscila conta uma vez; Seguinte, Parar e Pausa "
             "não são feitos com um anúncio no ar. <b>Testar as entradas</b> mostra-as enquanto mexe nos faders."),
+    ("p", "<b>Rede</b>: uma caixa GPIO-rede ou uma mesa que envia textos, numa porta (TCP ou UDP). Cada <b>texto</b> faz uma coisa (FADER1_ON → Tocar), "
+          "e são <b>enviados</b> textos quando um sinal começa e acaba (ONAIR_ON / ONAIR_OFF), para todas as ligações TCP e, se indicado, por UDP. <b>Só de</b>: "
+          "os endereços permitidos — quem chegar à porta pode carregar em Play."),
+    ("p", "<b>MIDI</b> (Linux e Windows): uma mesa digital ou um controlador. Cada <b>nota</b> ou <b>controlador</b> (canal e número) faz uma coisa "
+          "ao <b>carregar</b> e ao <b>largar</b> (um fader: do meio para cima, uma vez em cada sentido); as <b>luzes</b> são notas enviadas ligadas e desligadas. "
+          "Nos dois, <b>Ouvir</b> mostra o que chega e <b>Juntar o último recebido</b> põe-no na lista. Série, rede e MIDI podem ser usados ao mesmo tempo."),
     ("h2", "Controlo remoto web"),
     ("p", "Controle o playout a partir de um telemóvel ou de outro computador da rede da estação: uma página web, sem nada para instalar."),
     ("fig", "settings-remote", "Definições → Remoto", [
