@@ -2066,37 +2066,44 @@ public partial class MainWindow : Window
 
     // ───────────────────────── GPIO ─────────────────────────
 
-    GpioService? _gpio;
+    readonly List<IGpioSource> _gpio = new();
     string _gpioKey = "";
-    (bool, bool, bool, bool)? _gpioShown;
+    GpioState? _gpioShown;
 
-    /// <summary>Opens (or opens again, with new settings) the GPIO port; closes it when GPIO is off.</summary>
+    /// <summary>Opens (or opens again, with new settings) the GPIO sources that are on: serial port, network, MIDI.</summary>
     void ApplyGpio()
     {
         var g = _settings.Gpio ?? new();
         string key = System.Text.Json.JsonSerializer.Serialize(g);
-        if (_gpio != null && key == _gpioKey) return;
+        if (_gpio.Count > 0 && key == _gpioKey) return;
         StopGpio();
-        if (!g.Enabled || g.Port.Length == 0) return;
-        try
+        _gpioKey = key;
+        void Start(string what, Func<IGpioSource> open)
         {
-            _gpio = GpioService.Open(g);
-            _gpioKey = key;
-            _gpio.Fired += (action, cart) => Dispatcher.UIThread.Post(() => OnGpio(action, cart));
-            AppLog.Write(L.F("GPIO on {0}", g.Port));
+            try
+            {
+                var source = open();
+                source.Fired += (action, cart) => Dispatcher.UIThread.Post(() => OnGpio(action, cart));
+                _gpio.Add(source);
+                AppLog.Write(L.F("GPIO: {0}", what));
+            }
+            catch (Exception ex)
+            {
+                string message = L.F("GPIO: {0} can't be opened ({1})", what, ex.Message);
+                AppLog.Write(message);
+                LastLog.Text = message;
+            }
         }
-        catch (Exception ex)
-        {
-            string message = L.F("GPIO: the port {0} can't be opened ({1})", g.Port, ex.Message);
-            AppLog.Write(message);
-            LastLog.Text = message;
-        }
+        if (g.Enabled && g.Port.Length > 0) Start(g.Port, () => GpioService.Open(g));
+        if (g.Network is { Enabled: true } net) Start(L.F("network, port {0}", net.Port), () => new NetGpio(net));
+        if (g.Midi is { Enabled: true } midi && (midi.Input.Length > 0 || midi.Output.Length > 0))
+            Start(L.F("MIDI {0}", midi.Input.Length > 0 ? midi.Input : midi.Output), () => new MidiGpio(midi));
     }
 
     void StopGpio()
     {
-        _gpio?.Dispose();
-        _gpio = null;
+        foreach (var source in _gpio) source.Dispose();
+        _gpio.Clear();
         _gpioKey = "";
         _gpioShown = null;
     }
@@ -2127,13 +2134,13 @@ public partial class MainWindow : Window
     /// <summary>The GPIO outputs from what is on air (only when it changes).</summary>
     void ShowGpio(PlayerStatus st)
     {
-        if (_gpio is not { } gpio) return;
+        if (_gpio.Count == 0) return;
         bool playing = st.State == PlayerState.Playing;
         bool silence = playing && st.Silence >= Math.Max(5, _settings.Silence?.Seconds ?? 15); // as the alerts count it
-        var now = (playing, AdvertOnAir(st), playing && st.Current?.IsStream == true, silence);
+        var now = new GpioState(playing, AdvertOnAir(st), playing && st.Current?.IsStream == true, silence);
         if (_gpioShown == now) return;
         _gpioShown = now;
-        gpio.Show(now.Item1, now.Item2, now.Item3, now.Item4);
+        foreach (var source in _gpio) source.Show(now);
     }
 
     // ───────────────────────── Schedule, reports, website ─────────────────────────

@@ -187,7 +187,7 @@ the database can be fixed.
 | Shortcuts | keys for transport, MIC, stream and carts |
 | RDS | whether this computer sends to the RDS encoder, and how it reaches it |
 | Playlist | how much of the next hour the playlist shows |
-| GPIO | the desk wired to a serial port: what each input does (fader start, Next, Stop, a cart) and what each output shows (on air, an advert, a live input, silence) — see below |
+| GPIO | the desk's faders and lights, by a serial port, the network or MIDI: what each input does (fader start, Next, Stop, a cart) and what each output shows (on air, an advert, a live input, silence) — see below |
 | Remote | the web remote: on/off, port, its address (it logs in with the station's users) |
 | About | version, updates, the manual |
 
@@ -200,6 +200,22 @@ The usual fader start: CTS closes → Play; opens (fader down) → Next or nothi
 Next, Stop and Pause aren't done while an advert is on air. **Outputs** DTR and RTS are on while *something plays*,
 *an advert* is on air, *a live input or stream* is on air, or there is *silence*; one not used is held on, as the
 supply of the input contacts. **Test the inputs** shows them changing as you move the faders.
+
+**Network:** a GPIO-to-network box or a desk that sends texts. It listens on a port (TCP: a line each; UDP: a
+message each): set the **text** that does each thing (e.g. `FADER1_ON` → Play; case doesn't matter), and the texts
+**sent when a signal starts and ends** (e.g. `ONAIR_ON` / `ONAIR_OFF`) — to every TCP connection and, if set, by UDP
+to an address. **Only from** takes the addresses allowed (empty: any): anyone who can reach the port can press Play,
+so keep it to the station's network.
+
+**MIDI** (Linux and Windows): a desk or controller (a digital mixer, a DJ or pad controller). Each **note** or
+**controller (CC)** — its channel (0 = any) and number — does something when **pressed** (note on; a controller from
+the middle up) and when **released**; a fader counts once each way. **Lights:** a note or controller sent on (127)
+when a signal starts and off when it ends, to light the controller's buttons. A DJ controller may need its MIDI mode
+switched on.
+
+For both, **Listen** shows what arrives as you press a button or move a fader, and **Add the last received** puts it
+in the list (set to Play: choose what it does), so nothing has to be typed. Serial, network and MIDI can be used
+together.
 
 ### Updates
 
