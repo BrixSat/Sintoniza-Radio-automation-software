@@ -1919,5 +1919,7 @@
  "Card {0}": "Placa {0}",
  "No MIDI device {0}": "Nenhum dispositivo MIDI {0}",
  "The MIDI input can't be opened": "A entrada MIDI não pode ser aberta",
- "The MIDI output can't be opened": "A saída MIDI não pode ser aberta"
+ "The MIDI output can't be opened": "A saída MIDI não pode ser aberta",
+ "Backtiming {0}: {1} taken out, no longer needed to fill the gap": "Acerto ao horário {0}: {1} retirado, já não é preciso para preencher o intervalo",
+ "It would start after {0} has to start ({1:HH:mm:ss}): it won't play here (in AUTO a song is moved after it)": "Começaria depois da hora a que {0} tem de começar ({1:HH:mm:ss}): não toca aqui (em AUTO uma música passa para depois)"
 }

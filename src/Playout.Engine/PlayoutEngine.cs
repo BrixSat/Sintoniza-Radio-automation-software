@@ -1604,7 +1604,17 @@ public sealed class PlayoutEngine : IDisposable
             for (int j = ti - 1; j > _cursorIndex; j--)
             {
                 var song = _playlist[j];
-                if (_fadedFills.Contains(song.Id)) return; // put there to be faded when the break starts
+                if (_fadedFills.Contains(song.Id))
+                {
+                    // Put there to be faded when the break starts. If it is late even without it (songs were added since),
+                    // it isn't needed: out, and the songs that don't fit go after the break as usual.
+                    if (error - Step(song) <= BacktimeTolerance) return;
+                    _playlist.RemoveAt(j);
+                    _fadedFills.Remove(song.Id);
+                    Emit(L.F("Backtiming {0}: {1} taken out, no longer needed to fill the gap", timed.Event, song.Display));
+                    PlaylistUpdated();
+                    return;
+                }
                 if (song.Lock != ItemLock.Free || song.Event != null || song.Kind != TrackKind.Music) continue;
                 if (Math.Abs(error - Step(song)) >= error) continue; // wouldn't help
                 _playlist.RemoveAt(j);
