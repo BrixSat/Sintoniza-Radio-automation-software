@@ -377,6 +377,10 @@ CHAPTERS = [
         ("SpotGrid", "The week's ad breaks: how many adverts and how long each runs. <b>Click</b> a break to book the campaign there, every week or on that date only."),
     ]),
     ("p", "<b>In every break</b> books a campaign in every break that has its section. <b>Position</b>: automatic, 1–5 from the start of the section, or 6–10 at its end."),
+    ("p", "<b>Certificate…</b> (under the clients): what was booked for the client against what went on air, spot by spot, for a period and one campaign or all — "
+          "<b>On air</b> with its time, <b>NOT ON AIR</b>, <b>On air, not booked</b>, <b>To come</b>. <b>Certificate to print…</b> gives the page to print or save as PDF "
+          "for the client. With Sintoniza Rec recording, <b>▶ Listen</b> plays the selected advert as it went out and <b>Save its audio…</b> saves it as an MP3. "
+          "Home warns when yesterday's booked adverts didn't go on air."),
     ("h2", "Playlists: hour templates for your shows"),
     ("fig", "schedule-templates", "Hour templates", [
         ("TemplateList", "The templates: one per show or kind of hour."),

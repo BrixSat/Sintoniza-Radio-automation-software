@@ -123,6 +123,32 @@ sealed class RecService : IDisposable
         return null;
     }
 
+    /// <summary>The recordings (with when each starts) that may hold the times from <paramref name="from"/> to <paramref name="to"/>: those of their days and the day before.</summary>
+    public static List<(string Path, DateTime Start)> Recordings(string folder, DateTime from, DateTime to)
+    {
+        var files = new List<(string, DateTime)>();
+        if (folder.Length == 0) return files;
+        for (var day = from.Date.AddDays(-1); day <= to.Date; day = day.AddDays(1))
+        {
+            string dir = Path.Combine(folder, day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            if (!Directory.Exists(dir)) continue;
+            foreach (var f in Directory.GetFiles(dir))
+                if (StartOf(f) is { } start && start <= to) files.Add((f, start));
+        }
+        return files.OrderBy(f => f.Item2).ToList();
+    }
+
+    /// <summary>The recording that holds <paramref name="at"/>, and how far into it (null: none does).</summary>
+    public static (string Path, double Seconds)? Find(string folder, DateTime at)
+    {
+        foreach (var (path, start) in Recordings(folder, at, at).Where(f => f.Start <= at).OrderByDescending(f => f.Start))
+        {
+            double offset = (at - start).TotalSeconds;
+            if (AudioProbe.Duration(path) is { } length && offset <= length) return (path, offset);
+        }
+        return null;
+    }
+
     void NewSegment(DateTime now)
     {
         if (_recorder is not { } r) return;

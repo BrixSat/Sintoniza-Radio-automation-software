@@ -21,6 +21,9 @@ public partial class ScheduleWindow
     StationSettings? _station;
     List<string> _defaultPasswords = new();
     DateTime _nextPasswordCheck;
+    /// <summary>Yesterday's booked adverts that didn't go on air, client by client (read every 10 minutes).</summary>
+    List<(string Client, int Missed)> _missedYesterday = new();
+    DateTime _nextMissedCheck;
     /// <summary>Who is working here (null: no login, e.g. the manual's screenshots: everything is open).</summary>
     SintonizaUser? _user;
 
@@ -151,6 +154,15 @@ public partial class ScheduleWindow
                     _defaultPasswords = new UserStore(db).WithDefaultPasswords();
                     _nextPasswordCheck = DateTime.UtcNow.AddMinutes(5);
                 }
+                if (DateTime.UtcNow >= _nextMissedCheck)
+                {
+                    var yesterday = now.Date.AddDays(-1);
+                    var asRun = AsRunDb.Read(db, yesterday, yesterday);
+                    _missedYesterday = data.Clients.Where(c => c.Enabled)
+                        .Select(c => (c.Name, Certificates.Build(c, null, asRun, yesterday, yesterday, now).Count(l => l.Status == CertificateStatus.Missed)))
+                        .Where(m => m.Item2 > 0).ToList();
+                    _nextMissedCheck = DateTime.UtcNow.AddMinutes(10);
+                }
                 return (stats, categories.Count, last, hours, items, station);
             });
             _station = f.station;
@@ -212,6 +224,8 @@ public partial class ScheduleWindow
         foreach (var c in data.Clients.Where(c => c.Enabled))
             foreach (var k in c.Campaigns.Where(k => k.Enabled && k.To is { } to && to.Date >= now.Date && to.Date <= now.Date.AddDays(7)))
                 warnings.Add(L.F("€ {0}: campaign {1} ends {2:dd/MM}", c.Name, k.Name, k.To!.Value));
+        foreach (var (client, missed) in _missedYesterday)
+            warnings.Add(L.F("€ {0}: {1} booked adverts didn't go on air yesterday (Clients → Certificate…)", client, missed));
         foreach (var (c, k, places) in Unplaced())
             warnings.Add(L.F("€ {0} · {1}: booked at {2} with no ad break — it won't play there (Clients: Move them to the nearest break)",
                 c.Name, k.Name, Plural(places, "{0} time", "{0} times")));

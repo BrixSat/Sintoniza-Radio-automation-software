@@ -382,6 +382,10 @@ CHAPTERS = [
         ("SpotGrid", "Os blocos da semana: quantos anúncios e quanto dura cada um. <b>Clique</b> num bloco para marcar a campanha lá, todas as semanas ou só nessa data."),
     ]),
     ("p", "<b>Em todos os blocos</b> marca uma campanha em todos os blocos que têm a sua secção. <b>Posição</b>: automática, 1–5 desde o início da secção, ou 6–10 no fim."),
+    ("p", "<b>Certificado…</b> (por baixo dos clientes): o que foi marcado para o cliente contra o que foi para o ar, spot a spot, num período e numa campanha ou em todas — "
+          "<b>No ar</b> com a hora, <b>NÃO FOI PARA O AR</b>, <b>No ar, não marcado</b>, <b>Por emitir</b>. <b>Certificado para imprimir…</b> dá a página para imprimir "
+          "ou guardar em PDF para o cliente. Com o Sintoniza Rec a gravar, <b>▶ Ouvir</b> toca o anúncio selecionado tal como saiu e <b>Guardar o áudio…</b> guarda-o "
+          "em MP3. O Início avisa quando os anúncios marcados de ontem não foram para o ar."),
     ("h2", "Playlists: modelos de hora para os programas"),
     ("fig", "schedule-templates", "Modelos de hora", [
         ("TemplateList", "Os modelos: um por programa ou tipo de hora."),

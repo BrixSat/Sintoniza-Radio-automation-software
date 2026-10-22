@@ -119,6 +119,8 @@ public sealed class AppSettings
     public string MusicFolder { get; set; } = DefaultMusicFolder();
     /// <summary>The last Sintoniza user who logged in on this computer (filled in at the next login).</summary>
     public string LastUser { get; set; } = "";
+    /// <summary>Where Sintoniza Rec's recordings are, for Pro's certificates (null: Sintoniza Rec's folder on this computer).</summary>
+    public string? RecordingsFolder { get; set; }
     /// <summary>The web remote (this computer's: the server runs on it).</summary>
     public RemoteSettings Remote { get; set; } = new();
     /// <summary>Where voice tracks are kept (the station's; a folder every studio can reach). Empty: not chosen yet.</summary>
