@@ -95,6 +95,8 @@ public partial class DailyPlaylistsView : UserControl
         GenerateDayButton.Click += async (_, _) => await GenerateDay();
         GenerateHourButton.Click += async (_, _) => await GenerateHour();
         RemoveButton.Click += async (_, _) => await RemoveSelected();
+        NoteButton.Click += async (_, _) => await EditNote();
+        HourNoteButton.Click += async (_, _) => await EditHourNote();
         StreamButton.Click += async (_, _) => await AddStream();
         UpButton.Click += async (_, _) => await Move(-1);
         DownButton.Click += async (_, _) => await Move(1);
@@ -683,6 +685,8 @@ public partial class DailyPlaylistsView : UserControl
         bool open = _hour is { } h && h >= Hour(DateTime.Now) && _db != null;
         UpButton.IsEnabled = DownButton.IsEnabled = open && selected.Count > 0;
         RemoveButton.IsEnabled = open && (selected.Count > 0 || (_changeSchedule != null && SelectedOnce().Count > 0));
+        NoteButton.IsEnabled = open && selected.Count == 1;
+        HourNoteButton.IsEnabled = open && _hour is { } made && _hours.ContainsKey(made);
         StreamButton.IsEnabled = open && _changeSchedule != null;
         ReplaceButton.IsEnabled = open && selected.Count == 1 && selected[0].Line is >= 0;
         TagsButton.IsEnabled = SelectedRow() is { Path.Length: > 0 };
@@ -816,6 +820,39 @@ public partial class DailyPlaylistsView : UserControl
         await Edit(items => items.InsertRange(after == null ? items.Count : items.IndexOf(after) + 1, added));
     }
 
+    /// <summary>A note for the presenter on the selected item: shown on air before and while it plays.</summary>
+    async Task EditNote()
+    {
+        if (SelectedItems() is not [var item] || Owner is not { } owner) return;
+        if (await Dialogs.AskText(owner, L.T("Note for the presenter"), L.F("{0} — shown on air before and while it plays (empty: none)", item.Display),
+                item.Note ?? "", _ => null) is not { } text) return;
+        await Edit(items =>
+        {
+            if (items.FirstOrDefault(i => i.Id == item.Id) is { } i) i.Note = text.Length > 0 ? text : null;
+        });
+    }
+
+    /// <summary>A note for the presenter about the whole hour: shown on air as the hour comes up.</summary>
+    async Task EditHourNote()
+    {
+        if (_db is not { } db || _hour is not { } hour || Owner is not { } owner || !_hours.TryGetValue(hour, out var record)) return;
+        if (await Dialogs.AskText(owner, L.T("Note for the presenter"), L.F("{0:HH}:00 — shown on air as the hour comes up (empty: none)", hour),
+                record.Note ?? "", _ => null) is not { } text) return;
+        try
+        {
+            await Task.Run(() => new PlanStore(db).SetHourNote(hour, text));
+            record.Note = text.Length > 0 ? text : null;
+            UpdateHourRow(hour);
+            StatusText.Text = hour <= DateTime.Now.AddMinutes(30)
+                ? L.T("Saved. This hour may be in the on-air playlist already: changes there are made in the playout.")
+                : L.T("Saved.");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = L.F("Not saved: {0}", ex.Message);
+        }
+    }
+
     async Task RemoveSelected()
     {
         var once = SelectedOnce();
@@ -926,9 +963,11 @@ public sealed class PlanHourRow(DateTime start, PlanHour? hour, PlaylistTemplate
     public string HourText => $"{Start:HH}:00";
     public string TemplateName => template == null ? L.T("— no template —") : string.IsNullOrWhiteSpace(template.Name) ? L.T("Playlist") : template.Name.Trim();
     public bool NoTemplate => template == null;
-    public string Mark => hour == null ? "" : hour.Edited ? "✎" : hour.Signature != PlaylistGenerator.Signature(template) ? "↻" : "";
+    public string Mark => (hour == null ? "" : hour.Edited ? "✎" : hour.Signature != PlaylistGenerator.Signature(template) ? "↻" : "")
+                          + (string.IsNullOrWhiteSpace(hour?.Note) ? "" : " 📝");
     public string LengthText => hour == null ? "" : Format.Duration(seconds);
-    public string Tip => hour == null ? L.T("Not made") : hour.Edited ? L.T("Changed by hand") : L.F("Made {0:dd/MM HH:mm}", hour.GeneratedAt.ToLocalTime());
+    public string Tip => (hour == null ? L.T("Not made") : hour.Edited ? L.T("Changed by hand") : L.F("Made {0:dd/MM HH:mm}", hour.GeneratedAt.ToLocalTime()))
+                         + (string.IsNullOrWhiteSpace(hour?.Note) ? "" : "\n📝 " + hour.Note);
     /// <summary>Hours gone by are dimmed.</summary>
     public double Opacity => Start.AddHours(1) <= DateTime.Now ? 0.45 : 1;
 }
@@ -957,6 +996,9 @@ public sealed class PlanRow
     public bool IsOver { get; set; }
     public string? OverTip => IsOver ? L.F("Past the end of the hour: the playout leaves it out so {0:HH}:00 starts on time", Start.Date.AddHours(Start.Hour)) : null;
     public string? PlayedTip => PlayedAt is { } at ? L.F("On air at {0:HH:mm:ss}", at) : null;
+    /// <summary>The presenter's note on it.</summary>
+    public string? Note => Item?.Note;
+    public bool HasNote => !string.IsNullOrWhiteSpace(Note);
 
     public static PlanRow Planned(DateTime start, PlanItem item, string source) => new()
     {

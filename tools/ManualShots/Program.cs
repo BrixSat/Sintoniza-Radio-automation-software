@@ -241,7 +241,14 @@ main.LogIn(new UserStore(db).LogIn("dj", "dj"));
 Pump(10);
 string[] deck = ["OnAirBadge", "NowTitle", "WaveMain", "Elapsed", "PlayButton", "PauseButton", "NextButton", "StopButton", "Remaining", "AutoSwitch",
     "StreamToggle", "Clock", "TopOfHourText", "PlaylistEndsText", "NextEventPanel", "MeterL", "Playlist", "OnAirButton", "HourViewButton", "AddStreamButton",
-    "RemoveButton", "ClearButton", "CartwallTab", "LibraryTab", "FoldersTab", "Cartwall", "CartwallPicker", "CartwallMenuButton", "SettingsButton", "ReportsButton", "LogoutButton", "LastLog"];
+    "RemoveButton", "ClearButton", "CartwallTab", "LibraryTab", "FoldersTab", "Cartwall", "CartwallPicker", "CartwallMenuButton", "SettingsButton", "ReportsButton", "LogoutButton",
+    "Lights", "LastLog", "NoteBox"];
+// A note from the daily playlists, as the presenter sees it.
+main.FindControl<TextBlock>("NoteNowText")!.Text = "📝 " + T("Read the Loja X sponsorship before the next song", "Leia o patrocínio da Loja X antes da próxima música");
+main.FindControl<TextBlock>("NoteNowText")!.IsVisible = true;
+main.FindControl<TextBlock>("NoteNextText")!.IsVisible = false;
+main.FindControl<Border>("NoteBox")!.IsVisible = true;
+Pump(10);
 Shot(main, "main", deck);
 
 // The web remote's page with the demo station's status, levels, waveform and logo (make-manual.sh photographs it at a
@@ -398,7 +405,7 @@ Pump(40);
 var firstSong = itemList.ItemsSource!.Cast<PlanRow>().FirstOrDefault(r => r.Item != null && r.Kind == TrackKind.Music && r.PlayedAt == null && !r.IsOnAir);
 if (firstSong != null) { itemList.SelectedItems!.Clear(); itemList.SelectedItems.Add(firstSong); }
 Pump(20);
-Shot(schedule, "schedule-daily", "DayBox", "HourList", "OnAirText", "ItemList", "StreamButton", "SegueButton", "TagsButton", "ReplaceButton", "RemoveButton", "GenerateHourButton", "GenerateDayButton", "Tracks", "ListenButton", "TotalText");
+Shot(schedule, "schedule-daily", "DayBox", "HourList", "OnAirText", "ItemList", "StreamButton", "SegueButton", "TagsButton", "ReplaceButton", "RemoveButton", "NoteButton", "GenerateHourButton", "GenerateDayButton", "Tracks", "ListenButton", "TotalText");
 
 // A voice track after that song (a recorded take), and the recorder with it
 const BindingFlags AnyMember = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;

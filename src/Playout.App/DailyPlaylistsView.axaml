@@ -113,6 +113,10 @@
                             <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
                             <Button x:Name="DownButton" Classes="tool" Content="▼" ToolTip.Tip="Move down" />
                             <Button x:Name="RemoveButton" Classes="tool" Content="Remove" />
+                            <Button x:Name="NoteButton" Classes="tool" Content="📝 Note…"
+                                    ToolTip.Tip="A note for the presenter on the selected item (what to say, the sponsor to mention): shown on air before and while it plays" />
+                            <Button x:Name="HourNoteButton" Classes="tool" Content="📝 Hour note…"
+                                    ToolTip.Tip="A note for the presenter about the whole hour: shown on air as the hour comes up" />
                         </WrapPanel>
                     </Grid>
                     <TextBlock DockPanel.Dock="Top" x:Name="OnAirText" Foreground="#FF8A8D" FontWeight="SemiBold" FontSize="12" Margin="4,0,0,8"
@@ -143,6 +147,10 @@
                                                 <Border DockPanel.Dock="Right" Classes="tag" Background="#8A3036" Margin="6,0,0,0" IsVisible="{Binding IsOver}"
                                                         ToolTip.Tip="{Binding OverTip}">
                                                     <TextBlock Text="{x:Static app:Strings.WontPlay}" />
+                                                </Border>
+                                                <Border DockPanel.Dock="Right" Classes="tag" Background="#7A5A12" Margin="6,0,0,0" IsVisible="{Binding HasNote}"
+                                                        ToolTip.Tip="{Binding Note}">
+                                                    <TextBlock Text="📝" />
                                                 </Border>
                                                 <Border DockPanel.Dock="Right" Classes="tag" Background="#5B6274" Margin="6,0,0,0" IsVisible="{Binding IsOptional}"
                                                         ToolTip.Tip="At the end of the hour: plays only if there is time">

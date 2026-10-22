@@ -276,6 +276,7 @@ public partial class SettingsWindow : PageWindow
         NextMinutesBox.Value = Math.Clamp(settings.PlaylistNextMinutes, 0, 60);
         PlanDaysBox.Value = Math.Clamp(settings.PlanDaysAhead, 0, 14);
         ShowAlerts(settings.Alerts ?? new());
+        BuildGpio(settings.Gpio ?? new());
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
         SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
         SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
@@ -985,6 +986,7 @@ public partial class SettingsWindow : PageWindow
         _settings.PlaylistNextMinutes = (int)(NextMinutesBox.Value ?? 30);
         _settings.PlanDaysAhead = (int)(PlanDaysBox.Value ?? 2);
         _settings.Alerts = AlertsFromUi();
+        _settings.Gpio = GpioFromUi();
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
         _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
         _settings.PreviewOutput = RouteFrom(PreviewDeviceBox, PreviewChannelBox);

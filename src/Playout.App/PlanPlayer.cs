@@ -173,12 +173,18 @@ sealed class PlanPlayer
     void Load(DateTime hour, DateTime? from)
     {
         List<PlanItem>? items = null;
+        string? hourNote = null;
         try
         {
             if (Store is { } store)
             {
-                if (!store.Hours(hour, hour.AddHours(1)).ContainsKey(hour) && _schedule() is { } data)
+                var made = store.Hours(hour, hour.AddHours(1));
+                if (!made.ContainsKey(hour) && _schedule() is { } data)
+                {
                     PlanMaker.Ensure(store, data, Options, hour, hour.AddHours(1), DateTime.MinValue, out _);
+                    made = store.Hours(hour, hour.AddHours(1));
+                }
+                hourNote = made.GetValueOrDefault(hour)?.Note;
                 items = store.Items(hour);
             }
         }
@@ -205,8 +211,19 @@ sealed class PlanPlayer
             // Not a voice track whose song was left behind.
             while (items.Count > 1 && items[0].FollowsPrevious) items.RemoveAt(0);
         }
-        _engine.AddItems(items.Select(i => new ScheduledItem(i.Path, i.Kind, Tag: Tag(hour, i.Optional), Overlap: i.Overlap, FollowsPrevious: i.FollowsPrevious)).ToList());
+        // The hour's note goes with its first item: the presenter sees it as the hour comes up.
+        _engine.AddItems(items.Select((i, n) => new ScheduledItem(i.Path, i.Kind, Tag: Tag(hour, i.Optional), Overlap: i.Overlap, FollowsPrevious: i.FollowsPrevious,
+            Note: Note(n == 0 ? hourNote : null, i.Note))).ToList());
         Say(L.F("Daily playlist {0:HH}:00 in the playlist: {1}", hour, L.F(items.Count == 1 ? "{0} item" : "{0} items", items.Count)));
+    }
+
+    /// <summary>The note an item carries on air: the hour's (on its first item) and its own.</summary>
+    internal static string? Note(string? hourNote, string? itemNote)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(hourNote)) parts.Add(L.F("This hour: {0}", hourNote.Trim()));
+        if (!string.IsNullOrWhiteSpace(itemNote)) parts.Add(itemNote.Trim());
+        return parts.Count > 0 ? string.Join("\n", parts) : null;
     }
 
     /// <summary>

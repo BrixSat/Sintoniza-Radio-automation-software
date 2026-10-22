@@ -154,9 +154,19 @@
                         </StackPanel>
                     </Grid>
 
-                    <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
-                        <TextBlock Classes="caption" Text="NEXT" VerticalAlignment="Center" Foreground="{StaticResource NextUp}" />
-                        <TextBlock x:Name="NextTitle" Text="—" TextTrimming="CharacterEllipsis" />
+                    <StackPanel Grid.Row="5" Margin="0,10,0,0" Spacing="8">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="caption" Text="NEXT" VerticalAlignment="Center" Foreground="{StaticResource NextUp}" />
+                            <TextBlock x:Name="NextTitle" Text="—" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <!-- The presenter's notes from the daily playlists: the item on air's, then the next one's -->
+                        <Border x:Name="NoteBox" IsVisible="False" Background="#2A2412" BorderBrush="#F5A524" BorderThickness="3,0,0,0"
+                                CornerRadius="4" Padding="10,6">
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="NoteNowText" Foreground="#FFD58A" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock x:Name="NoteNextText" Foreground="#C9B48A" FontSize="13" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -196,7 +206,12 @@
                         </StackPanel>
                         <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Classes="info" x:Name="NextEventPanel" IsVisible="False">
                             <TextBlock Classes="caption" Text="NEXT EVENT" />
-                            <TextBlock x:Name="NextEventText" Classes="value" TextTrimming="CharacterEllipsis" />
+                            <!-- The time to the next thing with a fixed time: an event, an ad break, a timed item -->
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock x:Name="NextEventText" Classes="value" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" x:Name="NextEventCountdown" Classes="digits" FontSize="30" FontWeight="SemiBold"
+                                           Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </Grid>
                         </StackPanel>
                     </Grid>
 
@@ -213,7 +228,7 @@
         </Grid>
 
         <!-- ═════════ Status bar ═════════ -->
-        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
             <Button x:Name="SettingsButton" Classes="tool" ToolTip.Tip="Settings (Ctrl/Cmd+,)">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                     <PathIcon Width="12" Height="12" Data="{StaticResource IconGear}" />
@@ -229,7 +244,9 @@
                 </StackPanel>
             </Button>
             <Button Grid.Column="4" x:Name="UpdateButton" Classes="tool update" Margin="8,0,0,0" IsVisible="False" />
-            <TextBlock Grid.Column="5" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
+            <!-- Status lights: stream, RDS, Sintoniza Rec, the library, alerts (filled in by the window) -->
+            <StackPanel Grid.Column="5" x:Name="Lights" Orientation="Horizontal" Spacing="6" Margin="14,0,0,0" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="6" x:Name="LastLog" Classes="muted" FontSize="12" HorizontalAlignment="Right"
                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
         </Grid>
 

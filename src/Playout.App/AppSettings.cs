@@ -66,6 +66,8 @@ public sealed class AppSettings
     public BackupSettings Backup { get; set; } = new();
     /// <summary>Alerts by Telegram, email or a web address when something goes wrong on air.</summary>
     public AlertSettings Alerts { get; set; } = new();
+    /// <summary>GPIO through a serial port (this computer's: the desk is wired to it).</summary>
+    public GpioSettings Gpio { get; set; } = new();
     /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
     public TimeSignalSettings TimeSignal { get; set; } = new();
     /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>
@@ -264,13 +266,16 @@ public sealed class PlaylistEntry
     /// <summary>A voice track: how far it starts over the item before, and that it belongs to it.</summary>
     public double Overlap { get; set; }
     public bool FollowsPrevious { get; set; }
+    /// <summary>The presenter's note from the daily playlists.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Note { get; set; }
 
     [JsonIgnore]
     public bool IsStream => StreamName != null;
 
     /// <summary>Restored as it was (the engine's type, when it went on air), not opened as a plain file.</summary>
     [JsonIgnore]
-    public bool HasDetails => PlayedAt != null || Kind != null || Tag != null;
+    public bool HasDetails => PlayedAt != null || Kind != null || Tag != null || Note != null;
 
     public static PlaylistEntry From(Track t)
     {
@@ -280,6 +285,7 @@ public sealed class PlaylistEntry
         e.Tag = t.Tag;
         e.Overlap = t.Overlap;
         e.FollowsPrevious = t.FollowsPrevious;
+        e.Note = t.Note;
         // A jingle from a smart playlist's jingle category stays a jingle wherever the file is.
         if (t.Kind is not (TrackKind.Music or TrackKind.Stream)) e.Kind = t.Kind;
         if (t.Event != null)
@@ -295,7 +301,7 @@ public sealed class PlaylistEntry
     }
 
     /// <summary>A scheduled item, as the engine takes it back.</summary>
-    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser, Lock, StartBy, Backtime, PlayedAt, InBreak, Tag, Overlap, FollowsPrevious);
+    public ScheduledItem ToScheduled() => new(Path, Kind, StreamName, StreamSeconds, Advertiser, Lock, StartBy, Backtime, PlayedAt, InBreak, Tag, Overlap, FollowsPrevious, Note);
 }
 
 /// <summary>A named set of <see cref="AppSettings.CartCount"/> carts.</summary>

@@ -106,7 +106,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 14;
+    public const int SchemaVersion = 15;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;

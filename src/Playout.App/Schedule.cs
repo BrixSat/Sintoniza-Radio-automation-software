@@ -823,7 +823,7 @@ public static class ScheduleItems
         switch (entry)
         {
             case ScheduledEvent e:
-                if (PlayoutEngine.IsUrl(e.Path))
+                if (PlayoutEngine.IsStreamSource(e.Path))
                     items.Add(new ScheduledItem(e.Path.Trim(), StreamName: string.IsNullOrWhiteSpace(e.Name) ? e.Path.Trim() : e.Name.Trim(),
                         StreamSeconds: Math.Max(0, e.StreamMinutes) * 60));
                 else if (Directory.Exists(e.Path))

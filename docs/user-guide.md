@@ -65,11 +65,16 @@ they are changed in Pro only.
   (nothing heard although something plays) or *BREAK IN mm:ss* before an ad break.
 - **Transport:** **Play** (F5), **Pause** (F6), **Next** (F7: crossfades to the next item now), **Stop** (F8).
   **AUTO** runs through the playlist; **ASSISTED** stops after each item until you start the next.
-- **Top right — the station.** Clock, *TOP OF HOUR* countdown, *PLAYLIST ENDS*, *PLAYED TODAY*, *NEXT EVENT*,
-  stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
+- **Notes for the presenter** (from the daily playlists, Pro): under **NEXT**, the note of the item on air and of the
+  next one — what to announce, the sponsor to mention; an hour's note comes with its first item.
+- **Top right — the station.** Clock, *TOP OF HOUR* countdown, *PLAYLIST ENDS*, *PLAYED TODAY*, **NEXT EVENT** — the
+  next thing with a fixed time (an event, an ad break, a timed item), with a large countdown that turns amber in the
+  last minute and red in the last 10 seconds — stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
 - **Bottom left — the playlist.** **Bottom right — Cartwall / Library / Folders** tabs.
-- **Status line** (bottom): **Settings**, **Reports**, **Log out**, and the last thing that happened (also in the log,
-  Settings → Safety → Open log folder).
+- **Status line** (bottom): **Settings**, **Reports**, **Log out**, the **status lights** — **STREAM**, **RDS**, **REC**
+  (Sintoniza Rec on this computer: green recording, amber recording silence, red open but not recording, grey not
+  running), **LIBRARY**, **ALERTS** (red while a problem is going on; point at it for what) — and the last thing that
+  happened (also in the log, Settings → Safety → Open log folder).
 
 ### Logging in
 
@@ -92,7 +97,9 @@ station can still be run, and says so on the status line.
   the playout leaves it out, so the next hour starts on time (the song on air always plays to its end; adverts,
   breaks and locked items are never left out).
 - The item on air stays at the top. If you scroll away, **On air** lights up: click it to jump back.
-- Songs come from the **Library** tab on the right (double-click). **Stream…** another station's stream,
+- Songs come from the **Library** tab on the right (double-click). **Stream…** another station's stream, or an
+  **input of this computer, live** (the desk's line, a satellite receiver, a remote studio: it goes on air as it comes
+  in, for a set time or until Next),
   **Open… / Save…** M3U playlists, **▲ ▼** move, **Remove**, **Clear** (keeps the item on air and what the schedule
   locked). Ctrl/Cmd+O still adds files from anywhere.
 - **Double-click** (or Enter) an item to put it on air now. **Drag** rows to reorder, or drop files from the
@@ -180,8 +187,19 @@ the database can be fixed.
 | Shortcuts | keys for transport, MIC, stream and carts |
 | RDS | whether this computer sends to the RDS encoder, and how it reaches it |
 | Playlist | how much of the next hour the playlist shows |
+| GPIO | the desk wired to a serial port: what each input does (fader start, Next, Stop, a cart) and what each output shows (on air, an advert, a live input, silence) — see below |
 | Remote | the web remote: on/off, port, its address (it logs in with the station's users) |
 | About | version, updates, the manual |
+
+### GPIO (the desk's faders and lights)
+
+Settings → **GPIO**: a serial port's control lines (a USB serial adapter works). **Inputs** CTS (pin 8), DSR (6) and
+DCD (1): a contact between the line and DTR (4) or RTS (7) — for each, what happens when it **closes** and when it
+**opens**: *Play (fader start)*, *Next*, *Stop*, *Pause / carry on*, *Cart* N of the cartwall on screen, or nothing.
+The usual fader start: CTS closes → Play; opens (fader down) → Next or nothing. A contact that bounces counts once;
+Next, Stop and Pause aren't done while an advert is on air. **Outputs** DTR and RTS are on while *something plays*,
+*an advert* is on air, *a live input or stream* is on air, or there is *silence*; one not used is held on, as the
+supply of the input contacts. **Test the inputs** shows them changing as you move the faders.
 
 ### Updates
 
@@ -330,7 +348,8 @@ every hour, every day).
 ### Events
 
 Something that plays at set times: a file, the **newest file in a folder** (e.g. the news, skipped if older than N
-minutes), or an internet stream for N minutes. Choose how it starts:
+minutes), an internet stream, or an **input of the studio computer, live** (**Input…**: the desk's line, a satellite
+receiver for the network news, a remote studio) for N minutes. Choose how it starts:
 
 - **Soft:** after the item on air ends (at most N minutes late).
 - **Hard:** on the second (what is on air fades out).
@@ -408,6 +427,9 @@ The hours as they will play, made from the templates:
   unless you make that hour again on purpose). Today and the next days (Station settings → Playlist)
   are always made; an hour whose template changes is made again within minutes unless it was changed by hand or is
   about to play.
+- **📝 Note…** (select an item) and **📝 Hour note…**: a note for the presenter — what to announce, the sponsor to
+  mention. The on-air program shows it while the item before plays and while it plays (an hour's note with its first
+  item). Items with a note show 📝, hours 📝 in the list. An hour's note stays when the hour is made again.
 - **Listen:** select an item and press **▶** (or double-click, or Space); right-click a library song → *Listen*. It
   plays on the Preview output only; a red warning appears if Preview is set to the on-air output.
 - **Voice track…** (select a song): record your talk after it, as if you were live. **Start** plays the song's end;

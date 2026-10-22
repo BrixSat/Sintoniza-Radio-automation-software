@@ -283,10 +283,12 @@
                             </Grid>
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Play" />
-                                <TextBox x:Name="EventPathBox" PlaceholderText="A file, a folder (its newest file), or https://… stream" />
+                                <TextBox x:Name="EventPathBox" PlaceholderText="A file, a folder (its newest file), an https://… stream or input:Line In" />
                                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
                                     <Button x:Name="EventFileButton" Content="File…" />
                                     <Button x:Name="EventFolderButton" Content="Folder…" />
+                                    <Button x:Name="EventInputButton" Content="Input…"
+                                            ToolTip.Tip="An input of the studio computer, live: the desk's line, a satellite receiver, a remote studio" />
                                 </StackPanel>
                                 <TextBlock x:Name="EventPathNote" Classes="note" Margin="0,4,0,0" />
                             </StackPanel>
@@ -295,7 +297,7 @@
                                 <NumericUpDown x:Name="EventMaxAgeBox" Minimum="0" Maximum="10080" Increment="5" FormatString="0" Width="130" HorizontalAlignment="Left" />
                             </StackPanel>
                             <StackPanel x:Name="EventStreamPanel" Spacing="4">
-                                <TextBlock Classes="label" Text="Play the stream for (minutes, 0 = until Stop or Next)" TextWrapping="Wrap" />
+                                <TextBlock Classes="label" Text="Play the stream or input for (minutes, 0 = until Stop or Next)" TextWrapping="Wrap" />
                                 <NumericUpDown x:Name="EventStreamMinutesBox" Minimum="0" Maximum="1440" Increment="5" FormatString="0" Width="130" HorizontalAlignment="Left" />
                             </StackPanel>
                             <StackPanel>

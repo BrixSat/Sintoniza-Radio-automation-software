@@ -13,6 +13,7 @@ public sealed record StreamRequest(string Url, string Name, double Seconds, bool
 public partial class StreamDialog : Window
 {
     readonly DateTime? _hour;
+    readonly List<string> _devices = new();
 
     public StreamDialog() : this(null) { }
 
@@ -23,6 +24,12 @@ public partial class StreamDialog : Window
         InitializeComponent();
         Localization.Apply(this);
         LengthBox.GotFocus += (_, _) => ForRadio.IsChecked = true;
+        var inputs = new List<string> { L.T("(none: the stream above)"), L.T("(the default input)") };
+        try { _devices.AddRange(PlayoutEngine.GetInputDevices()); }
+        catch { /* no audio library: the default only */ }
+        InputBox.ItemsSource = inputs.Concat(_devices).ToList();
+        InputBox.SelectedIndex = 0;
+        InputBox.SelectionChanged += (_, _) => UrlBox.IsEnabled = InputBox.SelectedIndex <= 0;
         CancelButton.Click += (_, _) => Close(null);
         AddButton.Click += (_, _) => Add();
         Opened += (_, _) => NameBox.Focus();
@@ -42,7 +49,10 @@ public partial class StreamDialog : Window
     void Add()
     {
         string url = UrlBox.Text?.Trim() ?? "";
-        if (!PlayoutEngine.IsUrl(url) || !Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        string? device = InputBox.SelectedIndex switch { <= 0 => null, 1 => "", var i => _devices[i - 2] };
+        Uri? uri = null;
+        if (device != null) url = LiveInput.PathFor(device);
+        else if (!PlayoutEngine.IsUrl(url) || !Uri.TryCreate(url, UriKind.Absolute, out uri))
         {
             ShowError(L.T("Enter the stream address, starting with http:// or https://"));
             return;
@@ -70,7 +80,8 @@ public partial class StreamDialog : Window
             at = hour.Date + t.Time;
         }
 
-        string name = NameBox.Text?.Trim() is { Length: > 0 } n ? n : uri.Host;
+        string name = NameBox.Text?.Trim() is { Length: > 0 } n ? n
+            : device != null ? L.F("Live: {0}", device.Length > 0 ? device : L.T("the default input")) : uri!.Host;
         Close(new StreamRequest(url, name, seconds, PlayNextBox.IsChecked == true, at, HardRadio.IsChecked == true));
     }
 

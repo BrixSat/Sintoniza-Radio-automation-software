@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **14**. The scripts that create the tables are
+Schema version **15**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -38,7 +38,9 @@ settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) a
 [`mysql-12.sql`](../src/Playout.Library/Schema/mysql-12.sql) (the on-air program's log-in: every user so far gets
 `onair`), then [`sqlite-13.sql`](../src/Playout.Library/Schema/sqlite-13.sql) and
 [`mysql-13.sql`](../src/Playout.Library/Schema/mysql-13.sql) (what the ERC needs about each song), then [`sqlite-14.sql`](../src/Playout.Library/Schema/sqlite-14.sql) and
-[`mysql-14.sql`](../src/Playout.Library/Schema/mysql-14.sql) (when a song may be picked automatically). The app creates the tables itself the
+[`mysql-14.sql`](../src/Playout.Library/Schema/mysql-14.sql) (when a song may be picked automatically), then
+[`sqlite-15.sql`](../src/Playout.Library/Schema/sqlite-15.sql) and
+[`mysql-15.sql`](../src/Playout.Library/Schema/mysql-15.sql) (notes for the presenter in the daily playlists). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -232,8 +234,8 @@ here: they come from the schedule, as booked at air time. Hours are local times 
 
 | Table | |
 | --- | --- |
-| `plan_hours` | `station_id`, `hour_start`; `template_id` (the hour template it was made from, null: none), `signature` (that template's lines then: when it changes, an hour not `edited` is made again), `generated_at` (UTC), `generated_by` (the computer), `edited` (1: changed by hand, never made again by itself) |
-| `plan_items` | an hour's items in `position` order: `kind` (`music`, `jingle`, `commercial`, `programme`, `voice`), `path` (a take: `take:…`, see `playlist_lines`), `title`, `artist`, `seconds` (how long it plays before the next starts), `track_id` (→ `tracks.id`, null if not in the library), `line` (the template line it came from, 0 = first; null: put in by hand), `category_id`, `optional` (1: at the end of the hour, played only if there is time); for a voice track (`kind` `voice`) `overlap` (seconds it starts before the item before it ends, over its ending) and `follows` (1: it belongs to the item before it — removed, moved and skipped with it) |
+| `plan_hours` | `station_id`, `hour_start`; `template_id` (the hour template it was made from, null: none), `signature` (that template's lines then: when it changes, an hour not `edited` is made again), `generated_at` (UTC), `generated_by` (the computer), `edited` (1: changed by hand, never made again by itself), `note` (from 15: a note for the presenter about the whole hour, kept when the hour is made again; null: none) |
+| `plan_items` | an hour's items in `position` order: `kind` (`music`, `jingle`, `commercial`, `programme`, `voice`), `path` (a take: `take:…`, see `playlist_lines`), `title`, `artist`, `seconds` (how long it plays before the next starts), `track_id` (→ `tracks.id`, null if not in the library), `line` (the template line it came from, 0 = first; null: put in by hand), `category_id`, `optional` (1: at the end of the hour, played only if there is time); for a voice track (`kind` `voice`) `overlap` (seconds it starts before the item before it ends, over its ending) and `follows` (1: it belongs to the item before it — removed, moved and skipped with it); `note` (from 15: a note for the presenter about this item, shown on air before and while it plays; null: none) |
 
 Another program may write an hour (its row and items in one transaction) and set `edited` to 1 so it isn't made
 again. Hours from two days back are removed by the playout.

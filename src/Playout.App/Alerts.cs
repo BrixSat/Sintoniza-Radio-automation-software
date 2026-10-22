@@ -139,6 +139,12 @@ sealed class HealthMonitor : IDisposable
         _timer = new Timer(_ => Check(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(2));
     }
 
+    /// <summary>The problems going on now (what was alerted and hasn't cleared yet), for the ALERTS light.</summary>
+    public IReadOnlyList<string> Active
+    {
+        get { lock (_active) return _active.Values.ToList(); }
+    }
+
     /// <summary>An alert from elsewhere (a backup that failed): once, nothing to clear.</summary>
     public void Report(string kind, string message)
     {
@@ -161,7 +167,7 @@ sealed class HealthMonitor : IDisposable
         var a = settings.Alerts;
         if (!a.Enabled || !a.HasChannel)
         {
-            _active.Clear();
+            lock (_active) _active.Clear();
             return;
         }
         var st = _engine.GetStatus();

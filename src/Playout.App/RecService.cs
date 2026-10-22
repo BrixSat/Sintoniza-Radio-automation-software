@@ -183,6 +183,11 @@ sealed class RecService : IDisposable
         var now = DateTime.Now;
         if (IsRecording && now >= _nextSegment) NewSegment(now);
         if (IsRecording) Watch(now);
+        if (now >= _nextStatus)
+        {
+            _nextStatus = now.AddSeconds(5);
+            WriteStatus(now);
+        }
         if (now >= _nextClean)
         {
             _nextClean = now.AddHours(1);
@@ -237,6 +242,38 @@ sealed class RecService : IDisposable
         }
     }
 
+    /// <summary>What Sintoniza Emi's REC light shows (this computer's): written every 5 seconds.</summary>
+    public static string StatusFile => Path.Combine(AppSettings.DataFolder, "rec-status.json");
+
+    /// <summary>Sintoniza Rec's state as written for the REC light.</summary>
+    public sealed record Status(DateTime At, bool Recording, double SilentSeconds, string? File);
+
+    DateTime _nextStatus = DateTime.MinValue;
+
+    void WriteStatus(DateTime now)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppSettings.DataFolder);
+            string tmp = StatusFile + ".tmp";
+            File.WriteAllText(tmp, System.Text.Json.JsonSerializer.Serialize(new Status(now, IsRecording, SilentSeconds, CurrentFile)));
+            File.Move(tmp, StatusFile, overwrite: true);
+        }
+        catch { /* the light shows it as not running */ }
+    }
+
+    /// <summary>Sintoniza Rec's state on this computer; null when it isn't running (nothing written in the last 20 s).</summary>
+    public static Status? ReadStatus()
+    {
+        try
+        {
+            if (!File.Exists(StatusFile)) return null;
+            var status = System.Text.Json.JsonSerializer.Deserialize<Status>(File.ReadAllText(StatusFile));
+            return status != null && (DateTime.Now - status.At).Duration() < TimeSpan.FromSeconds(20) ? status : null;
+        }
+        catch { return null; }
+    }
+
     public static double? FreeGb(string folder)
     {
         try
@@ -278,5 +315,9 @@ sealed class RecService : IDisposable
         });
     }
 
-    public void Dispose() => Stop();
+    public void Dispose()
+    {
+        Stop();
+        try { File.Delete(StatusFile); } catch { /* gone already */ }
+    }
 }
