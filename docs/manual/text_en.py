@@ -377,7 +377,7 @@ CHAPTERS = [
     ("p", "An event plays a <b>file</b>, the <b>newest file in a folder</b> (the news: skipped if older than N minutes) or an "
           "internet <b>stream</b> or an <b>input of the studio computer</b> (live: <b>Input…</b>) for N minutes. How it starts: <b>Soft</b> (after the item on air ends, at most N minutes "
           "late), <b>Hard</b> (on the second; what is on air fades out) or <b>Ends at its time</b> (it ends exactly then, never "
-          "later: the songs before it are adjusted, and what is on air fades if it would run over; one that ends at 10:00 is the last of 09:00; with the time signal on Stop, it ends as the pips start, and the hour before's songs don't play after them; a short gap before it is filled from the Fillers category). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
+          "later: the songs before it are adjusted, and what is on air fades if it would run over; one that ends at 10:00 is the last of 09:00; with the time signal on Stop, it ends as the pips start, and the hour before's songs don't play after them; a short gap before it is filled from the Fillers category; songs added in front of it that don't fit go after it, and one that can't start before it shows WON'T PLAY). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
     ("h2", "Ad breaks"),
     ("fig", "schedule-breaks", "Ad breaks", [
         ("BreakList", "The breaks."),

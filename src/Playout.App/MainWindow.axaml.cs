@@ -814,6 +814,14 @@ public partial class MainWindow : Window
             return t;
         }
 
+        // The next item with a latest start after i, and when (a break, an event).
+        (string Name, DateTime At)? NextTimed(int i)
+        {
+            for (int k = i + 1; k < items.Count; k++)
+                if (items[k].StartBy is { } by && !PlayedRow(k)) return (items[k].Event ?? items[k].Display, by.ToLocalTime());
+            return null;
+        }
+
         for (int i = 0; i < items.Count; i++)
         {
             if (!_rowsById.TryGetValue(items[i].Id, out var row)) continue;
@@ -830,6 +838,14 @@ public partial class MainWindow : Window
                 if (items[i].StartBy is { } by && by.ToLocalTime() < at) at = by.ToLocalTime();
                 var t = at.Value;
                 Show(row, t);
+                // One that would only start once a timed item ahead has to have started won't play here (jumped over).
+                row.CutBy = null;
+                if (items[i].StartBy == null && items[i].Event == null && NextTimed(i) is { } ahead && t >= ahead.At.AddSeconds(-0.5))
+                {
+                    row.CutBy = ahead;
+                    row.IsOverHour = true;
+                    row.StartTime = "—";
+                }
                 lastTail = Tail(items[i], i + 1 < items.Count ? items[i + 1] : null);
                 at = items[i].IsOpenEnded ? null : t.AddSeconds(items[i].PlayLength - lastTail);
             }

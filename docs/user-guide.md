@@ -375,7 +375,9 @@ receiver for the network news, a remote studio) for N minutes. Choose how it sta
   instrumentals), and a longer one with a song (from the station's music, even with fill music off) faded when the
   break starts. A break that ends at 10:00 is the last of the 09:00 hour (the daily playlists leave room for it there,
   and leave its end to it). With the time signal set to stop what plays, a break that ends on the hour ends as the pips
-  start (09:59:54); after the pips, what was left of the 09:00 hour doesn't play: the 10:00 hour starts.
+  start (09:59:54); after the pips, what was left of the 09:00 hour doesn't play: the 10:00 hour starts. Songs you
+  add in front of it that don't fit are moved after it (in AUTO); one that couldn't start before it shows **WON'T
+  PLAY** in the playlist (in ASSISTED, or until it is moved), so the list shows what will really go on air.
 
 and what the host may do with it in the playlist (remove/move, only move, or nothing).
 

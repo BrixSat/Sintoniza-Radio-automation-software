@@ -137,8 +137,12 @@ public sealed class PlaylistRow : INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(OverHourTip)));
         }
     }
-    public string? OverHourTip => _isOverHour && PlanPlayer.ReadTag(Track.Tag) is { } t
-        ? L.F("Past the end of its hour: left out so {0:HH}:00 starts on time", t.Hour.AddHours(1)) : null;
+    public string? OverHourTip => !_isOverHour ? null
+        : CutBy is { } cut ? L.F("It would start after {0} has to start ({1:HH:mm:ss}): it won't play here (in AUTO a song is moved after it)", cut.Name, cut.At)
+        : PlanPlayer.ReadTag(Track.Tag) is { } t ? L.F("Past the end of its hour: left out so {0:HH}:00 starts on time", t.Hour.AddHours(1)) : null;
+
+    /// <summary>The timed item (a break, an event) that starts before this one could: it won't play where it is.</summary>
+    public (string Name, DateTime At)? CutBy { get; set; }
 
     string _hourMark = "";
     /// <summary>The hour this item starts ("12:00"), when it is the first in a new hour; "" otherwise.</summary>

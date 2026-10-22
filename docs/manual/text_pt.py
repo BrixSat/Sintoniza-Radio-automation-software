@@ -382,7 +382,7 @@ CHAPTERS = [
     ("p", "Um evento toca um <b>ficheiro</b>, o <b>ficheiro mais recente de uma pasta</b> (o noticiário: saltado se tiver mais de "
           "N minutos), um <b>stream</b> ou uma <b>entrada do computador do estúdio</b> (em direto: <b>Entrada…</b>) durante N minutos. Como começa: <b>Flexível</b> (depois de acabar o que está no ar, no "
           "máximo N minutos atrasado), <b>Rígido</b> (ao segundo; o que está no ar desvanece) ou <b>Acaba à sua hora</b> (acaba exatamente "
-          "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00; com o sinal horário em Parar, acaba quando começam os bips, e as músicas da hora anterior já não tocam depois deles; um intervalo curto antes dele é preenchido com a categoria Fillers). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
+          "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00; com o sinal horário em Parar, acaba quando começam os bips, e as músicas da hora anterior já não tocam depois deles; um intervalo curto antes dele é preenchido com a categoria Fillers; as músicas juntadas antes dele que não cabem passam para depois, e uma que não consegue começar antes dele aparece como NÃO TOCA). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
     ("h2", "Blocos publicitários"),
     ("fig", "schedule-breaks", "Blocos publicitários", [
         ("BreakList", "Os blocos."),
