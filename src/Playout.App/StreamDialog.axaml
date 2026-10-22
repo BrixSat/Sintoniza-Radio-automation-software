@@ -30,6 +30,12 @@
             <TextBlock Classes="note" Margin="0,4,0,0"
                        Text="The direct address of the stream (MP3, AAC or OGG), as used by a media player. Web pages and .pls/.m3u links don't work." />
         </StackPanel>
+        <StackPanel>
+            <TextBlock Classes="label" Text="Or an input of the computer, live" />
+            <ComboBox x:Name="InputBox" HorizontalAlignment="Stretch" />
+            <TextBlock Classes="note" Margin="0,4,0,0"
+                       Text="The desk's line, a satellite receiver, a remote studio: it goes on air as it comes in, like a stream." />
+        </StackPanel>
         <StackPanel Spacing="6">
             <TextBlock Classes="label" Text="Play it" />
             <RadioButton x:Name="UntilStopRadio" GroupName="Length" Content="Until I press Stop or Next" IsChecked="True" />

@@ -523,7 +523,7 @@ public sealed class PlayoutEngine : IDisposable
                 {
                     Kind = item.Kind ?? track.Kind, Event = label, Advertiser = item.Advertiser,
                     Lock = item.Lock, StartBy = item.StartBy, Backtime = item.Backtime, PlayedAt = item.PlayedAt, InBreak = item.InBreak,
-                    Tag = item.Tag, Overlap = Math.Max(0, item.Overlap), FollowsPrevious = item.FollowsPrevious,
+                    Tag = item.Tag, Overlap = Math.Max(0, item.Overlap), FollowsPrevious = item.FollowsPrevious, Note = item.Note,
                 });
         }
         return tracks;
@@ -778,6 +778,9 @@ public sealed class PlayoutEngine : IDisposable
 
     public static bool IsUrl(string path) =>
         path.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || path.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>What plays as a stream item: an internet stream, or an input of this computer (<see cref="LiveInput"/>).</summary>
+    public static bool IsStreamSource(string path) => IsUrl(path.Trim()) || LiveInput.Is(path.Trim());
 
     public PlayerStatus GetStatus()
     {
@@ -1162,6 +1165,8 @@ public sealed class PlayoutEngine : IDisposable
         DropConnection();
         var task = Task.Run(() =>
         {
+            // An input of this computer (live): captured from now on.
+            if (LiveInput.Is(track.Path)) return LiveInput.Open(track.Path);
             int handle = Bass.CreateStream(track.Path, 0, BassFlags.Decode | BassFlags.Float, null, IntPtr.Zero);
             return handle != 0 ? handle : throw new IOException(Bass.LastError.ToString());
         });

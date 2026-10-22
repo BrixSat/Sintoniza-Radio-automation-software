@@ -92,6 +92,7 @@ CHAPTERS = [
         ("NowTitle", "O que está no ar, com o artista."),
         ("WaveMain", "A forma de onda: a parte vermelha já tocou. A barra fina por baixo é a música inteira."),
         ("Elapsed", "Tempo decorrido, e o <b>SEGUINTE</b> por baixo."),
+        ("NoteBox", "<b>Notas para o locutor</b> das playlists diárias: a do item no ar e a do seguinte (o que anunciar, o patrocinador a referir)."),
         ("PlayButton", "<b>Play</b> (F5)."),
         ("PauseButton", "<b>Pausa</b> / continuar (F6)."),
         ("NextButton", "<b>Seguinte</b> (F7): crossfade para o próximo item já."),
@@ -101,7 +102,7 @@ CHAPTERS = [
         ("Clock", "O relógio, o nome e o logótipo da estação."),
         ("TopOfHourText", "Contagem para a hora certa."),
         ("PlaylistEndsText", "Quando acaba a playlist."),
-        ("NextEventPanel", "O próximo evento ou bloco programado."),
+        ("NextEventPanel", "<b>PRÓXIMO EVENTO</b>: a próxima coisa com hora marcada (um evento, um bloco, um item com hora) e uma contagem grande, âmbar no último minuto, vermelha nos últimos 10 segundos."),
         ("MeterL", "Níveis de saída, esquerdo e direito."),
         ("Playlist", "A playlist (páginas seguintes)."),
         ("CartwallTab", "Separadores <b>CARTWALL</b>, <b>BIBLIOTECA</b> e <b>PASTAS</b>."),
@@ -109,6 +110,7 @@ CHAPTERS = [
         ("SettingsButton", "<b>Definições</b> (Ctrl/Cmd + ,)."),
         ("ReportsButton", "<b>Relatórios</b>: música emitida e comprovativo de emissão."),
         ("LogoutButton", "<b>Sair</b>: volta a bloquear o ecrã (a emissão continua)."),
+        ("Lights", "Luzes de estado: <b>STREAM</b>, <b>RDS</b>, <b>REC</b> (o Sintoniza Rec neste computador), <b>BIBLIOTECA</b>, <b>ALERTAS</b> — verde a funcionar, vermelho um problema (aponte para ver qual), cinzento desligado."),
         ("LastLog", "A última coisa que aconteceu (tudo fica no registo)."),
     ]),
     ("h2", "A playlist"),
@@ -118,7 +120,7 @@ CHAPTERS = [
     ("fig", "main", "Botões da playlist", [
         ("OnAirButton", "<b>No ar</b>: volta ao que está no ar (acende-se quando se sai dele)."),
         ("HourViewButton", "<b>Esta hora</b>: a hora anterior, esta hora e os primeiros 30 minutos da seguinte. Desligado: tudo o que falta tocar."),
-        ("AddStreamButton", "<b>Stream…</b> de outra rádio; ao lado <b>Abrir…</b> e <b>Guardar…</b> (playlists M3U) e ▲ ▼ para mover. As músicas vêm da Biblioteca à direita."),
+        ("AddStreamButton", "<b>Stream…</b> de outra rádio, ou uma entrada deste computador em direto (a linha da mesa, um recetor de satélite, um estúdio remoto); ao lado <b>Abrir…</b> e <b>Guardar…</b> (playlists M3U) e ▲ ▼ para mover. As músicas vêm da Biblioteca à direita."),
         ("RemoveButton", "<b>Remover</b> os itens selecionados."),
         ("ClearButton", "<b>Limpar</b>: esvazia a playlist exceto o que está no ar e o que a programação bloqueou; o plano volta a enchê-la."),
     ], True),
@@ -177,6 +179,13 @@ CHAPTERS = [
         ("AdvertiserBox", "Para o comprovativo de emissão: um anunciante ou todos."),
         ("HtmlButton", "<b>Guardar como página para imprimir…</b> (ou em PDF); ao lado, <b>Guardar como CSV…</b> para uma folha de cálculo."),
     ]),
+    ("h2", "GPIO: os faders e as luzes da mesa"),
+    ("p", "Definições → <b>GPIO</b> usa as linhas de controlo de uma porta série (um adaptador série USB serve). As entradas <b>CTS</b> (pino 8), <b>DSR</b> (6) e "
+          "<b>DCD</b> (1) — um contacto entre a linha e DTR (4) ou RTS (7) — fazem uma coisa quando o contacto <b>fecha</b> e outra quando <b>abre</b>: "
+          "Tocar (arranque pelo fader), Seguinte, Parar, Pausa / continuar, um cart da cartwall no ecrã, ou nada. As saídas <b>DTR</b> e <b>RTS</b> ficam ligadas "
+          "enquanto algo toca, um anúncio está no ar, uma entrada em direto ou stream está no ar, ou há silêncio (uma não usada fica sempre ligada, como alimentação das entradas)."),
+    ("tip", "O arranque pelo fader habitual: CTS fecha → Tocar; abre (fader em baixo) → Seguinte ou nada. Um contacto que oscila conta uma vez; Seguinte, Parar e Pausa "
+            "não são feitos com um anúncio no ar. <b>Testar as entradas</b> mostra-as enquanto mexe nos faders."),
     ("h2", "Controlo remoto web"),
     ("p", "Controle o playout a partir de um telemóvel ou de outro computador da rede da estação: uma página web, sem nada para instalar."),
     ("fig", "settings-remote", "Definições → Remoto", [
@@ -365,7 +374,7 @@ CHAPTERS = [
         ("SaveButton", "<b>Guardar</b> toda a programação."),
     ]),
     ("p", "Um evento toca um <b>ficheiro</b>, o <b>ficheiro mais recente de uma pasta</b> (o noticiário: saltado se tiver mais de "
-          "N minutos) ou um <b>stream</b> durante N minutos. Como começa: <b>Flexível</b> (depois de acabar o que está no ar, no "
+          "N minutos), um <b>stream</b> ou uma <b>entrada do computador do estúdio</b> (em direto: <b>Entrada…</b>) durante N minutos. Como começa: <b>Flexível</b> (depois de acabar o que está no ar, no "
           "máximo N minutos atrasado), <b>Rígido</b> (ao segundo; o que está no ar desvanece) ou <b>Acaba à sua hora</b> (acaba exatamente "
           "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00; com o sinal horário em Parar, acaba quando começam os bips, e as músicas da hora anterior já não tocam depois deles; um intervalo curto antes dele é preenchido com a categoria Fillers). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
     ("h2", "Blocos publicitários"),
@@ -416,6 +425,7 @@ CHAPTERS = [
         ("StreamButton", "<b>Stream…</b>: o stream de outra rádio a uma hora desta hora, à hora certa ou depois do item no ar. Remover tira-o."),
         ("TagsButton", "<b>Editar etiquetas…</b> da música selecionada."),
         ("ReplaceButton", "<b>Outra música</b> da mesma linha do modelo; ▲ ▼ movem, <b>Remover</b> tira."),
+        ("NoteButton", "<b>📝 Nota…</b> no item selecionado e <b>📝 Nota da hora…</b>: notas para o locutor, mostradas no ar antes e enquanto toca (📝 na lista)."),
         ("GenerateHourButton", "<b>Refazer esta hora</b> a partir do seu modelo."),
         ("GenerateDayButton", "<b>Refazer o dia</b> (as horas alteradas à mão ficam)."),
         ("Tracks", "A biblioteca: <b>duplo clique</b> numa música para a pôr a seguir ao item selecionado; botão direito → Ouvir."),

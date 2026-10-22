@@ -89,6 +89,7 @@ CHAPTERS = [
         ("NowTitle", "What is on air, with its artist."),
         ("WaveMain", "The waveform: the red part has played. The thin bar below is the whole song."),
         ("Elapsed", "Time played, and the <b>NEXT</b> item below it."),
+        ("NoteBox", "<b>Notes for the presenter</b> from the daily playlists: the item on air's and the next one's (what to announce, the sponsor to mention)."),
         ("PlayButton", "<b>Play</b> (F5)."),
         ("PauseButton", "<b>Pause</b> / resume (F6)."),
         ("NextButton", "<b>Next</b> (F7): crossfades to the next item now."),
@@ -98,7 +99,7 @@ CHAPTERS = [
         ("Clock", "The clock, the station name and logo."),
         ("TopOfHourText", "Countdown to the top of the hour."),
         ("PlaylistEndsText", "When the playlist runs out."),
-        ("NextEventPanel", "The next scheduled event or ad break."),
+        ("NextEventPanel", "<b>NEXT EVENT</b>: the next thing with a fixed time (an event, an ad break, a timed item) and a large countdown, amber in the last minute, red in the last 10 seconds."),
         ("MeterL", "Output levels, left and right."),
         ("Playlist", "The playlist (next pages)."),
         ("CartwallTab", "<b>CARTWALL</b>, <b>LIBRARY</b> and <b>FOLDERS</b> tabs."),
@@ -106,6 +107,7 @@ CHAPTERS = [
         ("SettingsButton", "<b>Settings</b> (Ctrl/Cmd + ,)."),
         ("ReportsButton", "<b>Reports</b>: music played and proof of broadcast."),
         ("LogoutButton", "<b>Log out</b>: locks the screen again (on air carries on)."),
+        ("Lights", "Status lights: <b>STREAM</b>, <b>RDS</b>, <b>REC</b> (Sintoniza Rec on this computer), <b>LIBRARY</b>, <b>ALERTS</b> — green working, red a problem (point at it for what), grey off."),
         ("LastLog", "The last thing that happened (all of it is in the log)."),
     ]),
     ("h2", "The playlist"),
@@ -115,7 +117,7 @@ CHAPTERS = [
     ("fig", "main", "Playlist buttons", [
         ("OnAirButton", "<b>On air</b>: jump back to the item on air (it lights up when you scroll away)."),
         ("HourViewButton", "<b>This hour</b>: the hour before, this hour and the first 30 minutes of the next. Off: everything still to play."),
-        ("AddStreamButton", "<b>Stream…</b> another station's stream; next to it <b>Open…</b> and <b>Save…</b> (M3U playlists) and ▲ ▼ to move. Songs come from the Library on the right."),
+        ("AddStreamButton", "<b>Stream…</b> another station's stream, or an input of this computer live (the desk's line, a satellite receiver, a remote studio); next to it <b>Open…</b> and <b>Save…</b> (M3U playlists) and ▲ ▼ to move. Songs come from the Library on the right."),
         ("RemoveButton", "<b>Remove</b> the selected items."),
         ("ClearButton", "<b>Clear</b>: empties the playlist except the item on air and what the schedule locked; the plan refills it."),
     ], True),
@@ -174,6 +176,13 @@ CHAPTERS = [
         ("AdvertiserBox", "For the proof of broadcast: one advertiser or all."),
         ("HtmlButton", "<b>Save as a page to print…</b> (or as PDF); next to it, <b>Save as CSV…</b> for a spreadsheet."),
     ]),
+    ("h2", "GPIO: the desk's faders and lights"),
+    ("p", "Settings → <b>GPIO</b> uses a serial port's control lines (a USB serial adapter works). Inputs <b>CTS</b> (pin 8), <b>DSR</b> (6) and "
+          "<b>DCD</b> (1) — a contact between the line and DTR (4) or RTS (7) — each do something when the contact <b>closes</b> and when it <b>opens</b>: "
+          "Play (fader start), Next, Stop, Pause / carry on, a cart of the cartwall on screen, or nothing. Outputs <b>DTR</b> and <b>RTS</b> are on while "
+          "something plays, an advert is on air, a live input or stream is on air, or there is silence (one not used is held on, as the supply of the inputs)."),
+    ("tip", "The usual fader start: CTS closes → Play; opens (fader down) → Next or nothing. A contact that bounces counts once; Next, Stop and Pause "
+            "aren't done while an advert is on air. <b>Test the inputs</b> shows them as you move the faders."),
     ("h2", "Web remote"),
     ("p", "Control the playout from a phone or another computer on the station's network: a web page, no app to install."),
     ("fig", "settings-remote", "Settings → Remote", [
@@ -360,7 +369,7 @@ CHAPTERS = [
         ("SaveButton", "<b>Save</b> the whole schedule."),
     ]),
     ("p", "An event plays a <b>file</b>, the <b>newest file in a folder</b> (the news: skipped if older than N minutes) or an "
-          "internet <b>stream</b> for N minutes. How it starts: <b>Soft</b> (after the item on air ends, at most N minutes "
+          "internet <b>stream</b> or an <b>input of the studio computer</b> (live: <b>Input…</b>) for N minutes. How it starts: <b>Soft</b> (after the item on air ends, at most N minutes "
           "late), <b>Hard</b> (on the second; what is on air fades out) or <b>Ends at its time</b> (it ends exactly then, never "
           "later: the songs before it are adjusted, and what is on air fades if it would run over; one that ends at 10:00 is the last of 09:00; with the time signal on Stop, it ends as the pips start, and the hour before's songs don't play after them; a short gap before it is filled from the Fillers category). And what the host may do with it in the playlist: remove and move, only move, or nothing."),
     ("h2", "Ad breaks"),
@@ -411,6 +420,7 @@ CHAPTERS = [
         ("StreamButton", "<b>Stream…</b>: another station's stream at a time in this hour, on the dot or after the item on air. Remove takes it out."),
         ("TagsButton", "<b>Edit tags…</b> of the selected song."),
         ("ReplaceButton", "<b>Another song</b> from the same template line; ▲ ▼ move, <b>Remove</b> takes it out."),
+        ("NoteButton", "<b>📝 Note…</b> on the selected item and <b>📝 Hour note…</b>: notes for the presenter, shown on air before and while it plays (📝 in the list)."),
         ("GenerateHourButton", "<b>Make this hour again</b> from its template."),
         ("GenerateDayButton", "<b>Make the day again</b> (hours changed by hand are kept)."),
         ("Tracks", "The library: <b>double-click</b> a song to put it after the selected item; right-click → Listen."),

@@ -207,6 +207,7 @@ public partial class ScheduleWindow : Window
         };
         EventFileButton.Click += async (_, _) => { if (await PickFile(L.T("Event: file to play")) is { } p) EventPathBox.Text = p; };
         EventFolderButton.Click += async (_, _) => { if (await PickFolder(L.T("Event: folder whose newest file plays")) is { } p) EventPathBox.Text = p; };
+        EventInputButton.Click += (_, _) => InputMenu(EventInputButton, path => EventPathBox.Text = path);
         EventMaxAgeBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.MaxAgeMinutes = (int)(EventMaxAgeBox.Value ?? 0));
         EventStreamMinutesBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.StreamMinutes = (double)(EventStreamMinutesBox.Value ?? 0));
         WireStart(EventList, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel);
@@ -232,19 +233,43 @@ public partial class ScheduleWindow : Window
     void ShowEventPathKind()
     {
         string path = EventPathBox.Text?.Trim() ?? "";
-        bool stream = PlayoutEngine.IsUrl(path);
+        bool stream = PlayoutEngine.IsStreamSource(path);
         bool folder = !stream && path.Length > 0 && Directory.Exists(path);
         EventStreamPanel.IsVisible = stream;
         EventFolderPanel.IsVisible = folder;
         EventPathNote.Text = path.Length == 0 ? "" :
+            LiveInput.Is(path) ? L.F("An input of the studio computer, live: {0}.", LiveInput.DeviceOf(path) is { Length: > 0 } d ? d : L.T("the default input")) :
             stream ? L.T("An internet stream.") :
             folder ? L.T("A folder: its newest audio file plays (e.g. a news bulletin that is downloaded there).") :
             File.Exists(path) ? L.T("A file.") : L.T("Not found on this computer.");
     }
 
+    /// <summary>
+    /// The inputs to choose from: this computer's, as names to look for on the studio computer (where the event plays),
+    /// and its default input.
+    /// </summary>
+    static void InputMenu(Control anchor, Action<string> chosen)
+    {
+        var menu = new ContextMenu();
+        var defaultItem = new MenuItem { Header = L.T("(the default input)") };
+        defaultItem.Click += (_, _) => chosen(LiveInput.PathFor(""));
+        menu.Items.Add(defaultItem);
+        try
+        {
+            foreach (var device in PlayoutEngine.GetInputDevices())
+            {
+                var item = new MenuItem { Header = device };
+                item.Click += (_, _) => chosen(LiveInput.PathFor(device));
+                menu.Items.Add(item);
+            }
+        }
+        catch { /* no audio library: the default only */ }
+        menu.Open(anchor);
+    }
+
     ScheduleRow EventRow(ScheduledEvent e) => new(e, () =>
     {
-        string what = PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : Directory.Exists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
+        string what = LiveInput.Is(e.Path) ? L.T("live input") : PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : Directory.Exists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
         return (EntryName(e), $"{SlotsSummary(e)} · {StartText(e)}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
     });
 

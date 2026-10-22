@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Ellipse = Avalonia.Controls.Shapes.Ellipse;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -107,6 +108,7 @@ public partial class MainWindow : Window
             _engine.TakeSource = _takes.Source;
             ApplySafety();
             ApplyRds();
+            ApplyGpio();
             ApplyLoudness();
             FillPlayedTimes(_settings.PlaylistItems, _settings.OnAirIndex);
             AddEntries(_settings.PlaylistItems);
@@ -312,6 +314,7 @@ public partial class MainWindow : Window
             SaveSettings();
         };
         Closed += (_, _) => _rds?.Dispose();
+        Closed += (_, _) => StopGpio();
         Closed += (_, _) => _web?.Dispose();
         Closed += (_, _) =>
         {
@@ -582,6 +585,7 @@ public partial class MainWindow : Window
         Part("watch", () => WatchDisplay(st));
         Part("break countdown", () => UpdateBreakCountdown(now));
         Part("stream", () => UpdateStreamStatus(st));
+        Part("gpio", () => ShowGpio(st));
 
         // Once a second is plenty for the date, ETA column and station info.
         if (_slowTick-- > 0) return;
@@ -752,6 +756,7 @@ public partial class MainWindow : Window
         var order = new List<PlaylistRow>(items.Count + _upcoming.Count);
         var pending = new Queue<UpcomingEvent>(_upcoming.OrderBy(u => u.Start));
         _nextBreak = null;
+        _nextFixed = null;
         // Played items (and the one on air) show when they went on air, with a divider where a new hour started; then
         // the first item starting in a later hour than that gets one, and so on.
         DateTime? pastHour = null;
@@ -776,6 +781,10 @@ public partial class MainWindow : Window
             row.StartAt = t;
             row.IsOverHour = PlanPlayer.OverHour(row, t);
             // The first ad break still to come (shown ahead, or already in the playlist), for the countdown.
+            // The first thing with a fixed time still to come (an event shown ahead, an ad break, a timed item), for NEXT EVENT.
+            if (_nextFixed == null && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now
+                && (row.IsPreview || row.IsTimed || (row.IsAdBreak && !row.IsEmptyBreak)))
+                _nextFixed = (t, row.Track.Event ?? (row.IsAdBreak ? L.T("Ad break") : row.Title));
             if (_nextBreak == null && row.IsAdBreak && !row.IsEmptyBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
                 _nextBreak = (t, row.Track.Event ?? (row.IsPreview ? row.Title : L.T("Ad break")),
                     row.IsPreview ? _upcoming.FirstOrDefault(u => u.Label == (row.Track.Event ?? row.Title))?.How ?? "" : BreakHow(row.Track));
@@ -851,6 +860,7 @@ public partial class MainWindow : Window
     }
 
     (DateTime At, string Name, string How)? _nextBreak;
+    (DateTime At, string Name)? _nextFixed;
 
     /// <summary>How a break already in the playlist starts (from its first item).</summary>
     static string BreakHow(Track first) => first.StartBy is { } by
@@ -1138,11 +1148,79 @@ public partial class MainWindow : Window
             ? Format.Duration((now - _streamSince).TotalSeconds)
             : L.T("Off");
 
-        var next = _scheduler?.Next(now);
+        // The nearest of the schedule's next event and the playlist's next item with a fixed time.
+        (DateTime At, string Name)? next = _scheduler?.Next(now) is { } e ? (e.At, string.IsNullOrWhiteSpace(e.Name) ? L.T("Event") : e.Name) : null;
+        if (_nextFixed is { } f && f.At > now && (next == null || f.At < next.Value.At)) next = f;
         NextEventPanel.IsVisible = next != null;
         if (next is { } n)
-            NextEventText.Text = L.F("{0:HH:mm:ss}  {1}", n.At, (string.IsNullOrWhiteSpace(n.Name) ? L.T("Event") : n.Name))
-                                 + (n.At.Date != now.Date ? L.T(" (tomorrow)") : "");
+        {
+            NextEventText.Text = L.F("{0:HH:mm:ss}  {1}", n.At, n.Name) + (n.At.Date != now.Date ? L.T(" (tomorrow)") : "");
+            var left = n.At - now;
+            NextEventCountdown.Text = left.TotalHours >= 1 ? "-" + left.ToString(@"h\:mm\:ss") : "-" + left.ToString(@"mm\:ss");
+            // Amber in the last minute, red in the last ten seconds.
+            NextEventCountdown.Foreground = left <= TimeSpan.FromSeconds(10) ? (IBrush)this.FindResource("OnAir")!
+                : left <= TimeSpan.FromMinutes(1) ? Amber : Brushes.White;
+        }
+        UpdateLights();
+    }
+
+    static readonly IBrush Amber = new SolidColorBrush(Color.Parse("#F5A524")), LightOk = new SolidColorBrush(Color.Parse("#3ECF8E")),
+        LightOff = new SolidColorBrush(Color.Parse("#4A5060")), LightBad = new SolidColorBrush(Color.Parse("#E5484D"));
+    readonly Dictionary<string, (Ellipse Dot, Border Pill)> _lights = new();
+
+    /// <summary>A status light in the status bar: its dot, name and tooltip.</summary>
+    void Light(string name, IBrush colour, string tip)
+    {
+        if (!_lights.TryGetValue(name, out var light))
+        {
+            var dot = new Ellipse { Width = 8, Height = 8, VerticalAlignment = VerticalAlignment.Center };
+            var pill = new Border
+            {
+                Padding = new Thickness(7, 2), CornerRadius = new CornerRadius(9), Background = new SolidColorBrush(Color.Parse("#1B1F27")),
+                Child = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal, Spacing = 5,
+                    Children = { dot, new TextBlock { Text = name, FontSize = 11, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center } },
+                },
+            };
+            Lights.Children.Add(pill);
+            _lights[name] = light = (dot, pill);
+        }
+        light.Dot.Fill = colour;
+        ToolTip.SetTip(light.Pill, tip);
+    }
+
+    /// <summary>Stream, RDS, Sintoniza Rec, the library and alerts at a glance: green working, red a problem, grey off.</summary>
+    void UpdateLights()
+    {
+        var st = _lastStreamState;
+        if (!_settings.UsesStreaming) Light(L.T("STREAM"), LightOff, L.T("No stream set up"));
+        else Light(L.T("STREAM"), st switch { StreamState.OnAir => LightOk, StreamState.Connecting => Amber, StreamState.Failed => LightBad, _ => LightOff },
+            st switch
+            {
+                StreamState.OnAir => L.T("Streaming"),
+                StreamState.Connecting => L.T("Connecting to the stream server"),
+                StreamState.Failed => L.T("The stream can't connect"),
+                _ => L.T("Stream off"),
+            });
+
+        if (_rds == null) Light("RDS", LightOff, L.T("RDS off (Settings)"));
+        else Light("RDS", _rds.Error == null ? LightOk : LightBad, _rds.Error == null ? L.T("RDS: sending to the encoder") : L.F("RDS: can't send ({0})", _rds.Error));
+
+        var rec = RecService.ReadStatus();
+        Light("REC", rec == null ? LightOff : !rec.Recording ? LightBad : rec.SilentSeconds >= 30 ? Amber : LightOk,
+            rec == null ? L.T("Sintoniza Rec isn't running on this computer")
+            : !rec.Recording ? L.T("Sintoniza Rec is open but NOT recording")
+            : rec.SilentSeconds >= 30 ? L.F("Sintoniza Rec is recording silence ({0:0} s)", rec.SilentSeconds)
+            : L.F("Sintoniza Rec is recording: {0}", Path.GetFileName(rec.File ?? "")));
+
+        Light(L.T("LIBRARY"), _library.Db != null ? LightOk : _library.Error != null ? LightBad : LightOff,
+            _library.Db != null ? L.T("The library is open") : _library.Error is { } error ? L.F("The library can't be reached: {0}", error) : L.T("No library"));
+
+        var problems = _health?.Active ?? [];
+        var alerts = _settings.Alerts;
+        Light(L.T("ALERTS"), problems.Count > 0 ? LightBad : alerts.Enabled && alerts.HasChannel ? LightOk : LightOff,
+            problems.Count > 0 ? string.Join("\n", problems) : alerts.Enabled && alerts.HasChannel ? L.T("Alerts on: nothing wrong") : L.T("Alerts off (Settings)"));
     }
 
     void CountPlayed()
@@ -1185,9 +1263,22 @@ public partial class MainWindow : Window
         double total = snap.Items.Sum(t => t.PlayLength);
         PlaylistInfo.Text = snap.Items.Count == 0 ? "" : L.F("{0} items · {1}", snap.Items.Count, Format.Duration(total));
         NextTitle.Text = snap.NextId is { } n && _rowsById.TryGetValue(n, out var next) ? next.Track.Display : "—";
+        ShowNotes(snap);
 
         // Not while the saved playlist is still being added: a save then would lose the rest of it.
         if (_restored) _settings.PlaylistItems = snap.Items.Select(PlaylistEntry.From).ToList();
+    }
+
+    /// <summary>The presenter's notes: the one of the item on air, and the next item's (to prepare).</summary>
+    void ShowNotes(PlaylistSnapshot snap)
+    {
+        string? Note(Guid? id) => id is { } i ? snap.Items.FirstOrDefault(t => t.Id == i)?.Note : null;
+        string? now = Note(snap.CurrentId), next = Note(snap.NextId);
+        NoteNowText.Text = string.IsNullOrWhiteSpace(now) ? "" : "📝 " + now;
+        NoteNowText.IsVisible = NoteNowText.Text.Length > 0;
+        NoteNextText.Text = string.IsNullOrWhiteSpace(next) ? "" : L.F("📝 NEXT · {0}", next);
+        NoteNextText.IsVisible = NoteNextText.Text.Length > 0;
+        NoteBox.IsVisible = NoteNowText.IsVisible || NoteNextText.IsVisible;
     }
 
     void RemoveSelected()
@@ -1653,7 +1744,11 @@ public partial class MainWindow : Window
             var routingBefore = _settings.Routing;
             string libraryBefore = _settings.Library.ConnectionKey();
             var micBefore = _settings.ActiveMic;
-            bool saved = await new SettingsWindow(_settings, _engine, this).ShowDialog<bool>(this);
+            var settingsWindow = new SettingsWindow(_settings, _engine, this);
+            // Its GPIO test opens the port: let go of it meanwhile.
+            settingsWindow.GpioTestRequested += testing => { if (testing) StopGpio(); else ApplyGpio(); };
+            bool saved = await settingsWindow.ShowDialog<bool>(this);
+            ApplyGpio();
             if (!saved) return;
             if (_engine != null)
             {
@@ -1967,6 +2062,78 @@ public partial class MainWindow : Window
             LastLog.Text = message;
         });
         _rds = rds;
+    }
+
+    // ───────────────────────── GPIO ─────────────────────────
+
+    GpioService? _gpio;
+    string _gpioKey = "";
+    (bool, bool, bool, bool)? _gpioShown;
+
+    /// <summary>Opens (or opens again, with new settings) the GPIO port; closes it when GPIO is off.</summary>
+    void ApplyGpio()
+    {
+        var g = _settings.Gpio ?? new();
+        string key = System.Text.Json.JsonSerializer.Serialize(g);
+        if (_gpio != null && key == _gpioKey) return;
+        StopGpio();
+        if (!g.Enabled || g.Port.Length == 0) return;
+        try
+        {
+            _gpio = GpioService.Open(g);
+            _gpioKey = key;
+            _gpio.Fired += (action, cart) => Dispatcher.UIThread.Post(() => OnGpio(action, cart));
+            AppLog.Write(L.F("GPIO on {0}", g.Port));
+        }
+        catch (Exception ex)
+        {
+            string message = L.F("GPIO: the port {0} can't be opened ({1})", g.Port, ex.Message);
+            AppLog.Write(message);
+            LastLog.Text = message;
+        }
+    }
+
+    void StopGpio()
+    {
+        _gpio?.Dispose();
+        _gpio = null;
+        _gpioKey = "";
+        _gpioShown = null;
+    }
+
+    /// <summary>A desk contact closed or opened. Next and Stop aren't done while an advert is on air (as on screen, without asking).</summary>
+    void OnGpio(GpioAction action, int cart)
+    {
+        if (_engine is not { } engine) return;
+        var st = engine.GetStatus();
+        string what = action == GpioAction.Cart ? L.F("cart {0}", cart) : action.ToString();
+        if (action is GpioAction.Next or GpioAction.Stop or GpioAction.PlayPause && AdvertOnAir(st) && st.State == PlayerState.Playing)
+        {
+            LastLog.Text = L.F("GPIO {0} not done: an advert is on air", what);
+            AppLog.Write(LastLog.Text);
+            return;
+        }
+        switch (action)
+        {
+            case GpioAction.Play: if (st.State != PlayerState.Playing) engine.Play(); break;
+            case GpioAction.Next: engine.Next(); break;
+            case GpioAction.Stop: engine.Stop(); break;
+            case GpioAction.PlayPause: engine.TogglePause(); break;
+            case GpioAction.Cart when cart >= 1 && cart <= _page.Carts.Count: ToggleCart(cart - 1); break;
+        }
+        AppLog.Write(L.F("GPIO: {0}", what));
+    }
+
+    /// <summary>The GPIO outputs from what is on air (only when it changes).</summary>
+    void ShowGpio(PlayerStatus st)
+    {
+        if (_gpio is not { } gpio) return;
+        bool playing = st.State == PlayerState.Playing;
+        bool silence = playing && st.Silence >= Math.Max(5, _settings.Silence?.Seconds ?? 15); // as the alerts count it
+        var now = (playing, AdvertOnAir(st), playing && st.Current?.IsStream == true, silence);
+        if (_gpioShown == now) return;
+        _gpioShown = now;
+        gpio.Show(now.Item1, now.Item2, now.Item3, now.Item4);
     }
 
     // ───────────────────────── Schedule, reports, website ─────────────────────────

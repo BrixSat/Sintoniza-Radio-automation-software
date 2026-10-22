@@ -71,6 +71,9 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
     /// <summary>It belongs to the item before it (a voice track about that song): removed with it.</summary>
     public bool FollowsPrevious { get; init; }
 
+    /// <summary>A note for the presenter (from the daily playlists), shown on air before and while it plays; the engine only carries it.</summary>
+    public string? Note { get; init; }
+
     public bool IsStream => Kind == TrackKind.Stream;
 
     /// <summary>A take: put together from its files when it starts (see <see cref="Takes"/>).</summary>
@@ -110,7 +113,7 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
 /// <param name="FollowsPrevious">See <see cref="Track.FollowsPrevious"/>.</param>
 public sealed record ScheduledItem(string Path, TrackKind? Kind = null, string? StreamName = null, double StreamSeconds = 0, string? Advertiser = null,
     ItemLock Lock = ItemLock.Free, DateTime? StartBy = null, bool Backtime = false, DateTime? PlayedAt = null, bool InBreak = false, string? Tag = null,
-    double Overlap = 0, bool FollowsPrevious = false);
+    double Overlap = 0, bool FollowsPrevious = false, string? Note = null);
 
 /// <summary>What the operator may do with a playlist item put there by the schedule.</summary>
 public enum ItemLock

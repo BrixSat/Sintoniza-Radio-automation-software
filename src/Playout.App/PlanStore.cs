@@ -17,6 +17,8 @@ public sealed class PlanHour
     public string GeneratedBy { get; set; } = "";
     /// <summary>Changed by hand: never made again by itself.</summary>
     public bool Edited { get; set; }
+    /// <summary>A note for the presenter about the whole hour (shown on air as the hour starts); null when saving: keep the one it has.</summary>
+    public string? Note { get; set; }
 }
 
 /// <summary>A song or jingle planned in an hour, in order.</summary>
@@ -42,6 +44,8 @@ public sealed class PlanItem
     public double Overlap { get; set; }
     /// <summary>It belongs to the item before it (a voice track about that song): removed, moved and skipped with it.</summary>
     public bool FollowsPrevious { get; set; }
+    /// <summary>A note for the presenter about this item (what to say, the sponsor to mention), shown on air before and while it plays.</summary>
+    public string? Note { get; set; }
 
     public string Display => string.IsNullOrWhiteSpace(Artist) ? Title : $"{Artist} - {Title}";
 }
@@ -69,6 +73,7 @@ public sealed class PlanStore(LibraryDb db)
         public string GeneratedAt { get; set; } = "";
         public string GeneratedBy { get; set; } = "";
         public long Edited { get; set; }
+        public string? Note { get; set; }
     }
 
     sealed class ItemRow
@@ -86,6 +91,7 @@ public sealed class PlanStore(LibraryDb db)
         public long Optional { get; set; }
         public double Overlap { get; set; }
         public long Follows { get; set; }
+        public string? Note { get; set; }
     }
 
     /// <summary>The hours made from <paramref name="from"/> (inclusive) to <paramref name="to"/> (exclusive).</summary>
@@ -94,7 +100,7 @@ public sealed class PlanStore(LibraryDb db)
         using var c = Db.Connect();
         return c.Query<HourRow>("""
                 SELECT hour_start AS HourStart, template_id AS TemplateId, signature AS Signature, generated_at AS GeneratedAt,
-                       generated_by AS GeneratedBy, edited AS Edited
+                       generated_by AS GeneratedBy, edited AS Edited, note AS Note
                 FROM plan_hours WHERE station_id = @Station AND hour_start >= @from AND hour_start < @to
                 """, new { Station, from = HourKey(from), to = HourKey(to) })
             .Select(r => new PlanHour
@@ -105,6 +111,7 @@ public sealed class PlanStore(LibraryDb db)
                 GeneratedAt = DateTime.Parse(r.GeneratedAt, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal),
                 GeneratedBy = r.GeneratedBy,
                 Edited = r.Edited != 0,
+                Note = r.Note,
             })
             .ToDictionary(h => h.Start);
     }
@@ -116,7 +123,7 @@ public sealed class PlanStore(LibraryDb db)
         return c.Query<ItemRow>("""
                 SELECT id AS Id, hour_start AS HourStart, kind AS Kind, path AS Path, title AS Title, artist AS Artist,
                        seconds AS Seconds, track_id AS TrackId, line AS Line, category_id AS CategoryId, optional AS Optional,
-                       overlap AS Overlap, follows AS Follows
+                       overlap AS Overlap, follows AS Follows, note AS Note
                 FROM plan_items WHERE station_id = @Station AND hour_start >= @from AND hour_start < @to
                 ORDER BY hour_start, position
                 """, new { Station, from = HourKey(from), to = HourKey(to) })
@@ -135,6 +142,7 @@ public sealed class PlanStore(LibraryDb db)
                 Optional = r.Optional != 0,
                 Overlap = r.Overlap,
                 FollowsPrevious = r.Follows != 0,
+                Note = r.Note,
             }).ToList());
     }
 
@@ -152,23 +160,26 @@ public sealed class PlanStore(LibraryDb db)
         if (unlessEdited && c.ExecuteScalar<long?>("SELECT edited FROM plan_hours WHERE station_id = @Station AND hour_start = @key",
                 new { Station, key }, tx) == 1)
             return false;
+        // The hour's note stays when the hour is made again (a new PlanHour has none).
+        string? note = hour.Note ?? c.ExecuteScalar<string?>("SELECT note FROM plan_hours WHERE station_id = @Station AND hour_start = @key", new { Station, key }, tx);
         c.Execute("DELETE FROM plan_items WHERE station_id = @Station AND hour_start = @key", new { Station, key }, tx);
         c.Execute("DELETE FROM plan_hours WHERE station_id = @Station AND hour_start = @key", new { Station, key }, tx);
         c.Execute("""
-            INSERT INTO plan_hours (station_id, hour_start, template_id, signature, generated_at, generated_by, edited)
-            VALUES (@Station, @key, @template, @Signature, @at, @GeneratedBy, @edited)
+            INSERT INTO plan_hours (station_id, hour_start, template_id, signature, generated_at, generated_by, edited, note)
+            VALUES (@Station, @key, @template, @Signature, @at, @GeneratedBy, @edited, @note)
             """, new
         {
             Station, key, template = hour.TemplateId?.ToString(), hour.Signature, at = LibraryDb.Time(hour.GeneratedAt),
-            hour.GeneratedBy, edited = hour.Edited ? 1 : 0,
+            hour.GeneratedBy, edited = hour.Edited ? 1 : 0, note = string.IsNullOrWhiteSpace(note) ? null : note.Trim(),
         }, tx);
         c.Execute("""
-            INSERT INTO plan_items (id, station_id, hour_start, position, kind, path, title, artist, seconds, track_id, line, category_id, optional, overlap, follows)
-            VALUES (@id, @Station, @key, @position, @kind, @Path, @Title, @Artist, @Seconds, @TrackId, @Line, @CategoryId, @optional, @Overlap, @follows)
+            INSERT INTO plan_items (id, station_id, hour_start, position, kind, path, title, artist, seconds, track_id, line, category_id, optional, overlap, follows, note)
+            VALUES (@id, @Station, @key, @position, @kind, @Path, @Title, @Artist, @Seconds, @TrackId, @Line, @CategoryId, @optional, @Overlap, @follows, @note)
             """, items.Select((i, n) => new
         {
             id = i.Id.ToString(), Station, key, position = n, kind = i.Kind.ToString().ToLowerInvariant(), i.Path, i.Title, i.Artist,
             i.Seconds, i.TrackId, i.Line, i.CategoryId, optional = i.Optional ? 1 : 0, i.Overlap, follows = i.FollowsPrevious ? 1 : 0,
+            note = string.IsNullOrWhiteSpace(i.Note) ? null : i.Note.Trim(),
         }), tx);
         tx.Commit();
         return true;
@@ -203,6 +214,14 @@ public sealed class PlanStore(LibraryDb db)
             i.Seconds, i.TrackId, Line = PlanItem.KeptTime, i.CategoryId,
         }), tx);
         tx.Commit();
+    }
+
+    /// <summary>The presenter's note for an hour ("" or null: none). The hour must have been made.</summary>
+    public bool SetHourNote(DateTime hour, string? note)
+    {
+        using var c = Db.Connect();
+        return c.Execute("UPDATE plan_hours SET note = @note WHERE station_id = @Station AND hour_start = @key",
+            new { Station, key = HourKey(hour), note = string.IsNullOrWhiteSpace(note) ? null : note.Trim() }) > 0;
     }
 
     /// <summary>A file's title and artist as its tags now say, in every hour it is planned in.</summary>

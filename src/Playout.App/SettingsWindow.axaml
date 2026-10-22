@@ -785,6 +785,13 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- ───────── GPIO (this computer's: the desk is wired to it) ───────── -->
+            <TabItem Header="GPIO" Classes="computer">
+                <ScrollViewer>
+                    <StackPanel x:Name="GpioPanel" Spacing="12" Margin="0,12,0,0" />
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ───────── Web remote ───────── -->
             <TabItem Header="Remote" Classes="computer">
                 <StackPanel Spacing="14" Margin="0,12,0,0">
