@@ -23,7 +23,7 @@ public partial class ErcView : UserControl
     bool _loaded;
 
     /// <summary>A song that needs classifying, as listed.</summary>
-    sealed record MissingRow(long? TrackId, string Text)
+    sealed record MissingRow(long? TrackId, string Path, string Text)
     {
         public override string ToString() => Text;
     }
@@ -43,7 +43,9 @@ public partial class ErcView : UserControl
         ThisMonthButton.Click += (_, _) => { SetMonth(0); _ = Check(); };
         CheckButton.Click += async (_, _) => await Check();
         ExportButton.Click += async (_, _) => await Export();
-        MissingList.SelectionChanged += (_, _) => ClassifyButton.IsEnabled = MissingList.SelectedItems?.Count > 0;
+        MissingList.SelectionChanged += (_, _) => Selected();
+        LookupButton.Click += async (_, _) => await LookUp();
+        AddToLibraryButton.Click += async (_, _) => await AddToLibrary();
         SelectAllButton.Click += (_, _) => MissingList.SelectAll();
         ClassifyButton.Click += async (_, _) => await Classify();
         AddCountryButton.Click += (_, _) => { _countries.Add(new ErcCountry()); ShowCountries(); };
@@ -53,6 +55,7 @@ public partial class ErcView : UserControl
             if (_loaded) return;
             _loaded = true;
             await LoadDetails();
+            ShowCategories();
             await Check();
         };
     }
@@ -214,11 +217,83 @@ public partial class ErcView : UserControl
                 var (play, song, missing) = g.First();
                 string name = string.IsNullOrWhiteSpace(play.Artist) ? play.Title : $"{play.Artist} - {play.Title}";
                 string what = string.Join(", ", missing.Select(L.T));
-                return (Count: g.Count(), Row: new MissingRow(song?.TrackId, L.F("{0}×  {1}  —  {2}", g.Count(), name, what)));
+                return (Count: g.Count(), Row: new MissingRow(song?.TrackId, play.Path, L.F("{0}×  {1}  —  {2}", g.Count(), name, what)));
             })
             .OrderByDescending(x => x.Count).Select(x => x.Row).ToList();
         MissingList.ItemsSource = rows;
         SelectAllButton.IsEnabled = rows.Count > 0;
+    }
+
+    List<MissingRow> SelectedRows() => MissingList.SelectedItems?.OfType<MissingRow>().ToList() ?? [];
+
+    void Selected()
+    {
+        var rows = SelectedRows();
+        ClassifyButton.IsEnabled = rows.Count > 0;
+        LookupButton.IsEnabled = rows.Any(r => r.TrackId != null);
+        AddToLibraryButton.IsEnabled = rows.Any(r => r.TrackId == null) && AddCategoryBox.SelectedItem != null;
+    }
+
+    /// <summary>A category to add songs to, as listed (Music › 80s).</summary>
+    sealed record CategoryChoice(long Id, string Text)
+    {
+        public override string ToString() => Text;
+    }
+
+    void ShowCategories()
+    {
+        if (_db is not { } db) return;
+        try
+        {
+            var all = db.Categories();
+            var music = CategoryTree.Flatten(all).Where(c => c.Category.Kind == "music")
+                .Select(c => new CategoryChoice(c.Category.Id, CategoryTree.PathOf(all, c.Category.Id))).ToList();
+            AddCategoryBox.ItemsSource = music;
+            AddCategoryBox.SelectedItem = music.FirstOrDefault(c => all.First(x => x.Id == c.Id).Role == "music") ?? music.FirstOrDefault();
+        }
+        catch { /* the library can't be read: the list stays empty */ }
+        AddCategoryBox.SelectionChanged += (_, _) => Selected();
+    }
+
+    /// <summary>Songs that went on air from files outside the library: into the library, in the category chosen.</summary>
+    async Task AddToLibrary()
+    {
+        if (_db is not { } db || AddCategoryBox.SelectedItem is not CategoryChoice category) return;
+        var paths = SelectedRows().Where(r => r.TrackId == null).Select(r => r.Path).Distinct().ToList();
+        AddToLibraryButton.IsEnabled = false;
+        StatusText.Text = L.T("Adding to the library…");
+        try
+        {
+            var (added, gone) = await Task.Run(() =>
+            {
+                var ids = new List<long>();
+                int missing = 0;
+                foreach (var played in paths)
+                {
+                    if (!File.Exists(played)) { missing++; continue; }
+                    string path = Path.GetFullPath(played);
+                    db.Refresh(path);
+                    if (db.GetByPath(path) is { } track) ids.Add(track.Id);
+                }
+                if (ids.Count > 0) db.SetCategory(ids, category.Id);
+                return (ids.Count, missing);
+            });
+            await Check();
+            StatusText.Text = L.F("{0} songs added to {1}.", added, category.Text)
+                              + (gone > 0 ? " " + L.F("{0} files no longer exist.", gone) : "");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = L.F("Not added: {0}", ex.Message);
+        }
+    }
+
+    async Task LookUp()
+    {
+        if (_db is not { } db || TopLevel.GetTopLevel(this) is not Window owner) return;
+        var ids = SelectedRows().Select(r => r.TrackId).OfType<long>().Distinct().ToList();
+        if (ids.Count == 0) return;
+        if (await new ErcLookupWindow(db, ids, _countries).ShowDialog<bool>(owner)) await Check();
     }
 
     async Task Classify()
@@ -227,7 +302,7 @@ public partial class ErcView : UserControl
         var ids = MissingList.SelectedItems?.OfType<MissingRow>().Select(r => r.TrackId).OfType<long>().Distinct().ToList() ?? [];
         if (ids.Count == 0)
         {
-            StatusText.Text = L.T("These songs aren't in the library: scan their folders first.");
+            StatusText.Text = L.T("These songs aren't in the library: add them first (Add to the library, below).");
             return;
         }
         if (await new ErcSongWindow(db, ids, _countries).ShowDialog<bool>(owner)) await Check();

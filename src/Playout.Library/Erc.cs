@@ -81,6 +81,21 @@ public static class Erc
     /// <summary>Whether what was typed is a release date the ERC file can take (empty: none).</summary>
     public static bool IsReleaseText(string text) => text.Trim().Length == 0 || ReleaseDate(text, null) != null;
 
+    /// <summary>
+    /// What MusicBrainz's answer suggests for the ERC. Portuguese music (art. 41.º): sung in Portuguese, whoever sings
+    /// it, or by a Portuguese performer (a contribution to Portuguese culture even when not sung in Portuguese); the
+    /// performer's country as the station's ERC code (<paramref name="ercCode"/>: null when it isn't in its list).
+    /// Null: nothing to suggest.
+    /// </summary>
+    public static (bool? Portuguese, string? Language, string? Nationality, string? Release) Suggest(MusicBrainzInfo info, Func<string, string?> ercCode)
+    {
+        if (!info.Found) return (null, null, null, null);
+        bool? portuguese = IsPortugueseLanguage(info.Language) || info.Country == "PT" ? true
+            : info.Language != null || info.Country != null ? false : null;
+        string? release = info.FirstRelease is { } r && IsReleaseText(r) ? r : null;
+        return (portuguese, info.Language, info.Country is { } c ? ercCode(c) : null, release);
+    }
+
     /// <summary>First edited in the 12 months before <paramref name="day"/> (art. 44.º).</summary>
     public static bool IsRecent(DateTime? release, DateTime day) => release is { } r && r <= day && r > day.AddMonths(-12);
 

@@ -249,13 +249,20 @@ public partial class TrackLibraryView : UserControl
             if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db) return;
             if (await new RestrictionsWindow(db, ids).ShowDialog<bool>(owner)) _service.NotifyChanged();
         }));
+        static async Task<List<ErcCountry>> Countries(LibraryDb db)
+        {
+            try { return (await Task.Run(() => new StationStore(db).Load().Settings?.ErcCountries)) ?? Erc.DefaultCountries(); }
+            catch { return Erc.DefaultCountries(); }
+        }
         menu.Items.Add(Item(L.T("ERC classification") + many + "…", async () =>
         {
             if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db) return;
-            List<ErcCountry> countries;
-            try { countries = (await Task.Run(() => new StationStore(db).Load().Settings?.ErcCountries)) ?? Erc.DefaultCountries(); }
-            catch { countries = Erc.DefaultCountries(); }
-            if (await new ErcSongWindow(db, ids, countries).ShowDialog<bool>(owner)) _service.NotifyChanged();
+            if (await new ErcSongWindow(db, ids, await Countries(db)).ShowDialog<bool>(owner)) _service.NotifyChanged();
+        }));
+        menu.Items.Add(Item(L.T("ERC: look up on MusicBrainz") + many + "…", async () =>
+        {
+            if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db) return;
+            if (await new ErcLookupWindow(db, ids, await Countries(db)).ShowDialog<bool>(owner)) _service.NotifyChanged();
         }));
 
         bool allEnabled = rows.All(r => r.Track.Enabled);

@@ -472,7 +472,7 @@ if (firstSong?.Item is { } vtSong)
     var ercView = (ErcView)schedule.FindControl<TabItem>("ErcTab")!.Content!;
     WaitFor(() => ercView.FindControl<StackPanel>("AllPanel")!.Children.Count == 3 && ercView.FindControl<ListBox>("MissingList")!.ItemCount > 0, 60);
     Pump(20);
-    Shot(schedule, "erc", "FromBox", "CheckButton", "AllPanel", "DaytimePanel", "MissingList", "ClassifyButton", "ExportButton", "AliasBox", "CountryPanel");
+    Shot(schedule, "erc", "FromBox", "CheckButton", "AllPanel", "DaytimePanel", "MissingList", "ClassifyButton", "AddToLibraryButton", "ExportButton", "AliasBox", "CountryPanel");
     var ercSong = new ErcSongWindow(db, [ptSongs[0].Id], [new ErcCountry { Name = "Portugal", Code = "045", Eu = true }]) { Width = 520 };
     ercSong.Show();
     Pump(20);
