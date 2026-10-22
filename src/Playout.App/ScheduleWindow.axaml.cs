@@ -666,6 +666,12 @@ public partial class ScheduleWindow : Window
             ShowCampaign();
             SpotGrid.Refresh();
         };
+        CertificateButton.Click += async (_, _) =>
+        {
+            if (SelectedClient is not { } c) return;
+            string station = _station?.StationName is { Length: > 0 } n ? n : _settings?.StationName ?? "";
+            await new CertificateWindow(c, _library?.Db, _settings, station).ShowDialog(this);
+        };
         AddClientButton.Click += (_, _) =>
         {
             var c = new AdClient { Name = L.T("New client") };

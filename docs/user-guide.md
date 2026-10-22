@@ -358,6 +358,13 @@ locked by default).
 - The week grid shows the ad breaks; **click a break** to book the campaign there *every week* or *on that date only*.
   **In every break** books it in every break that has its section. **Remove the places with no break** tidies up
   after breaks were moved.
+- **Certificate…** (under the clients): what was booked for the selected client against what went on air, spot by
+  spot, for a period (*Last month*, *This month*, any dates) and one campaign or all: **On air** with the time it went
+  out (a break that ends at its time starts a little before), **NOT ON AIR**, **On air, not booked**, **To come**.
+  **Certificate to print…** opens it as a page to print or save as PDF for the client; **CSV…** for a spreadsheet.
+  With Sintoniza Rec recording the station, **▶ Listen** plays the selected advert as it went out, and **Save its
+  audio…** saves it as an MP3 to send to the client (Sintoniza Rec's folder on this computer, or **Change…** to
+  where its recordings are, e.g. a shared folder). The Home page warns when yesterday's booked adverts didn't go on air.
 
 ### Playlists (hour templates)
 
