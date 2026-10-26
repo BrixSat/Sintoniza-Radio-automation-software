@@ -100,8 +100,10 @@ public sealed class WaveformView : Control
         _anchorTicks = Stopwatch.GetTimestamp();
         _playing = playing;
 
+        // Drawn on every update too, not only on animation frames: a frame that never comes (the window hidden, a
+        // stall) must not leave it standing still.
+        InvalidateVisual();
         if (playing) StartAnimating();
-        else InvalidateVisual();
     }
 
     double DisplayPosition() =>
@@ -109,13 +111,18 @@ public sealed class WaveformView : Control
 
     void StartAnimating()
     {
-        if (_animating) return;
+        // Animating, unless its last frame is long gone (a frame asked for and never given): then asked again.
+        if (_animating && Stopwatch.GetElapsedTime(_lastFrame).TotalMilliseconds < 500) return;
         _animating = true;
+        _lastFrame = Stopwatch.GetTimestamp();
         TopLevel.GetTopLevel(this)?.RequestAnimationFrame(OnFrame);
     }
 
+    long _lastFrame;
+
     void OnFrame(TimeSpan _)
     {
+        _lastFrame = Stopwatch.GetTimestamp();
         InvalidateVisual();
         if (_playing && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnFrame);
         else _animating = false;
