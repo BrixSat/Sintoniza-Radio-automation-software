@@ -70,7 +70,11 @@ public partial class ScheduleWindow
         bool daily = store != null && _library != null && _settings != null;
         NavDaily.IsVisible = ToolDaily.IsVisible = MenuDaily.IsVisible = daily;
         NavSongs.IsVisible = ToolSongs.IsVisible = MenuSongs.IsVisible = _library != null;
-        if (_library != null) SongsView.Attach(_library);
+        if (_library != null)
+        {
+            SongsView.Attach(_library);
+            SongsView.EditTagsRequested += path => _ = EditSongTags(path);
+        }
 
         MenuSave.Click += (_, _) => Save();
         MenuRefresh.Click += (_, _) => Refresh();
@@ -416,5 +420,31 @@ public partial class ScheduleWindow
                 case ImportWindow import: _ = import.Refresh(); break;
             }
         _nextFigures = DateTime.MinValue; // Home's figures too
+    }
+
+    bool _tagsOpen;
+
+    /// <summary>Songs → Edit tags…: written in the file, then the library and the planned hours show them.</summary>
+    async Task EditSongTags(string path)
+    {
+        if (_tagsOpen) return;
+        if (!SharedPaths.FileExists(path))
+        {
+            SavedText.Text = L.F("Not found: {0}", path);
+            return;
+        }
+        _tagsOpen = true;
+        try
+        {
+            if (await new TagEditorWindow((p, tags, cover) => DailyPlaylistsView.WriteTags(_library?.Db, p, tags, cover), path).ShowDialog<bool>(this))
+            {
+                SavedText.Text = L.F("Tags saved: {0}", Path.GetFileName(path));
+                _library?.NotifyChanged();
+            }
+        }
+        finally
+        {
+            _tagsOpen = false;
+        }
     }
 }

@@ -447,26 +447,31 @@ public partial class DailyPlaylistsView : UserControl
         }
     }
 
+    async Task SaveTags(string path, TrackTags tags, byte[]? cover)
+    {
+        if (_playerPath == path) StopListening(); // let go of the file while it is rewritten
+        await WriteTags(_db, path, tags, cover);
+    }
+
     /// <summary>
     /// Writes a file's tags (refused while it is on air: the playout has it open), then brings the library and the
     /// planned hours up to date with them.
     /// </summary>
-    async Task SaveTags(string path, TrackTags tags, byte[]? cover)
+    internal static async Task WriteTags(LibraryDb? db, string path, TrackTags tags, byte[]? cover)
     {
-        if (_db is { } db && await Task.Run(() =>
+        if (db != null && await Task.Run(() =>
             {
                 if (db.LastStarted(path) is not { } started) return false;
                 double length = db.GetByPath(path)?.Duration is > 0 and var d ? d : AudioProbe.Duration(path) ?? 600;
                 return DateTime.UtcNow - started < TimeSpan.FromSeconds(length + 30);
             }))
             throw new InvalidOperationException(L.T("This file is on air now. Edit its tags once it has finished."));
-        if (_playerPath == path) StopListening(); // let go of the file while it is rewritten
         await Task.Run(() => Tags.Write(path, tags, cover));
-        if (_db is { } library)
+        if (db != null)
             await Task.Run(() =>
             {
-                library.Refresh(path);
-                if (!string.IsNullOrWhiteSpace(tags.Title)) new PlanStore(library).UpdateTitles(path, tags.Title.Trim(), tags.Artist.Trim());
+                db.Refresh(path);
+                if (!string.IsNullOrWhiteSpace(tags.Title)) new PlanStore(db).UpdateTitles(path, tags.Title.Trim(), tags.Artist.Trim());
             });
     }
 
