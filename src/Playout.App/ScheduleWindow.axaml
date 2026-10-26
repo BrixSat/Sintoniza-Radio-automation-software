@@ -625,6 +625,7 @@
                                     <Button x:Name="LineDownButton" Content="▼" ToolTip.Tip="Later in the hour" />
                                     <Button x:Name="LineCopyButton" Content="Copy" ToolTip.Tip="The same line again, after it" />
                                     <Button x:Name="RemoveLineButton" Content="Remove" />
+                                    <Button x:Name="LineTakeButton" Content="🕒 Time / temperature…" IsVisible="False" ToolTip.Tip="What this line of takes says: the time, the temperature or both" />
                                 </WrapPanel>
                             </StackPanel>
                             <!-- The selected line's songs: a tempo and energy range -->
@@ -651,15 +652,7 @@
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <Button x:Name="AddFolderLineButton" Content="A folder…" ToolTip.Tip="A file from a folder (and its subfolders)" />
-                                    <Button x:Name="AddTakeLineButton" Content="A take ▾" ToolTip.Tip="The time and/or the temperature, put together when it goes on air (Station settings → Takes)">
-                                        <Button.Flyout>
-                                            <MenuFlyout>
-                                                <MenuItem x:Name="TakeTimeItem" Header="The time" />
-                                                <MenuItem x:Name="TakeTemperatureItem" Header="The temperature" />
-                                                <MenuItem x:Name="TakeBothItem" Header="The time and the temperature" />
-                                            </MenuFlyout>
-                                        </Button.Flyout>
-                                    </Button>
+                                    <Button x:Name="AddTakeLineButton" Content="🕒 Time / temperature…" ToolTip.Tip="The time and/or the temperature now, put together when it goes on air from the takes (Station settings → Takes)" />
                                 </StackPanel>
                                 <TextBlock x:Name="LibraryNote" Classes="note" />
                             </StackPanel>

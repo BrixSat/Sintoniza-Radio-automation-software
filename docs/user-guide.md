@@ -347,12 +347,16 @@ temperature, read every 10 minutes from Open-Meteo (free, no account).
 | `TMP0` … `TMP45`, `TMPM1` … `TMPM10` | the temperature (M: below zero) |
 
 Any audio format; several recordings of the same (`HRS10a`, `HRS10b`) are taken at random. The time said is the
-nearest minute when the take starts. In an hour template: **Add a line → A take ▾** → *The time*, *The temperature* or
-*The time and the temperature*. A take whose files are missing is skipped; without the temperature, a time-and-
-temperature take says the time only.
+nearest minute when the take starts. In an hour template: **Add a line → 🕒 Time / temperature…** → *The time*, *The
+temperature* or *The time and then the temperature*. Adding a category or folder whose files are takes asks the same
+(or *Any one of its files, at random*). To change what a line says: select it → **🕒 Time / temperature…**.
 
-Don't put the takes folder in a category and use that category in a template: a category line plays **one of its
-files at random** (any temperature, any hour) — Pro warns about such a line on Home and in the template. The takes
+A take whose files are missing is skipped, and the log says which file it needed (e.g. *no HRS10 + MIN15 file in the
+takes folder*). A time-and-temperature take with only one of them says that one: without the `HRS`/`MIN` files, the
+temperature; without the temperature, the time.
+
+A category or folder line of takes kept *at random* plays **one of its files at random** (any temperature, any hour) —
+Pro warns about such a line on Home and in the template. The takes
 folder can also be the time signal's hour folder (Station settings → Time signal): it says the hour with the `HRS`
 file of that hour, never a temperature or minute file.
 

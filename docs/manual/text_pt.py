@@ -358,14 +358,14 @@ CHAPTERS = [
     ]),
     ("h2", "Takes: a hora e a temperatura"),
     ("p", "Pequenas inserções gravadas que o playout monta <b>quando vão para o ar</b>, por isso estão sempre certas. Ponha-as num modelo de hora: "
-          "<b>Juntar uma linha → Um take ▾</b> → a hora, a temperatura, ou as duas."),
+          "<b>Juntar uma linha → 🕒 Hora / temperatura…</b> → a hora, a temperatura, ou as duas. Juntar uma categoria ou pasta de takes pergunta o mesmo."),
     ("fig", "station-takes", "Definições da estação → Takes", [
         ("TakesFolderText", "A <b>pasta</b> com os takes: HRS00–HRS23 (a hora), MIN01–MIN59 (os minutos; ou HRS10_15 para uma hora inteira), TMP0–TMP45 e TMPM1… abaixo de zero."),
         ("TakesFolderNote", "O que encontrou lá."),
         ("LatitudeBox", "Onde fica a estação, para a temperatura (Open-Meteo, gratuito, a cada 10 minutos)…"),
         ("TemperatureButton", "…e <b>Ler a temperatura</b> para experimentar."),
     ]),
-    ("tip", "Várias gravações do mesmo take (HRS10a, HRS10b) são usadas ao acaso. A hora dita é o minuto mais próximo de quando começa. Um take sem os seus ficheiros é saltado."),
+    ("tip", "Várias gravações do mesmo take (HRS10a, HRS10b) são usadas ao acaso. A hora dita é o minuto mais próximo de quando começa. Um take sem os seus ficheiros é saltado; o registo diz que ficheiro faltava."),
     ("h2", "A programação"),
     ("p", "Tudo o que se planeia com antecedência: Eventos, Blocos publicitários, Clientes e campanhas, Modelos de hora e Playlists diárias, escolhidos à esquerda. <b>Guardar</b> (na barra de ferramentas, acesa quando algo mudou, ou Ctrl+S) grava na base de "
           "dados e o programa de emissão recebe-o em poucos segundos. Se outra pessoa gravou entretanto, é-lhe perguntado antes de substituir o que ela fez."),

@@ -305,24 +305,34 @@ public partial class ScheduleWindow : Window
         TemplateNameBox.TextChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.Name = TemplateNameBox.Text?.Trim() ?? "");
         TemplateEnabledBox.IsCheckedChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.Enabled = TemplateEnabledBox.IsChecked == true);
 
-        AddCategoryLineButton.Click += (_, _) =>
+        AddCategoryLineButton.Click += async (_, _) =>
         {
             if (LineCategoryBox.SelectedIndex is not (>= 0 and var i) || i >= _categories.Count) return;
             var c = _categories[i];
-            AddLine(new TemplateLine { Source = LineSource.Category, CategoryId = c.Id, CategoryName = CategoryTree.PathOf(_categories, c.Id), Kind = c.Kind });
+            string name = CategoryTree.PathOf(_categories, c.Id);
+            if (await TakeOr(new TemplateLine { Source = LineSource.Category, CategoryId = c.Id, CategoryName = name, Kind = c.Kind }, name) is { } line)
+                AddLine(line);
         };
         AddFolderLineButton.Click += async (_, _) =>
         {
             if (SelectedTemplate == null || await PickFolder(L.T("Folder for this line")) is not { } folder) return;
-            AddLine(new TemplateLine { Source = LineSource.Folder, Folder = folder });
+            if (await TakeOr(new TemplateLine { Source = LineSource.Folder, Folder = folder }, Path.GetFileName(folder.TrimEnd('/', '\\'))) is { } line)
+                AddLine(line);
         };
-        void AddTake(TakeKind kind)
+        AddTakeLineButton.Click += async (_, _) =>
         {
-            if (SelectedTemplate != null) AddLine(new TemplateLine { Source = LineSource.Take, Folder = Takes.PathFor(kind), Kind = "jingle" });
-        }
-        TakeTimeItem.Click += (_, _) => AddTake(TakeKind.Time);
-        TakeTemperatureItem.Click += (_, _) => AddTake(TakeKind.Temperature);
-        TakeBothItem.Click += (_, _) => AddTake(TakeKind.TimeAndTemperature);
+            if (SelectedTemplate != null && await AskTake(L.T("What should this line say when it goes on air?"), null) is { } kind)
+                AddLine(TakeLine(kind));
+        };
+        // A line of takes picked at random, or a take line: what it says.
+        LineTakeButton.Click += async (_, _) =>
+        {
+            if (SelectedTemplate is not { } t || SelectedLine is not { } l
+                || await AskTake(L.T("What should this line say when it goes on air?"), null) is not { } kind) return;
+            int i = t.Lines.IndexOf(l);
+            Edit<PlaylistTemplate>(TemplateList, _ => t.Lines[i] = TakeLine(kind));
+            ShowLines(i);
+        };
         LineList.SelectionChanged += (_, _) => ShowLineRules();
         foreach (var box in new[] { TempoMinBox, TempoMaxBox })
             box.ItemsSource = new[] { L.T("any") }.Concat(TempoNames).ToList();
@@ -358,6 +368,39 @@ public partial class ScheduleWindow : Window
             int i = t.Lines.IndexOf(l);
             Edit<PlaylistTemplate>(TemplateList, _ => t.Lines.Remove(l));
             ShowLines(Math.Min(i, t.Lines.Count - 1));
+        };
+    }
+
+    static TemplateLine TakeLine(TakeKind kind) => new() { Source = LineSource.Take, Folder = Takes.PathFor(kind), Kind = "jingle" };
+
+    /// <summary>The time, the temperature or both (null: cancelled, or <paramref name="keep"/>: -1 as a kind).</summary>
+    async Task<TakeKind?> AskTake(string message, string? keep)
+    {
+        var choices = new List<string> { L.T("🕒  The time (the hour and minutes)"), L.T("🌡  The temperature"), L.T("🕒 🌡  The time and then the temperature") };
+        if (keep != null) choices.Add(keep);
+        return await Dialogs.Choose(this, L.T("Time / temperature"), message, choices) switch
+        {
+            0 => TakeKind.Time,
+            1 => TakeKind.Temperature,
+            2 => TakeKind.TimeAndTemperature,
+            3 => (TakeKind)(-1),
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// A category or folder line, or — when its files are takes (TMP18, HRS10…) — a take line, asked: what it says.
+    /// Null when cancelled.
+    /// </summary>
+    async Task<TemplateLine?> TakeOr(TemplateLine line, string name)
+    {
+        if (!PlaysTakesAtRandom(line)) return line;
+        return await AskTake(L.F("{0} has takes (TMP18, HRS10, MIN15…). What should this line say when it goes on air?", name),
+                L.T("Any one of its files, at random")) switch
+        {
+            null => null,
+            (TakeKind)(-1) => line,
+            { } kind => TakeLine(kind),
         };
     }
 
@@ -411,7 +454,7 @@ public partial class ScheduleWindow : Window
         return (title, PlaysTakesAtRandom(l) ? detail + "  " + TakesWarning : detail, true);
     });
 
-    static string TakesWarning => L.T("⚠ These are take files: it plays one at random (a temperature or time at random). For the time or temperature now, use A take ▾ → The temperature (or The time).");
+    static string TakesWarning => L.T("⚠ These are takes: it plays one at random (a temperature or time at random). For the time or temperature now: select it → 🕒 Time / temperature…");
 
     readonly Dictionary<string, bool> _takeLines = new();
 
@@ -467,6 +510,7 @@ public partial class ScheduleWindow : Window
     {
         var l = SelectedLine;
         LineRulesPanel.IsVisible = l is { Source: LineSource.Category } && l.TrackKind == TrackKind.Music;
+        LineTakeButton.IsVisible = l != null && (l.Source == LineSource.Take || PlaysTakesAtRandom(l));
         _loading = true;
         TempoMinBox.SelectedIndex = l?.TempoMin ?? 0;
         TempoMaxBox.SelectedIndex = l?.TempoMax ?? 0;

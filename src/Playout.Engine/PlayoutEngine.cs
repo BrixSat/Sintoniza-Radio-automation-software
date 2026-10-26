@@ -1097,7 +1097,10 @@ public sealed class PlayoutEngine : IDisposable
             int at = _playlist.FindIndex(t => t.Id == track.Id);
             if (parts.Count == 0 || at < 0)
             {
-                Skip(track, outgoingFade, L.T("no take files for it"));
+                var source = TakeSource?.Invoke();
+                Skip(track, outgoingFade, Takes.KindOf(track.Path) is { } kind && source is var (folder, temperature)
+                    ? Takes.Missing(folder, kind, DateTime.Now, temperature) ?? L.T("no take files for it")
+                    : L.T("no take files for it"));
                 return;
             }
             _playlist.RemoveAt(at);

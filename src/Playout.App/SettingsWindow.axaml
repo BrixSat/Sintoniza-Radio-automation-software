@@ -256,7 +256,7 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="14" Margin="0,12,16,0">
                     <TextBlock Classes="note"
-                               Text="Takes are short recorded inserts the playout puts together when they go on air, so they are always right: the time and the temperature. Put them in an hour template (Add a line → A take)." />
+                               Text="Takes are short recorded inserts the playout puts together when they go on air, so they are always right: the time and the temperature. Put them in an hour template (Add a line → 🕒 Time / temperature…)." />
                     <StackPanel Spacing="6">
                         <TextBlock Classes="label" Text="Folder with the takes" />
                         <StackPanel Orientation="Horizontal" Spacing="8">

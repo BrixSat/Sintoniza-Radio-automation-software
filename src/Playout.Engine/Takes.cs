@@ -57,10 +57,14 @@ public static class Takes
             {
                 var h = Pick(all, "HRS", hour) ?? (hour == 0 ? Pick(all, "HRS", 24) : null);
                 var m = minute == 0 ? null : Pick(all, "MIN", minute);
-                if (h == null || (minute != 0 && m == null)) return [];
-                files.Add(h);
-                if (m != null) files.Add(m);
-                else if (Pick(all, "MIN", 0) is { } zero) files.Add(zero); // "…o'clock", if there is one
+                if (h != null && (minute == 0 || m != null))
+                {
+                    files.Add(h);
+                    if (m != null) files.Add(m);
+                    else if (Pick(all, "MIN", 0) is { } zero) files.Add(zero); // "…o'clock", if there is one
+                }
+                else if (kind == TakeKind.Time) return [];
+                // The time and temperature without the time's files: the temperature alone.
             }
         }
         if (kind is TakeKind.Temperature or TakeKind.TimeAndTemperature)
@@ -70,6 +74,26 @@ public static class Takes
             files.Add(file);
         }
         return files;
+    }
+
+    /// <summary>Why a take has no files now, in words that say which file to add (null: it has them).</summary>
+    public static string? Missing(string folder, TakeKind kind, DateTime at, int? temperature)
+    {
+        if (string.IsNullOrWhiteSpace(folder)) return L.T("no takes folder (Station settings → Takes)");
+        if (!Directory.Exists(folder)) return L.F("the takes folder {0} isn't there", folder);
+        if (Files(folder, kind, at, temperature).Count > 0) return null;
+        var t = at.AddSeconds(30);
+        string time = t.Minute == 0 ? $"HRS{t.Hour:00}" : $"HRS{t.Hour:00} + MIN{t.Minute:00}";
+        string? degrees = temperature is { } d ? (d < 0 ? $"TMPM{-d:00}" : $"TMP{d:00}") : null;
+        return kind switch
+        {
+            TakeKind.Time => L.F("no {0} file in the takes folder", time),
+            _ when degrees == null => kind == TakeKind.Temperature
+                ? L.T("the temperature isn't known (Station settings → Takes: where the station is; it needs the internet)")
+                : L.F("no {0} file in the takes folder, and the temperature isn't known", time),
+            TakeKind.Temperature => L.F("no {0} file in the takes folder", degrees),
+            _ => L.F("no {0} file nor {1} in the takes folder", time, degrees),
+        };
     }
 
     static readonly Regex TakeName = new(@"^(TMPM?|HRS|MIN)[ _-]?\d", RegexOptions.IgnoreCase);

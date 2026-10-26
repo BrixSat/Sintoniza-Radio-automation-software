@@ -57,6 +57,25 @@ static class Dialogs
         return await window.ShowDialog<bool?>(owner) == true;
     }
 
+    /// <summary>One of some choices, a button each (one under the other); null when cancelled.</summary>
+    public static Task<int?> Choose(Window owner, string title, string message, IReadOnlyList<string> choices)
+    {
+        var panel = new StackPanel { Spacing = 6, Children = { new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 4) } } };
+        var cancel = new Button { Content = L.T("Cancel"), IsCancel = true, MinWidth = 90, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var window = Create(title, panel);
+        for (int i = 0; i < choices.Count; i++)
+        {
+            int choice = i;
+            var button = new Button { Content = choices[i], HorizontalAlignment = HorizontalAlignment.Stretch, IsDefault = i == 0 };
+            if (i == 0) button.Classes.Add("accent");
+            button.Click += (_, _) => window.Close(choice);
+            panel.Children.Add(button);
+        }
+        cancel.Click += (_, _) => window.Close(null);
+        panel.Children.Add(new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 8, 0, 0), Children = { cancel } });
+        return window.ShowDialog<int?>(owner);
+    }
+
     static Window Create(string title, Control content) => new()
     {
         Title = title,

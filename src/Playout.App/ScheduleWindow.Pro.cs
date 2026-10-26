@@ -240,7 +240,7 @@ public partial class ScheduleWindow
         foreach (var t in data.Templates)
             foreach (var (line, number) in t.Lines.Select((l, i) => (l, i + 1)))
                 if (PlaysTakesAtRandom(line))
-                    warnings.Add(L.F("⚠ Template {0}, line {1}: it plays take files at random (a temperature or time at random) — for the time or temperature now use A take ▾", t.Name, number));
+                    warnings.Add(L.F("⚠ Template {0}, line {1}: it plays takes at random (a temperature or time at random) — for the time or temperature now select it → 🕒 Time / temperature…", t.Name, number));
         if (Changed) warnings.Add(L.T("● The schedule has unsaved changes"));
         HomeWarnings.Text = warnings.Count > 0 ? string.Join("\n", warnings.Take(8)) : L.T("✓ Nothing: all in order.");
 

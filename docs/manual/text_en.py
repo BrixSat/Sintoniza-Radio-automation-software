@@ -353,14 +353,14 @@ CHAPTERS = [
     ]),
     ("h2", "Takes: the time and the temperature"),
     ("p", "Short recorded inserts the playout puts together <b>when they go on air</b>, so they are always right. Put them in an hour template: "
-          "<b>Add a line → A take ▾</b> → the time, the temperature, or both."),
+          "<b>Add a line → 🕒 Time / temperature…</b> → the time, the temperature, or both. Adding a category or folder of takes asks the same."),
     ("fig", "station-takes", "Station settings → Takes", [
         ("TakesFolderText", "The <b>folder</b> with the takes: HRS00–HRS23 (the hour), MIN01–MIN59 (the minutes; or HRS10_15 for a whole time), TMP0–TMP45 and TMPM1… below zero."),
         ("TakesFolderNote", "What it found there."),
         ("LatitudeBox", "Where the station is, for the temperature (Open-Meteo, free, every 10 minutes)…"),
         ("TemperatureButton", "…and <b>Read the temperature</b> to try it."),
     ]),
-    ("tip", "Several recordings of the same take (HRS10a, HRS10b) are used at random. The time said is the nearest minute when it starts. A take whose files are missing is skipped."),
+    ("tip", "Several recordings of the same take (HRS10a, HRS10b) are used at random. The time said is the nearest minute when it starts. A take whose files are missing is skipped; the log says which file it needed."),
     ("h2", "The schedule"),
     ("p", "Everything planned ahead: Events, Ad breaks, Clients and campaigns, Hour templates and Daily playlists, chosen on the left. <b>Save</b> (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database and the on-air program "
           "takes it within a few seconds. If someone else saved meanwhile, you are asked before theirs is replaced."),
