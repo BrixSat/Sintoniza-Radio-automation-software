@@ -258,8 +258,8 @@ public partial class CategoriesWindow : PageWindow
         int count;
         try
         {
+            count = await Task.Run(() => db.RemoveFolderCategory(path, row.Category.Id));
             _folders.Set(path, null);
-            count = await Task.Run(() => db.SetFolderCategory(path, null));
             _folders.Saved();
         }
         catch (Exception ex)
@@ -351,12 +351,12 @@ public partial class CategoriesWindow : PageWindow
     async Task DeleteCategory()
     {
         if (Selected is not { } row) return;
-        // Only its own songs lose it: the categories under it move up with theirs.
+        // Its songs leave it (back to a folder's category, if any): the categories under it move up with theirs.
         string songs = row.Own switch
         {
             0 => L.T("No songs are in it."),
-            1 => L.T("The 1 song in it will have no category."),
-            _ => L.F("The {0:N0} songs in it will have no category.", row.Own),
+            1 => L.T("The 1 song in it leaves it: it goes back to the category of a folder above (Music), if there is one."),
+            _ => L.F("The {0:N0} songs in it leave it: they go back to the category of a folder above (Music), if there is one.", row.Own),
         };
         if (_rows.Any(r => r.Category.ParentId == row.Category.Id))
             songs += " " + L.T("The categories under it move up to where it is now.");

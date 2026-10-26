@@ -438,12 +438,15 @@ public sealed partial class LibraryDb
     public void DeleteCategory(long id)
     {
         if (Categories().FirstOrDefault(x => x.Id == id) is { IsFixed: true } f) throw new InvalidOperationException($"{f.Name} is one of the station's eight categories: it can't be deleted.");
-        using var c = Connect();
-        using var tx = c.BeginTransaction();
-        long? parent = c.ExecuteScalar<long?>("SELECT parent_id FROM categories WHERE id = @id", new { id }, tx);
-        c.Execute("UPDATE categories SET parent_id = @parent WHERE parent_id = @id", new { id, parent }, tx);
-        c.Execute("DELETE FROM categories WHERE id = @id", new { id }, tx);
-        tx.Commit();
+        using (var c = Connect())
+        {
+            using var tx = c.BeginTransaction();
+            long? parent = c.ExecuteScalar<long?>("SELECT parent_id FROM categories WHERE id = @id", new { id }, tx);
+            c.Execute("UPDATE categories SET parent_id = @parent WHERE parent_id = @id", new { id, parent }, tx);
+            c.Execute("DELETE FROM categories WHERE id = @id", new { id }, tx);
+            tx.Commit();
+        }
+        Rehome(); // its songs: the category of their folder, if another has one
     }
 
     // ───────────────────────── Editing ─────────────────────────
@@ -463,6 +466,52 @@ public sealed partial class LibraryDb
         string under = Under(folder, "f", args);
         using var c = Connect();
         return c.Execute($"UPDATE tracks SET category_id = NULL WHERE {under}", args);
+    }
+
+    /// <summary>
+    /// Takes a folder away from a category: its rule goes, and the songs under it leave that category, whether it is
+    /// their own or one they are also in (other categories they have are kept). Those left with none get the category
+    /// of a folder above it (Music for Music/80s), or one they are also in. Returns how many songs left the category.
+    /// </summary>
+    public int RemoveFolderCategory(string folder, long categoryId)
+    {
+        var args = new DynamicParameters();
+        args.Add("category", categoryId);
+        args.Add("now", Now());
+        args.Add("folder", folder);
+        string under = Under(folder, "f", args);
+        int changed;
+        using (var c = Connect())
+        {
+            using var tx = c.BeginTransaction();
+            c.Execute("DELETE FROM category_folders WHERE path = @folder AND category_id = @category", args, tx);
+            changed = c.Execute($"UPDATE tracks SET category_id = NULL, updated_at = @now WHERE {under} AND category_id = @category", args, tx);
+            changed += c.Execute($"DELETE FROM track_categories WHERE category_id = @category AND track_id IN (SELECT id FROM tracks WHERE {under})", args, tx);
+            tx.Commit();
+        }
+        Rehome();
+        return changed;
+    }
+
+    /// <summary>
+    /// Songs left without a category of their own: the folders' categories (the deepest folders first, as after a
+    /// scan), then one they are also in.
+    /// </summary>
+    void Rehome()
+    {
+        foreach (var (f, id) in FolderCategories().OrderByDescending(r => r.Key.Length))
+            SetFolderCategory(f, id, onlyWithout: true);
+        using var c = Connect();
+        using var tx = c.BeginTransaction();
+        c.Execute("""
+            UPDATE tracks SET category_id = (SELECT MIN(x.category_id) FROM track_categories x WHERE x.track_id = tracks.id)
+            WHERE category_id IS NULL AND EXISTS (SELECT 1 FROM track_categories x WHERE x.track_id = tracks.id)
+            """, transaction: tx);
+        c.Execute("""
+            DELETE FROM track_categories
+            WHERE EXISTS (SELECT 1 FROM tracks t WHERE t.id = track_categories.track_id AND t.category_id = track_categories.category_id)
+            """, transaction: tx);
+        tx.Commit();
     }
 
     /// <summary>

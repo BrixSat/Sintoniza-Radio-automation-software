@@ -1950,5 +1950,7 @@
  "no {0} file in the takes folder": "não há ficheiro {0} na pasta de takes",
  "the temperature isn't known (Station settings → Takes: where the station is; it needs the internet)": "a temperatura não é conhecida (Definições da estação → Takes: onde fica a estação; precisa de internet)",
  "no {0} file in the takes folder, and the temperature isn't known": "não há ficheiro {0} na pasta de takes, e a temperatura não é conhecida",
- "no {0} file nor {1} in the takes folder": "não há ficheiro {0} nem {1} na pasta de takes"
+ "no {0} file nor {1} in the takes folder": "não há ficheiro {0} nem {1} na pasta de takes",
+ "The 1 song in it leaves it: it goes back to the category of a folder above (Music), if there is one.": "A 1 música nela sai dela: volta à categoria de uma pasta acima (Music), se houver.",
+ "The {0:N0} songs in it leave it: they go back to the category of a folder above (Music), if there is one.": "As {0:N0} músicas nela saem dela: voltam à categoria de uma pasta acima (Music), se houver."
 }

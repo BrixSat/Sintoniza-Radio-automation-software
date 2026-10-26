@@ -251,7 +251,9 @@ tempo and energy, tags, listen).
   **Redação** (news), **Spots** (adverts) and **Takes** (voice inserts: the time, the temperature… as if a host were
   there). Make your own under them (*New under it*: Music › 80s, Spots › Clients…), each with its colour and folders.
   **⟳ Scan its folders now** (with a category selected) looks for songs added to or taken out of its folders straight
-  away; the on-air program also watches those folders and scans them by itself.
+  away; the on-air program also watches those folders and scans them by itself. **Removing** a folder from a
+  category, or deleting a category, takes its songs out of it (also those that were only *also in* it); they go back
+  to the category of a folder above (Music for Music/80s), if there is one. Their other categories stay.
 - **Cartwalls** — the cartwalls every studio plays: New, Copy, Rename, Delete; click a cart to give it a file
   (or drop one on it), a colour and an icon, and listen to it.
 - **Import music** — Sintoniza Import, inside Pro.

@@ -2024,8 +2024,15 @@ public partial class MainWindow : Window
         string name = Path.GetFileName(folder.TrimEnd('/', '\\'));
         try
         {
-            int count = await Task.Run(() => db.SetFolderCategory(folder, id));
-            await Task.Run(() => db.SetFolderRule(folder, id));
+            int count = await Task.Run(() =>
+            {
+                // Out of the category it had (its songs too, also those only also in it), then into the new one.
+                int n = db.FolderCategories().TryGetValue(folder, out long before) && before != id ? db.RemoveFolderCategory(folder, before)
+                    : id == null ? db.SetFolderCategory(folder, null) : 0;
+                if (id != null) n = db.SetFolderCategory(folder, id);
+                db.SetFolderRule(folder, id);
+                return n;
+            });
             string category = id is { } c ? Playout.Library.CategoryTree.PathOf(db.Categories(), c) : "";
             LastLog.Text = count == 0
                 ? L.F("No songs from {0} are in the library yet: add the folder in Settings → Library and scan. New songs found there will go in the category.", name)
