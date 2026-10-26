@@ -148,21 +148,8 @@ public partial class MainWindow : Window
 
         _fastTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => Tick());
         _fastTimer.Start();
-        // How quickly the window answers, from outside it: a stall over a second goes in the log (to find why).
-        _responseProbe = new Timer(_ =>
-        {
-            long asked = System.Diagnostics.Stopwatch.GetTimestamp();
-            Dispatcher.UIThread.Post(() =>
-            {
-                double ms = System.Diagnostics.Stopwatch.GetElapsedTime(asked).TotalMilliseconds;
-                long now = Environment.TickCount64;
-                if (ms >= 1000 && now - _lastStallLogged > 30_000)
-                {
-                    _lastStallLogged = now;
-                    AppLog.Write($"The window didn't respond for {ms / 1000:0.0} s");
-                }
-            }, DispatcherPriority.Input);
-        }, null, 5000, 1000);
+        // The screen keeps itself up to date: if it stops (the window's event loop no longer wakes), it is woken.
+        _screenWatch = new Timer(_ => WatchScreen(), null, 10_000, 1000);
 
         // Look for a new version shortly after start (not while everything is still loading), then every few hours.
         _updateTimer = new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, async (_, _) =>
@@ -340,7 +327,7 @@ public partial class MainWindow : Window
         {
             // Nothing keeps running for a closed window.
             _fastTimer.Stop();
-            _responseProbe?.Dispose();
+            _screenWatch?.Dispose();
             _saveTimer.Stop();
             _updateTimer?.Stop();
             _health?.Dispose();
@@ -531,6 +518,7 @@ public partial class MainWindow : Window
 
     void Tick()
     {
+        Volatile.Write(ref _lastTick, Environment.TickCount64);
         var now = DateTime.Now;
         Clock.Text = now.ToString("HH:mm:ss");
 
@@ -677,8 +665,6 @@ public partial class MainWindow : Window
     }
 
     readonly Dictionary<string, long> _slowParts = new();
-    Timer? _responseProbe;
-    long _lastStallLogged;
 
     /// <summary>A part of the screen's update failed: in the log with what went wrong (at most every 10 s for each part).</summary>
     void TickFailed(string part, Exception ex)
