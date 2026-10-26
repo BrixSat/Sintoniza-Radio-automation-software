@@ -44,7 +44,8 @@ build() { # $1 = win|linux
   echo "▶ Publishing $rid"
   # Sintoniza Emi, Sintoniza Pro, Sintoniza Rec and radio-import (library scanner) share one folder and one .NET runtime.
   for project in "$PROJECT" "$ROOT/src/Playout.Schedule" "$ROOT/src/Playout.Rec" "$ROOT/src/Playout.Import"; do
-    dotnet publish "$project" -c Release -r "$rid" --self-contained \
+    # ReadyToRun: compiled ahead, so the programs open quickly (Windows most) instead of compiling as they start.
+    dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
       -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
   done
 
@@ -259,7 +260,70 @@ SPEC
 # with --import). On a Mac they are signed (ad hoc, or with
 # the Developer ID in MAC_SIGN_IDENTITY) and put in a .dmg; on Linux they go in a .zip, signed ad hoc only if rcodesign
 # is installed: an Apple Silicon Mac won't start an unsigned app (sign it there with codesign, see the README).
+# The apps' signature, from the inside out (each file in Contents/MacOS, then the bundle), as Apple wants: with a
+# Developer ID (MAC_SIGN_IDENTITY="Developer ID Application: Name (TEAMID)") and the hardened runtime, for
+# notarization; without one, ad hoc (macOS then asks once before opening them, see the README).
+sign_bundle() { # $1 = .app
+  local identity=${MAC_SIGN_IDENTITY:--} f
+  local args=(--force --sign "$identity")
+  [[ $identity != - ]] && args+=(--options runtime --timestamp --entitlements "$ROOT/packaging/macos/entitlements.plist")
+  while IFS= read -r -d '' f; do
+    codesign "${args[@]}" "$f" 2>/dev/null || codesign "${args[@]}" "$f"
+  done < <(find "$1/Contents/MacOS" -type f -print0)
+  codesign "${args[@]}" "$1"
+  codesign --verify --strict "$1" || { echo "⚠ $1: the signature doesn't verify" >&2; return 1; }
+}
+
+# Notarization (Developer ID only): Apple checks the disk image and returns a ticket, stapled to it, so the apps open
+# without a warning on any Mac, even offline. MAC_NOTARY_PROFILE names the credentials kept in the keychain with
+#   xcrun notarytool store-credentials <profile> --apple-id <id> --team-id <TEAMID> --password <app-specific password>
+notarize() { # $1 = .dmg
+  local identity=${MAC_SIGN_IDENTITY:--}
+  [[ $identity == - ]] && return 0
+  codesign --force --timestamp --sign "$identity" "$1"
+  if [[ -z ${MAC_NOTARY_PROFILE:-} ]]; then
+    echo "⚠ Signed but not notarized (MAC_NOTARY_PROFILE isn't set): macOS will still warn the first time." >&2
+    return 0
+  fi
+  echo "▶ Notarizing $(basename "$1") (a few minutes)"
+  xcrun notarytool submit "$1" --keychain-profile "$MAC_NOTARY_PROFILE" --wait
+  xcrun stapler staple "$1"
+  spctl --assess --type open --context context:primary-signature -v "$1" || true
+}
+
+# A launcher app's program: compiled from launcher.c when a C compiler is there (a Mac), else the script.
+launcher() { # $1 = where, $2 = program in Sintoniza Emi.app, $3 = its argument, $4 = title, $5 = the script
+  if command -v clang >/dev/null && [[ "$(uname -s)" == Darwin ]]; then
+    clang -O2 -arch "$( [[ $rid == osx-arm64 ]] && echo arm64 || echo x86_64 )" -mmacosx-version-min=12.0 \
+      -DPROGRAM="\"$2\"" -DARGUMENT="\"$3\"" -DTITLE="\"$4\"" "$ROOT/packaging/macos/launcher.c" -o "$1"
+  else
+    cp "$5" "$1"
+  fi
+}
+
+# The Developer ID to sign with: MAC_SIGN_IDENTITY, else the only "Developer ID Application" certificate in the
+# keychain (none: ad hoc). The notary profile: MAC_NOTARY_PROFILE, else "sintoniza" if it was stored (see the README).
+mac_signing() {
+  if [[ -z ${MAC_SIGN_IDENTITY:-} ]] && command -v security >/dev/null; then
+    local ids
+    ids=$(security find-identity -v -p codesigning | grep -o '"Developer ID Application: [^"]*"' | tr -d '"' | sort -u)
+    if [[ $(grep -c . <<<"$ids") == 1 ]]; then
+      export MAC_SIGN_IDENTITY=$ids
+    elif [[ -n $ids ]]; then
+      echo "⚠ Several Developer ID certificates: choose one with MAC_SIGN_IDENTITY=\"…\"" >&2
+      echo "$ids" | sed 's/^/    /' >&2
+      exit 1
+    fi
+  fi
+  if [[ -n ${MAC_SIGN_IDENTITY:-} && -z ${MAC_NOTARY_PROFILE:-} ]] \
+     && xcrun notarytool history --keychain-profile sintoniza >/dev/null 2>&1; then
+    export MAC_NOTARY_PROFILE=sintoniza
+  fi
+  echo "▶ macOS signing: ${MAC_SIGN_IDENTITY:-ad hoc (no Developer ID certificate found)}; notarized: ${MAC_NOTARY_PROFILE:-no}"
+}
+
 mac() {
+  mac_signing
   local native="$ROOT/native/osx" rid out pkg app sched imp stage file appname="Sintoniza Emi" rec
   if [[ -z "$(ls -A "$native" 2>/dev/null)" || ! -e "$native/libbassflac.dylib" ]]; then
     "$ROOT/scripts/fetch-bass.sh" osx
@@ -278,7 +342,7 @@ mac() {
 
     echo "▶ Publishing $rid"
     for project in "$PROJECT" "$ROOT/src/Playout.Schedule" "$ROOT/src/Playout.Rec" "$ROOT/src/Playout.Import"; do
-      dotnet publish "$project" -c Release -r "$rid" --self-contained \
+      dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
         -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$app/Contents/MacOS"
     done
     cp "$ROOT/README.md" "$out/"
@@ -289,28 +353,20 @@ mac() {
     cp "$ROOT/packaging/macos/icon.icns" "$app/Contents/Resources/"
     sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Schedule-Info.plist" > "$sched/Contents/Info.plist"
     cp "$ROOT/packaging/macos/schedule.icns" "$sched/Contents/Resources/"
-    cp "$ROOT/packaging/macos/sintoniza-schedule" "$sched/Contents/MacOS/"
+    launcher "$sched/Contents/MacOS/sintoniza-schedule" SintonizaPro "" "Sintoniza Pro" "$ROOT/packaging/macos/sintoniza-schedule"
     sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Import-Info.plist" > "$imp/Contents/Info.plist"
     cp "$ROOT/packaging/macos/import.icns" "$imp/Contents/Resources/"
-    cp "$ROOT/packaging/macos/sintoniza-import" "$imp/Contents/MacOS/"
+    launcher "$imp/Contents/MacOS/sintoniza-import" "$EXE" --import "Sintoniza Import" "$ROOT/packaging/macos/sintoniza-import"
     sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Rec-Info.plist" > "$rec/Contents/Info.plist"
     cp "$ROOT/packaging/macos/rec.icns" "$rec/Contents/Resources/"
-    cp "$ROOT/packaging/macos/sintoniza-rec" "$rec/Contents/MacOS/"
+    launcher "$rec/Contents/MacOS/sintoniza-rec" SintonizaRec "" "Sintoniza Rec" "$ROOT/packaging/macos/sintoniza-rec"
     chmod +x "$app/Contents/MacOS/$EXE" "$app/Contents/MacOS/SintonizaPro" "$app/Contents/MacOS/SintonizaRec" \
       "$app/Contents/MacOS/radio-import" "$sched/Contents/MacOS/sintoniza-schedule" "$imp/Contents/MacOS/sintoniza-import" \
       "$rec/Contents/MacOS/sintoniza-rec"
 
     echo "▶ Signing $pkg"
     if command -v codesign >/dev/null; then
-      local identity=${MAC_SIGN_IDENTITY:--}
-      for bundle in "$app" "$sched" "$rec" "$imp"; do
-        if [[ $identity == - ]]; then
-          codesign --force --deep --sign - "$bundle"
-        else
-          codesign --force --deep --options runtime --timestamp --entitlements "$ROOT/packaging/macos/entitlements.plist" \
-            --sign "$identity" "$bundle"
-        fi
-      done
+      for bundle in "$app" "$sched" "$rec" "$imp"; do sign_bundle "$bundle"; done
     elif command -v rcodesign >/dev/null; then
       rcodesign sign "$app" >/dev/null && rcodesign sign "$sched" >/dev/null && rcodesign sign "$rec" >/dev/null && rcodesign sign "$imp" >/dev/null
     elif [[ $rid == osx-arm64 ]]; then
@@ -329,6 +385,7 @@ mac() {
       rm -f "$file"
       hdiutil create -quiet -volname "Sintoniza $version" -srcfolder "$stage" -fs HFS+ -format UDZO "$file"
       rm -rf "$stage"
+      notarize "$file"
     else
       file="$DIST/$pkg.zip"
       rm -f "$file"

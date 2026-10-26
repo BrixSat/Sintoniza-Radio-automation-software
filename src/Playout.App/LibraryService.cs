@@ -70,7 +70,7 @@ sealed class LibraryService
         {
             if (version != _openVersion) return;
             bool first = Error == null && _lastOpenError != ex.Message;
-            Error = L.F("Library unavailable ({0}): {1}", copy.Describe(), ex.Message);
+            Error = L.F("Library unavailable ({0}): {1}", copy.Describe(), DbErrors.Explain(ex, copy));
             _lastOpenError = ex.Message;
             _nextOpen = DateTime.UtcNow + RetryOpen;
             if (first) Message?.Invoke(L.F("{0}. Trying again every minute.", Error.TrimEnd('.')));

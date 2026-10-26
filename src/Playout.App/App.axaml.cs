@@ -64,8 +64,9 @@ public partial class App : Application
         try { db = LibraryDb.Open(settings.Library); }
         catch (Exception ex)
         {
-            AppLog.Write($"{program}: database unavailable: {ex.Message}");
-            return offline(ex.Message);
+            string error = DbErrors.Explain(ex, settings.Library);
+            AppLog.Write($"{program}: database unavailable: {error}");
+            return offline(error);
         }
         string station = "";
         try { station = new StationStore(db).Load().Settings?.StationName ?? ""; } catch { /* no name */ }
@@ -106,7 +107,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            return ScheduleOffline(settings, ex.Message);
+            return ScheduleOffline(settings, DbErrors.Explain(ex, settings.Library));
         }
     }
 

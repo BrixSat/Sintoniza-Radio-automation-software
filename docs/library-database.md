@@ -50,6 +50,12 @@ CREATE USER 'sintoniza'@'%' IDENTIFIED BY '…';
 GRANT ALL PRIVILEGES ON sintoniza.* TO 'sintoniza'@'%';
 ```
 
+For other computers to reach it, MariaDB / MySQL must listen on the network, not only on 127.0.0.1 (the default on
+Debian and Ubuntu, and put back by some package updates): `bind-address = 0.0.0.0` in
+`/etc/mysql/mariadb.conf.d/50-server.cnf`, then `sudo systemctl restart mariadb`; and port 3306 open in the
+server's firewall. A user made for `'localhost'` only works on the server itself (`'%'` is any computer). When it can't
+connect, Settings → Library → Test says which of these it is.
+
 ## Conventions
 
 - **Times** are UTC text in the form `2026-10-14T18:20:11Z`.

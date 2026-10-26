@@ -65,7 +65,12 @@ public partial class MainWindow : Window
             _engine.OffAir += (track, started, ended) => _asRun.Ended(track, started, ended);
             var engine = _engine;
             _library.AttachCues(cues, paths => engine.ReloadCues(paths));
-            _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() => ApplySnapshot(snap));
+            _engine.PlaylistChanged += snap => Dispatcher.UIThread.Post(() =>
+            {
+                long start = System.Diagnostics.Stopwatch.GetTimestamp();
+                ApplySnapshot(snap);
+                Slow("playlist", start);
+            });
         }
         catch (Exception ex)
         {
@@ -143,6 +148,21 @@ public partial class MainWindow : Window
 
         _fastTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, (_, _) => Tick());
         _fastTimer.Start();
+        // How quickly the window answers, from outside it: a stall over a second goes in the log (to find why).
+        _responseProbe = new Timer(_ =>
+        {
+            long asked = System.Diagnostics.Stopwatch.GetTimestamp();
+            Dispatcher.UIThread.Post(() =>
+            {
+                double ms = System.Diagnostics.Stopwatch.GetElapsedTime(asked).TotalMilliseconds;
+                long now = Environment.TickCount64;
+                if (ms >= 1000 && now - _lastStallLogged > 30_000)
+                {
+                    _lastStallLogged = now;
+                    AppLog.Write($"The window didn't respond for {ms / 1000:0.0} s");
+                }
+            }, DispatcherPriority.Input);
+        }, null, 5000, 1000);
 
         // Look for a new version shortly after start (not while everything is still loading), then every few hours.
         _updateTimer = new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, async (_, _) =>
@@ -320,6 +340,7 @@ public partial class MainWindow : Window
         {
             // Nothing keeps running for a closed window.
             _fastTimer.Stop();
+            _responseProbe?.Dispose();
             _saveTimer.Stop();
             _updateTimer?.Stop();
             _health?.Dispose();
@@ -635,9 +656,29 @@ public partial class MainWindow : Window
 
     void Part(string name, Action action)
     {
+        long start = System.Diagnostics.Stopwatch.GetTimestamp();
         try { action(); }
         catch (Exception ex) { TickFailed(name, ex); }
+        Slow(name, start);
     }
+
+    /// <summary>
+    /// A part of the screen's work that took long (the window stops responding meanwhile): in the log, with how long,
+    /// at most every 30 s for each part — to find what makes it slow on one computer.
+    /// </summary>
+    void Slow(string part, long start)
+    {
+        double ms = System.Diagnostics.Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+        if (ms < 250) return;
+        long now = Environment.TickCount64;
+        if (_slowParts.TryGetValue(part, out long last) && now - last < 30_000) return;
+        _slowParts[part] = now;
+        AppLog.Write($"Screen update slow ({part}): {ms:0} ms");
+    }
+
+    readonly Dictionary<string, long> _slowParts = new();
+    Timer? _responseProbe;
+    long _lastStallLogged;
 
     /// <summary>A part of the screen's update failed: in the log with what went wrong (at most every 10 s for each part).</summary>
     void TickFailed(string part, Exception ex)
@@ -1846,6 +1887,13 @@ public partial class MainWindow : Window
     }
 
     void SaveSettings()
+    {
+        long started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { SaveSettingsNow(); }
+        finally { Slow("saving settings", started); }
+    }
+
+    void SaveSettingsNow()
     {
         if (_engine != null && _restored && _snapshot is { } snap)
         {

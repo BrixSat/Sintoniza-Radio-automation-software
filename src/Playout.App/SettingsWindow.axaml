@@ -416,7 +416,7 @@
 
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Button x:Name="TestLibraryButton" Content="Test" ToolTip.Tip="Open the library with these settings (creates its tables if new)" />
-                        <TextBlock x:Name="LibraryTestText" Classes="note" VerticalAlignment="Center" MaxWidth="520" />
+                        <TextBlock x:Name="LibraryTestText" Classes="note" VerticalAlignment="Center" MaxWidth="520" TextWrapping="Wrap" />
                     </StackPanel>
                     </StackPanel>
 

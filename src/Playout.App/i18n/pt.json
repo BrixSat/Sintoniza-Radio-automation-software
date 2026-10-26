@@ -1921,5 +1921,13 @@
  "The MIDI input can't be opened": "A entrada MIDI não pode ser aberta",
  "The MIDI output can't be opened": "A saída MIDI não pode ser aberta",
  "Backtiming {0}: {1} taken out, no longer needed to fill the gap": "Acerto ao horário {0}: {1} retirado, já não é preciso para preencher o intervalo",
- "It would start after {0} has to start ({1:HH:mm:ss}): it won't play here (in AUTO a song is moved after it)": "Começaria depois da hora a que {0} tem de começar ({1:HH:mm:ss}): não toca aqui (em AUTO uma música passa para depois)"
+ "It would start after {0} has to start ({1:HH:mm:ss}): it won't play here (in AUTO a song is moved after it)": "Começaria depois da hora a que {0} tem de começar ({1:HH:mm:ss}): não toca aqui (em AUTO uma música passa para depois)",
+ "There is no server called {0}: check its name or address.": "Não há nenhum servidor chamado {0}: verifique o nome ou o endereço.",
+ "The server {0} doesn't answer on port {1}. On the database server: MariaDB / MySQL listens only on 127.0.0.1 by default — set bind-address = 0.0.0.0 (Debian, Ubuntu: /etc/mysql/mariadb.conf.d/50-server.cnf) and restart it; and let port {1} through its firewall.": "O servidor {0} não responde na porta {1}. No servidor da base de dados: o MariaDB / MySQL só escuta em 127.0.0.1 por omissão — ponha bind-address = 0.0.0.0 (Debian, Ubuntu: /etc/mysql/mariadb.conf.d/50-server.cnf) e reinicie-o; e deixe passar a porta {1} na firewall.",
+ "Nothing answers on port {0} of this computer: is MariaDB / MySQL running?": "Nada responde na porta {0} deste computador: o MariaDB / MySQL está a correr?",
+ "The server refused user {0} from this computer. A user made for 'localhost' only works on the server itself: on the server, create it for this computer or for any ('%'), e.g. CREATE USER '{0}'@'%' IDENTIFIED BY '…'; GRANT ALL PRIVILEGES ON {1}.* TO '{0}'@'%';": "O servidor recusou o utilizador {0} a partir deste computador. Um utilizador criado para 'localhost' só funciona no próprio servidor: no servidor, crie-o para este computador ou para qualquer um ('%'), p. ex. CREATE USER '{0}'@'%' IDENTIFIED BY '…'; GRANT ALL PRIVILEGES ON {1}.* TO '{0}'@'%';",
+ "The server refused user {0}: check the user and password.": "O servidor recusou o utilizador {0}: verifique o utilizador e a palavra-passe.",
+ "User {0} can't use the database {1}: it doesn't exist, or the user has no rights on it (GRANT ALL PRIVILEGES ON {1}.* TO …).": "O utilizador {0} não pode usar a base de dados {1}: não existe, ou o utilizador não tem direitos nela (GRANT ALL PRIVILEGES ON {1}.* TO …).",
+ "There is no database {0} on the server: create it (CREATE DATABASE {0} CHARACTER SET utf8mb4;).": "Não há nenhuma base de dados {0} no servidor: crie-a (CREATE DATABASE {0} CHARACTER SET utf8mb4;).",
+ "The server {0} can't be reached: check its name or address.": "Não é possível chegar ao servidor {0}: verifique o nome ou o endereço."
 }

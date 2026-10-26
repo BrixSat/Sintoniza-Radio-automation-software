@@ -3,7 +3,8 @@
 # to that GitHub release.
 # Usage: ./release-mac.sh <version>   e.g. ./release-mac.sh 1.2.0
 # Needs: macOS with the .NET 10 SDK, gh (brew install gh; gh auth login), the release already on GitHub.
-# A Developer ID in MAC_SIGN_IDENTITY signs for distribution; without it they are signed ad hoc (see the README).
+# Signed with the Developer ID in the keychain and notarized with the "sintoniza" profile when they are there (or
+# MAC_SIGN_IDENTITY / MAC_NOTARY_PROFILE); else ad hoc (see the README, macOS).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"

@@ -464,7 +464,7 @@ public partial class SettingsWindow : PageWindow
         }
         catch (Exception ex)
         {
-            LibraryTestText.Text = L.F("Failed: {0}", ex.Message);
+            LibraryTestText.Text = L.F("Failed: {0}", DbErrors.Explain(ex, library));
         }
         finally
         {

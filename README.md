@@ -403,12 +403,29 @@ microphone permission text.
   [`rcodesign`](https://github.com/indygreg/apple-platform-rs) is installed; otherwise sign them once on the Mac after
   copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Emi.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Rec.app" "/Applications/Sintoniza Import.app"`.
 
-Without an Apple Developer ID the apps are signed *ad hoc*: the first time, macOS says it can't check the developer;
-right-click the app → **Open** (or System Settings → Privacy & Security → **Open Anyway**), once. With a Developer ID
-(Apple Developer Program), `MAC_SIGN_IDENTITY="Developer ID Application: …" ./build.sh mac 1.0.0` signs them for
-distribution, with the hardened runtime; then notarize the `.dmg` with
-`xcrun notarytool submit dist/Sintoniza-1.0.0-macos-arm64.dmg --keychain-profile <profile> --wait` and
-`xcrun stapler staple` it, and they open without the warning. `scripts/make-icns.py` remakes the icons.
+**Signed so macOS opens them without a warning (no "Move to Trash").** macOS only trusts apps downloaded from the
+internet when they are signed with an Apple **Developer ID** and **notarized** by Apple; nothing else avoids the
+warning. Once:
+
+1. Join the [Apple Developer Program](https://developer.apple.com/programs/) (paid, yearly).
+2. In Xcode → Settings → Accounts → Manage Certificates (or on developer.apple.com), create a **Developer ID
+   Application** certificate; it goes in the Mac's keychain. `security find-identity -v -p codesigning` shows its
+   full name, e.g. `Developer ID Application: César Araújo (AB12CD34EF)`.
+3. Make an app-specific password at [account.apple.com](https://account.apple.com) and keep it for notarization:
+   `xcrun notarytool store-credentials sintoniza --apple-id <your Apple ID> --team-id AB12CD34EF --password <that password>`
+
+Then each release, on the Mac, as before: `./release-mac.sh 1.2.2` (or `./build.sh mac 1.2.2`). It finds the
+Developer ID certificate in the keychain and the `sintoniza` notary profile by itself and says so
+(`▶ macOS signing: Developer ID Application: …; notarized: sintoniza`); with several certificates, or another
+profile name, set `MAC_SIGN_IDENTITY="Developer ID Application: …"` and `MAC_NOTARY_PROFILE=…`.
+
+Every file of the apps is signed with the hardened runtime, the disk images are signed, sent to Apple, and the ticket
+is stapled to them (a few minutes each): they open straight away, on any Mac.
+
+**Without a Developer ID** the apps are signed *ad hoc*, and the first time macOS says it can't check them — on recent
+macOS with **Done** and **Move to Trash**. Press **Done** (not Move to Trash), then System Settings → Privacy &
+Security → **Open Anyway** (once for each app); or, in Terminal, once after copying them to Applications:
+`xattr -dr com.apple.quarantine /Applications/Sintoniza*.app`. `scripts/make-icns.py` remakes the icons.
 
 To publish by hand instead, build a self-contained release, which needs no .NET installed on the target machine:
 
