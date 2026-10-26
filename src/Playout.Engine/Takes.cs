@@ -72,6 +72,15 @@ public static class Takes
         return files;
     }
 
+    static readonly Regex TakeName = new(@"^(TMPM?|HRS|MIN)[ _-]?\d", RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// These files are takes (TMP18, HRS10, MIN15…), most of them: a line that picks one at random from them plays a
+    /// temperature or a time at random — the time or temperature now needs a take line.
+    /// </summary>
+    public static bool AreTakeFiles(IReadOnlyCollection<string> paths) =>
+        paths.Count >= 3 && paths.Count(p => TakeName.IsMatch(Path.GetFileNameWithoutExtension(p))) * 2 >= paths.Count;
+
     /// <summary>A file named PREFIX + number (+ _number), any case, leading zeros or a letter after it (several takes: one at random).</summary>
     static string? Pick(string[] files, string prefix, int number, int? second = null)
     {

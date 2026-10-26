@@ -1929,5 +1929,7 @@
  "The server refused user {0}: check the user and password.": "Le serveur a refusé l'utilisateur {0} : vérifiez l'utilisateur et le mot de passe.",
  "User {0} can't use the database {1}: it doesn't exist, or the user has no rights on it (GRANT ALL PRIVILEGES ON {1}.* TO …).": "L'utilisateur {0} ne peut pas utiliser la base {1} : elle n'existe pas, ou l'utilisateur n'a pas de droits dessus (GRANT ALL PRIVILEGES ON {1}.* TO …).",
  "There is no database {0} on the server: create it (CREATE DATABASE {0} CHARACTER SET utf8mb4;).": "Il n'y a pas de base {0} sur le serveur : créez-la (CREATE DATABASE {0} CHARACTER SET utf8mb4;).",
- "The server {0} can't be reached: check its name or address.": "Le serveur {0} est injoignable : vérifiez son nom ou son adresse."
+ "The server {0} can't be reached: check its name or address.": "Le serveur {0} est injoignable : vérifiez son nom ou son adresse.",
+ "⚠ Template {0}, line {1}: it plays take files at random (a temperature or time at random) — for the time or temperature now use A take ▾": "⚠ Modèle {0}, ligne {1} : elle joue des fichiers de prise au hasard (une température ou une heure quelconque) — pour l'heure ou la température actuelle, utilisez Une prise ▾",
+ "⚠ These are take files: it plays one at random (a temperature or time at random). For the time or temperature now, use A take ▾ → The temperature (or The time).": "⚠ Ce sont des fichiers de prise : elle en joue un au hasard (une température ou une heure quelconque). Pour l'heure ou la température actuelle, utilisez Une prise ▾ → La température (ou L'heure)."
 }

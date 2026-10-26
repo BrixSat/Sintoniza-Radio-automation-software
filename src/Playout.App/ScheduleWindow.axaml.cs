@@ -401,11 +401,38 @@ public partial class ScheduleWindow : Window
         LineList.SelectedIndex = t == null || t.Lines.Count == 0 ? -1 : Math.Clamp(select, 0, t.Lines.Count - 1);
     }
 
-    ScheduleRow LineRow(TemplateLine l, int index) => new(l, () => l.Source == LineSource.Take
-        ? ($"{index + 1}.  🕒  {TakeName(l.Folder)}", L.T("a take, put together when it goes on air"), true)
-        : l.Source == LineSource.Folder
-        ? ($"{index + 1}.  📁  {Path.GetFileName(l.Folder.TrimEnd('/', '\\'))}", L.F("a file from the folder {0}", l.Folder) + (Directory.Exists(l.Folder) ? "" : L.T(" · not found")), true)
-        : ($"{index + 1}.  {KindIcon(l.Kind)}  {CategoryLabel(l)}", FromCategory(l.Kind) + RulesText(l), true));
+    ScheduleRow LineRow(TemplateLine l, int index) => new(l, () =>
+    {
+        var (title, detail) = l.Source == LineSource.Take
+            ? ($"{index + 1}.  🕒  {TakeName(l.Folder)}", L.T("a take, put together when it goes on air"))
+            : l.Source == LineSource.Folder
+            ? ($"{index + 1}.  📁  {Path.GetFileName(l.Folder.TrimEnd('/', '\\'))}", L.F("a file from the folder {0}", l.Folder) + (Directory.Exists(l.Folder) ? "" : L.T(" · not found")))
+            : ($"{index + 1}.  {KindIcon(l.Kind)}  {CategoryLabel(l)}", FromCategory(l.Kind) + RulesText(l));
+        return (title, PlaysTakesAtRandom(l) ? detail + "  " + TakesWarning : detail, true);
+    });
+
+    static string TakesWarning => L.T("⚠ These are take files: it plays one at random (a temperature or time at random). For the time or temperature now, use A take ▾ → The temperature (or The time).");
+
+    readonly Dictionary<string, bool> _takeLines = new();
+
+    /// <summary>A category or folder line whose files are takes (TMP18, HRS10…): it would play one at random.</summary>
+    internal bool PlaysTakesAtRandom(TemplateLine l)
+    {
+        if (l.Source == LineSource.Take) return false;
+        string key = l.Source == LineSource.Folder ? "f:" + l.Folder : "c:" + l.CategoryId;
+        if (_takeLines.TryGetValue(key, out bool known)) return known;
+        bool takes = false;
+        try
+        {
+            var paths = l.Source == LineSource.Folder
+                ? (Directory.Exists(l.Folder) ? Directory.EnumerateFiles(l.Folder).Take(60).ToList() : [])
+                : _library?.Db is { } db ? db.Search("", new CategoryFilter(l.CategoryId), 60).Tracks.Select(t => t.Path).ToList() : null;
+            if (paths == null) return false; // the library isn't open yet: looked at again later
+            takes = Takes.AreTakeFiles(paths);
+        }
+        catch { /* can't tell */ }
+        return _takeLines[key] = takes;
+    }
 
     /// <summary>What a take line says, for the lists.</summary>
     internal static string TakeName(string take) => Takes.KindOf(take) switch

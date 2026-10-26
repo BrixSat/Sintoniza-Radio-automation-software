@@ -351,6 +351,11 @@ nearest minute when the take starts. In an hour template: **Add a line → A tak
 *The time and the temperature*. A take whose files are missing is skipped; without the temperature, a time-and-
 temperature take says the time only.
 
+Don't put the takes folder in a category and use that category in a template: a category line plays **one of its
+files at random** (any temperature, any hour) — Pro warns about such a line on Home and in the template. The takes
+folder can also be the time signal's hour folder (Station settings → Time signal): it says the hour with the `HRS`
+file of that hour, never a temperature or minute file.
+
 ### The schedule
 
 Five tools, on the left under Programming and Traffic. **Save** (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database; the playout takes it

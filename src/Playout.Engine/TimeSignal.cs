@@ -34,28 +34,39 @@ public static class TimeSignal
 
     /// <summary>
     /// The announcement for the hour that starts at <paramref name="hour"/>: the audio file in the folder whose name
-    /// ends in that number (HRS05.mp3, "05 horas.wav"; midnight 00 or 24). Null if there is none.
+    /// ends in that number (HRS05.mp3, "05 horas.wav"; midnight 00 or 24), an HRS file first. Never another take of the
+    /// same folder — a temperature (TMP12, TMPM03), a minute (MIN12) or an hour and minute (HRS10_12) — so a folder
+    /// with all the takes works too. Null if there is none.
     /// </summary>
     public static string? HourFile(string folder, DateTime hour)
     {
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return null;
         try
         {
+            string? any = null;
             foreach (var file in Directory.EnumerateFiles(folder).Order(StringComparer.OrdinalIgnoreCase))
             {
                 if (!AudioExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())) continue;
                 var name = Path.GetFileNameWithoutExtension(file);
+                if (NotAnHour.IsMatch(name)) continue;
                 int end = name.Length;
                 while (end > 0 && !char.IsAsciiDigit(name[end - 1])) end--;
                 int start = end;
                 while (start > 0 && char.IsAsciiDigit(name[start - 1])) start--;
                 if (start == end || !int.TryParse(name[start..end], out int n)) continue;
-                if (n == hour.Hour || (hour.Hour == 0 && n == 24)) return file;
+                if (n != hour.Hour && !(hour.Hour == 0 && n == 24)) continue;
+                if (name.StartsWith("HRS", StringComparison.OrdinalIgnoreCase)) return file;
+                any ??= file;
             }
+            return any;
         }
         catch (Exception) { /* folder unreadable: no announcement */ }
         return null;
     }
+
+    /// <summary>Takes that aren't an hour: TMP12, TMPM03, MIN15, HRS10_15.</summary>
+    static readonly System.Text.RegularExpressions.Regex NotAnHour =
+        new(@"^(TMP|MIN)|^HRS[ _-]?\d+[ _-]\d", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
     /// <summary>Opens the signal as a decode stream (the pips if the file can't be played). HourAt: seconds into it where the hour is.</summary>
     internal static int Open(string file, Action<string> log, out double hourAt, out double length)
