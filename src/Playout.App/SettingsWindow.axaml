@@ -437,12 +437,29 @@
                             <TextBlock x:Name="VoiceFolderText" VerticalAlignment="Center" MaxWidth="520" TextTrimming="CharacterEllipsis" />
                             <Button x:Name="ChooseVoiceFolderButton" Content="Choose…" />
                         </StackPanel>
-                        <TextBlock Classes="note" Text="The folder voice tracks are recorded into (Daily playlists → Voice track…). Every studio must reach it under the same path, like the music." />
+                        <TextBlock Classes="note" Text="The folder voice tracks are recorded into (Daily playlists → Voice track…). Every studio must reach it, like the music (under another path: This computer's paths)." />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="10" Classes="station" IsVisible="False">
                         <Button x:Name="CategoriesButton" Content="Categories…" ToolTip.Tip="Add, rename and colour categories, and give each its folders" />
                         <TextBlock Classes="note" VerticalAlignment="Center" MaxWidth="560"
                                    Text="Each category can have folders: their songs go in it, and new ones put there later too." />
+                    </StackPanel>
+
+                    <!-- Shared music under another path on this computer -->
+                    <StackPanel Spacing="6" Classes="computer">
+                        <TextBlock Classes="label" Text="This computer's paths (shared music)" />
+                        <TextBlock Classes="note" MaxWidth="760" HorizontalAlignment="Left" TextWrapping="Wrap"
+                                   Text="When this computer sees the library's music under another path — Windows or a Mac with the on-air computer's Linux music, or a share mounted elsewhere — say where: the start of the library's paths, and where that is here. Leave it empty when the paths are the same." />
+                        <Grid ColumnDefinitions="*,8,*,8,Auto" x:Name="PathMapHeader">
+                            <TextBlock Classes="muted" FontSize="12" Text="In the library (e.g. /mnt/radio)" />
+                            <TextBlock Grid.Column="2" Classes="muted" FontSize="12" Text="On this computer (e.g. Z:\ or \\server\radio)" />
+                        </Grid>
+                        <StackPanel x:Name="PathMapRows" Spacing="6" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="AddPathMapButton" Content="Add" />
+                            <Button x:Name="TestPathMapButton" Content="Test" ToolTip.Tip="Look for a few of the library's songs on this computer, with these paths" />
+                            <TextBlock x:Name="PathMapNote" Classes="note" VerticalAlignment="Center" MaxWidth="560" TextWrapping="Wrap" />
+                        </StackPanel>
                     </StackPanel>
 
                     <StackPanel Spacing="6" Classes="computer">
@@ -453,7 +470,7 @@
                         </StackPanel>
                         <CheckBox x:Name="WatchFoldersBox" Content="Also scan shortly after files in the music folders are added, changed or deleted" />
                         <TextBlock Classes="note"
-                                   Text="Scan (above the library) does it now. A scan only reads new and changed files; moved files keep their category, cue points and history. Network shares don't always report changes, so keep the schedule on for them. radio-import does the same from the command line, using these settings. With a shared MySQL library, every studio must see the music under the same path, and one studio scanning is enough." />
+                                   Text="Scan (above the library) does it now. A scan only reads new and changed files; moved files keep their category, cue points and history. Network shares don't always report changes, so keep the schedule on for them. radio-import does the same from the command line, using these settings. With a shared MySQL library, one studio scanning is enough; a studio that sees the music under another path says where in This computer's paths." />
                     </StackPanel>
                 </StackPanel>
                 </ScrollViewer>

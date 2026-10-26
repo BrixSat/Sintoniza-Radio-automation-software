@@ -1,3 +1,4 @@
+using Playout.Engine;
 using Dapper;
 
 namespace Playout.Library;
@@ -50,7 +51,7 @@ public static class FolderImport
     /// <param name="levels">How many levels of folders inside become categories (0: all in the one category).</param>
     public static ImportNode Plan(LibraryDb db, string folder, string name, long? parentId, int levels, CancellationToken cancel = default)
     {
-        folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        folder = Path.TrimEndingDirectorySeparator(Path.GetFullPath(SharedPaths.ToLocal(folder))); // walked on this computer
         var categories = db.Categories();
         string top = parentId is { } p ? CategoryTree.PathOf(categories, p) : "";
         var root = Node(folder, name.Trim(), top.Length > 0 ? top + CategoryTree.Separator + name.Trim() : name.Trim(), 0, levels, cancel)
@@ -65,7 +66,7 @@ public static class FolderImport
         foreach (var (path, category) in c.Query<(string, long?)>($"SELECT path, category_id FROM tracks WHERE missing = 0 AND {under}", args))
         {
             cancel.ThrowIfCancellationRequested();
-            if (nodes.FirstOrDefault(n => LibraryScanner.IsUnder(path, n.Folder)) is not { } node) continue;
+            if (nodes.FirstOrDefault(n => LibraryScanner.IsUnder(path, SharedPaths.ToLibrary(n.Folder))) is not { } node) continue;
             node.InLibrary++;
             if (category is { } id && id != node.ExistingId) node.InOtherCategory++;
         }
@@ -145,8 +146,9 @@ public static class FolderImport
         foreach (var node in plan.All())
         {
             long id = node.ExistingId!.Value;
-            assigned += db.AssignFolder(node.Folder, node.Children.Select(c => c.Folder).ToList(), id, how);
-            db.SetFolderRule(node.Folder, id);
+            // Kept as the library keeps paths, for every studio.
+            assigned += db.AssignFolder(SharedPaths.ToLibrary(node.Folder), node.Children.Select(c => SharedPaths.ToLibrary(c.Folder)).ToList(), id, how);
+            db.SetFolderRule(SharedPaths.ToLibrary(node.Folder), id);
         }
         return new ImportResult(made, scan, assigned, false);
     }

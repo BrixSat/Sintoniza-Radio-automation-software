@@ -270,8 +270,8 @@ public partial class ErcView : UserControl
                 int missing = 0;
                 foreach (var played in paths)
                 {
-                    if (!File.Exists(played)) { missing++; continue; }
-                    string path = Path.GetFullPath(played);
+                    if (!SharedPaths.FileExists(played)) { missing++; continue; }
+                    string path = SharedPaths.ToLibrary(Path.GetFullPath(SharedPaths.ToLocal(played)));
                     db.Refresh(path);
                     if (db.GetByPath(path) is { } track) ids.Add(track.Id);
                 }

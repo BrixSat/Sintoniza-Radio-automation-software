@@ -24,7 +24,7 @@ public static class LoudnessMeter
     /// <summary>Decodes the whole file (a few hundred milliseconds for a song); null if it can't be read or has no sound.</summary>
     public static LoudnessInfo? Measure(string path, CancellationToken cancel = default)
     {
-        int h = Bass.CreateStream(path, 0, 0, BassFlags.Decode | BassFlags.Float);
+        int h = Bass.CreateStream(SharedPaths.ToLocal(path), 0, 0, BassFlags.Decode | BassFlags.Float);
         if (h == 0) return null;
         try
         {
@@ -208,7 +208,7 @@ public sealed class LoudnessStore
     {
         try
         {
-            var info = new FileInfo(path);
+            var info = new FileInfo(SharedPaths.ToLocal(path));
             return info.Exists ? (info.Length, info.LastWriteTimeUtc.Ticks) : (-1, 0);
         }
         catch
@@ -256,7 +256,7 @@ sealed class LoudnessWorker : IDisposable
             {
                 try
                 {
-                    if (_store.Get(path) == null && File.Exists(path) && LoudnessMeter.Measure(path, _stop.Token) is { } info)
+                    if (_store.Get(path) == null && File.Exists(SharedPaths.ToLocal(path)) && LoudnessMeter.Measure(path, _stop.Token) is { } info)
                     {
                         _store.Set(path, info);
                         Measured?.Invoke(path, info);

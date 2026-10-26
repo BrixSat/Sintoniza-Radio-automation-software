@@ -280,14 +280,14 @@ public partial class DailyPlaylistsView : UserControl
         var stations = new StationStore(db);
         var (station, version) = await Task.Run(stations.Load);
         string folder = station?.VoiceTrackFolder ?? "";
-        if (folder.Length == 0 || !Directory.Exists(folder))
+        if (folder.Length == 0 || !SharedPaths.DirectoryExists(folder))
         {
             var picked = await owner.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
                 Title = L.T("Where should voice tracks be kept? (a folder every studio can reach)"),
             });
             if (picked.FirstOrDefault()?.TryGetLocalPath() is not { } chosen) return;
-            folder = chosen;
+            folder = SharedPaths.ToLibrary(chosen); // every studio: as the library keeps paths
             var updated = station?.Clone() ?? StationSettings.From(_settings);
             updated.VoiceTrackFolder = folder;
             try { await Task.Run(() => stations.Save(updated, version, $"{Environment.UserName}@{Environment.MachineName}")); }
@@ -348,10 +348,11 @@ public partial class DailyPlaylistsView : UserControl
     {
         string safe = string.Concat(song.Display.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) || ch is '/' or '\\' or ':' ? '_' : ch)).Trim();
         if (safe.Length > 60) safe = safe[..60];
-        string folder = Path.GetDirectoryName(take.File)!;
+        string folder = Path.GetDirectoryName(SharedPaths.ToLocal(take.File))!;
         string file = Path.Combine(folder, $"VT {hour:yyyy-MM-dd HHmm} {safe}.mp3");
         for (int n = 2; File.Exists(file); n++) file = Path.Combine(folder, $"VT {hour:yyyy-MM-dd HHmm} {safe} ({n}).mp3");
-        File.Move(take.File, file);
+        File.Move(SharedPaths.ToLocal(take.File), file);
+        file = SharedPaths.ToLibrary(file); // in the library and the plan as every studio finds it
         db.Refresh(file);
         if (db.GetByPath(file) is { } track && db.Categories().FirstOrDefault(c => c.Role == "takes") is { } takes) db.SetCategory([track.Id], takes.Id);
         if (take.NextAt is { } mix) db.SetCues(file, new CuePoints(Mix: mix));
@@ -433,7 +434,7 @@ public partial class DailyPlaylistsView : UserControl
 
     async Task EditTags(string path)
     {
-        if (!File.Exists(path))
+        if (!SharedPaths.FileExists(path))
         {
             StatusText.Text = L.F("Not found: {0}", path);
             return;

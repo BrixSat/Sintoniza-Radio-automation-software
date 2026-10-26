@@ -46,7 +46,7 @@ public partial class VoiceTrackWindow : Window
         _host = host;
         _before = before;
         _after = after;
-        _folder = folder;
+        _folder = SharedPaths.ToLocal(folder); // recorded here, on this computer
         BeforeTitle.Text = before.Title;
         AfterTitle.Text = after.Title;
         OnAirWarning.IsVisible = host.PreviewIsOnAir;
@@ -168,7 +168,7 @@ public partial class VoiceTrackWindow : Window
         _recorder?.Stop();
         _a?.Pause();
         _b?.Pause();
-        _length = _take != null && File.Exists(_take) ? AudioProbe.Duration(_take) ?? 0 : 0;
+        _length = _take != null && SharedPaths.FileExists(_take) ? AudioProbe.Duration(_take) ?? 0 : 0;
         if (_length < 0.5)
         {
             ErrorText.Text = L.T("Nothing was recorded: check the input.");

@@ -234,14 +234,14 @@ public partial class ScheduleWindow : Window
     {
         string path = EventPathBox.Text?.Trim() ?? "";
         bool stream = PlayoutEngine.IsStreamSource(path);
-        bool folder = !stream && path.Length > 0 && Directory.Exists(path);
+        bool folder = !stream && path.Length > 0 && SharedPaths.DirectoryExists(path);
         EventStreamPanel.IsVisible = stream;
         EventFolderPanel.IsVisible = folder;
         EventPathNote.Text = path.Length == 0 ? "" :
             LiveInput.Is(path) ? L.F("An input of the studio computer, live: {0}.", LiveInput.DeviceOf(path) is { Length: > 0 } d ? d : L.T("the default input")) :
             stream ? L.T("An internet stream.") :
             folder ? L.T("A folder: its newest audio file plays (e.g. a news bulletin that is downloaded there).") :
-            File.Exists(path) ? L.T("A file.") : L.T("Not found on this computer.");
+            SharedPaths.FileExists(path) ? L.T("A file.") : L.T("Not found on this computer.");
     }
 
     /// <summary>
@@ -269,7 +269,7 @@ public partial class ScheduleWindow : Window
 
     ScheduleRow EventRow(ScheduledEvent e) => new(e, () =>
     {
-        string what = LiveInput.Is(e.Path) ? L.T("live input") : PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : Directory.Exists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
+        string what = LiveInput.Is(e.Path) ? L.T("live input") : PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : SharedPaths.DirectoryExists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
         return (EntryName(e), $"{SlotsSummary(e)} · {StartText(e)}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
     });
 
@@ -449,7 +449,7 @@ public partial class ScheduleWindow : Window
         var (title, detail) = l.Source == LineSource.Take
             ? ($"{index + 1}.  🕒  {TakeName(l.Folder)}", L.T("a take, put together when it goes on air"))
             : l.Source == LineSource.Folder
-            ? ($"{index + 1}.  📁  {Path.GetFileName(l.Folder.TrimEnd('/', '\\'))}", L.F("a file from the folder {0}", l.Folder) + (Directory.Exists(l.Folder) ? "" : L.T(" · not found")))
+            ? ($"{index + 1}.  📁  {Path.GetFileName(l.Folder.TrimEnd('/', '\\'))}", L.F("a file from the folder {0}", l.Folder) + (SharedPaths.DirectoryExists(l.Folder) ? "" : L.T(" · not found")))
             : ($"{index + 1}.  {KindIcon(l.Kind)}  {CategoryLabel(l)}", FromCategory(l.Kind) + RulesText(l));
         return (title, PlaysTakesAtRandom(l) ? detail + "  " + TakesWarning : detail, true);
     });
@@ -468,7 +468,7 @@ public partial class ScheduleWindow : Window
         try
         {
             var paths = l.Source == LineSource.Folder
-                ? (Directory.Exists(l.Folder) ? Directory.EnumerateFiles(l.Folder).Take(60).ToList() : [])
+                ? (SharedPaths.DirectoryExists(l.Folder) ? Directory.EnumerateFiles(SharedPaths.ToLocal(l.Folder)).Take(60).ToList() : [])
                 : _library?.Db is { } db ? db.Search("", new CategoryFilter(l.CategoryId), 60).Tracks.Select(t => t.Path).ToList() : null;
             if (paths == null) return false; // the library isn't open yet: looked at again later
             takes = Takes.AreTakeFiles(paths);
@@ -711,7 +711,7 @@ public partial class ScheduleWindow : Window
 
     ScheduleRow PartRow(AdBreak b, BreakPart p) => new(p, () => p.Kind == PartKind.Jingle
         ? ("♪  " + (Path.GetFileNameWithoutExtension(p.Path) is { Length: > 0 } n ? n : L.T("Jingle")),
-            (p.OnlyWithAdverts ? L.T("jingle · only when the section after it has adverts") : L.T("jingle")) + (File.Exists(p.Path) ? "" : L.T(" · not found")), true)
+            (p.OnlyWithAdverts ? L.T("jingle · only when the section after it has adverts") : L.T("jingle")) + (SharedPaths.FileExists(p.Path) ? "" : L.T(" · not found")), true)
         : ("€  " + p.Section, L.F("advert section · {0} today", Plural(b.TimesOn(DateTime.Today).Sum(t => _data.InSection(b, p.Section, t).Count), "{0} advert", "{0} adverts")), true));
 
     /// <summary>The section names offered when adding a section and booking a campaign, after they changed.</summary>
@@ -929,7 +929,7 @@ public partial class ScheduleWindow : Window
         ShowSectionShown();
     }
 
-    void ShowFiles() => CampaignFiles.ItemsSource = SelectedCampaign?.Files.Select(f => Path.GetFileName(f) + (File.Exists(f) ? "" : L.T(" · not found"))).ToList();
+    void ShowFiles() => CampaignFiles.ItemsSource = SelectedCampaign?.Files.Select(f => Path.GetFileName(f) + (SharedPaths.FileExists(f) ? "" : L.T(" · not found"))).ToList();
 
     void ShowSectionShown() =>
         SectionShownText.Text = SelectedCampaign is { } k
@@ -1033,7 +1033,7 @@ public partial class ScheduleWindow : Window
     double Length(string path)
     {
         if (_lengths.TryGetValue(path, out double s)) return s;
-        s = File.Exists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
+        s = SharedPaths.FileExists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
         _lengths[path] = s;
         return s;
     }
@@ -1309,14 +1309,14 @@ public partial class ScheduleWindow : Window
             SuggestedStartLocation = start,
             FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }, FilePickerFileTypes.All],
         });
-        return files.FirstOrDefault()?.TryGetLocalPath();
+        return files.FirstOrDefault()?.TryGetLocalPath() is { } path ? SharedPaths.ToLibrary(path) : null;
     }
 
     async Task<string?> PickFolder(string title)
     {
         var start = Directory.Exists(_browseFolder) ? await StorageProvider.TryGetFolderFromPathAsync(_browseFolder) : null;
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = title, SuggestedStartLocation = start });
-        return folders.FirstOrDefault()?.TryGetLocalPath();
+        return folders.FirstOrDefault()?.TryGetLocalPath() is { } path ? SharedPaths.ToLibrary(path) : null;
     }
 
     /// <summary>Checks that what is switched on is in the calendar, and the adverts' dates, before handing the schedule back.</summary>

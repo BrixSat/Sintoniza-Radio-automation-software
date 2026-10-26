@@ -224,7 +224,7 @@ public partial class CategoriesWindow : PageWindow
         if (_folders == null || Selected is not { } row || _service?.Db is not { } db) return;
         var picked = await Storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
             { Title = L.F("Folder for {0}", row.Category.Name), AllowMultiple = true });
-        var paths = picked.Select(f => f.TryGetLocalPath()).OfType<string>().Select(p => p.TrimEnd('/', '\\')).ToList();
+        var paths = picked.Select(f => f.TryGetLocalPath()).OfType<string>().Select(p => SharedPaths.ToLibrary(p.TrimEnd('/', '\\'))).ToList();
         if (paths.Count > 0) await AddFolders(row, db, paths);
     }
 

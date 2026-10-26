@@ -47,7 +47,7 @@ public partial class SettingsWindow : PageWindow
     {
         TakesFolderText.Text = _takesFolder.Length > 0 ? _takesFolder : L.T("(none)");
         ClearTakesFolderButton.IsEnabled = _takesFolder.Length > 0;
-        if (_takesFolder.Length == 0 || !Directory.Exists(_takesFolder)) { TakesFolderNote.Text = _takesFolder.Length > 0 ? L.T("Folder not found.") : ""; return; }
+        if (_takesFolder.Length == 0 || !SharedPaths.DirectoryExists(_takesFolder)) { TakesFolderNote.Text = _takesFolder.Length > 0 ? L.T("Folder not found.") : ""; return; }
         var day = DateTime.Today;
         int hours = Enumerable.Range(0, 24).Count(h => Takes.Files(_takesFolder, TakeKind.Time, day.AddHours(h), null).Count > 0);
         int minutes = Enumerable.Range(1, 59).Count(m => Takes.Files(_takesFolder, TakeKind.Time, day.AddHours(10).AddMinutes(m), null).Count > 0);
@@ -127,7 +127,7 @@ public partial class SettingsWindow : PageWindow
         {
             var folders = await Storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = L.T("Folder with the takes") });
             if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
-            _takesFolder = path;
+            _takesFolder = SharedPaths.ToLibrary(path); // station-wide: as the library keeps paths
             ShowTakesFolder();
         };
         ClearTakesFolderButton.Click += (_, _) => { _takesFolder = ""; ShowTakesFolder(); };
@@ -145,7 +145,7 @@ public partial class SettingsWindow : PageWindow
         {
             var folders = await Storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = L.T("Folder with the hour announcements") });
             if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
-            _hourFolder = path;
+            _hourFolder = SharedPaths.ToLibrary(path);
             ShowHourFolder();
         };
         ClearHourFolderButton.Click += (_, _) =>
@@ -232,6 +232,7 @@ public partial class SettingsWindow : PageWindow
         AutoScanBox.IsCheckedChanged += (_, _) => AutoScanMinutesBox.IsEnabled = AutoScanBox.IsChecked == true;
         WatchFoldersBox.IsChecked = library.WatchFolders;
         LibraryFoldersList.ItemsSource = _libraryFolders;
+        LoadPathMap(library.PathMap);
         // The folders of categories (Sintoniza Import, Categories…) are in the database and scanned too.
         if (_main?.MusicLibrary.CategoryFolders is { Count: > 0 } categoryFolders)
         {
@@ -450,6 +451,7 @@ public partial class SettingsWindow : PageWindow
         ScanEveryMinutes = AutoScanBox.IsChecked == true ? (int)(AutoScanMinutesBox.Value ?? 60) : 0,
         WatchFolders = WatchFoldersBox.IsChecked == true,
         FolderCategories = new(_settings.Library?.FolderCategories ?? new()), // set from the Folders tab
+        PathMap = PathMapFromUi(),
     };
 
     async Task TestLibrary()
@@ -716,14 +718,14 @@ public partial class SettingsWindow : PageWindow
 
     async Task ChooseFillFolder()
     {
-        var start = Directory.Exists(_fillFolder) ? _fillFolder : _settings.MusicFolder;
+        var start = SharedPaths.DirectoryExists(_fillFolder) ? SharedPaths.ToLocal(_fillFolder) : _settings.MusicFolder;
         var folders = await Storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = L.T("Choose the music to play when the playlist runs out"),
             SuggestedStartLocation = Directory.Exists(start) ? await Storage.TryGetFolderFromPathAsync(start) : null,
         });
         if (folders.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
-        _fillFolder = path;
+        _fillFolder = SharedPaths.ToLibrary(path);
         ShowFillFolder();
     }
 
@@ -890,7 +892,7 @@ public partial class SettingsWindow : PageWindow
         ClearHourFolderButton.IsEnabled = HourAtBox.IsEnabled = set;
         if (!set) { HourFolderNote.Text = ""; return; }
         var missing = Enumerable.Range(0, 24).Where(h => TimeSignal.HourFile(_hourFolder, DateTime.Today.AddHours(h)) == null).ToList();
-        HourFolderNote.Text = !Directory.Exists(_hourFolder) ? L.T("The folder isn't there.")
+        HourFolderNote.Text = !SharedPaths.DirectoryExists(_hourFolder) ? L.T("The folder isn't there.")
             : missing.Count == 0 ? L.T("A file for every hour.")
             : missing.Count == 24 ? L.T("No hour files found (e.g. HRS05.mp3).")
             : L.F("No file for: {0}", string.Join(", ", missing.Select(h => h.ToString("00"))));
@@ -904,7 +906,7 @@ public partial class SettingsWindow : PageWindow
             FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }],
         });
         if (files.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
-        _signalFile = path;
+        _signalFile = SharedPaths.ToLibrary(path);
         SignalFileRadio.IsChecked = true;
         ShowSignalFile();
     }

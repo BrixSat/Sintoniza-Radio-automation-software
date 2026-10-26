@@ -16,8 +16,10 @@ static class AudioFiles
 
     public static bool IsAudio(string path) => Extensions.Contains(Path.GetExtension(path));
 
+    /// <summary>The audio files in a folder (either form), as the library keeps paths (see <see cref="SharedPaths"/>).</summary>
     public static IEnumerable<string> InFolder(string folder) =>
-        Directory.EnumerateFiles(folder, "*", Shallow).Where(IsAudio).Order(StringComparer.CurrentCultureIgnoreCase);
+        Directory.EnumerateFiles(SharedPaths.ToLocal(folder), "*", Shallow).Where(IsAudio).Order(StringComparer.CurrentCultureIgnoreCase)
+            .Select(SharedPaths.ToLibrary);
 
     public static IEnumerable<string> SubFolders(string folder) =>
         Directory.EnumerateDirectories(folder, "*", Shallow)
@@ -29,12 +31,14 @@ static class AudioFiles
     {
         foreach (var p in paths)
         {
-            if (Directory.Exists(p))
+            // As the library keeps paths, whichever form they came in.
+            string local = SharedPaths.ToLocal(p);
+            if (Directory.Exists(local))
             {
-                foreach (var f in Directory.EnumerateFiles(p, "*", Deep).Where(IsAudio).Order(StringComparer.CurrentCultureIgnoreCase))
-                    yield return f;
+                foreach (var f in Directory.EnumerateFiles(local, "*", Deep).Where(IsAudio).Order(StringComparer.CurrentCultureIgnoreCase))
+                    yield return SharedPaths.ToLibrary(f);
             }
-            else if (File.Exists(p) && IsAudio(p)) yield return p;
+            else if (File.Exists(local) && IsAudio(p)) yield return SharedPaths.ToLibrary(p);
         }
     }
 }

@@ -217,7 +217,7 @@ public sealed class PlaylistGenerator
     double Length(string path)
     {
         if (_lengths.TryGetValue(path, out double s)) return s;
-        s = File.Exists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
+        s = SharedPaths.FileExists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
         return _lengths[path] = s;
     }
 
@@ -416,7 +416,7 @@ public sealed class PlaylistGenerator
             else oldest = pool.OrderByDescending(SongAway).ToList();
             int take = Math.Max(1, (int)Math.Ceiling(oldest.Count * OldestShare));
             var pick = oldest[Random.Shared.Next(take)];
-            if (!File.Exists(pick.Path))
+            if (!SharedPaths.FileExists(pick.Path))
             {
                 tracks.Remove(pick); // moved or deleted since the last scan
                 continue;

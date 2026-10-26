@@ -165,6 +165,8 @@ public sealed partial class LibraryDb
     /// </summary>
     public static LibraryDb Open(LibrarySettings settings)
     {
+        // Where this computer sees the library's music (a share under another path): every program that opens it.
+        settings.ApplyPathMap();
         if (!settings.IsMySql)
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(settings.SqliteFile))!);
         var db = new LibraryDb(settings);
@@ -552,7 +554,10 @@ public sealed partial class LibraryDb
     internal static string Under(string folder, string name, DynamicParameters args)
     {
         // As the scanner stores paths: full, without "." or ".." in them.
-        if (!System.IO.Path.IsPathFullyQualified(folder) || folder.Contains("/.") || folder.Contains("\\.")) folder = System.IO.Path.GetFullPath(folder);
+        // (A path the library keeps for another computer's form — /mnt/radio on Windows — is normalised as this one's.)
+        if (!System.IO.Path.IsPathFullyQualified(SharedPaths.ToLocal(folder)) || folder.Contains("/.") || folder.Contains("\\."))
+            folder = SharedPaths.ToLibrary(System.IO.Path.GetFullPath(SharedPaths.ToLocal(folder)));
+        else folder = SharedPaths.ToLibrary(folder);
         string like = folder.TrimEnd('/', '\\').Replace("!", "!!").Replace("%", "!%").Replace("_", "!_");
         args.Add(name + "s", like + "/%");
         args.Add(name + "b", like + "\\%");

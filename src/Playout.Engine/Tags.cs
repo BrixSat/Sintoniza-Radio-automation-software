@@ -108,7 +108,7 @@ public static class Tags
     {
         try
         {
-            return TagLib.File.Create(path);
+            return TagLib.File.Create(SharedPaths.ToLocal(path));
         }
         catch (TagLib.UnsupportedFormatException)
         {

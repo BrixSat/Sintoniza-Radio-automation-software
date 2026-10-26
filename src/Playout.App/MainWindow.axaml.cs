@@ -272,7 +272,7 @@ public partial class MainWindow : Window
         };
         Library.CategoryOf = folder =>
         {
-            try { return _library.Db?.FolderCategories().TryGetValue(folder, out long id) == true ? id : null; }
+            try { return _library.Db?.FolderCategories().TryGetValue(SharedPaths.ToLibrary(folder), out long id) == true ? id : null; }
             catch { return null; }
         };
         Library.FolderCategoryRequested += async (folder, id) => await SetFolderCategory(folder, id);
@@ -1463,7 +1463,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>A saved item that can still play: a file that is there, a stream, a take (put together when it plays).</summary>
-    static bool Playable(PlaylistEntry e) => e.IsStream || Takes.IsTake(e.Path) || File.Exists(e.Path);
+    static bool Playable(PlaylistEntry e) => e.IsStream || Takes.IsTake(e.Path) || SharedPaths.FileExists(e.Path);
 
     /// <summary>Adds saved or loaded playlist items in order: files that still exist, and streams.</summary>
     void AddEntries(IEnumerable<PlaylistEntry> entries)
@@ -1488,7 +1488,7 @@ public partial class MainWindow : Window
             }
             if (!e.IsStream && !Takes.IsTake(e.Path))
             {
-                if (File.Exists(e.Path)) files.Add(e.Path);
+                if (SharedPaths.FileExists(e.Path)) files.Add(e.Path);
                 continue;
             }
             Flush();
@@ -1798,6 +1798,7 @@ public partial class MainWindow : Window
                 if (_settings.Routing != routingBefore) _engine.ApplyRouting(_settings.Routing);
                 if (_settings.ActiveMic != micBefore) _engine.ConfigureMic(_settings.ActiveMic);
             }
+            _settings.Library.ApplyPathMap(); // where this computer sees the shared music
             if (_settings.Library.ConnectionKey() != libraryBefore)
             {
                 _stationVersion = -1; // another database: its station settings
@@ -2007,6 +2008,7 @@ public partial class MainWindow : Window
     async Task SetFolderCategory(string folder, long? id)
     {
         if (_library.Db is not { } db) return;
+        folder = SharedPaths.ToLibrary(folder); // every studio: as the library keeps paths
         string name = Path.GetFileName(folder.TrimEnd('/', '\\'));
         try
         {
@@ -2076,7 +2078,7 @@ public partial class MainWindow : Window
         Func<string?>? fill = null;
         if (_settings.FillEnabled)
         {
-            var folder = Directory.Exists(_settings.FillFolder) ? new FillMusic(_settings.FillFolder) : null;
+            var folder = SharedPaths.DirectoryExists(_settings.FillFolder) ? new FillMusic(_settings.FillFolder) : null;
             fill = _settings.FillSource == FillSource.Library
                 ? new LibraryFill(_library, _settings.FillCategories, TimeSpan.FromHours(_settings.FillSongHours),
                     TimeSpan.FromMinutes(_settings.FillArtistMinutes), folder).Next
@@ -2247,7 +2249,7 @@ public partial class MainWindow : Window
     {
         if (_engine == null) return;
         _engine.ConfigureLoudness(_settings.Loudness);
-        _engine.MeasureLoudness(_settings.Cartwalls.SelectMany(c => c.Carts).Select(c => c.Path).OfType<string>().Where(File.Exists).Distinct().ToList());
+        _engine.MeasureLoudness(_settings.Cartwalls.SelectMany(c => c.Carts).Select(c => c.Path).OfType<string>().Where(SharedPaths.FileExists).Distinct().ToList());
     }
 
     void ShowSilence(PlayerStatus st)

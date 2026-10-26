@@ -88,7 +88,7 @@ sealed class LibraryFill
                 var oldest = choices.OrderBy(t => Last(t) ?? DateTime.MinValue).ToList();
                 int take = Math.Max(1, (int)Math.Ceiling(oldest.Count * OldestShare));
                 var chosen = oldest[Random.Shared.Next(take)];
-                if (!File.Exists(chosen.Track.Path))
+                if (!SharedPaths.FileExists(chosen.Track.Path))
                 {
                     _tracks = _tracks.Where(t => t != chosen).ToArray();
                     if (_gone++ == 0) AppLog.Write($"Fill music: {chosen.Track.Path} isn't there (moved or deleted?); a library scan brings the library up to date");

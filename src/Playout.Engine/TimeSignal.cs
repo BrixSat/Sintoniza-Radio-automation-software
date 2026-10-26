@@ -41,6 +41,7 @@ public static class TimeSignal
     /// </summary>
     public static string? HourFile(string folder, DateTime hour)
     {
+        folder = SharedPaths.ToLocal(folder);
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return null;
         try
         {
@@ -77,7 +78,7 @@ public static class TimeSignal
     {
         if (!string.IsNullOrEmpty(file))
         {
-            int h = Bass.CreateStream(file, 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
+            int h = Bass.CreateStream(SharedPaths.ToLocal(file), 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
             if (h != 0)
             {
                 length = hourAt = Bass.ChannelBytes2Seconds(h, Bass.ChannelGetLength(h, PositionFlags.Bytes));

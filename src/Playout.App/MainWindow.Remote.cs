@@ -205,7 +205,7 @@ public partial class MainWindow : IRemoteHandler
                 break;
             case "add":
                 string path = c["path"]?.GetValue<string>() ?? "";
-                if (!File.Exists(path)) return new { ok = false, message = L.F("Not found: {0}", path) };
+                if (!SharedPaths.FileExists(path)) return new { ok = false, message = L.F("Not found: {0}", path) };
                 AddPaths([path], NextInsertIndex());
                 break;
             default:

@@ -45,6 +45,7 @@ public static class Takes
     public static List<string> Files(string folder, TakeKind kind, DateTime at, int? temperature)
     {
         var files = new List<string>();
+        folder = SharedPaths.ToLocal(folder);
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return files;
         string[] all;
         // Its subfolders too: the hours in one (Horas), the temperatures in another (Temperatura)…
@@ -82,7 +83,7 @@ public static class Takes
     public static string? Missing(string folder, TakeKind kind, DateTime at, int? temperature)
     {
         if (string.IsNullOrWhiteSpace(folder)) return L.T("no takes folder (Station settings → Takes)");
-        if (!Directory.Exists(folder)) return L.F("the takes folder {0} isn't there", folder);
+        if (!Directory.Exists(SharedPaths.ToLocal(folder))) return L.F("the takes folder {0} isn't there", SharedPaths.ToLocal(folder));
         if (Files(folder, kind, at, temperature).Count > 0) return null;
         var t = at.AddSeconds(30);
         string time = t.Minute == 0 ? $"HRS{t.Hour:00}" : $"HRS{t.Hour:00} + MIN{t.Minute:00}";

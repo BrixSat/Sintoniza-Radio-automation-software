@@ -60,8 +60,9 @@ connect, Settings → Library → Test says which of these it is.
 
 - **Times** are UTC text in the form `2026-10-14T18:20:11Z`.
 - **Booleans** are `0` / `1`.
-- **Paths** are full paths to the file as the studio computers see it. With a shared MySQL library, every studio
-  must see the music under the same path, e.g. the same mapped drive or mount point. Paths are compared exactly
+- **Paths** are full paths to the file as the studio computers see it. With a shared MySQL library, a studio that
+  sees the music under another path (Windows `Z:\`, a Mac's `/Volumes/radio`) translates them itself (Settings →
+  Library → This computer's paths); what is kept is always the library's form. Paths are compared exactly
   (case and accents count) and may be up to 760 characters long.
 - `schema_info` holds `version`. A program that finds a version it doesn't know should not write. The app
   refuses to open a library made by a newer version, so studios sharing one should run the same version.

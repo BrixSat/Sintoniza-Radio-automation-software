@@ -40,7 +40,7 @@ public sealed class WaveformLoader
 
     static Waveform? Build(string path)
     {
-        int h = Bass.CreateStream(path, 0, 0, BassFlags.Decode | BassFlags.Float);
+        int h = Bass.CreateStream(SharedPaths.ToLocal(path), 0, 0, BassFlags.Decode | BassFlags.Float);
         if (h == 0) return null;
         try
         {

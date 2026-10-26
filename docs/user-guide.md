@@ -183,13 +183,36 @@ the database can be fixed.
 | Audio | outputs for Music / Cartwall / Preview |
 | Microphone | (web radio) input, levels, how far the music goes down |
 | Safety | start-up and crash behaviour, log folder, **Backups** |
-| Library | the database, automatic scans |
+| Library | the database, automatic scans, **this computer's paths** (shared music under another path — see below) |
 | Shortcuts | keys for transport, MIC, stream and carts |
 | RDS | whether this computer sends to the RDS encoder, and how it reaches it |
 | Playlist | how much of the next hour the playlist shows |
 | GPIO | the desk's faders and lights, by a serial port, the network or MIDI: what each input does (fader start, Next, Stop, a cart) and what each output shows (on air, an advert, a live input, silence) — see below |
 | Remote | the web remote: on/off, port, its address (it logs in with the station's users) |
 | About | version, updates, the manual |
+
+### Shared music on Windows, Mac and Linux (this computer's paths)
+
+With a shared MySQL library the songs are kept with their full path, as the computer that scanned them sees it —
+`/mnt/radio/Pop/song.mp3` on a Linux on-air computer. A Windows or Mac studio sees the same share somewhere else
+(`Z:\`, `\\server\radio`, `/Volumes/radio`), so it says where, once, in **Settings → Library → This computer's
+paths**:
+
+| In the library | On this computer |
+| --- | --- |
+| `/mnt/radio` | `Z:\` (or `\\server\radio`, or `/Volumes/radio` on a Mac) |
+
+**Add** a line (it suggests where the library's songs start), type or pick (**Folder…**) where that is here, and
+**Test**: it looks for a few of the library's songs and says how many it found (and, for one it didn't, where it
+looked). Then **Save**. From then on everything on that computer — playing, previews, waveforms, cue points, tags,
+scans, Sintoniza Import, category folders, takes, the time signal, voice tracks — opens the files where they are on
+it, and whatever it adds (a scan, a file picked or dropped) is kept as the library's path, so every studio finds it.
+The other programs on the computer (Pro, Rec, Import) use the same settings. A computer that sees the music under
+the library's own paths leaves it empty.
+
+The share has to be a folder on the computer: on Linux mount it (e.g. in `/etc/fstab`:
+`//server/radio /mnt/radio cifs credentials=/etc/radio.cred,uid=1000,iocharset=utf8 0 0`), not an `smb://` address
+of the file manager; on Windows a mapped drive or `\\server\share`; on a Mac it appears under `/Volumes`.
 
 ### GPIO (the desk's faders and lights)
 

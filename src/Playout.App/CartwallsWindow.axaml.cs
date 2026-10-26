@@ -156,7 +156,7 @@ public partial class CartwallsWindow : PageWindow
     {
         var paths = e.DataTransfer.TryGetValue(AudioFiles.DragFormat)
             ?? e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>().ToArray();
-        return paths?.FirstOrDefault(p => File.Exists(p) && AudioFiles.IsAudio(p));
+        return paths?.Where(p => SharedPaths.FileExists(p) && AudioFiles.IsAudio(p)).Select(SharedPaths.ToLibrary).FirstOrDefault();
     }
 
     /// <summary>Draws the carts of the cartwall shown, like the playout does.</summary>
@@ -275,7 +275,7 @@ public partial class CartwallsWindow : PageWindow
             Title = L.F("Cart {0}", _cart + 1),
             FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }],
         });
-        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) ChangeCart(c => c.Path = path);
+        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) ChangeCart(c => c.Path = SharedPaths.ToLibrary(path));
     }
 
     /// <summary>The selected cart on the Preview output; again to stop.</summary>

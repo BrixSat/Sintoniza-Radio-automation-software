@@ -35,7 +35,12 @@ public static class LibraryScanner
 
     sealed record Existing(long Id, long FileSize, string? FileModified, bool Missing);
 
-    sealed record FileInfoRow(string Path, long Size, string Modified);
+    /// <param name="Path">As the library keeps it (see <see cref="SharedPaths"/>).</param>
+    /// <param name="Local">Where it is on this computer, when that is another path.</param>
+    sealed record FileInfoRow(string Path, long Size, string Modified, string? Local = null)
+    {
+        public string Disk => Local ?? Path;
+    }
 
     sealed record Read(FileInfoRow File, string Title, string Artist, string Album, string Genre, int? Year, string? Isrc,
         double Duration, bool HasTags);
@@ -57,7 +62,7 @@ public static class LibraryScanner
         var seen = new HashSet<string>(PathComparer);
         var toRead = new List<FileInfoRow>();
         int unchanged = 0, tooLong = 0;
-        foreach (var folder in folders.Select(f => Path.TrimEndingDirectorySeparator(Path.GetFullPath(f))).Distinct(PathComparer))
+        foreach (var folder in folders.Select(f => Path.TrimEndingDirectorySeparator(Path.GetFullPath(SharedPaths.ToLocal(f)))).Distinct(PathComparer))
         {
             int before = seen.Count;
             if (Directory.Exists(folder))
@@ -74,11 +79,12 @@ public static class LibraryScanner
                     if (seen.Count % 500 == 0) progress?.Report(new ScanProgress(seen.Count, toRead.Count, 0));
                 }
             }
-            if (seen.Count > before) roots.Add(folder);
+            // (Roots as the library keeps its paths: the songs under them are compared with its.)
+            if (seen.Count > before) roots.Add(SharedPaths.ToLibrary(folder));
             // Gone, while the folder it was in is there: deleted (or moved away), so are its songs. A folder whose
             // parent is gone too, or that is there but empty, is more likely a drive or share that isn't connected:
             // left alone.
-            else if (!Directory.Exists(folder) && Path.GetDirectoryName(folder) is { } parent && Directory.Exists(parent)) roots.Add(folder);
+            else if (!Directory.Exists(folder) && Path.GetDirectoryName(folder) is { } parent && Directory.Exists(parent)) roots.Add(SharedPaths.ToLibrary(folder));
             else skipped.Add(folder);
         }
         progress?.Report(new ScanProgress(seen.Count, toRead.Count, 0));
@@ -185,9 +191,11 @@ public static class LibraryScanner
     /// <summary>Adds or re-reads one file (e.g. after its tags were edited in the app).</summary>
     public static void ScanFile(LibraryDb db, string path)
     {
-        if (!File.Exists(path) || !IsAudio(path) || Path.GetFullPath(path).Length > LibraryDb.MaxPathLength) return;
+        path = SharedPaths.ToLocal(path);
+        if (!File.Exists(path) || !IsAudio(path)) return;
         var info = new FileInfo(path);
-        var r = ReadFile(new FileInfoRow(info.FullName, info.Length, Modified(info)));
+        var r = ReadFile(Row(info));
+        if (r.File.Path.Length > LibraryDb.MaxPathLength) return;
         using var c = db.Connect();
         using var tx = c.BeginTransaction();
         if (c.ExecuteScalar<long?>($"SELECT id FROM tracks WHERE {db.PathIs("path")} ORDER BY id LIMIT 1", new { path = r.File.Path }, tx) is { } id)
@@ -205,7 +213,14 @@ public static class LibraryScanner
             AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,
         };
         foreach (var info in new DirectoryInfo(folder).EnumerateFiles("*", options))
-            if (IsAudio(info.Name)) yield return new FileInfoRow(info.FullName, info.Length, Modified(info));
+            if (IsAudio(info.Name)) yield return Row(info);
+    }
+
+    /// <summary>A file found on this computer, with its path as the library keeps it.</summary>
+    static FileInfoRow Row(FileInfo info)
+    {
+        string library = SharedPaths.ToLibrary(info.FullName);
+        return new FileInfoRow(library, info.Length, Modified(info), library == info.FullName ? null : info.FullName);
     }
 
     static string Modified(FileInfo info) => LibraryDb.Time(info.LastWriteTimeUtc);
@@ -226,7 +241,7 @@ public static class LibraryScanner
         bool hasTags = false;
         try
         {
-            using var f = TagLib.File.Create(file.Path, TagLib.ReadStyle.Average);
+            using var f = TagLib.File.Create(file.Disk, TagLib.ReadStyle.Average);
             var t = f.Tag;
             title = t.Title?.Trim() ?? "";
             artist = (t.FirstPerformer ?? t.FirstAlbumArtist)?.Trim() ?? "";
@@ -242,7 +257,7 @@ public static class LibraryScanner
             // Unknown format or damaged tags: the file name has to do.
         }
         // BASS reads the length as the player will; TagLib gets some MP3s wrong (e.g. a different bitrate in the first frame).
-        duration = AudioProbe.Duration(file.Path) ?? duration;
+        duration = AudioProbe.Duration(file.Disk) ?? duration;
         if (title.Length == 0)
         {
             // "Artist - Title.mp3"

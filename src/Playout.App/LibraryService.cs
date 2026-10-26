@@ -156,7 +156,7 @@ sealed class LibraryService
         if (_readingCategoryFolders) return;
         _readingCategoryFolders = true;
         _categoryFoldersRead = DateTime.UtcNow;
-        Task.Run(() => db.FolderCategories().Keys.Where(Directory.Exists).Order(PathComparer).ToList())
+        Task.Run(() => db.FolderCategories().Keys.Select(SharedPaths.ToLocal).Where(Directory.Exists).Order(PathComparer).ToList())
             .ContinueWith(t => Dispatcher.UIThread.Post(() =>
             {
                 _readingCategoryFolders = false;

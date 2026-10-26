@@ -180,7 +180,7 @@ public partial class MainWindow
     {
         var paths = e.DataTransfer.TryGetValue(AudioFiles.DragFormat)
             ?? e.DataTransfer.TryGetFiles()?.Select(f => f.TryGetLocalPath()).OfType<string>().ToArray();
-        return paths?.FirstOrDefault(p => File.Exists(p) && AudioFiles.IsAudio(p));
+        return paths?.Where(p => SharedPaths.FileExists(p) && AudioFiles.IsAudio(p)).Select(SharedPaths.ToLibrary).FirstOrDefault();
     }
 
     /// <summary>Puts a file on a cart (keeping its colour and icon); stops it first if it is playing.</summary>
@@ -245,7 +245,7 @@ public partial class MainWindow
             Title = L.F("Assign cart {0}", index + 1),
             FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }],
         });
-        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) SetCart(index, path);
+        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) SetCart(index, SharedPaths.ToLibrary(path));
     }
 
     void ToggleCart(int index)

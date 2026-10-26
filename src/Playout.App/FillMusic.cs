@@ -53,7 +53,7 @@ sealed class FillMusic
             _scan = Task.Run(() =>
             {
                 string[] found;
-                try { found = Directory.Exists(_folder) ? AudioFiles.Expand([_folder]).ToArray() : []; }
+                try { found = SharedPaths.DirectoryExists(_folder) ? AudioFiles.Expand([_folder]).ToArray() : []; }
                 catch { found = []; }
                 if (found.Length > 0) lock (_lock) _files = found; // a network folder that is briefly away keeps the last list
             });

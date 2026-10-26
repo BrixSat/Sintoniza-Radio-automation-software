@@ -1952,5 +1952,18 @@
  "no {0} file in the takes folder, and the temperature isn't known": "pas de fichier {0} dans le dossier de prises, et la température n'est pas connue",
  "no {0} file nor {1} in the takes folder": "ni fichier {0} ni {1} dans le dossier de prises",
  "The 1 song in it leaves it: it goes back to the category of a folder above (Music), if there is one.": "La 1 chanson qu'elle contient en sort : elle revient à la catégorie d'un dossier au-dessus (Music), s'il y en a un.",
- "The {0:N0} songs in it leave it: they go back to the category of a folder above (Music), if there is one.": "Les {0:N0} chansons qu'elle contient en sortent : elles reviennent à la catégorie d'un dossier au-dessus (Music), s'il y en a un."
+ "The {0:N0} songs in it leave it: they go back to the category of a folder above (Music), if there is one.": "Les {0:N0} chansons qu'elle contient en sortent : elles reviennent à la catégorie d'un dossier au-dessus (Music), s'il y en a un.",
+ "The folder voice tracks are recorded into (Daily playlists → Voice track…). Every studio must reach it, like the music (under another path: This computer's paths).": "Le dossier où les voice tracks sont enregistrés (Playlists du jour → Voice track…). Chaque studio doit y accéder, comme à la musique (sous un autre chemin : Chemins de cet ordinateur).",
+ "This computer's paths (shared music)": "Chemins de cet ordinateur (musique partagée)",
+ "When this computer sees the library's music under another path — Windows or a Mac with the on-air computer's Linux music, or a share mounted elsewhere — say where: the start of the library's paths, and where that is here. Leave it empty when the paths are the same.": "Quand cet ordinateur voit la musique de la bibliothèque sous un autre chemin — Windows ou un Mac avec la musique Linux de l'ordinateur de diffusion, ou un partage monté ailleurs — indiquez où : le début des chemins de la bibliothèque, et où c'est ici. Laissez vide quand les chemins sont les mêmes.",
+ "In the library (e.g. /mnt/radio)": "Dans la bibliothèque (ex. : /mnt/radio)",
+ "On this computer (e.g. Z:\\ or \\\\server\\radio)": "Sur cet ordinateur (ex. : Z:\\ ou \\\\serveur\\radio)",
+ "Look for a few of the library's songs on this computer, with these paths": "Chercher quelques chansons de la bibliothèque sur cet ordinateur, avec ces chemins",
+ "Scan (above the library) does it now. A scan only reads new and changed files; moved files keep their category, cue points and history. Network shares don't always report changes, so keep the schedule on for them. radio-import does the same from the command line, using these settings. With a shared MySQL library, one studio scanning is enough; a studio that sees the music under another path says where in This computer's paths.": "Analyser (au-dessus de la bibliothèque) le fait maintenant. Une analyse ne lit que les fichiers nouveaux et modifiés ; les fichiers déplacés gardent leur catégorie, leurs points de cue et leur historique. Les partages réseau ne signalent pas toujours les changements : gardez l'analyse automatique pour eux. radio-import fait de même en ligne de commande, avec ces réglages. Avec une bibliothèque MySQL partagée, un seul studio qui analyse suffit ; un studio qui voit la musique sous un autre chemin l'indique dans Chemins de cet ordinateur.",
+ "Where is it on this computer?": "Où est-ce sur cet ordinateur ?",
+ "The library isn't open: save, then test.": "La bibliothèque n'est pas ouverte : enregistrez, puis testez.",
+ "Looking…": "Recherche…",
+ "The library has no songs yet.": "La bibliothèque n'a pas encore de chansons.",
+ "✓ {0} of {1} songs found on this computer.": "✓ {0} sur {1} chansons trouvées sur cet ordinateur.",
+ "{0} of {1} songs found on this computer. Not found, e.g.: {2} (looked for as {3}).": "{0} sur {1} chansons trouvées sur cet ordinateur. Introuvable, par ex. : {2} (cherchée comme {3})."
 }

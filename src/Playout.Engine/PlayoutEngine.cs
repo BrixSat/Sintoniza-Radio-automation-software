@@ -210,7 +210,7 @@ public sealed class PlayoutEngine : IDisposable
         if (h != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.AutoFree)) { Bass.StreamFree(h); return; }
         double after = h != 0 ? Bass.ChannelBytes2Seconds(h, Bass.ChannelGetLength(h, PositionFlags.Bytes)) : 0;
         if (announcement == null) return;
-        int a = Bass.CreateStream(announcement, 0, 0, BassFlags.Decode | BassFlags.Float);
+        int a = Bass.CreateStream(SharedPaths.ToLocal(announcement), 0, 0, BassFlags.Decode | BassFlags.Float);
         if (a != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, a, BassFlags.AutoFree, Bass.ChannelSeconds2Bytes(_graph.PreviewBus, after), 0)) Bass.StreamFree(a);
     }
 
@@ -1804,7 +1804,7 @@ public sealed class PlayoutEngine : IDisposable
         // The hour announcement right after the signal.
         if (announcement != null)
         {
-            int a = Bass.CreateStream(announcement, 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
+            int a = Bass.CreateStream(SharedPaths.ToLocal(announcement), 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
             if (a != 0 && BassMix.MixerAddChannel(_graph.CartBus, a, BassFlags.AutoFree, Bass.ChannelSeconds2Bytes(_graph.CartBus, startIn + length), 0))
                 length += Bass.ChannelBytes2Seconds(a, Bass.ChannelGetLength(a, PositionFlags.Bytes));
             else
@@ -1898,7 +1898,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         var flags = BassFlags.Decode | BassFlags.Float;
         if (prescan) flags |= BassFlags.Prescan;
-        return Bass.CreateStream(path, 0, 0, flags);
+        return Bass.CreateStream(SharedPaths.ToLocal(path), 0, 0, flags);
     }
 
     /// <summary>Like <see cref="Probe"/>, but a file that fails is reported and skipped instead of failing the whole add.</summary>
@@ -1915,6 +1915,7 @@ public sealed class PlayoutEngine : IDisposable
 
     Track? Probe(string path, bool exact = false)
     {
+        path = SharedPaths.ToLibrary(path); // a track keeps the library's path; it is opened as this computer's
         int h = OpenStream(path, prescan: exact);
         if (h == 0)
         {

@@ -26,6 +26,7 @@ public static class AudioProbe
     public static double? Duration(string path)
     {
         if (!Ready.Value) return null;
+        path = SharedPaths.ToLocal(path);
         int h = Bass.CreateStream(path, 0, 0, BassFlags.Decode | BassFlags.Float);
         if (h == 0 && Bass.LastError == Errors.Init)
         {

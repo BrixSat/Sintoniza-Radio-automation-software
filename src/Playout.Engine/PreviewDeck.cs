@@ -26,7 +26,7 @@ public sealed class PreviewDeck : IDisposable
     /// <summary>A file to pre-listen (paused at the start), or null if it can't be read.</summary>
     public PreviewPlayer? Open(string path)
     {
-        int h = Bass.CreateStream(path, 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
+        int h = Bass.CreateStream(SharedPaths.ToLocal(path), 0, 0, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
         if (h == 0) return null;
         if (!BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.MixerChanPause))
         {

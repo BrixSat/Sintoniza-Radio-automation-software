@@ -669,7 +669,7 @@ sealed class Scheduler : IDisposable
         lock (_lengths)
         {
             if (_lengths.TryGetValue(path, out double s)) return s;
-            s = File.Exists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
+            s = SharedPaths.FileExists(path) ? AudioProbe.Duration(path) ?? 0 : 0;
             return _lengths[path] = s;
         }
     }
@@ -826,24 +826,24 @@ public static class ScheduleItems
                 if (PlayoutEngine.IsStreamSource(e.Path))
                     items.Add(new ScheduledItem(e.Path.Trim(), StreamName: string.IsNullOrWhiteSpace(e.Name) ? e.Path.Trim() : e.Name.Trim(),
                         StreamSeconds: Math.Max(0, e.StreamMinutes) * 60));
-                else if (Directory.Exists(e.Path))
+                else if (SharedPaths.DirectoryExists(e.Path))
                 {
-                    var newest = AudioFiles.InFolder(e.Path).Select(f => new FileInfo(f)).MaxBy(f => f.LastWriteTimeUtc);
+                    var newest = AudioFiles.InFolder(e.Path).Select(f => new FileInfo(SharedPaths.ToLocal(f))).MaxBy(f => f.LastWriteTimeUtc);
                     if (newest == null) { if (!quiet) Say(L.F("{0}: no audio files in {1}", label, e.Path)); }
                     else if (e.MaxAgeMinutes > 0 && DateTime.UtcNow - newest.LastWriteTimeUtc > TimeSpan.FromMinutes(e.MaxAgeMinutes))
                     {
                         if (!quiet) Say(L.F("{0}: skipped, the newest file ({1}) is older than {2} minutes", label, newest.Name, e.MaxAgeMinutes));
                     }
-                    else items.Add(new ScheduledItem(newest.FullName, EventKind(newest.FullName)));
+                    else items.Add(new ScheduledItem(SharedPaths.ToLibrary(newest.FullName), EventKind(newest.FullName)));
                 }
-                else if (File.Exists(e.Path)) items.Add(new ScheduledItem(e.Path, EventKind(e.Path)));
+                else if (SharedPaths.FileExists(e.Path)) items.Add(new ScheduledItem(e.Path, EventKind(e.Path)));
                 else if (!quiet) Say(string.IsNullOrWhiteSpace(e.Path) ? L.F("{0}: nothing chosen to play", label) : L.F("{0}: not found: {1}", label, e.Path));
                 break;
 
             case AdBreak b:
                 var sections = b.SectionNames.Distinct(StringComparer.CurrentCultureIgnoreCase)
                     .ToDictionary(n => n, n => data.InSection(b, n, at), StringComparer.CurrentCultureIgnoreCase);
-                var missing = sections.Values.SelectMany(v => v).Where(a => !File.Exists(a.File)).ToList();
+                var missing = sections.Values.SelectMany(v => v).Where(a => !SharedPaths.FileExists(a.File)).ToList();
                 if (!quiet) foreach (var a in missing) Say(L.F("{0}: advert not found, left out: {1}", label, a.File));
                 foreach (var list in sections.Values) list.RemoveAll(missing.Contains);
                 if (sections.Values.All(v => v.Count == 0))
@@ -863,7 +863,7 @@ public static class ScheduleItems
                     // A section opener: only when the section after it has adverts.
                     if (part.OnlyWithAdverts && b.Parts.Skip(i + 1).FirstOrDefault(x => x.Kind == PartKind.Section) is { } next
                         && (sections.GetValueOrDefault(next.Section.Trim())?.Count ?? 0) == 0) continue;
-                    if (File.Exists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
+                    if (SharedPaths.FileExists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
                     else if (!quiet && part.Path.Length > 0) Say(L.F("{0}: jingle not found, left out: {1}", label, part.Path));
                 }
                 break;

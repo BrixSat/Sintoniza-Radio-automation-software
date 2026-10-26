@@ -1,3 +1,4 @@
+using Playout.Engine;
 using System.Text.Json;
 
 namespace Playout.Library;
@@ -25,6 +26,14 @@ public sealed class LibrarySettings
     public int ScanEveryMinutes { get; set; } = 60;
     /// <summary>The app also scans shortly after files in the folders are added, changed or deleted.</summary>
     public bool WatchFolders { get; set; } = true;
+    /// <summary>
+    /// Where the library's music is on this computer when it sees it under another path (a share: /mnt/radio in the
+    /// library, Z:\ here). Empty: the library's paths are this computer's. See <see cref="SharedPaths"/>.
+    /// </summary>
+    public List<PathMapping> PathMap { get; set; } = new();
+
+    /// <summary>Makes <see cref="PathMap"/> the one this program uses.</summary>
+    public void ApplyPathMap() => SharedPaths.Set(PathMap.Select(m => new SharedPaths.Mapping(m.Library, m.Local)));
 
     public bool IsMySql => Provider.Equals("mysql", StringComparison.OrdinalIgnoreCase);
 
@@ -40,6 +49,7 @@ public sealed class LibrarySettings
     {
         var c = (LibrarySettings)MemberwiseClone();
         c.Folders = Folders.ToList();
+        c.PathMap = PathMap.Select(m => new PathMapping { Library = m.Library, Local = m.Local }).ToList();
         return c;
     }
 
@@ -59,4 +69,11 @@ public sealed class LibrarySettings
         }
         return new();
     }
+}
+
+/// <summary>A start of the library's paths (/mnt/radio) and where that is on this computer (Z:\\).</summary>
+public sealed class PathMapping
+{
+    public string Library { get; set; } = "";
+    public string Local { get; set; } = "";
 }
