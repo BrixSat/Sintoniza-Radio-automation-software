@@ -348,7 +348,9 @@ temperature, read every 10 minutes from Open-Meteo (free, no account).
 | `HRS10_15` (optional) | the whole time in one file |
 | `TMP0` … `TMP45`, `TMPM1` … `TMPM10` | the temperature (M: below zero) |
 
-Any audio format; several recordings of the same (`HRS10a`, `HRS10b`) are taken at random. The time said is the
+Any audio format, any case, with or without leading zeros (`HRS9` = `HRS09`); text after the number is fine
+(`HRS10 dez horas.mp3`). The files can be in subfolders of the takes folder (`Horas`, `Minutos`, `Temperatura`).
+Several recordings of the same (`HRS10a`, `HRS10b`) are taken at random. The time said is the
 nearest minute when the take starts. In an hour template: **Add a line → 🕒 Time / temperature…** → *The time*, *The
 temperature* or *The time and then the temperature*. Adding a category or folder whose files are takes asks the same
 (or *Any one of its files, at random*). To change what a line says: select it → **🕒 Time / temperature…**.

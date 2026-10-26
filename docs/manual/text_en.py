@@ -360,7 +360,7 @@ CHAPTERS = [
         ("LatitudeBox", "Where the station is, for the temperature (Open-Meteo, free, every 10 minutes)…"),
         ("TemperatureButton", "…and <b>Read the temperature</b> to try it."),
     ]),
-    ("tip", "Several recordings of the same take (HRS10a, HRS10b) are used at random. The time said is the nearest minute when it starts. A take whose files are missing is skipped; the log says which file it needed."),
+    ("tip", "The files may be in subfolders (Hours, Minutes, Temperature). Several recordings of the same take (HRS10a, HRS10b) are used at random. The time said is the nearest minute when it starts. A take whose files are missing is skipped; the log says which file it needed."),
     ("h2", "The schedule"),
     ("p", "Everything planned ahead: Events, Ad breaks, Clients and campaigns, Hour templates and Daily playlists, chosen on the left. <b>Save</b> (in the toolbar, lit when something changed, or Ctrl+S) writes it to the database and the on-air program "
           "takes it within a few seconds. If someone else saved meanwhile, you are asked before theirs is replaced."),

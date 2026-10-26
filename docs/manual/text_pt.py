@@ -365,7 +365,7 @@ CHAPTERS = [
         ("LatitudeBox", "Onde fica a estação, para a temperatura (Open-Meteo, gratuito, a cada 10 minutos)…"),
         ("TemperatureButton", "…e <b>Ler a temperatura</b> para experimentar."),
     ]),
-    ("tip", "Várias gravações do mesmo take (HRS10a, HRS10b) são usadas ao acaso. A hora dita é o minuto mais próximo de quando começa. Um take sem os seus ficheiros é saltado; o registo diz que ficheiro faltava."),
+    ("tip", "Os ficheiros podem estar em subpastas (Horas, Minutos, Temperatura). Várias gravações do mesmo take (HRS10a, HRS10b) são usadas ao acaso. A hora dita é o minuto mais próximo de quando começa. Um take sem os seus ficheiros é saltado; o registo diz que ficheiro faltava."),
     ("h2", "A programação"),
     ("p", "Tudo o que se planeia com antecedência: Eventos, Blocos publicitários, Clientes e campanhas, Modelos de hora e Playlists diárias, escolhidos à esquerda. <b>Guardar</b> (na barra de ferramentas, acesa quando algo mudou, ou Ctrl+S) grava na base de "
           "dados e o programa de emissão recebe-o em poucos segundos. Se outra pessoa gravou entretanto, é-lhe perguntado antes de substituir o que ela fez."),

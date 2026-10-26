@@ -37,7 +37,8 @@ public static class Takes
     static readonly string[] AudioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma", ".opus", ".mp2", ".aiff", ".aif"];
 
     /// <summary>
-    /// The files for a take at <paramref name="at"/> (local time), in order; empty if a file it needs isn't there.
+    /// The files for a take at <paramref name="at"/> (local time), in order; empty if a file it needs isn't there. They
+    /// are looked for in the folder and its subfolders.
     /// The time is the nearest minute: HRS{hour} (midnight 00 or 24) and MIN{minute} (none needed on the hour), or one
     /// file HRS{hour}_{minute} if there is one. The temperature: TMP{degrees} or TMPM{degrees} below zero.
     /// </summary>
@@ -46,7 +47,8 @@ public static class Takes
         var files = new List<string>();
         if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder)) return files;
         string[] all;
-        try { all = Directory.GetFiles(folder).Where(f => AudioExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToArray(); }
+        // Its subfolders too: the hours in one (Horas), the temperatures in another (Temperatura)…
+        try { all = Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Where(f => AudioExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToArray(); }
         catch { return files; }
         if (kind is TakeKind.Time or TakeKind.TimeAndTemperature)
         {

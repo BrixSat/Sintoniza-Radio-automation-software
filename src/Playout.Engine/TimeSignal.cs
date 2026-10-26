@@ -36,7 +36,8 @@ public static class TimeSignal
     /// The announcement for the hour that starts at <paramref name="hour"/>: the audio file in the folder whose name
     /// ends in that number (HRS05.mp3, "05 horas.wav"; midnight 00 or 24), an HRS file first. Never another take of the
     /// same folder — a temperature (TMP12, TMPM03), a minute (MIN12) or an hour and minute (HRS10_12) — so a folder
-    /// with all the takes works too. Null if there is none.
+    /// with all the takes works too. In its subfolders, only HRS files (the takes' folder with the hours in one of them).
+    /// Null if there is none.
     /// </summary>
     public static string? HourFile(string folder, DateTime hour)
     {
@@ -44,11 +45,14 @@ public static class TimeSignal
         try
         {
             string? any = null;
-            foreach (var file in Directory.EnumerateFiles(folder).Order(StringComparer.OrdinalIgnoreCase))
+            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Order(StringComparer.OrdinalIgnoreCase))
             {
                 if (!AudioExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())) continue;
                 var name = Path.GetFileNameWithoutExtension(file);
                 if (NotAnHour.IsMatch(name)) continue;
+                // In a subfolder (the takes' Horas…), only an HRS file: "12 graus" in another isn't an hour.
+                bool inside = !string.Equals(Path.GetDirectoryName(file)?.TrimEnd('/', '\\'), folder.TrimEnd('/', '\\'), StringComparison.Ordinal);
+                if (inside && !name.StartsWith("HRS", StringComparison.OrdinalIgnoreCase)) continue;
                 int end = name.Length;
                 while (end > 0 && !char.IsAsciiDigit(name[end - 1])) end--;
                 int start = end;
