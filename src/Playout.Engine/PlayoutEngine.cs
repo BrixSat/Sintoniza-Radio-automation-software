@@ -1019,7 +1019,12 @@ public sealed class PlayoutEngine : IDisposable
                     Kind = TrackKind.Jingle, Event = take.Event, Lock = take.Lock, Tag = take.Tag, InBreak = take.InBreak,
                     FollowsPrevious = parts.Count > 0 || take.FollowsPrevious, StartBy = parts.Count == 0 ? take.StartBy : null,
                 });
-        if (parts.Count > 0) Emit(L.F("{0}: {1}", take.Title, string.Join(" + ", parts.Select(p => Path.GetFileNameWithoutExtension(p.Path)))));
+        if (parts.Count == 0) return parts;
+        string played = L.F("{0}: {1}", take.Title, string.Join(" + ", parts.Select(p => Path.GetFileNameWithoutExtension(p.Path))));
+        // The time without its temperature: say why, so the file to add (or the place to set) is known.
+        if (kind == TakeKind.TimeAndTemperature && Takes.Missing(folder, TakeKind.Temperature, DateTime.Now, temperature) is { } why)
+            played += " — " + L.F("without the temperature: {0}", why);
+        Emit(played);
         return parts;
     }
 

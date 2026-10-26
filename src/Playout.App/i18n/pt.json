@@ -1603,6 +1603,7 @@
  "Take: the time": "Take: a hora",
  "Take: the temperature": "Take: a temperatura",
  "Take: the time and temperature": "Take: a hora e a temperatura",
+ "without the temperature: {0}": "sem a temperatura: {0}",
  "{0}: every song restricted at {1:HH:mm}": "{0}: todas as músicas com restrição às {1:HH:mm}",
  "from {0:d}": "a partir de {0:d}",
  "until {0:d}": "até {0:d}",
