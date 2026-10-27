@@ -110,6 +110,9 @@ public sealed class AppSettings
 
     /// <summary>Index in <see cref="PlaylistItems"/> of the item on air (or last played); -1 = none. Saved every few seconds.</summary>
     public int OnAirIndex { get; set; } = -1;
+    /// <summary>When the settings were last saved, as found at start (the playlist is saved with them as it changes).</summary>
+    [JsonIgnore]
+    public DateTime? SavedAtUtc { get; private set; }
     /// <summary>The player was playing in AUTO at the last save.</summary>
     public bool WasPlaying { get; set; }
     /// <summary>Streaming was switched on at the last save: it is switched on again at start.</summary>
@@ -163,6 +166,7 @@ public sealed class AppSettings
     {
         // A damaged settings file must never stop the station from starting: then the backup, or the defaults.
         var s = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<AppSettings>(json)) ?? new();
+        s.SavedAtUtc = File.Exists(FilePath) ? File.GetLastWriteTimeUtc(FilePath) : null;
         s.Normalize();
         s._saved = JsonSerializer.Serialize(s, Json);
         return s;

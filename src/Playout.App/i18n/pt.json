@@ -1966,5 +1966,7 @@
  "Looking…": "A procurar…",
  "The library has no songs yet.": "A biblioteca ainda não tem músicas.",
  "✓ {0} of {1} songs found on this computer.": "✓ {0} de {1} músicas encontradas neste computador.",
- "{0} of {1} songs found on this computer. Not found, e.g.: {2} (looked for as {3}).": "{0} de {1} músicas encontradas neste computador. Não encontrada, p. ex.: {2} (procurada como {3})."
+ "{0} of {1} songs found on this computer. Not found, e.g.: {2} (looked for as {3}).": "{0} de {1} músicas encontradas neste computador. Não encontrada, p. ex.: {2} (procurada como {3}).",
+ "The playlist was saved at {0:dd/MM HH:mm}: its {1} items still to play were left out; the daily playlist carries on from now": "A playlist foi guardada às {0:dd/MM HH:mm}: os {1} itens que faltava tocar ficaram de fora; a playlist diária continua a partir de agora",
+ "{0} items of daily playlist hours that have ended were left out": "{0} itens de horas da playlist diária que já acabaram ficaram de fora"
 }

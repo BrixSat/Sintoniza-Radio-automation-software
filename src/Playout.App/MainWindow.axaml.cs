@@ -116,6 +116,7 @@ public partial class MainWindow : Window
             ApplyGpio();
             ApplyLoudness();
             FillPlayedTimes(_settings.PlaylistItems, _settings.OnAirIndex);
+            LeaveOutOldItems();
             AddEntries(_settings.PlaylistItems);
             _ = CarryOn();
             _scheduler = new Scheduler(_engine, ScheduleSource.LoadLocal(), new ScheduleSource(() => _library.Db));
@@ -1433,6 +1434,32 @@ public partial class MainWindow : Window
     /// log: going back from the item that was on air, each takes the latest play of its file before the item after it
     /// (one played out of order: its latest play not taken by another row).
     /// </summary>
+    /// <summary>
+    /// At start, what the saved playlist still had to play and is no longer due goes, so the daily playlist carries on
+    /// from now: the planned items of hours that have ended and, when the playlist was saved over an hour ago (the
+    /// program closed, the computer off), all of it.
+    /// </summary>
+    void LeaveOutOldItems()
+    {
+        var items = _settings.PlaylistItems;
+        int onAir = Math.Min(_settings.OnAirIndex, items.Count - 1);
+        bool old = _settings.SavedAtUtc is { } saved && DateTime.UtcNow - saved > TimeSpan.FromHours(1);
+        var now = DateTime.Now;
+        int left = 0;
+        for (int i = items.Count - 1; i > onAir; i--)
+        {
+            var e = items[i];
+            if (e.PlayedAt != null) continue;
+            if (!old && !(PlanPlayer.ReadTag(e.Tag) is { } t && now >= t.Hour.AddHours(1))) continue;
+            items.RemoveAt(i);
+            left++;
+        }
+        if (left > 0)
+            AppLog.Write(old
+                ? L.F("The playlist was saved at {0:dd/MM HH:mm}: its {1} items still to play were left out; the daily playlist carries on from now", _settings.SavedAtUtc!.Value.ToLocalTime(), left)
+                : L.F("{0} items of daily playlist hours that have ended were left out", left));
+    }
+
     static void FillPlayedTimes(List<PlaylistEntry> items, int onAirIndex)
     {
         int last = Math.Min(onAirIndex, items.Count - 1);
