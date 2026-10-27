@@ -52,6 +52,17 @@ sealed class PlanPlayer
     /// <summary>The schedule (templates, breaks) changed: the plan is looked at again straight away.</summary>
     public void ScheduleChanged() => _scheduleChanged = true;
 
+    /// <summary>Another computer is on air: this one neither makes, puts in nor changes the daily playlists.</summary>
+    public bool Standby { get; set; }
+
+    /// <summary>The hour now, from the item planned for now, in the playlist (this computer has just gone on air).</summary>
+    public Task LoadNow()
+    {
+        var now = DateTime.Now;
+        _pending = (Hour(now), now.AddSeconds(20));
+        return _busy = Task.Run(() => Load(Hour(now), now));
+    }
+
     // ───────────────────────── Tags ─────────────────────────
 
     const string Prefix = "plan:";
@@ -75,7 +86,7 @@ sealed class PlanPlayer
     public void Check(DateTime? ends, bool auto, IReadOnlyList<PlaylistRow> rows)
     {
         var now = DateTime.Now;
-        if (now < _nextCheck || _busy is { IsCompleted: false }) return;
+        if (Standby || now < _nextCheck || _busy is { IsCompleted: false }) return;
         _nextCheck = now.AddSeconds(2);
 
         if (now >= _nextKeep || _scheduleChanged)

@@ -21,6 +21,17 @@ public sealed class SegueHost
     /// <summary>The crossfade between two kinds of item (song to song, or with a jingle or advert).</summary>
     public required Func<TrackKind, TrackKind, double> Crossfade { get; init; }
     public bool PreviewIsOnAir { get; init; }
+
+    /// <summary>The playout's: its Preview output, and cue points saved to the library through it.</summary>
+    public static SegueHost For(PlayoutEngine engine) => new()
+    {
+        Open = engine.OpenPreview,
+        GetCues = engine.GetCues,
+        SaveCues = (path, cues) => { engine.SetCues(path, cues); return Task.CompletedTask; },
+        LoadWaveform = engine.LoadWaveformAsync,
+        Crossfade = (a, b) => engine.CrossfadeBetween(new Track(Guid.Empty, "", "", "", 0, a), new Track(Guid.Empty, "", "", "", 0, b)),
+        PreviewIsOnAir = engine.PreviewIsOnAir,
+    };
 }
 
 /// <summary>

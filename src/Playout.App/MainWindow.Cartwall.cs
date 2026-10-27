@@ -256,7 +256,7 @@ public partial class MainWindow
         {
             _playingCarts[(_page, index)] = h;
             _cartsOnAir[h] = (path, DateTime.UtcNow);
-            _library.RecordPlay(path, "", Path.GetFileNameWithoutExtension(path), "cart");
+            if (!IsStandby) _library.RecordPlay(path, "", Path.GetFileNameWithoutExtension(path), "cart"); // standby: not on air
         }
     }
 

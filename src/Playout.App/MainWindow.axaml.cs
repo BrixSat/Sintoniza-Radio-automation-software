@@ -118,6 +118,7 @@ public partial class MainWindow : Window
             FillPlayedTimes(_settings.PlaylistItems, _settings.OnAirIndex);
             LeaveOutOldItems();
             AddEntries(_settings.PlaylistItems);
+            StartStudioRole();
             _ = CarryOn();
             _scheduler = new Scheduler(_engine, ScheduleSource.LoadLocal(), new ScheduleSource(() => _library.Db));
             _scheduler.Message += message =>
@@ -130,6 +131,7 @@ public partial class MainWindow : Window
             var scheduler = _scheduler;
             // The daily playlists: made ahead, put in the playlist as their hours come.
             _plan = new PlanPlayer(_engine, _library, () => scheduler.Current, PlanOptions, () => Math.Clamp(_settings.PlanDaysAhead, 0, 14));
+            _plan.Standby = IsStandby;
             _scheduler.Reloaded += () => _plan.ScheduleChanged();
             _plan.Message += message =>
             {
@@ -333,6 +335,7 @@ public partial class MainWindow : Window
             _updateTimer?.Stop();
             _health?.Dispose();
             _takes.Dispose();
+            _role?.Dispose();
             _backups?.Dispose();
             _scheduler?.Dispose();
             LogCartsOnAir();
@@ -354,6 +357,11 @@ public partial class MainWindow : Window
     /// <summary>Play resumes or continues; when stopped, it starts from the selected item if there is one.</summary>
     void PlayPressed()
     {
+        if (IsStandby)
+        {
+            _ = AskTakeOnAir();
+            return;
+        }
         bool stopped = _engine?.State == PlayerState.Stopped;
         _engine?.Play(stopped && Playlist.SelectedItem is PlaylistRow row ? row.Id : null);
     }
@@ -1261,6 +1269,15 @@ public partial class MainWindow : Window
         Light(L.T("LIBRARY"), _library.Db != null ? LightOk : _library.Error != null ? LightBad : LightOff,
             _library.Db != null ? L.T("The library is open") : _library.Error is { } error ? L.F("The library can't be reached: {0}", error) : L.T("No library"));
 
+        // Several computers for the station (a shared library): this one on air, and the standby ones.
+        if (_role?.Studios is { } studios && !IsStandby)
+        {
+            var standby = studios.Studios.Where(st => !st.OnAir && studios.Silent(st) < TimeSpan.FromMinutes(1)).Select(st => st.Computer).ToList();
+            Light(L.T("ON AIR"), LightOk, standby.Count > 0
+                ? L.F("This computer is on air. Standby: {0}", string.Join(", ", standby))
+                : L.T("This computer is on air. No other computer is standby."));
+        }
+
         var problems = _health?.Active ?? [];
         var alerts = _settings.Alerts;
         Light(L.T("ALERTS"), problems.Count > 0 ? LightBad : alerts.Enabled && alerts.HasChannel ? LightOk : LightOff,
@@ -1647,16 +1664,7 @@ public partial class MainWindow : Window
         _editorOpen = true;
         try
         {
-            var host = new SegueHost
-            {
-                Open = engine.OpenPreview,
-                GetCues = engine.GetCues,
-                SaveCues = (path, cues) => { engine.SetCues(path, cues); return Task.CompletedTask; },
-                LoadWaveform = engine.LoadWaveformAsync,
-                Crossfade = (a, b) => engine.CrossfadeBetween(new Track(Guid.Empty, "", "", "", 0, a), new Track(Guid.Empty, "", "", "", 0, b)),
-                PreviewIsOnAir = engine.PreviewIsOnAir,
-            };
-            await new SegueEditorWindow(host, new SegueItem(row.Track.Path, row.Track.Display, row.Track.Kind),
+            await new SegueEditorWindow(SegueHost.For(engine), new SegueItem(row.Track.Path, row.Track.Display, row.Track.Kind),
                 new SegueItem(after.Track.Path, after.Track.Display, after.Track.Kind)).ShowDialog<bool>(this);
         }
         finally
@@ -1918,8 +1926,12 @@ public partial class MainWindow : Window
                 if (items[i].Id == snap.CurrentId) { onAir = i; break; }
                 else if (snap.Played.Contains(items[i].Id)) onAir = i;
             _settings.OnAirIndex = onAir;
-            _settings.WasPlaying = _engine.State == PlayerState.Playing && _engine.AutoAdvance;
-            _settings.StreamingOn = _engine.GetStatus().Stream != StreamState.Off;
+            // Standby: as when it was last on air (for when it goes on air again).
+            if (!IsStandby)
+            {
+                _settings.WasPlaying = _engine.State == PlayerState.Playing && _engine.AutoAdvance;
+                _settings.StreamingOn = _engine.GetStatus().Stream != StreamState.Off;
+            }
         }
         _settings.Save();
     }
@@ -2094,7 +2106,7 @@ public partial class MainWindow : Window
         bool play = _settings.ResumeOnStart && _settings.AutoAdvance && (_settings.WasPlaying || _settings.PlaylistItems.Count > 0);
         await _engine!.Resume(index, play);
         _restored = true;
-        if (_settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();
+        if (!IsStandby && _settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();
     }
 
     /// <summary>Dead air detection and fill music, from the settings.</summary>

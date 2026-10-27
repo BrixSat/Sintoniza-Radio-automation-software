@@ -347,6 +347,23 @@ public sealed class PlayoutEngine : IDisposable
 
     // ───────────────────────── Public API (thread-safe, non-blocking) ─────────────────────────
 
+    /// <summary>
+    /// Another computer is on air (a standby studio): nothing goes on air from this one, neither the playlist, fill
+    /// music nor the time signal; what is playing stops. The carts and listening (Preview) still work.
+    /// </summary>
+    public bool Standby
+    {
+        get => _standby;
+        set
+        {
+            if (_standby == value) return;
+            _standby = value;
+            if (value) Post(() => { if (_current != null || _state != (int)PlayerState.Stopped) StopInternal(); });
+        }
+    }
+
+    volatile bool _standby;
+
     public bool AutoAdvance
     {
         get => _autoAdvance;
@@ -1092,6 +1109,11 @@ public sealed class PlayoutEngine : IDisposable
     /// <param name="outgoingFade">How the deck now on air leaves: fade time in seconds (0 = cut), or null to let it play on to its Cue Out.</param>
     void StartTrack(Track track, double? outgoingFade)
     {
+        if (_standby)
+        {
+            if (_current == null) StopInternal();
+            return;
+        }
         _connectAttempt++;
         _connecting = null;
         if (track.IsStream) { ConnectStream(track, outgoingFade); return; }
@@ -1461,7 +1483,7 @@ public sealed class PlayoutEngine : IDisposable
     /// </summary>
     bool StartFill()
     {
-        if (!_autoAdvance || _fill == null) return false;
+        if (!_autoAdvance || _fill == null || _standby) return false;
         _waitingForFill = true;
         _state = (int)PlayerState.Playing; // still on duty: what's on air is coming
         if (FillTrack() is { } track)
@@ -1768,7 +1790,7 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Shortly before each top of the hour, schedules the time signal so the hour falls exactly on the hour.</summary>
     void CheckTimeSignal()
     {
-        if (_timeSignal.Mode == TimeSignalMode.Off) return;
+        if (_timeSignal.Mode == TimeSignalMode.Off || _standby) return;
         var now = DateTime.Now;
         // The first hour that still leaves time to prepare (switched on at 59:58, it starts with the next hour). How
         // early it starts depends on that hour's sound (an hour announcement in place of the signal has its own length).

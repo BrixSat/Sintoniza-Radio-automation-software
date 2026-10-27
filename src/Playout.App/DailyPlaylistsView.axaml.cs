@@ -106,16 +106,10 @@ public partial class DailyPlaylistsView : UserControl
         SegueButton.Click += async (_, _) => await EditSegue();
         VoiceButton.Click += async (_, _) => await RecordVoiceTrack();
         TagsButton.Click += async (_, _) => { if (SelectedRow() is { Path.Length: > 0 } row) await EditTags(row.Path); };
-        ListenButton.Click += (_, _) => ListenOrPause();
-        ListenStopButton.Click += (_, _) => StopListening();
-        ListenSlider.AddHandler(PointerReleasedEvent, (_, _) => _player?.Seek(ListenSlider.Value), Avalonia.Interactivity.RoutingStrategies.Tunnel, true);
-        KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Space || e.Source is TextBox) return;
-            e.Handled = true;
-            ListenOrPause();
-        };
-        _listenTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(200), DispatcherPriority.Background, (_, _) => ShowListening());
+        Listening.Settings = _settings;
+        Listening.Selected = () => SelectedRow() is { Path.Length: > 0 } row ? (row.Path, Display(row)) : null;
+        Listening.Problem += problem => StatusText.Text = problem;
+        Listening.SpaceListens(this);
         ItemList.KeyDown += async (_, e) => { if (e.Key == Key.Delete) { e.Handled = true; await RemoveSelected(); } };
 
         // What the playout (or another studio) made meanwhile, and a schedule saved since: seen within a minute.
@@ -148,9 +142,7 @@ public partial class DailyPlaylistsView : UserControl
     public void Stop()
     {
         _refresh.Stop();
-        StopListening();
-        _deck?.Dispose();
-        _deck = null;
+        Listening.Close();
     }
 
     /// <summary>The schedule was saved (templates may have changed): the day is read and made again where needed.</summary>
@@ -163,78 +155,18 @@ public partial class DailyPlaylistsView : UserControl
 
     // ───────────────────────── Listening ─────────────────────────
 
-    PreviewDeck? _deck;
-    PreviewPlayer? _player;
-    string? _playerPath;
-    readonly DispatcherTimer _listenTimer;
-
     PlanRow? SelectedRow() => ItemList.SelectedItems?.OfType<PlanRow>().FirstOrDefault();
+
+    static string Display(PlanRow r) => r.HasArtist ? $"{r.Artist} - {r.Title}" : r.Title;
 
     void ListenTo(PlanRow row)
     {
-        if (row.Path.Length > 0) Listen(row.Path, row.HasArtist ? $"{row.Artist} - {row.Title}" : row.Title);
+        if (row.Path.Length > 0) Listen(row.Path, Display(row));
     }
 
-    /// <summary>Space and ▶: the selected item, or pause / carry on with the one playing.</summary>
-    void ListenOrPause()
-    {
-        if (_player != null && (SelectedRow() is not { } row || row.Path == _playerPath))
-        {
-            if (_player.IsPlaying) _player.Pause(); else _player.Play();
-            ShowListening();
-            return;
-        }
-        if (SelectedRow() is { } selected) ListenTo(selected);
-    }
+    void Listen(string path, string title) => Listening.Listen(path, title);
 
-    /// <summary>Plays a file on the Preview output (Settings → Audio), never on the on-air cards.</summary>
-    void Listen(string path, string title)
-    {
-        StopListening();
-        try
-        {
-            _deck ??= new PreviewDeck(_settings.Routing, MainWindow.ForcedDeviceFromArgs());
-            ListenWarning.Text = L.T("The Preview output is the on-air one (Settings → Audio): this would be heard on air.");
-            ListenWarning.IsVisible = _deck.PreviewIsOnAir;
-            _player = _deck.Open(path);
-        }
-        catch (Exception ex)
-        {
-            StatusText.Text = L.F("Can't listen: {0}", ex.Message);
-            return;
-        }
-        if (_player == null)
-        {
-            StatusText.Text = L.F("Can't listen: {0} can't be opened", System.IO.Path.GetFileName(path));
-            return;
-        }
-        _playerPath = path;
-        ListenTitle.Text = title;
-        ListenSlider.Maximum = Math.Max(1, _player.Length);
-        _player.Play();
-        _listenTimer.Start();
-        ShowListening();
-    }
-
-    void StopListening()
-    {
-        _player?.Dispose();
-        _player = null;
-        _playerPath = null;
-        _listenTimer.Stop();
-        ListenTitle.Text = "";
-        ListenSlider.Value = 0;
-        ShowListening();
-    }
-
-    void ShowListening()
-    {
-        bool playing = _player?.IsPlaying == true;
-        ListenButton.Content = playing ? "❚❚" : "▶";
-        double at = _player?.Position ?? 0, length = _player?.Length ?? 0;
-        ListenTime.Text = $"{Format.Duration(at)} / {Format.Duration(length)}";
-        if (_player != null && !ListenSlider.IsPointerOver) ListenSlider.Value = at;
-    }
+    void StopListening() => Listening.Stop();
 
     // ───────────────────────── Voice tracks ─────────────────────────
 
@@ -293,20 +225,19 @@ public partial class DailyPlaylistsView : UserControl
             try { await Task.Run(() => stations.Save(updated, version, $"{Environment.UserName}@{Environment.MachineName}")); }
             catch (Exception ex) { StatusText.Text = L.F("The folder isn't kept for next time: {0}", ex.Message); }
         }
-        try { _deck ??= new PreviewDeck(_settings.Routing, MainWindow.ForcedDeviceFromArgs()); }
+        PreviewDeck deck;
+        try { deck = Listening.Deck(); }
         catch (Exception ex)
         {
             StatusText.Text = L.F("Can't listen: {0}", ex.Message);
             return;
         }
-        var deck = _deck;
         var host = new SegueHost
         {
             Open = deck.Open, GetCues = db.GetCues, SaveCues = (_, _) => Task.CompletedTask, LoadWaveform = Waveforms.LoadAsync,
             Crossfade = CrossfadeBetween, PreviewIsOnAir = deck.PreviewIsOnAir,
         };
-        string Name(PlanRow r) => r.HasArtist ? $"{r.Artist} - {r.Title}" : r.Title;
-        var window = new VoiceTrackWindow(host, new SegueItem(before.Path, Name(before), before.Kind), new SegueItem(after.Path, Name(after), after.Kind),
+        var window = new VoiceTrackWindow(host, new SegueItem(before.Path, Display(before), before.Kind), new SegueItem(after.Path, Display(after), after.Kind),
             folder, _voiceInput.Length > 0 ? _voiceInput : _settings.Mic?.Device ?? "");
         var take = await window.ShowDialog<VoiceTake?>(owner);
         _voiceInput = window.Input;
@@ -366,7 +297,7 @@ public partial class DailyPlaylistsView : UserControl
 
     // ───────────────────────── Segue ─────────────────────────
 
-    static readonly WaveformLoader Waveforms = new();
+    internal static readonly WaveformLoader Waveforms = new();
 
     /// <summary>The selected item and the one after it, when both are files.</summary>
     (PlanRow First, PlanRow Next)? SegueRows()
@@ -384,13 +315,13 @@ public partial class DailyPlaylistsView : UserControl
     {
         if (_db is not { } db || SegueRows() is not var (first, next) || Owner is not { } owner) return;
         StopListening();
-        try { _deck ??= new PreviewDeck(_settings.Routing, MainWindow.ForcedDeviceFromArgs()); }
+        PreviewDeck deck;
+        try { deck = Listening.Deck(); }
         catch (Exception ex)
         {
             StatusText.Text = L.F("Can't listen: {0}", ex.Message);
             return;
         }
-        var deck = _deck;
         var host = new SegueHost
         {
             Open = deck.Open,
@@ -412,8 +343,7 @@ public partial class DailyPlaylistsView : UserControl
             Crossfade = CrossfadeBetween,
             PreviewIsOnAir = deck.PreviewIsOnAir,
         };
-        string Name(PlanRow r) => r.HasArtist ? $"{r.Artist} - {r.Title}" : r.Title;
-        if (await new SegueEditorWindow(host, new SegueItem(first.Path, Name(first), first.Kind), new SegueItem(next.Path, Name(next), next.Kind))
+        if (await new SegueEditorWindow(host, new SegueItem(first.Path, Display(first), first.Kind), new SegueItem(next.Path, Display(next), next.Kind))
                 .ShowDialog<bool>(owner))
         {
             StatusText.Text = L.T("Segue saved. The playout takes it within a minute.");
@@ -422,11 +352,14 @@ public partial class DailyPlaylistsView : UserControl
     }
 
     /// <summary>How long an item plays before the next starts, from its cue points (as the daily playlists count it).</summary>
-    double Plays(CuePoints cues, double length, TrackKind kind)
+    double Plays(CuePoints cues, double length, TrackKind kind) => Plays(cues, length, CrossfadeBetween(kind, kind));
+
+    /// <summary>…with this crossfade into the next item.</summary>
+    internal static double Plays(CuePoints cues, double length, double fade)
     {
         double start = cues.CueIn ?? 0, end = Math.Min(cues.CueOut ?? length, length);
         if (cues.Mix is { } mix && mix > start && mix < end) return mix - start;
-        double plays = end - start, fade = CrossfadeBetween(kind, kind);
+        double plays = end - start;
         return Math.Max(1, plays - Math.Min(fade, plays / 2));
     }
 
@@ -449,7 +382,7 @@ public partial class DailyPlaylistsView : UserControl
 
     async Task SaveTags(string path, TrackTags tags, byte[]? cover)
     {
-        if (_playerPath == path) StopListening(); // let go of the file while it is rewritten
+        if (Listening.Path == path) StopListening(); // let go of the file while it is rewritten
         await WriteTags(_db, path, tags, cover);
     }
 

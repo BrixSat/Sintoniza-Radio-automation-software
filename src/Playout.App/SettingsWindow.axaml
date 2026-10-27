@@ -347,6 +347,18 @@
                                    Text="Carries on with the item after the one that was on air, and turns streaming back on. The watchdog applies from the next start. On an unattended studio computer, also turn on automatic login and turn off sleep." />
                     </StackPanel>
 
+                    <StackPanel Spacing="4" Classes="computer">
+                        <TextBlock Classes="label" Text="Several computers on air (a shared library)" />
+                        <WrapPanel ItemSpacing="8" LineSpacing="6">
+                            <CheckBox x:Name="TakeOverBox" Content="Standby, go on air by itself when the computer on air hasn't answered for"
+                                      VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="TakeOverSecondsBox" Minimum="5" Maximum="300" Increment="5" FormatString="0" Width="110" />
+                            <TextBlock Text="s" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <TextBlock Classes="note"
+                                   Text="With a MySQL / MariaDB library, every computer running Sintoniza Emi for the station is on air or standby: the first to start goes on air, the others wait silent (no playlist, time signal, stream or play history) and show which computer is on air. Take on air (or Play) on a standby computer puts it on air and the other one standby. Without this, a standby computer goes on air only when you press Take on air. A computer cut off from the network keeps playing: the one that took over plays too until it comes back." />
+                    </StackPanel>
+
                     <StackPanel Spacing="6" Classes="computer">
                         <TextBlock Classes="label" Text="Backups" />
                         <WrapPanel ItemSpacing="8" LineSpacing="6">

@@ -74,6 +74,14 @@ public partial class ScheduleWindow
         {
             SongsView.Attach(_library);
             SongsView.EditTagsRequested += path => _ = EditSongTags(path);
+            SongsView.EditCuesRequested += path => _ = EditSongCues(path);
+            // Listening: on this computer's Preview output (Settings → Audio), never on air.
+            SongsListening.Settings = _settings;
+            SongsListening.Selected = () => SongsView.SelectedSong;
+            SongsListening.Problem += problem => SavedText.Text = problem;
+            SongsListening.SpaceListens(SongsView);
+            SongsView.ListenRequested += path => SongsListening.Listen(path, SongsView.SelectedSong is { } s && s.Path == path ? s.Title : Path.GetFileNameWithoutExtension(path));
+            Closed += (_, _) => SongsListening.Close();
         }
 
         MenuSave.Click += (_, _) => Save();
@@ -167,10 +175,12 @@ public partial class ScheduleWindow
                         .Where(m => m.Item2 > 0).ToList();
                     _nextMissedCheck = DateTime.UtcNow.AddMinutes(10);
                 }
-                return (stats, categories.Count, last, hours, items, station);
+                var studios = db.IsMySql ? db.Studios(StationStore.Station) : null;
+                return (stats, categories.Count, last, hours, items, station, studios);
             });
             _station = f.station;
             ShowFigures(data, now, f.stats, f.Item2, f.last, f.hours, f.items);
+            ShowStudios(f.studios);
         }
         catch (Exception ex)
         {
@@ -446,5 +456,83 @@ public partial class ScheduleWindow
         {
             _tagsOpen = false;
         }
+    }
+
+    /// <summary>
+    /// Songs → Edit cue points…: on the Preview output, saved to the library (every studio has them, the playout takes
+    /// them within a minute) and the planned hours count the new length.
+    /// </summary>
+    async Task EditSongCues(string path)
+    {
+        if (_tagsOpen || _library?.Db is not { } db) return;
+        if (!SharedPaths.FileExists(path))
+        {
+            SavedText.Text = L.F("Not found: {0}", path);
+            return;
+        }
+        SongsListening.Stop();
+        PreviewDeck deck;
+        try { deck = SongsListening.Deck(); }
+        catch (Exception ex)
+        {
+            SavedText.Text = L.F("Can't listen: {0}", ex.Message);
+            return;
+        }
+        var track = db.GetByPath(path);
+        var kind = TrackClassifier.Classify(path);
+        double Crossfade(TrackKind a, TrackKind b) =>
+            a is TrackKind.Music or TrackKind.Stream && b is TrackKind.Music or TrackKind.Stream ? _settings?.Crossfade ?? 0 : _settings?.OtherCrossfade ?? 0;
+        var host = new SegueHost
+        {
+            Open = deck.Open,
+            GetCues = db.GetCues,
+            SaveCues = (file, cues) => Task.Run(() =>
+            {
+                db.SetCues(file, cues);
+                double length = track?.Duration is > 0 and var d ? d : AudioProbe.Duration(file) ?? 0;
+                if (length > 0) new PlanStore(db).UpdateSeconds(file, DailyPlaylistsView.Plays(cues, length, Crossfade(kind, kind)), DateTime.Now.Date.AddHours(DateTime.Now.Hour));
+            }),
+            LoadWaveform = DailyPlaylistsView.Waveforms.LoadAsync,
+            Crossfade = Crossfade,
+            PreviewIsOnAir = deck.PreviewIsOnAir,
+        };
+        _tagsOpen = true;
+        try
+        {
+            var title = SongsView.SelectedSong is { } s && s.Path == path ? s.Title : Path.GetFileNameWithoutExtension(path);
+            var editor = new CueEditorWindow(host, path, title);
+            await editor.ShowDialog(this);
+            if (editor.Saved)
+            {
+                SavedText.Text = L.T("Cue points saved. The playout takes them within a minute.");
+                _library.NotifyChanged();
+            }
+        }
+        finally
+        {
+            _tagsOpen = false;
+        }
+    }
+
+    /// <summary>The status bar: which computer is on air and which are standby (a library shared by several studios).</summary>
+    void ShowStudios(StudioList? list)
+    {
+        var live = list?.Studios.Where(st => list.Silent(st) < TimeSpan.FromMinutes(1)).ToList() ?? [];
+        if (list == null || list.Studios.Count == 0)
+        {
+            StatusStudios.Text = "";
+            return;
+        }
+        var standby = live.Where(st => !st.OnAir).Select(st => st.Computer).ToList();
+        string onAir = list.OnAir is { } o
+            ? list.Silent(o) < TimeSpan.FromSeconds(10) ? L.F("● On air: {0}", o.Computer) : L.F("● On air: {0} (not answering for {1:0} s)", o.Computer, list.Silent(o).TotalSeconds)
+            : L.T("● Nothing on air");
+        StatusStudios.Text = standby.Count > 0 ? onAir + " · " + L.F("standby: {0}", string.Join(", ", standby)) : onAir;
+        ToolTip.SetTip(StatusStudios, string.Join("\n", list.Studios.Select(st =>
+            $"{st.Computer}: {(st.OnAir ? L.T("on air") : L.T("standby"))}, {Seen(list.Silent(st))}" + (st.Version.Length > 0 ? $", Sintoniza Emi {st.Version}" : ""))));
+
+        static string Seen(TimeSpan ago) => ago < TimeSpan.FromSeconds(10) ? L.T("answering")
+            : ago < TimeSpan.FromHours(1) ? L.F("last seen {0:0} min ago", Math.Max(1, ago.TotalMinutes))
+            : L.F("last seen {0:dd/MM HH:mm}", DateTime.Now - ago);
     }
 }

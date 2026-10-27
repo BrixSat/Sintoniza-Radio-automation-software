@@ -27,6 +27,17 @@
     <Panel>
     <DockPanel x:Name="Studio" Margin="12">
 
+        <!-- ═════════ Standby: another computer is on air (shared database) ═════════ -->
+        <Border DockPanel.Dock="Top" x:Name="StandbyBanner" IsVisible="False" Background="#3A2A08" BorderBrush="#F5A524"
+                BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <TextBlock Text="STANDBY" FontSize="18" FontWeight="Bold" Foreground="#F5A524" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" x:Name="StandbyText" Margin="16,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <Button Grid.Column="2" x:Name="TakeOnAirButton" Classes="accent" Content="Take on air"
+                        ToolTip.Tip="This computer goes on air; the one on air now goes standby" />
+            </Grid>
+        </Border>
+
         <!-- ═════════ Header: on-air deck + station panel ═════════ -->
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,12,400" Margin="0,0,0,12">
 

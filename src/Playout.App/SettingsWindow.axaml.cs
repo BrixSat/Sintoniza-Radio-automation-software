@@ -175,6 +175,8 @@ public partial class SettingsWindow : PageWindow
         ClearFillButton.Click += (_, _) => { _fillFolder = ""; ShowFillFolder(); };
         _ = LoadFillCategories(settings.FillCategories ?? new());
         ResumeBox.IsChecked = settings.ResumeOnStart;
+        TakeOverBox.IsChecked = settings.TakeOver;
+        TakeOverSecondsBox.Value = Math.Clamp(settings.TakeOverSeconds, 5, 300);
         var backup = settings.Backup ?? new();
         BackupBox.IsChecked = backup.Enabled;
         BackupTimeBox.Text = backup.Time;
@@ -972,6 +974,8 @@ public partial class SettingsWindow : PageWindow
         _settings.FillSongHours = (double)(FillSongHoursBox.Value ?? 3);
         _settings.FillArtistMinutes = (int)(FillArtistMinutesBox.Value ?? 60);
         _settings.ResumeOnStart = ResumeBox.IsChecked == true;
+        _settings.TakeOver = TakeOverBox.IsChecked == true;
+        _settings.TakeOverSeconds = (int)(TakeOverSecondsBox.Value ?? 15);
         _settings.Backup = BackupFromUi();
         _settings.RestartAfterCrash = WatchdogBox.IsChecked == true;
         if (Autostart.Playout.IsSupported && _scope == SettingsScope.Computer)

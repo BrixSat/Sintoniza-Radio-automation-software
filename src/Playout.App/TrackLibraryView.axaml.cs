@@ -45,7 +45,10 @@ public partial class TrackLibraryView : UserControl
 
         TrackList.DoubleTapped += (_, e) =>
         {
-            if ((e.Source as Control)?.DataContext is LibraryRow row) AddRequested?.Invoke([row.Path], false);
+            if ((e.Source as Control)?.DataContext is not LibraryRow row) return;
+            // On air it goes in the playlist; in Sintoniza Pro (nothing to add to) it is listened to.
+            if (AddRequested != null) AddRequested.Invoke([row.Path], false);
+            else ListenRequested?.Invoke(row.Path);
         };
         TrackList.KeyDown += (_, e) =>
         {
@@ -78,6 +81,10 @@ public partial class TrackLibraryView : UserControl
     }
 
     List<LibraryRow> Selected() => TrackList.SelectedItems?.OfType<LibraryRow>().ToList() ?? new();
+
+    /// <summary>The song selected (the first of them), its file and "Artist - Title"; null: none.</summary>
+    public (string Path, string Title)? SelectedSong =>
+        Selected() is [var r, ..] ? (r.Path, r.Track.Artist.Length > 0 ? $"{r.Track.Artist} - {r.Track.Title}" : r.Track.Title) : null;
 
     // ───────────────────────── Loading ─────────────────────────
 
@@ -168,9 +175,13 @@ public partial class TrackLibraryView : UserControl
             menu.Items.Add(Item(L.T("Listen"), () => ListenRequested?.Invoke(paths[0])));
             menu.Items.Add(new Separator());
         }
-        menu.Items.Add(Item(L.T("Add to playlist"), () => AddRequested?.Invoke(paths, false)));
-        menu.Items.Add(Item(L.T("Play next"), () => AddRequested?.Invoke(paths, true)));
-        menu.Items.Add(new Separator());
+        // A playlist to add to (on air, the daily playlists); none in Sintoniza Pro's Songs.
+        if (AddRequested != null)
+        {
+            menu.Items.Add(Item(L.T("Add to playlist"), () => AddRequested?.Invoke(paths, false)));
+            menu.Items.Add(Item(L.T("Play next"), () => AddRequested?.Invoke(paths, true)));
+            menu.Items.Add(new Separator());
+        }
 
         var tree = CategoryTree.Flatten(_categories);
         var category = new MenuItem { Header = L.T("Category") + many };

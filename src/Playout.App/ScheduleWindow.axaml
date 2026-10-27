@@ -159,18 +159,20 @@
 
         <!-- Status bar -->
         <Border DockPanel.Dock="Bottom" Classes="statusbar" Background="#24508F" Padding="12,4">
-            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto,Auto">
                 <TextBlock x:Name="StatusVersion" Margin="0,0,18,0" />
                 <TextBlock Grid.Column="1" x:Name="StatusStation" Margin="0,0,18,0" />
                 <TextBlock Grid.Column="2" x:Name="StatusDatabase" Margin="0,0,18,0" />
-                <TextBlock Grid.Column="3" x:Name="StatusUser" Margin="0,0,18,0" />
+                <!-- Which computer is on air, which are standby (a shared library) -->
+                <TextBlock Grid.Column="3" x:Name="StatusStudios" Margin="0,0,18,0" />
+                <TextBlock Grid.Column="4" x:Name="StatusUser" Margin="0,0,18,0" />
                 <!-- What was just saved, or why not -->
-                <Panel Grid.Column="4" Margin="0,0,18,0">
+                <Panel Grid.Column="5" Margin="0,0,18,0">
                     <TextBlock x:Name="SavedText" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="ErrorText" Foreground="#FFD0D2" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                 </Panel>
-                <TextBlock Grid.Column="5" x:Name="StatusChanges" Foreground="#FFD48A" FontWeight="SemiBold" Margin="0,0,18,0" />
-                <TextBlock Grid.Column="6" x:Name="StatusClock" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="6" x:Name="StatusChanges" Foreground="#FFD48A" FontWeight="SemiBold" Margin="0,0,18,0" />
+                <TextBlock Grid.Column="7" x:Name="StatusClock" FontWeight="SemiBold" />
             </Grid>
         </Border>
 
@@ -749,7 +751,10 @@
             <TabItem Header="ERC quotas" x:Name="ErcTab" />
             <!-- ───────── The library: every song ───────── -->
             <TabItem Header="Songs" x:Name="SongsTab">
-                <app:TrackLibraryView x:Name="SongsView" />
+                <DockPanel>
+                    <app:ListenBar x:Name="SongsListening" DockPanel.Dock="Bottom" Margin="0,10,0,0" />
+                    <app:TrackLibraryView x:Name="SongsView" />
+                </DockPanel>
             </TabItem>
         </TabControl>
     </DockPanel>

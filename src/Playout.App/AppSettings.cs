@@ -115,6 +115,14 @@ public sealed class AppSettings
     public DateTime? SavedAtUtc { get; private set; }
     /// <summary>The player was playing in AUTO at the last save.</summary>
     public bool WasPlaying { get; set; }
+    /// <summary>
+    /// This computer was standby (another was on air) when last seen: at start it stays silent until the database says
+    /// which computer is on air.
+    /// </summary>
+    public bool WasStandby { get; set; }
+    /// <summary>Standby: goes on air by itself when the computer on air stops answering for <see cref="TakeOverSeconds"/>.</summary>
+    public bool TakeOver { get; set; } = true;
+    public int TakeOverSeconds { get; set; } = 15;
     /// <summary>Streaming was switched on at the last save: it is switched on again at start.</summary>
     public bool StreamingOn { get; set; }
 

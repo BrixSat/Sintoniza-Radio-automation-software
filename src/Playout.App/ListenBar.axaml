@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Playout.App.ListenBar">
+    <!-- Listening (on the Preview output, never on air) -->
+    <Border Classes="panel" Padding="10,8">
+        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto">
+            <Button x:Name="ListenButton" Classes="tool" Content="▶" MinWidth="44" HorizontalContentAlignment="Center"
+                    ToolTip.Tip="Listen to the selected item (double-click or Space); again to pause" />
+            <Button Grid.Column="1" x:Name="ListenStopButton" Classes="tool" Content="■" MinWidth="44" Margin="4,0,0,0" HorizontalContentAlignment="Center"
+                    ToolTip.Tip="Stop listening" />
+            <TextBlock Grid.Column="2" x:Name="ListenTime" Classes="digits" Text="0:00 / 0:00" Margin="12,0" VerticalAlignment="Center" />
+            <Slider Grid.Column="3" x:Name="ListenSlider" Minimum="0" Maximum="1" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="4" x:Name="ListenTitle" Classes="muted" Margin="12,0" VerticalAlignment="Center" MaxWidth="420"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="5" x:Name="ListenWarning" Foreground="{StaticResource OnAir}" FontSize="12" VerticalAlignment="Center"
+                       TextWrapping="Wrap" MaxWidth="360" IsVisible="False" />
+        </Grid>
+    </Border>
+</UserControl>

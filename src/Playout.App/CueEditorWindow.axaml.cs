@@ -30,7 +30,7 @@ public partial class CueEditorWindow : Window
     /// <summary>The ▶ button next to a marker starts this far before it, so you hear the lead-in.</summary>
     const double PreRoll = 3;
 
-    readonly PlayoutEngine _engine = null!;
+    readonly SegueHost _host = null!;
     readonly string _path = "";
     readonly PreviewPlayer? _preview;
     readonly double _length;
@@ -39,24 +39,30 @@ public partial class CueEditorWindow : Window
     readonly DispatcherTimer? _timer;
     Waveform? _wave;
 
+    /// <summary>The cue points were saved.</summary>
+    public bool Saved { get; private set; }
+
     // Parameterless constructor for the XAML previewer.
     public CueEditorWindow() => InitializeComponent();
 
-    public CueEditorWindow(PlayoutEngine engine, string path, string title)
+    public CueEditorWindow(PlayoutEngine engine, string path, string title) : this(SegueHost.For(engine), path, title) { }
+
+    /// <summary>With what opens, reads and saves the file's cue points: the playout's, or Sintoniza Pro's (the library).</summary>
+    public CueEditorWindow(SegueHost host, string path, string title)
     {
         InitializeComponent();
         Localization.Apply(this);
-        _engine = engine;
+        _host = host;
         _path = path;
         Title = L.F("Cue points — {0}", title);
         TitleText.Text = title;
         PathText.Text = path;
-        OnAirWarning.IsVisible = engine.PreviewIsOnAir;
+        OnAirWarning.IsVisible = host.PreviewIsOnAir;
 
-        Load(engine.GetCues(path));
+        Load(host.GetCues(path));
         BuildMarkerRows();
 
-        _preview = engine.OpenPreview(path);
+        _preview = host.Open(path);
         _length = _preview?.Length ?? 0;
         if (_preview == null)
         {
@@ -64,7 +70,7 @@ public partial class CueEditorWindow : Window
             SaveButton.IsEnabled = false;
         }
 
-        engine.LoadWaveformAsync(path).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        host.LoadWaveform(path).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
             _wave = t.IsCompletedSuccessfully ? t.Result : null;
             WaveZoom.SetTrack(_wave, _length);
@@ -92,12 +98,22 @@ public partial class CueEditorWindow : Window
             Refresh();
         };
         CancelButton.Click += (_, _) => Close();
-        SaveButton.Click += (_, _) =>
+        SaveButton.Click += async (_, _) =>
         {
             CommitFocusedBox();
             if (Validate() != null) return;
-            _engine.SetCues(_path, Current());
-            Close();
+            SaveButton.IsEnabled = false;
+            try
+            {
+                await _host.SaveCues(_path, Current());
+                Saved = true;
+                Close();
+            }
+            catch (Exception ex)
+            {
+                ErrorText.Text = ex.Message;
+                SaveButton.IsEnabled = true;
+            }
         };
 
         // Tunnel, so Space and the arrows work before buttons or lists take them (but not while typing a time).
@@ -222,7 +238,7 @@ public partial class CueEditorWindow : Window
                 _boxes[i].Text = _values[i] is { } v ? Format.CueTime(v) : "";
 
         var preview = new Track(Guid.Empty, _path, "", "", _length, Cues: Current());
-        var markers = CueMarkers.For(preview, _engine.CrossfadeBetween(preview, null));
+        var markers = CueMarkers.For(preview, _host.Crossfade(preview.Kind, preview.Kind));
         WaveZoom.SetMarkers(markers);
         WaveFull.SetMarkers(markers);
 
