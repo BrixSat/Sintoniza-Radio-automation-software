@@ -747,18 +747,21 @@ public sealed partial class LibraryDb
         public int? MaxWeek { get; set; }
     }
 
-    /// <summary>What went on air since <paramref name="sinceUtc"/>, in any studio sharing the library.</summary>
-    /// <summary>The files that went on air between two times (UTC), in order, with when (UTC).</summary>
+    /// <summary>
+    /// The playlist's files that went on air between two times (UTC), in order, with when (UTC). Not the carts: they
+    /// are played over the playlist and never move it on.
+    /// </summary>
     public List<(string Path, DateTime At)> PlayedFiles(DateTime fromUtc, DateTime toUtc)
     {
         using var c = Connect();
         return c.Query<(string Path, string At)>(
-                "SELECT path, started_at FROM plays WHERE started_at >= @from AND started_at < @to ORDER BY started_at",
+                "SELECT path, started_at FROM plays WHERE started_at >= @from AND started_at < @to AND source <> 'cart' ORDER BY started_at",
                 new { from = Time(fromUtc), to = Time(toUtc) })
             .Select(r => (r.Path, ParseTime(r.At)))
             .ToList();
     }
 
+    /// <summary>What went on air since <paramref name="sinceUtc"/>, in any studio sharing the library.</summary>
     public List<RecentPlay> PlaysSince(DateTime sinceUtc)
     {
         using var c = Connect();

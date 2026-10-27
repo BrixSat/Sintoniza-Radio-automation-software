@@ -48,6 +48,12 @@ build() { # $1 = win|linux
     dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
       -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
   done
+  # Without its compiled windows the program stops as it starts ("No precompiled XAML found"): 1.2.6 for Windows
+  # went out so, from a build made while another was building the same project. Never package one.
+  if ! grep -aq CompiledAvaloniaXaml "$out/SintonizaEmi.dll"; then
+    echo "✗ $out/SintonizaEmi.dll has no compiled XAML: the programs would not start. Build again (with no other build running)." >&2
+    exit 1
+  fi
 
   cp "$ROOT/README.md" "$out/"
   cp "$ROOT"/docs/manual/Sintoniza-Manual*.pdf "$out/" 2>/dev/null || echo "⚠ No user manual in docs/manual (make it with docs/manual/make-manual.sh)" >&2
