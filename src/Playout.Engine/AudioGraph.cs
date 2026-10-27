@@ -48,7 +48,12 @@ sealed class AudioGraph
     volatile bool _previewOnAir;
 
     readonly HashSet<int> _initialised = new();
-    readonly object _initLock = new();
+    /// <summary>
+    /// How many graphs use each device. Several share a card in one program (Sintoniza Pro's listen bars, the cartwall
+    /// editor, voice tracks): the card is opened by the first and let go by the last, not by whichever closes first.
+    /// </summary>
+    static readonly Dictionary<int, int> Users = new();
+    static readonly object _initLock = new();
 
     public AudioGraph(int? forcedDevice)
     {
@@ -183,9 +188,11 @@ sealed class AudioGraph
     {
         lock (_initLock)
         {
+            if (_initialised.Contains(device)) return;
             if (!Bass.Init(device, SampleRate) && Bass.LastError != Errors.Already)
                 throw new InvalidOperationException(L.F("Cannot open audio device {0}: {1}", device, Bass.LastError));
             _initialised.Add(device);
+            Users[device] = Users.GetValueOrDefault(device) + 1;
         }
     }
 
@@ -196,6 +203,13 @@ sealed class AudioGraph
         {
             foreach (int device in _initialised)
             {
+                int left = Users.GetValueOrDefault(device) - 1;
+                if (left > 0)
+                {
+                    Users[device] = left; // another graph still plays on it
+                    continue;
+                }
+                Users.Remove(device);
                 if (keepNoSound && device == 0) continue;
                 Bass.CurrentDevice = device;
                 Bass.Free();

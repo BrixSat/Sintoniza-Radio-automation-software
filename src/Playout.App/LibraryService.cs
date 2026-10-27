@@ -267,7 +267,7 @@ sealed class LibraryService
     public async Task ScanAsync(IReadOnlyList<string> folders, bool automatic = false, bool onlyThese = false)
     {
         if (Db is not { } db || _scan != null) return;
-        folders = onlyThese ? folders.Where(Directory.Exists).ToList() : WithCategoryFolders(folders);
+        folders = onlyThese ? folders.Where(SharedPaths.DirectoryExists).ToList() : WithCategoryFolders(folders);
         if (folders.Count == 0)
         {
             if (!automatic) Message?.Invoke(L.T("Choose the music folders to scan in Settings → Library"));

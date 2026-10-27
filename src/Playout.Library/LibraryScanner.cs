@@ -198,7 +198,7 @@ public static class LibraryScanner
         if (r.File.Path.Length > LibraryDb.MaxPathLength) return;
         using var c = db.Connect();
         using var tx = c.BeginTransaction();
-        if (c.ExecuteScalar<long?>($"SELECT id FROM tracks WHERE {db.PathIs("path")} ORDER BY id LIMIT 1", new { path = r.File.Path }, tx) is { } id)
+        if (db.TrackIdByPath(c, r.File.Path, tx) is { } id)
             Update(c, tx, id, r);
         else Insert(db, c, tx, r, null);
         tx.Commit();

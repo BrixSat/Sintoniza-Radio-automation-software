@@ -118,7 +118,7 @@ static class Watchdog
         {
             while (true)
             {
-                if (_engine?.IsResponsive(EngineStuckSeconds) != false)
+                if (!_failed && _engine?.IsResponsive(EngineStuckSeconds) != false)
                 {
                     try { File.WriteAllBytes(file, []); } catch { /* temp folder unavailable: nothing to do */ }
                 }
@@ -131,4 +131,12 @@ static class Watchdog
 
     /// <summary>The engine whose thread the heartbeat watches.</summary>
     public static void Watch(PlayoutEngine engine) => _engine = engine;
+
+    /// <summary>
+    /// The audio engine couldn't start (the sound card not ready yet at boot, a driver): the heartbeat stops, so the
+    /// watchdog starts the program again (with its usual pauses) instead of leaving the station silent.
+    /// </summary>
+    public static void EngineFailed() => _failed = true;
+
+    static volatile bool _failed;
 }

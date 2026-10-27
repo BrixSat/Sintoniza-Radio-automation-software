@@ -86,7 +86,9 @@ public partial class VoiceTrackWindow : Window
         SaveButton.Click += (_, _) =>
         {
             StopAll();
-            if (_take != null) Close(new VoiceTake(_take, Math.Round(_overlap, 2), _nextAt is { } n ? Math.Round(n, 2) : null, _length));
+            // Only a take with something in it (Save while talking ends the take; a silent input leaves none).
+            if (_take != null && _length >= 0.5)
+                Close(new VoiceTake(_take, Math.Round(_overlap, 2), _nextAt is { } n ? Math.Round(n, 2) : null, _length));
         };
         AddHandler(KeyDownEvent, (_, e) =>
         {

@@ -1967,7 +1967,6 @@
  "The library has no songs yet.": "A biblioteca ainda não tem músicas.",
  "✓ {0} of {1} songs found on this computer.": "✓ {0} de {1} músicas encontradas neste computador.",
  "{0} of {1} songs found on this computer. Not found, e.g.: {2} (looked for as {3}).": "{0} de {1} músicas encontradas neste computador. Não encontrada, p. ex.: {2} (procurada como {3}).",
- "The playlist was saved at {0:dd/MM HH:mm}: its {1} items still to play were left out; the daily playlist carries on from now": "A playlist foi guardada às {0:dd/MM HH:mm}: os {1} itens que faltava tocar ficaram de fora; a playlist diária continua a partir de agora",
  "{0} items of daily playlist hours that have ended were left out": "{0} itens de horas da playlist diária que já acabaram ficaram de fora",
  "Cue points saved. The playout takes them within a minute.": "Pontos de cue guardados. A emissão usa-os dentro de um minuto.",
  "Several computers on air (a shared library)": "Vários computadores no ar (uma biblioteca partilhada)",
@@ -2000,5 +1999,7 @@
  "last seen {0:0} min ago": "visto há {0:0} min",
  "last seen {0:dd/MM HH:mm}": "visto em {0:dd/MM HH:mm}",
  "This computer is on air. Standby: {0}": "Este computador está no ar. Em reserva: {0}",
- "This computer is on air. No other computer is standby.": "Este computador está no ar. Nenhum outro computador está em reserva."
+ "This computer is on air. No other computer is standby.": "Este computador está no ar. Nenhum outro computador está em reserva.",
+ "Not saved: the hour was being read again. Try again.": "Não guardado: a hora estava a ser lida de novo. Tente outra vez.",
+ "The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now": "A playlist é de {0:dd/MM HH:mm}, quando o programa correu pela última vez: os {1} itens que faltava tocar ficaram de fora; a playlist diária continua a partir de agora"
 }

@@ -48,6 +48,10 @@ public sealed class PlanItem
     public string? Note { get; set; }
 
     public string Display => string.IsNullOrWhiteSpace(Artist) ? Title : $"{Artist} - {Title}";
+
+    // The same item when read again (the hour shown again meanwhile): what was selected is still found in it.
+    public override bool Equals(object? obj) => obj is PlanItem other && other.Id == Id;
+    public override int GetHashCode() => Id.GetHashCode();
 }
 
 /// <summary>
@@ -157,7 +161,7 @@ public sealed class PlanStore(LibraryDb db)
         string key = HourKey(hour.Start);
         using var c = Db.Connect();
         using var tx = c.BeginTransaction();
-        if (unlessEdited && c.ExecuteScalar<long?>("SELECT edited FROM plan_hours WHERE station_id = @Station AND hour_start = @key",
+        if (unlessEdited && c.ExecuteScalar<long?>("SELECT edited FROM plan_hours WHERE station_id = @Station AND hour_start = @key" + Db.ForUpdate,
                 new { Station, key }, tx) == 1)
             return false;
         // The hour's note stays when the hour is made again (a new PlanHour has none).
@@ -177,7 +181,8 @@ public sealed class PlanStore(LibraryDb db)
             VALUES (@id, @Station, @key, @position, @kind, @Path, @Title, @Artist, @Seconds, @TrackId, @Line, @CategoryId, @optional, @Overlap, @follows, @note)
             """, items.Select((i, n) => new
         {
-            id = i.Id.ToString(), Station, key, position = n, kind = i.Kind.ToString().ToLowerInvariant(), i.Path, i.Title, i.Artist,
+            id = i.Id.ToString(), Station, key, position = n, kind = i.Kind.ToString().ToLowerInvariant(), i.Path,
+            Title = LibraryDb.Clip(i.Title, 500), Artist = LibraryDb.Clip(i.Artist, 500),
             i.Seconds, i.TrackId, i.Line, i.CategoryId, optional = i.Optional ? 1 : 0, i.Overlap, follows = i.FollowsPrevious ? 1 : 0,
             note = string.IsNullOrWhiteSpace(i.Note) ? null : i.Note.Trim(),
         }), tx);
@@ -210,7 +215,8 @@ public sealed class PlanStore(LibraryDb db)
             VALUES (@id, @Station, @key, @position, @kind, @Path, @Title, @Artist, @Seconds, @TrackId, @Line, @CategoryId, 1)
             """, added.Select((i, n) => new
         {
-            id = i.Id.ToString(), Station, key, position = position + 1 + n, kind = i.Kind.ToString().ToLowerInvariant(), i.Path, i.Title, i.Artist,
+            id = i.Id.ToString(), Station, key, position = position + 1 + n, kind = i.Kind.ToString().ToLowerInvariant(), i.Path,
+            Title = LibraryDb.Clip(i.Title, 500), Artist = LibraryDb.Clip(i.Artist, 500),
             i.Seconds, i.TrackId, Line = PlanItem.KeptTime, i.CategoryId,
         }), tx);
         tx.Commit();

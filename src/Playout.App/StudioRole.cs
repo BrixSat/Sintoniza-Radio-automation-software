@@ -16,8 +16,9 @@ sealed class StudioRole : IDisposable
     readonly LibraryService _library;
     readonly Func<string> _playing;
     readonly Func<(bool Auto, int Seconds)> _takeOver;
-    readonly Timer _timer;
-    int _busy;
+    Timer? _timer;
+    readonly object _gate = new(); // one look at the database, or one Take on air, at a time
+    readonly TaskCompletionSource _known = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public StudioRole(LibraryService library, bool standby, Func<string> playing, Func<(bool Auto, int Seconds)> takeOver)
     {
@@ -25,8 +26,13 @@ sealed class StudioRole : IDisposable
         Standby = standby;
         _playing = playing;
         _takeOver = takeOver;
-        _timer = new Timer(_ => Check(), null, TimeSpan.Zero, Every);
     }
+
+    /// <summary>Starts looking (once <see cref="Changed"/> has its handler, so the first answer isn't missed).</summary>
+    public void Start() => _timer ??= new Timer(_ => Check(), null, TimeSpan.Zero, Every);
+
+    /// <summary>Done once this computer knows whether it is on air: read from the database, or a library of its own.</summary>
+    public Task Known => _known.Task;
 
     /// <summary>Another computer is on air.</summary>
     public bool Standby { get; private set; }
@@ -48,22 +54,30 @@ sealed class StudioRole : IDisposable
     /// <summary>Take on air: this computer goes on air now, the one on air goes standby.</summary>
     public Task TakeOnAir() => Task.Run(() =>
     {
-        if (_library.Db is not { } db) throw new InvalidOperationException(L.T("The library can't be reached"));
-        db.TakeOnAir(StationStore.Station, Me);
-        Set(false, L.T("This computer was put on air"));
-        Read(db);
+        lock (_gate)
+        {
+            if (_library.Db is not { } db) throw new InvalidOperationException(L.T("The library can't be reached"));
+            db.TakeOnAir(StationStore.Station, Me);
+            Set(false, L.T("This computer was put on air"));
+            Read(db);
+        }
     });
 
     void Check()
     {
-        if (Interlocked.Exchange(ref _busy, 1) == 1) return;
+        if (!Monitor.TryEnter(_gate)) return; // the last look (or Take on air) isn't over yet
         try
         {
             if (!Shared || _library.Db is not { } db)
             {
                 // A library of its own: the only studio. The shared one away: as it was (never silence the station
                 // because of the database; a standby stays standby).
-                if (_library.Db is { IsMySql: false }) { Studios = null; Set(false, ""); }
+                if (_library.Db is { IsMySql: false })
+                {
+                    Studios = null;
+                    Set(false, "");
+                    _known.TrySetResult();
+                }
                 return;
             }
             db.StudioSeen(StationStore.Station, Me, _playing(), Updates.CurrentText);
@@ -83,6 +97,7 @@ sealed class StudioRole : IDisposable
             }
             else Set(true, L.F("Standby: {0} is on air", onAir.Computer));
             Read(db);
+            _known.TrySetResult();
         }
         catch (Exception)
         {
@@ -90,7 +105,7 @@ sealed class StudioRole : IDisposable
         }
         finally
         {
-            Volatile.Write(ref _busy, 0);
+            Monitor.Exit(_gate);
         }
     }
 
@@ -109,5 +124,5 @@ sealed class StudioRole : IDisposable
         Changed?.Invoke(standby, why);
     }
 
-    public void Dispose() => _timer.Dispose();
+    public void Dispose() => _timer?.Dispose();
 }

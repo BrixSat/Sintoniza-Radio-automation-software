@@ -26,6 +26,21 @@ static class SingleInstance
         catch (UnauthorizedAccessException) { return true; } // a read-only folder: don't stop the station for that
     }
 
+    /// <summary>
+    /// Started again by the watchdog: the copy it stopped may take a few seconds to let go (stuck in a sound card's
+    /// driver). Waits up to <paramref name="seconds"/> for the lock.
+    /// </summary>
+    public static bool Wait(string name, double seconds)
+    {
+        var until = DateTime.UtcNow.AddSeconds(seconds);
+        while (DateTime.UtcNow < until)
+        {
+            Thread.Sleep(500);
+            if (Acquire(name)) return true;
+        }
+        return false;
+    }
+
     /// <summary>Lets go of the lock before this copy ends (an update starting the new version while this one closes).</summary>
     public static void Release()
     {

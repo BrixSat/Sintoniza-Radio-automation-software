@@ -40,8 +40,15 @@ sealed class Backups : IDisposable
     {
         _settings = settings;
         _db = db;
-        _timer = new Timer(_ => { if (IsDue(DateTime.Now)) _ = RunAsync(); }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        _timer = new Timer(_ =>
+        {
+            // After a failed one, the next try waits (an hour): not a database dump, a half-written file and an
+            // alert every minute while the backup folder is away or full.
+            if (DateTime.UtcNow >= _retryAfter && IsDue(DateTime.Now)) _ = RunAsync();
+        }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
+
+    DateTime _retryAfter;
 
     /// <summary>The newest backup in the folder (null if none).</summary>
     public FileInfo? Last
@@ -73,6 +80,7 @@ sealed class Backups : IDisposable
         try { return Run(); }
         catch (Exception ex)
         {
+            _retryAfter = DateTime.UtcNow.AddHours(1);
             Say(L.F("Backup failed: {0}", ex.Message));
             Failed?.Invoke(ex.Message);
             return null;
@@ -92,15 +100,24 @@ sealed class Backups : IDisposable
         {
             string? database = _db()?.Backup(Path.Combine(work, "database"));
             string zip = Path.Combine(folder, name + ".zip"), part = zip + ".part";
-            using (var archive = ZipFile.Open(part, ZipArchiveMode.Create))
+            try
             {
-                if (database != null) archive.CreateEntryFromFile(database, Path.GetFileName(database), CompressionLevel.Optimal);
-                foreach (var file in DataFiles) Add(archive, Path.Combine(AppSettings.DataFolder, file), file);
-                string asRun = Path.Combine(AppSettings.DataFolder, "as-run");
-                if (Directory.Exists(asRun))
-                    foreach (var file in Directory.GetFiles(asRun, "*.csv")) Add(archive, file, "as-run/" + Path.GetFileName(file));
+                using (var archive = ZipFile.Open(part, ZipArchiveMode.Create))
+                {
+                    if (database != null) archive.CreateEntryFromFile(database, Path.GetFileName(database), CompressionLevel.Optimal);
+                    foreach (var file in DataFiles) Add(archive, Path.Combine(AppSettings.DataFolder, file), file);
+                    string asRun = Path.Combine(AppSettings.DataFolder, "as-run");
+                    if (Directory.Exists(asRun))
+                        foreach (var file in Directory.GetFiles(asRun, "*.csv")) Add(archive, file, "as-run/" + Path.GetFileName(file));
+                }
+                File.Move(part, zip, true);
             }
-            File.Move(part, zip, true);
+            catch
+            {
+                // Not left half-written (a full disk stays full).
+                try { File.Delete(part); } catch { /* the folder is away: nothing to clean */ }
+                throw;
+            }
             int removed = Prune(folder, s.KeepDays);
             Say(L.F("Backup made: {0} ({1:0.0} MB){2}", Path.GetFileName(zip), new FileInfo(zip).Length / 1048576.0,
                 database == null ? L.T(", without the database (not open)") : "") + (removed > 0 ? L.F("; {0} old ones removed", removed) : ""));

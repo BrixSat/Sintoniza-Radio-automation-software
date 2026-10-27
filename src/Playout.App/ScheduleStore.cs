@@ -243,7 +243,7 @@ sealed class ScheduleStore(LibraryDb db)
         using var c = db.Connect();
         using var tx = c.BeginTransaction();
         var current = c.QueryFirstOrDefault<VersionRow>(
-            "SELECT version AS Version, updated_at AS UpdatedAt, updated_by AS UpdatedBy FROM schedule_versions WHERE station_id = @Station",
+            "SELECT version AS Version, updated_at AS UpdatedAt, updated_by AS UpdatedBy FROM schedule_versions WHERE station_id = @Station" + db.ForUpdate,
             new { Station }, tx);
         if (expected is { } want && (current?.Version ?? 0) != want)
             throw new ChangedException(DateTime.TryParse(current?.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? at.ToLocalTime() : DateTime.Now,

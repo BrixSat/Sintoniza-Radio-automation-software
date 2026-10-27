@@ -85,5 +85,6 @@ public sealed partial class LibraryDb
         return true;
     }
 
-    static string Clip(string text, int max) => text.Length <= max ? text : text[..max];
+    /// <summary>Text cut to a column's length (MySQL refuses the whole write when one value is too long).</summary>
+    public static string Clip(string? text, int max) => text == null ? "" : text.Length <= max ? text : text[..max];
 }

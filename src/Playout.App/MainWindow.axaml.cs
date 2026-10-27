@@ -76,6 +76,8 @@ public partial class MainWindow : Window
         {
             LastLog.Text = L.F("Audio engine failed to start: {0}", ex.Message);
             LastLog.Foreground = (IBrush)this.FindResource("OnAir")!;
+            AppLog.Write(LastLog.Text);
+            Watchdog.EngineFailed(); // under the watchdog: started again in a moment
         }
 
         _library.Message += message =>
@@ -120,7 +122,7 @@ public partial class MainWindow : Window
             AddEntries(_settings.PlaylistItems);
             StartStudioRole();
             _ = CarryOn();
-            _scheduler = new Scheduler(_engine, ScheduleSource.LoadLocal(), new ScheduleSource(() => _library.Db));
+            _scheduler = new Scheduler(_engine, ScheduleSource.LoadLocal(), new ScheduleSource(() => _library.Db)) { Standby = IsStandby };
             _scheduler.Message += message =>
             {
                 AppLog.Write(message);
@@ -1473,7 +1475,7 @@ public partial class MainWindow : Window
         }
         if (left > 0)
             AppLog.Write(old
-                ? L.F("The playlist was saved at {0:dd/MM HH:mm}: its {1} items still to play were left out; the daily playlist carries on from now", _settings.SavedAtUtc!.Value.ToLocalTime(), left)
+                ? L.F("The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now", _settings.SavedAtUtc!.Value.ToLocalTime(), left)
                 : L.F("{0} items of daily playlist hours that have ended were left out", left));
     }
 
@@ -1908,8 +1910,15 @@ public partial class MainWindow : Window
         ApplyStationBranding();
     }
 
+    DateTime _markedRunning;
+
     void SaveSettings()
     {
+        if (DateTime.UtcNow - _markedRunning >= TimeSpan.FromSeconds(30))
+        {
+            _markedRunning = DateTime.UtcNow;
+            AppSettings.MarkRunning();
+        }
         long started = System.Diagnostics.Stopwatch.GetTimestamp();
         try { SaveSettingsNow(); }
         finally { Slow("saving settings", started); }
@@ -2100,13 +2109,15 @@ public partial class MainWindow : Window
     /// </summary>
     async Task CarryOn()
     {
+        await WaitForRole(); // a standby computer doesn't start playing first and stop a moment later
         // Missing files are not added again: count what's left up to the item that was on air.
         int index = _settings.PlaylistItems.Take(_settings.OnAirIndex + 1).Count(Playable) - 1;
         // In AUTO it plays (as when it closed, or when it was stopped and closed: AUTO is what the station runs on).
         bool play = _settings.ResumeOnStart && _settings.AutoAdvance && (_settings.WasPlaying || _settings.PlaylistItems.Count > 0);
         await _engine!.Resume(index, play);
         _restored = true;
-        if (!IsStandby && _settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)) ToggleStreaming();
+        if (!IsStandby && _settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)
+            && _engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming(); // (not if going on air started it)
     }
 
     /// <summary>Dead air detection and fill music, from the settings.</summary>
@@ -2149,7 +2160,7 @@ public partial class MainWindow : Window
     {
         _rds?.Dispose();
         _rds = null;
-        if (_settings.Rds is not { Enabled: true } settings) return;
+        if (_settings.Rds is not { Enabled: true } settings || IsStandby) return; // standby: the one on air sends
         string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
         var rds = new RdsOutput(settings, station);
         rds.StatusChanged += error => Dispatcher.UIThread.Post(() =>
@@ -2270,7 +2281,7 @@ public partial class MainWindow : Window
     {
         _web?.Dispose();
         _web = null;
-        if (_settings.WebNowPlaying is not { Enabled: true } settings) return;
+        if (_settings.WebNowPlaying is not { Enabled: true } settings || IsStandby) return; // standby: the one on air sends
         string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
         var web = new WebNowPlaying(settings, station);
         web.StatusChanged += error => Dispatcher.UIThread.Post(() =>

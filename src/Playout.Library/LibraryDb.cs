@@ -262,6 +262,12 @@ public sealed partial class LibraryDb
 
     public bool IsMySql => _mySql;
 
+    /// <summary>
+    /// After a SELECT inside a transaction that checks something before writing (a version): on MySQL the row is locked
+    /// until the end, so two studios saving at once don't both pass the check (SQLite: one writer at a time anyway).
+    /// </summary>
+    public string ForUpdate => _mySql ? " FOR UPDATE" : "";
+
     /// <summary>A connection to the library, open (for the app's own tables: schedule, as-run).</summary>
     public DbConnection Connect()
     {
@@ -278,6 +284,15 @@ public sealed partial class LibraryDb
         OperatingSystem.IsLinux() ? $"{column} = {parameter}"
         : _mySql ? $"LOWER({column}) = LOWER({parameter})"
         : $"{column} = {parameter} COLLATE NOCASE";
+
+    /// <summary>
+    /// The library's track for a file (the first if several differ only in case), or null. Exactly first (the path's
+    /// index: one row), then, on Windows and macOS, ignoring case (every row: only when the exact one isn't there),
+    /// so an update locks only that song's row, not the whole table.
+    /// </summary>
+    internal long? TrackIdByPath(System.Data.IDbConnection c, string path, System.Data.IDbTransaction? tx = null) =>
+        c.ExecuteScalar<long?>("SELECT id FROM tracks WHERE path = @path ORDER BY id LIMIT 1", new { path }, tx)
+        ?? (OperatingSystem.IsLinux() ? null : c.ExecuteScalar<long?>($"SELECT id FROM tracks WHERE {PathIs("path")} ORDER BY id LIMIT 1", new { path }, tx));
 
     /// <summary>A column sorted without regard to case (MySQL's usual collations already are).</summary>
     string NoCase(string column) => _mySql ? column : $"{column} COLLATE NOCASE";
@@ -343,7 +358,7 @@ public sealed partial class LibraryDb
     public LibraryTrack? GetByPath(string path)
     {
         using var c = Connect();
-        return c.QueryFirstOrDefault<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE {PathIs("path")} ORDER BY id", new { path });
+        return TrackIdByPath(c, path) is { } id ? c.QueryFirstOrDefault<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE id = @id", new { id }) : null;
     }
 
     /// <summary>
@@ -576,8 +591,10 @@ public sealed partial class LibraryDb
     public void SetFolderRule(string folder, long? categoryId)
     {
         using var c = Connect();
-        c.Execute("DELETE FROM category_folders WHERE path = @folder", new { folder });
-        if (categoryId is { } id) c.Execute("INSERT INTO category_folders (path, category_id) VALUES (@folder, @id)", new { folder, id });
+        using var tx = c.BeginTransaction(); // never left without its rule halfway
+        c.Execute("DELETE FROM category_folders WHERE path = @folder", new { folder }, tx);
+        if (categoryId is { } id) c.Execute("INSERT INTO category_folders (path, category_id) VALUES (@folder, @id)", new { folder, id }, tx);
+        tx.Commit();
     }
 
     /// <summary>Puts songs in a category too (keeping their own), or takes them out of it.</summary>
@@ -655,8 +672,9 @@ public sealed partial class LibraryDb
     public CuePoints GetCues(string path)
     {
         using var c = Connect();
+        if (TrackIdByPath(c, path) is not { } id) return new CuePoints();
         var r = c.QueryFirstOrDefault<(double? CueIn, double? Intro, double? Outro, double? Mix, double? CueOut)>(
-            $"SELECT cue_in, intro, outro, mix, cue_out FROM tracks WHERE {PathIs("path")} ORDER BY id LIMIT 1", new { path });
+            "SELECT cue_in, intro, outro, mix, cue_out FROM tracks WHERE id = @id", new { id });
         return new CuePoints(r.CueIn, r.Intro, r.Outro, r.Mix, r.CueOut);
     }
 
@@ -664,11 +682,12 @@ public sealed partial class LibraryDb
     public bool SetCues(string path, CuePoints cues)
     {
         using var c = Connect();
+        if (TrackIdByPath(c, path) is not { } id) return false;
         return c.Execute($"""
             UPDATE tracks SET cue_in = @CueIn, intro = @Intro, outro = @Outro, mix = @Mix, cue_out = @CueOut,
                 cues_updated_at = {NowSql}
-            WHERE {PathIs("path")}
-            """, new { path, cues.CueIn, cues.Intro, cues.Outro, cues.Mix, cues.CueOut }) > 0;
+            WHERE id = @id
+            """, new { id, cues.CueIn, cues.Intro, cues.Outro, cues.Mix, cues.CueOut }) > 0;
     }
 
     // ───────────────────────── History ─────────────────────────
@@ -677,11 +696,11 @@ public sealed partial class LibraryDb
     public void RecordPlay(string path, string artist, string title, DateTime startedUtc, string source)
     {
         using var c = Connect();
-        long? trackId = c.ExecuteScalar<long?>($"SELECT id FROM tracks WHERE {PathIs("path")} ORDER BY id LIMIT 1", new { path });
+        long? trackId = TrackIdByPath(c, path);
         c.Execute("""
             INSERT INTO plays (track_id, path, artist, title, started_at, source)
             VALUES (@trackId, @path, @artist, @title, @started, @source)
-            """, new { trackId, path, artist, title, started = Time(startedUtc), source });
+            """, new { trackId, path, artist = Clip(artist, 500), title = Clip(title, 500), started = Time(startedUtc), source });
     }
 
     /// <summary>When a file last went on air (UTC), in any studio sharing the library; null if never.</summary>

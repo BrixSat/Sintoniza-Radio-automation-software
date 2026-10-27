@@ -204,7 +204,17 @@ public partial class DailyPlaylistsView : UserControl
     /// Records a voice track after the selected song (or again, over the one it has): saved in the station's voice
     /// tracks folder, put in the library (Takes) and in the hour right after the song, starting over its ending.
     /// </summary>
+    bool _recording; // the voice track recorder is open (a double click opens one)
+
     async Task RecordVoiceTrack()
+    {
+        if (_recording) return;
+        _recording = true;
+        try { await RecordVoiceTrackNow(); }
+        finally { _recording = false; }
+    }
+
+    async Task RecordVoiceTrackNow()
     {
         if (_db is not { } db || _hour is not { } hour || VoiceRows() is not var (before, existing, after) || Owner is not { } owner) return;
         StopListening();
@@ -251,7 +261,7 @@ public partial class DailyPlaylistsView : UserControl
         try
         {
             var (file, item) = await Task.Run(() => SaveVoiceTrack(db, hour, song, take));
-            await Edit(items =>
+            bool saved = await Edit(items =>
             {
                 int i = items.FindIndex(x => x.Id == song.Id);
                 if (i < 0) return;
@@ -263,6 +273,7 @@ public partial class DailyPlaylistsView : UserControl
                 items[i].Seconds = Math.Max(1, plays - take.Overlap);
                 items.Insert(i + 1, item);
             });
+            if (!saved) return; // the status bar says why (the take is kept in the voice tracks folder)
             StatusText.Text = L.F("Voice track saved: {0}", Path.GetFileName(file));
         }
         catch (Exception ex)
@@ -501,7 +512,7 @@ public partial class DailyPlaylistsView : UserControl
             var selected = SelectedItems().Select(i => i.Id).ToHashSet();
             _items = items;
             var rows = Timeline(hour, items, entries);
-            string onAir = MarkPlayed(rows, plays);
+            string onAir = MarkPlayed(rows, Around(hour, plays));
             ItemList.ItemsSource = rows;
             foreach (var r in rows.Where(r => r.Item != null && selected.Contains(r.Item.Id))) ItemList.SelectedItems?.Add(r);
             if (offset is { } o && scroll != null) Dispatcher.UIThread.Post(() => scroll.Offset = o, DispatcherPriority.Loaded);
@@ -572,6 +583,16 @@ public partial class DailyPlaylistsView : UserControl
     /// What of the hour already went on air (the play history every studio writes), in order, and the item on air now.
     /// Returns a line for the hour's header: what is on air and how far ahead or behind the plan the playout is.
     /// </summary>
+    /// <summary>
+    /// The plays that can be this hour's: from a little before it to a little after it (a playout running ahead or
+    /// behind), not a jingle that goes out every hour played two hours ago.
+    /// </summary>
+    static List<(string Path, DateTime At)> Around(DateTime hour, List<(string Path, DateTime At)> plays)
+    {
+        DateTime from = hour.AddMinutes(-20).ToUniversalTime(), to = hour.AddHours(1).AddMinutes(20).ToUniversalTime();
+        return plays.Where(p => p.At >= from && p.At < to).ToList();
+    }
+
     static string MarkPlayed(List<PlanRow> rows, List<(string Path, DateTime At)> plays)
     {
         var used = new bool[plays.Count];
@@ -639,9 +660,27 @@ public partial class DailyPlaylistsView : UserControl
     // ───────────────────────── Changes ─────────────────────────
 
     /// <summary>Changes the selected hour's items, saves them as changed by hand, and shows the hour again.</summary>
-    async Task Edit(Action<List<PlanItem>> change)
+    readonly SemaphoreSlim _editing = new(1, 1);
+
+    /// <summary>Changes the hour shown and saves it; false if it wasn't saved (the status bar says why).</summary>
+    async Task<bool> Edit(Action<List<PlanItem>> change)
     {
-        if (_db is not { } db || _hour is not { } hour || _busy) return;
+        if (_db is not { } db || _hour is not { } hour) return false;
+        // One change at a time (two quick ones both start from the hour as it is then), and not lost while the day
+        // is being read again (every minute): it waits for that.
+        await _editing.WaitAsync();
+        try { return await EditNow(db, hour, change); }
+        finally { _editing.Release(); }
+    }
+
+    async Task<bool> EditNow(LibraryDb db, DateTime hour, Action<List<PlanItem>> change)
+    {
+        for (int wait = 0; _busy && wait < 300; wait++) await Task.Delay(50);
+        if (_busy || _hour != hour)
+        {
+            StatusText.Text = L.T("Not saved: the hour was being read again. Try again.");
+            return false;
+        }
         var items = _items.ToList();
         change(items);
         var record = _hours.GetValueOrDefault(hour) ?? new PlanHour
@@ -661,10 +700,11 @@ public partial class DailyPlaylistsView : UserControl
         catch (Exception ex)
         {
             StatusText.Text = L.F("Not saved: {0}", ex.Message);
-            return;
+            return false;
         }
         await ShowHour(hour);
         UpdateHourRow(hour);
+        return true;
     }
 
     void UpdateHourRow(DateTime hour)
@@ -732,6 +772,7 @@ public partial class DailyPlaylistsView : UserControl
         await Edit(items =>
         {
             int i = items.IndexOf(item);
+            if (i < 0) return; // taken out meanwhile (another computer)
             items[i] = replacement;
             // Its voice track talked about the song that went.
             while (i + 1 < items.Count && items[i + 1].FollowsPrevious) items.RemoveAt(i + 1);
@@ -742,7 +783,7 @@ public partial class DailyPlaylistsView : UserControl
     async Task InsertFromLibrary(IReadOnlyList<string> paths)
     {
         if (_db is not { } db || _hour is null) return;
-        var added = await Task.Run(() => paths.Where(File.Exists).Select(p =>
+        var added = await Task.Run(() => paths.Select(SharedPaths.ToLibrary).Where(SharedPaths.FileExists).Select(p =>
         {
             var t = db.GetByPath(p);
             double length = t == null ? AudioProbe.Duration(p) ?? 0 : (t.Duration > 0 ? t.Duration : AudioProbe.Duration(p) ?? 0);
@@ -754,7 +795,11 @@ public partial class DailyPlaylistsView : UserControl
                 TrackId = t?.Id, CategoryId = t?.CategoryId, Seconds = Math.Max(1, length - Math.Min(fade, length / 2)),
             };
         }).Where(i => i.Seconds > 1).ToList());
-        if (added.Count == 0) return;
+        if (added.Count == 0)
+        {
+            StatusText.Text = L.F("Not found: {0}", string.Join(", ", paths.Take(3)));
+            return;
+        }
         var after = SelectedItems().LastOrDefault();
         await Edit(items => items.InsertRange(after == null ? items.Count : items.IndexOf(after) + 1, added));
     }

@@ -771,8 +771,12 @@ sealed class Scheduler : IDisposable
         _engine.MeasureLoudness(files.Distinct());
     }
 
+    /// <summary>Another computer is on air: its breaks and events are its own, none is put in this playlist.</summary>
+    public bool Standby { get; set; }
+
     void Start(ScheduleEntry entry, DateTime at)
     {
+        if (Standby) return;
         try
         {
             var items = Items(entry, at, quiet: false);

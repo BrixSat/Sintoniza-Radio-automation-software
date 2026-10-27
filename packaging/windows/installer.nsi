@@ -43,9 +43,17 @@ SetCompressor /SOLID lzma
 Section "Install"
   SetShellVarContext all
   ; An in-app update starts this silently and then closes the app: wait (up to 30 s) until its files are free
-  ; (the app as it is now, or under its name before when updating from an older version).
+  ; (the app as it is now, or under its name before when updating from an older version). SintonizaEmi.dll is
+  ; loaded by every program (Emi, Pro, Rec, Import): free only when they are all closed.
   StrCpy $1 0
+  StrCpy $3 0 ; Sintoniza Rec was closed here: started again after
   wait:
+    IfFileExists "$INSTDIR\SintonizaEmi.dll" 0 waitexe
+    ClearErrors
+    FileOpen $0 "$INSTDIR\SintonizaEmi.dll" a
+    IfErrors busy
+    FileClose $0
+  waitexe:
     IfFileExists "$INSTDIR\${EXENAME}" 0 waitold
     ClearErrors
     FileOpen $0 "$INSTDIR\${EXENAME}" a
@@ -58,6 +66,18 @@ Section "Install"
     IfErrors 0 opened
   busy:
     IntOp $1 $1 + 1
+    ; After 20 s, Sintoniza Pro and Rec (and Import) are still open: they are closed, or their files wouldn't be
+    ; replaced and the programs would be half old, half new. Rec is started again after the update.
+    IntCmp $1 40 0 notyet notyet
+    nsExec::Exec 'taskkill /F /IM ${SCHEDEXE}'
+    Pop $0
+    nsExec::Exec 'taskkill /F /IM ${OLDSCHEDEXE}'
+    Pop $0
+    nsExec::Exec 'taskkill /F /IM ${RECEXE}'
+    Pop $0
+    StrCmp $0 "0" 0 +2
+    StrCpy $3 1
+  notyet:
     IntCmp $1 60 ready
     Sleep 500
     Goto wait
@@ -124,6 +144,8 @@ Section "Install"
   ${GetOptions} $0 "/RESTART" $1
   IfErrors +2
   Exec '"$INSTDIR\${EXENAME}"'
+  StrCmp $3 "1" 0 +2
+  Exec '"$INSTDIR\${RECEXE}"'
 SectionEnd
 
 Section "Uninstall"

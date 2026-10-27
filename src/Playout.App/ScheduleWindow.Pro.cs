@@ -384,7 +384,8 @@ public partial class ScheduleWindow
             LockLogin.LoggedIn += user =>
             {
                 AppLog.Write($"{AppInfo.ScheduleName}: {user.Name} logged in");
-                if (_settings != null) { _settings.LastUser = user.Name; _settings.Save(); }
+                if (_settings != null) _settings.LastUser = user.Name;
+                AppSettings.Change(s => s.LastUser = user.Name); // only this, over what the on-air program saved
                 LockOverlay.IsVisible = false;
                 Workstation.IsEnabled = true;
                 UsersTab.Content = null; // made again for the new user

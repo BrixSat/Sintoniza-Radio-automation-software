@@ -156,7 +156,7 @@ public partial class CertificateWindow : Window
         if (_settings != null)
         {
             _settings.RecordingsFolder = folder;
-            _settings.Save();
+            AppSettings.Change(s => s.RecordingsFolder = folder); // only this, over what the on-air program saved
         }
         ShowRecordings();
         Selected();

@@ -30,6 +30,10 @@ public sealed partial class LibraryDb
     void DumpMySql(string file)
     {
         using var c = Connect();
+        // Every table as it was at one moment, while the studios keep writing (a schedule saved during the backup
+        // is in it whole or not at all).
+        c.Execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+        c.Execute("START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY");
         string tmp = file + ".part";
         using (var w = new StreamWriter(tmp, false, new UTF8Encoding(false)))
         {
@@ -59,6 +63,7 @@ public sealed partial class LibraryDb
             w.WriteLine();
             w.WriteLine("SET FOREIGN_KEY_CHECKS = 1;");
         }
+        c.Execute("COMMIT");
         File.Move(tmp, file, true);
     }
 

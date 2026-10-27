@@ -19,12 +19,31 @@ public partial class MainWindow
         _role = new StudioRole(_library, _settings.WasStandby && _settings.Library.IsMySql,
             () => engine.GetStatus().Current is { } t && engine.State == PlayerState.Playing ? t.Display : "",
             () => (_settings.TakeOver, _settings.TakeOverSeconds));
-        engine.Standby = _role.Standby;
-        if (_plan != null) _plan.Standby = _role.Standby;
+        SetStandby(_role.Standby);
         _role.Changed += (standby, why) => Dispatcher.UIThread.Post(() => ApplyRole(standby, why));
         _role.Seen += () => Dispatcher.UIThread.Post(ShowStudios);
         TakeOnAirButton.Click += async (_, _) => await AskTakeOnAir();
+        _role.Start();
         ShowStudios();
+    }
+
+    /// <summary>Everything that would go on air from here: the engine, the daily playlists, breaks and events, RDS and the website.</summary>
+    void SetStandby(bool standby)
+    {
+        if (_engine is { } engine) engine.Standby = standby;
+        if (_plan != null) _plan.Standby = standby;
+        if (_scheduler != null) _scheduler.Standby = standby;
+        ApplyRds();
+        ApplyWebNowPlaying();
+    }
+
+    /// <summary>
+    /// With a shared library, before carrying on after a restart: whether this computer is on air (at most a few
+    /// seconds; with the database away, as it was).
+    /// </summary>
+    async Task WaitForRole()
+    {
+        if (_role is { } role && _settings.Library.IsMySql) await Task.WhenAny(role.Known, Task.Delay(TimeSpan.FromSeconds(8)));
     }
 
     /// <summary>This computer went on air or standby.</summary>
@@ -37,8 +56,7 @@ public partial class MainWindow
             LastLog.Text = why;
         }
         _settings.WasStandby = standby;
-        engine.Standby = standby;
-        if (_plan != null) _plan.Standby = standby;
+        SetStandby(standby);
         if (standby)
         {
             // The stream is the one on air's (its setting stays as it was, for when this computer goes on air).
@@ -46,7 +64,8 @@ public partial class MainWindow
         }
         else
         {
-            _ = GoOnAir(_tookOnAir);
+            // At start the saved playlist is being put back: that carries on (CarryOn), not this.
+            if (_restored) _ = GoOnAir(_tookOnAir);
             _tookOnAir = false;
             if (_settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)
                 && engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming();
@@ -61,7 +80,7 @@ public partial class MainWindow
     async Task GoOnAir(bool keepOwn)
     {
         if (_engine is not { } engine || !engine.AutoAdvance) return;
-        bool own = keepOwn && _order.Any(r => !r.IsPlayed && !r.IsPlaying && !r.IsPreview && PlanPlayer.ReadTag(r.Track.Tag) == null);
+        bool own = keepOwn && _order.Any(r => !r.IsPlayed && !r.IsPlaying && !r.IsPreview && r.Track.Event == null && PlanPlayer.ReadTag(r.Track.Tag) == null);
         if (!own)
         {
             engine.Clear();

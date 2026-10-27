@@ -58,6 +58,7 @@ public sealed class PlayoutEngine : IDisposable
     int _connectAttempt;   // bumped by every start and stop, so a stream that connects too late is dropped
     Guid? _connecting;     // stream item that is due but still connecting; automation waits for it instead of starting it again
     (Guid Id, Task<int> Handle)? _streamConnection; // connection to a stream item, opened ahead of its start
+    DateTime _retryPreconnect;
     readonly List<int> _playingOut = new(); // decks past their Mix marker, finishing under the next item
     readonly HashSet<int> _fading = new();  // decks fading out before they are freed
     readonly HashSet<string> _tagWriting = new(); // files whose tags are being written: not opened ahead of time meanwhile
@@ -158,9 +159,9 @@ public sealed class PlayoutEngine : IDisposable
         _graph.Apply(routing);
         _mic = new Microphone(_graph, After, Emit);
 
-        _crossfadeSync = (_, channel, _, _) => _commands.Add(() => OnCrossfadePoint(channel));
-        _endSync = (_, channel, _, _) => _commands.Add(() => OnTrackEnd(channel));
-        _cueOutSync = (_, channel, _, _) => _commands.Add(() => OnCueOut(channel));
+        _crossfadeSync = (_, channel, _, _) => Post(() => OnCrossfadePoint(channel));
+        _endSync = (_, channel, _, _) => Post(() => OnTrackEnd(channel));
+        _cueOutSync = (_, channel, _, _) => Post(() => OnCueOut(channel));
         _gainDsp = ApplyGain;
 
         _thread = new Thread(Run) { Name = "PlayoutEngine", IsBackground = true, Priority = ThreadPriority.AboveNormal };
@@ -622,6 +623,12 @@ public sealed class PlayoutEngine : IDisposable
         if (at <= _cursorIndex) _cursorIndex += tracks.Count;
         if (_loudness.Enabled) foreach (var t in tracks) if (!t.IsStream && !t.IsTake) _loudnessWorker.Add(t.Path);
         PlaylistUpdated();
+        // AUTO ran out and was waiting for fill music (none could be had): what was just added goes on air now.
+        if (_waitingForFill && _current == null && _connecting == null && _autoAdvance && !_standby && NextTrack() is { } next)
+        {
+            _waitingForFill = false;
+            StartTrack(next, 0);
+        }
     }
 
     public void Remove(Guid id) => Post(() =>
@@ -635,9 +642,11 @@ public sealed class PlayoutEngine : IDisposable
                 : L.F("{0} can't be removed: the schedule only lets it be moved ({1})", _playlist[i].Display, _playlist[i].Event));
             return;
         }
+        bool connecting = _playlist[i].Id == _connecting;
         _playlist.RemoveAt(i);
         // Keep the cursor pointing "between" items so Next still means the following track.
         if (i <= _cursorIndex) _cursorIndex--;
+        if (connecting) CancelConnecting();
         // Its voice track goes with it: it talks about this item.
         while (i < _playlist.Count && _playlist[i].FollowsPrevious && !_played.Contains(_playlist[i].Id) && _current?.Track.Id != _playlist[i].Id)
         {
@@ -677,9 +686,24 @@ public sealed class PlayoutEngine : IDisposable
         PlaylistUpdated();
     });
 
+    /// <summary>
+    /// The stream being connected to was taken out of the list: it doesn't go on air when it connects. With nothing on
+    /// air, AUTO goes on with the next item (or stops).
+    /// </summary>
+    void CancelConnecting()
+    {
+        _connectAttempt++;
+        _connecting = null;
+        DropConnection();
+        if (_current != null) return;
+        if (_autoAdvance && NextTrack() is { } next) StartTrack(next, 0);
+        else StopInternal();
+    }
+
     /// <summary>Empties the playlist, except the item on air and scheduled items the operator may not remove.</summary>
     public void Clear() => Post(() =>
     {
+        bool connecting = _connecting is { } c && !_playlist.Any(t => t.Id == c && IsKept(t));
         var current = _current?.Track;
         var kept = _playlist.Where(IsKept).ToList();
         _playlist.Clear();
@@ -688,6 +712,7 @@ public sealed class PlayoutEngine : IDisposable
         else _cursorIndex = -1;
         _playlist.AddRange(kept.Where(t => t.Id != current?.Id));
         if (kept.Count > 0) Emit(L.F("Playlist cleared; {0} scheduled items the schedule keeps are still there", kept.Count));
+        if (connecting) CancelConnecting();
         PlaylistUpdated();
     });
 
@@ -710,8 +735,9 @@ public sealed class PlayoutEngine : IDisposable
         if (_current != null && State == PlayerState.Paused) { SetPaused(false); return; }
         if (_current != null) return;
         if (DropStale()) PlaylistUpdated();
-        // At the end of the list, Play starts again from the top.
+        // At the end of the list, Play starts again from the top; with nothing in it, fill music (in AUTO).
         if ((NextTrack() ?? _playlist.FirstOrDefault()) is { } next) StartTrack(next, ManualFade);
+        else StartFill();
     });
 
     /// <summary>Crossfade into the next playlist item immediately.</summary>
@@ -942,7 +968,10 @@ public sealed class PlayoutEngine : IDisposable
 
     void Post(Action a)
     {
-        if (!_commands.IsAddingCompleted) _commands.Add(a);
+        // Also from the sound library's own threads (its syncs): after Dispose the work is dropped, never thrown
+        // there (an exception in a native callback ends the program).
+        try { _commands.TryAdd(a); }
+        catch (InvalidOperationException) { } // also ObjectDisposedException
     }
 
     void Run()
@@ -1191,7 +1220,8 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>The connection to a stream item: the one already opened ahead of time, or a new one.</summary>
     Task<int> Connection(Track track)
     {
-        if (_streamConnection is { } c && c.Id == track.Id) return c.Handle;
+        // Opened ahead and still good (one that failed is tried again: the network may be back).
+        if (_streamConnection is { } c && c.Id == track.Id && !c.Handle.IsFaulted && !c.Handle.IsCanceled) return c.Handle;
         DropConnection();
         var task = Task.Run(() =>
         {
@@ -1214,6 +1244,12 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>In AUTO, opens the connection to a stream that is next up shortly before the current item reaches its mix point.</summary>
     void PreconnectStream()
     {
+        // Failed ahead of time: tried again every few seconds (the network may be back by its start).
+        if (_streamConnection is { Handle.IsFaulted: true } && DateTime.UtcNow >= _retryPreconnect)
+        {
+            DropConnection();
+            _retryPreconnect = DateTime.UtcNow.AddSeconds(3);
+        }
         if (!_autoAdvance || _connecting != null || _streamConnection != null) return;
         if (_current is not { } deck || deck.Track.IsOpenEnded || NextTrack() is not { IsStream: true } next) return;
         long bytes = BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes);
@@ -1225,21 +1261,26 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Puts an opened item on air, taking over from the current one.</summary>
     void Begin(Track track, int handle, double length, double? outgoingFade)
     {
+        // Mixer syncs can only be set on a channel that is already a mixer source,
+        // so add it paused, attach the syncs, then let it go. Before the item on air is let go: if the mixer
+        // won't take it, what is on air plays on and this one is passed over.
+        if (!BassMix.MixerAddChannel(_graph.MusicBus, handle, BassFlags.AutoFree | BassFlags.MixerChanPause))
+        {
+            Emit(L.F("Mixer rejected {0}: {1}", track.Display, Bass.LastError));
+            Bass.StreamFree(handle);
+            _played.Add(track.Id);
+            if (_playlist.FindIndex(t => t.Id == track.Id) is var skipped and >= 0) _cursorIndex = skipped;
+            if (_current == null && _autoAdvance && NextTrack() is { } next) StartTrack(next, 0);
+            else PlaylistUpdated();
+            return;
+        }
+
         if (_current is { } old)
         {
             // Manual changes while paused should not un-pause the old deck into a fade.
             if (State == PlayerState.Paused) FadeOutAndFree(old.Handle, 0);
             else if (outgoingFade is { } fade) FadeOutAndFree(old.Handle, fade);
             else _playingOut.Add(old.Handle); // keeps playing; its Cue Out (or end) sync frees it
-        }
-
-        // Mixer syncs can only be set on a channel that is already a mixer source,
-        // so add it paused, attach the syncs, then let it go.
-        if (!BassMix.MixerAddChannel(_graph.MusicBus, handle, BassFlags.AutoFree | BassFlags.MixerChanPause))
-        {
-            Emit(L.F("Mixer rejected {0}: {1}", track.Display, Bass.LastError));
-            Bass.StreamFree(handle);
-            return;
         }
 
         // For a stream, End means the connection dropped.
@@ -1490,6 +1531,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             TrimPlayed();
             Emit(L.F("Playlist ran out: added {0}", track.Display));
+            _waitingForFill = false; // started here, not by Insert
             Insert([track], -1);
             StartTrack(track, 0);
         }
@@ -1510,11 +1552,21 @@ public sealed class PlayoutEngine : IDisposable
         if (_fill == null || !_autoAdvance || DateTime.UtcNow < _nextFillTry) return;
         _nextFillTry = DateTime.UtcNow.AddSeconds(FillRetrySeconds);
         if (_current != null && _connecting == null && NextTrack() == null) PlaylistUpdated(); // runs Fill
-        else if (_waitingForFill && _current == null && _connecting == null && FillTrack() is { } track)
+        else if (_waitingForFill && _current == null && _connecting == null)
         {
-            Emit(L.F("Fill music: {0}", track.Display));
-            Insert([track], -1);
-            StartTrack(track, 0);
+            // Something was put in meanwhile: that, not a fill song after it.
+            if (NextTrack() is { } next)
+            {
+                _waitingForFill = false;
+                StartTrack(next, 0);
+            }
+            else if (FillTrack() is { } track)
+            {
+                Emit(L.F("Fill music: {0}", track.Display));
+                _waitingForFill = false; // started here, not by Insert
+                Insert([track], -1);
+                StartTrack(track, 0);
+            }
         }
     }
 
@@ -1545,7 +1597,9 @@ public sealed class PlayoutEngine : IDisposable
         int extra = _cursorIndex - KeepPlayed;
         if (extra <= 0) return;
         var gone = _playlist.Take(extra).ToList();
-        if (gone.Any(t => !_played.Contains(t.Id) || t.Id == _current?.Track.Id)) return; // unplayed items: leave the list alone
+        // Above the cursor: played, or jumped over (they won't play now; the schedule's own were moved after the
+        // jump). Not the one on air.
+        if (gone.Any(t => t.Id == _current?.Track.Id || t.Id == _connecting)) return;
         _playlist.RemoveRange(0, extra);
         foreach (var t in gone) _played.Remove(t.Id);
         _cursorIndex -= extra;
@@ -1565,9 +1619,11 @@ public sealed class PlayoutEngine : IDisposable
         _nextTimedCheck = now.AddSeconds(0.5);
         if (State != PlayerState.Playing) return;
         if (DropStale()) PlaylistUpdated();
+        // The one due first, wherever it is in the list: one queued behind another timed item (an event with a
+        // shorter delay after a break) is kept to its time too, not left to go stale.
         int ti = -1;
         for (int i = Math.Max(0, _cursorIndex + 1); i < _playlist.Count; i++)
-            if (_playlist[i].StartBy != null && !_played.Contains(_playlist[i].Id)) { ti = i; break; }
+            if (_playlist[i].StartBy is { } by && !_played.Contains(_playlist[i].Id) && (ti < 0 || by < _playlist[ti].StartBy!.Value)) ti = i;
         if (ti < 0) return;
         var timed = _playlist[ti];
         if (timed.Id == _connecting) return; // on its way
@@ -1737,8 +1793,10 @@ public sealed class PlayoutEngine : IDisposable
         double mixAt = deck.Track.IsStream ? Math.Min(deck.Track.MixPoint(CrossfadeBetween(deck.Track, null)), deck.Track.End) : deck.MixAt;
         double at = Math.Max(0, mixAt - position);
         var list = new List<(int, double)>();
-        int first = _playlist.FindIndex(t => t.Id == deck.Track.Id) + 1;
-        for (int i = first; i < _playlist.Count; i++)
+        // After the item on air; if it was taken out of the list while playing, after where it was (the cursor).
+        int onAir = _playlist.FindIndex(t => t.Id == deck.Track.Id);
+        int first = (onAir >= 0 ? onAir : _cursorIndex) + 1;
+        for (int i = Math.Max(0, first); i < _playlist.Count; i++)
         {
             list.Add((i, at));
             if (_playlist[i].IsOpenEnded) return list; // nothing after it has a time
@@ -1887,6 +1945,7 @@ public sealed class PlayoutEngine : IDisposable
             PlaylistUpdated();
         }
         if (NextTrack() is { } next) StartTrack(next, 0);
+        else StartFill(); // nothing left of the hour, the next not in yet: fill music, never silence
     }
 
     /// <summary>Publish a snapshot and pre-open the next file so the crossfade point never waits on disk.</summary>

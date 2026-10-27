@@ -28,7 +28,19 @@ public partial class App : Application
                 : rec ? ("rec", AppInfo.RecName) : ("playout", AppInfo.Name);
             // One of each per computer: a second start says so instead of opening another (two playouts would fight
             // over the sound card and the playlist).
-            desktop.MainWindow = !SingleInstance.Acquire(lockName) ? SingleInstance.AlreadyRunning(name)
+            bool locked = SingleInstance.Acquire(lockName);
+            if (!locked && desktop.Args?.Contains(Watchdog.ChildArg) == true)
+            {
+                // Started again by the watchdog while the copy it stopped is still letting go: wait for it, and if it
+                // doesn't, end with an error (the watchdog tries again later) rather than wait for an OK nobody clicks.
+                locked = SingleInstance.Wait(lockName, 20);
+                if (!locked)
+                {
+                    AppLog.Write($"{name}: the copy stopped by the watchdog still holds the lock; trying again later");
+                    Environment.Exit(3);
+                }
+            }
+            desktop.MainWindow = !locked ? SingleInstance.AlreadyRunning(name)
                 : schedule ? WithLogin(desktop, settings, AppInfo.ScheduleName, null, (db, user) => ScheduleProgram(settings, playlists, db, user),
                     error => ScheduleOffline(settings, error))
                 : import ? WithLogin(desktop, settings, AppInfo.ImportName, Permission.Library, (db, user) => new ImportWindow(db, null),
@@ -75,7 +87,8 @@ public partial class App : Application
         login.LoggedIn += user =>
         {
             settings.LastUser = user.Name;
-            settings.Save();
+            // Only this: the on-air program may have saved its playlist since this copy was read.
+            AppSettings.Change(s => s.LastUser = user.Name);
             AppLog.Write($"{program}: {user.Name} logged in");
             var window = open(db, user);
             desktop.MainWindow = window;

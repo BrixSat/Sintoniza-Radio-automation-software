@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS as_run (
     isrc       VARCHAR(20)  NOT NULL DEFAULT '',
     year       VARCHAR(10)  NOT NULL DEFAULT '',
     file       VARCHAR(760) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL DEFAULT '',
-    UNIQUE KEY as_run_play (station_id, started_at, file),
+    UNIQUE KEY as_run_play (station_id, started_at, file(700)), -- a prefix: InnoDB keys are at most 3072 bytes (MySQL 8)
     KEY as_run_advertiser (advertiser, started_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 

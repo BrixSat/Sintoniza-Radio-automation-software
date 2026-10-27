@@ -110,9 +110,28 @@ public sealed class AppSettings
 
     /// <summary>Index in <see cref="PlaylistItems"/> of the item on air (or last played); -1 = none. Saved every few seconds.</summary>
     public int OnAirIndex { get; set; } = -1;
-    /// <summary>When the settings were last saved, as found at start (the playlist is saved with them as it changes).</summary>
+    /// <summary>
+    /// When the on-air program was last running, as found at start (it marks it every 30 seconds, also while one long
+    /// item plays and nothing in the settings changes); null: never marked.
+    /// </summary>
     [JsonIgnore]
     public DateTime? SavedAtUtc { get; private set; }
+
+    static string RunningFile => Path.Combine(DataFolder, "running");
+
+    /// <summary>The on-air program is running (every 30 seconds).</summary>
+    public static void MarkRunning()
+    {
+        try
+        {
+            if (!File.Exists(RunningFile)) File.WriteAllText(RunningFile, "");
+            File.SetLastWriteTimeUtc(RunningFile, DateTime.UtcNow);
+        }
+        catch
+        {
+            // Best effort: without it the settings' own time is used.
+        }
+    }
     /// <summary>The player was playing in AUTO at the last save.</summary>
     public bool WasPlaying { get; set; }
     /// <summary>
@@ -174,7 +193,7 @@ public sealed class AppSettings
     {
         // A damaged settings file must never stop the station from starting: then the backup, or the defaults.
         var s = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<AppSettings>(json)) ?? new();
-        s.SavedAtUtc = File.Exists(FilePath) ? File.GetLastWriteTimeUtc(FilePath) : null;
+        s.SavedAtUtc = File.Exists(RunningFile) ? File.GetLastWriteTimeUtc(RunningFile) : File.Exists(FilePath) ? File.GetLastWriteTimeUtc(FilePath) : null;
         s.Normalize();
         s._saved = JsonSerializer.Serialize(s, Json);
         return s;
@@ -222,6 +241,18 @@ public sealed class AppSettings
     string? _saved; // what is in the file, so an unchanged save writes nothing
 
     /// <summary>Saves, if anything changed since the last save. Crash-safe: see <see cref="SafeFile"/>.</summary>
+    /// <summary>
+    /// For Sintoniza Pro, Rec and Import, which share this computer's settings with the on-air program: the file is read
+    /// afresh, only <paramref name="change"/> is made to it and it is saved, so what the on-air program saved meanwhile
+    /// (its playlist and where it was) is never put back to an older copy.
+    /// </summary>
+    public static void Change(Action<AppSettings> change)
+    {
+        var fresh = Load();
+        change(fresh);
+        fresh.Save();
+    }
+
     public void Save()
     {
         try

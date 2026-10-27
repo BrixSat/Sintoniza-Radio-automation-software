@@ -34,6 +34,9 @@ sealed class PlanPlayer
     DateTime _nextCheck, _nextKeep, _nextSync, _nextOver;
     (DateTime Hour, DateTime Until)? _pending; // an hour just loaded, until its items are in the playlist
     readonly Dictionary<DateTime, DateTime> _empty = new(); // hours with nothing planned → when to look again
+    volatile PlannedOnAir? _onAir; // the planned item on air (set on the UI thread, read where an hour is loaded)
+
+    sealed record PlannedOnAir(DateTime Hour, string Path);
     readonly HashSet<string> _reported = new();
     volatile bool _scheduleChanged;
 
@@ -102,6 +105,9 @@ sealed class PlanPlayer
         // The planned hours still to play in the playlist (not the item on air, nor what played).
         var waiting = rows.Where(r => !r.IsPlayed && !r.IsPlaying && !r.IsPreview).Select(r => ReadTag(r.Track.Tag)?.Hour)
             .OfType<DateTime>().ToHashSet();
+        // The planned item on air (a long show at the end of its hour): not put in again when its hour is loaded
+        // from the moment the playlist runs out.
+        _onAir = rows.FirstOrDefault(r => r.IsPlaying) is { } playing && ReadTag(playing.Track.Tag) is { } tag ? new PlannedOnAir(tag.Hour, playing.Track.Path) : null;
         // A load still on its way to the playlist (the engine adds items on its own thread): nothing else meanwhile.
         if (_pending is { } pending)
         {
@@ -219,6 +225,19 @@ sealed class PlanPlayer
             int skip = 0;
             while (skip < items.Count - 1 && at + items[skip].Seconds <= offset) at += items[skip++].Seconds;
             items = items.Skip(skip).ToList();
+            // Not the item on air now (the one planned for this moment, still playing), nor its voice track.
+            if (_onAir is { } onAir && onAir.Hour == hour && items.Count > 0 && items[0].Path == onAir.Path)
+            {
+                items.RemoveAt(0);
+                while (items.Count > 0 && items[0].FollowsPrevious) items.RemoveAt(0);
+                if (items.Count == 0)
+                {
+                    // All of the hour is on air or played: nothing to add, and not looked at again.
+                    lock (_empty) _empty[hour] = DateTime.MaxValue;
+                    _pending = null;
+                    return;
+                }
+            }
             // Not a voice track whose song was left behind.
             while (items.Count > 1 && items[0].FollowsPrevious) items.RemoveAt(0);
         }
