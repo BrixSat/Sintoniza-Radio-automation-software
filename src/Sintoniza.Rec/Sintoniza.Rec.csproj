@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest>..\Playout.App\app.manifest</ApplicationManifest>
     <AssemblyName>SintonizaRec</AssemblyName>
-    <RootNamespace>Playout.Rec</RootNamespace>
+    <RootNamespace>Sintoniza.Rec</RootNamespace>
     <ApplicationIcon>..\Playout.App\Assets\rec.ico</ApplicationIcon>
     <!-- build.sh sets the real version. -->
     <Version>0.0.0</Version>

@@ -1,4 +1,4 @@
-namespace Playout.Schedule;
+namespace Sintoniza.Pro;
 
 /// <summary>Sintoniza Pro: the station's settings, categories, cartwalls, schedule (events, ad breaks, clients, hour templates, daily playlists), as its own program.</summary>
 static class Program
