@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **15**. The scripts that create the tables are
+Schema version **16**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -40,7 +40,9 @@ settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) a
 [`mysql-13.sql`](../src/Playout.Library/Schema/mysql-13.sql) (what the ERC needs about each song), then [`sqlite-14.sql`](../src/Playout.Library/Schema/sqlite-14.sql) and
 [`mysql-14.sql`](../src/Playout.Library/Schema/mysql-14.sql) (when a song may be picked automatically), then
 [`sqlite-15.sql`](../src/Playout.Library/Schema/sqlite-15.sql) and
-[`mysql-15.sql`](../src/Playout.Library/Schema/mysql-15.sql) (notes for the presenter in the daily playlists). The app creates the tables itself the
+[`mysql-15.sql`](../src/Playout.Library/Schema/mysql-15.sql) (notes for the presenter in the daily playlists), then
+[`sqlite-16.sql`](../src/Playout.Library/Schema/sqlite-16.sql) and
+[`mysql-16.sql`](../src/Playout.Library/Schema/mysql-16.sql) (the studios, and which one is on air). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -246,6 +248,27 @@ here: they come from the schedule, as booked at air time. Hours are local times 
 
 Another program may write an hour (its row and items in one transaction) and set `edited` to 1 so it isn't made
 again. Hours from two days back are removed by the playout.
+
+## The studios (which computer is on air)
+
+From 16. Every computer running Sintoniza Emi for the station writes its row in `studios` every 2 seconds; one of
+them has `on_air` = 1 and plays, the others are standby (silent, ready). A standby one goes on air when the
+operator presses **Take on air** there, or by itself when the one on air hasn't been seen for a while (its Settings);
+the one that finds another on air in its place goes standby.
+
+| Column | |
+| --- | --- |
+| `station_id`, `computer` | the station and the computer's name (the key) |
+| `seen_at` | when it was last seen running (UTC, `yyyy-MM-ddTHH:mm:ssZ`, the database server's clock) |
+| `on_air` | 1: this one is on air (one per station) |
+| `since` | when it went on air (UTC; null: standby) |
+| `playing` | what it is playing, `Artist - Title` (empty: nothing) |
+| `version` | its Sintoniza Emi version |
+
+A computer takes the air in one transaction: it locks the station's rows (`SELECT … FOR UPDATE`), checks that none
+is on air or the one on air hasn't been seen for long enough, then sets `on_air` = 0 on the others and 1 on its
+own. Another program may read this table (to show which studio is on air) but shouldn't write it. Standby studios
+not seen for 30 days are removed. A library in an SQLite file is one computer's: it is always on air.
 
 ## Adding music from another program
 

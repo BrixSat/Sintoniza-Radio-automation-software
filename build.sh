@@ -43,7 +43,7 @@ build() { # $1 = win|linux
 
   echo "▶ Publishing $rid"
   # Sintoniza Emi, Sintoniza Pro, Sintoniza Rec and radio-import (library scanner) share one folder and one .NET runtime.
-  for project in "$PROJECT" "$ROOT/src/Playout.Schedule" "$ROOT/src/Playout.Rec" "$ROOT/src/Playout.Import"; do
+  for project in "$PROJECT" "$ROOT/src/Sintoniza.Pro" "$ROOT/src/Sintoniza.Rec" "$ROOT/src/Sintoniza.Import"; do
     # ReadyToRun: compiled ahead, so the programs open quickly (Windows most) instead of compiling as they start.
     dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
       -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
@@ -347,7 +347,7 @@ mac() {
       "$imp/Contents/MacOS" "$imp/Contents/Resources"
 
     echo "▶ Publishing $rid"
-    for project in "$PROJECT" "$ROOT/src/Playout.Schedule" "$ROOT/src/Playout.Rec" "$ROOT/src/Playout.Import"; do
+    for project in "$PROJECT" "$ROOT/src/Sintoniza.Pro" "$ROOT/src/Sintoniza.Rec" "$ROOT/src/Sintoniza.Import"; do
       dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
         -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$app/Contents/MacOS"
     done

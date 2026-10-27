@@ -472,8 +472,10 @@ or `docs/manual/make-manual.sh en` / `pt`.
 src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
                      Runs on its own thread; the UI only calls its public API.
 src/Playout.Library  The database (SQLite / MySQL): music library, schema, backups, and the folder scanner.
-src/Playout.Import   radio-import: command-line library scanner.
-src/Playout.App      Avalonia desktop UI (deck, playlist, music browser, cartwall, settings).
+src/Playout.App      Avalonia desktop UI: every window of Sintoniza Emi, Pro, Rec and Import.
+src/Sintoniza.Pro    Starts Playout.App as Sintoniza Pro (SintonizaPro).
+src/Sintoniza.Rec    Starts Playout.App as Sintoniza Rec (SintonizaRec).
+src/Sintoniza.Import radio-import: command-line library scanner.
 scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
 native/<platform>/   BASS libraries (downloaded, not committed).
 ```

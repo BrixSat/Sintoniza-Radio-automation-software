@@ -182,7 +182,7 @@ the database can be fixed.
 | General | the language of the screens |
 | Audio | outputs for Music / Cartwall / Preview |
 | Microphone | (web radio) input, levels, how far the music goes down |
-| Safety | start-up and crash behaviour, log folder, **Backups** |
+| Safety | start-up and crash behaviour, **several computers on air** (standby taking over by itself), log folder, **Backups** |
 | Library | the database, automatic scans, **this computer's paths** (shared music under another path — see below) |
 | Shortcuts | keys for transport, MIC, stream and carts |
 | RDS | whether this computer sends to the RDS encoder, and how it reaches it |
@@ -213,6 +213,27 @@ the library's own paths leaves it empty.
 The share has to be a folder on the computer: on Linux mount it (e.g. in `/etc/fstab`:
 `//server/radio /mnt/radio cifs credentials=/etc/radio.cred,uid=1000,iocharset=utf8 0 0`), not an `smb://` address
 of the file manager; on Windows a mapped drive or `\\server\share`; on a Mac it appears under `/Volumes`.
+
+### Several computers on air: one on air, the others standby
+
+With a shared MySQL library every computer running Sintoniza Emi for the station knows the others. **One is on
+air**; the others are **standby**: ready and silent — no playlist, no time signal, no stream, nothing in the play
+history — with an amber **STANDBY** bar at the top saying which computer is on air and what it is playing. The
+first to start goes on air. On the one on air an **ON AIR** light in the status bar lists the standby computers;
+Sintoniza Pro's status bar shows them too.
+
+- **Take on air** (or Play) on a standby computer puts it on air, after asking: the one on air stops and goes
+  standby. In AUTO it starts the hour now from the item planned for now (what you put in its playlist yourself
+  plays first).
+- **By itself**: when the computer on air hasn't answered for 15 s (it crashed, was switched off, lost the network),
+  a standby one goes on air. Settings → Safety → *Several computers on air*: on or off, and after how long, for each
+  computer. A computer that should never take over (a production computer with Emi open) has it off.
+- A computer cut off from the network keeps playing, as it can't know another took over: until it is back, both
+  play. Then it finds the other on air and goes standby.
+- Carts still play on a standby computer (its own sound card), but don't go in the play history.
+
+Every studio has to run the same version: the database is upgraded by the first one to start the new version, and
+an older one then can't open it until it is updated.
 
 ### GPIO (the desk's faders and lights)
 
@@ -261,7 +282,10 @@ It opens on **Home**: the clock, what is on air, **today** (hours planned, ad br
 voice tracks), what **needs attention** (missing files, songs without a category, hours without a template,
 campaigns ending this week, unsaved changes), the **library**, the **database** and **this computer** (system,
 processor, memory, free disk, how long it has been on). **Songs** shows the whole library (search, categories,
-tempo and energy, tags, listen).
+tempo and energy, tags). Double-click a song (or select it and press Space or ▶ at the bottom) to listen, on this
+computer's Preview output; right-click → **Edit cue points…** (the waveform, Cue In, Intro, Outro, Mix, Cue Out —
+saved for every studio, the playout takes them within a minute) or **Edit tags…**. The status bar says which
+computer is on air and which are standby.
 
 ### The station (Station and Library, on the left)
 
