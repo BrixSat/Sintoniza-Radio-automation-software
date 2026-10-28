@@ -88,8 +88,29 @@ public sealed class PlayoutEngine : IDisposable
     /// </summary>
     public Func<string?>? FillerFill { get; set; }
 
-    /// <summary>Gaps up to this long are filled with fillers (longer ones with a song).</summary>
+    /// <summary>Gaps up to this long are filled with a filler (longer ones with a song).</summary>
     public double FillerGapSeconds { get; set; } = 120;
+
+    /// <summary>
+    /// When the coming scheduled events and breaks are due (UTC), set by the schedule: not those that end at their
+    /// time (they are backtimed). Before one, as before the time signal, a small gap after the item on air is filled
+    /// with one filler (see <see cref="FillGap"/>).
+    /// </summary>
+    public IReadOnlyList<DateTime> ExpectedEvents
+    {
+        get => _expected;
+        set => _expected = value.ToArray();
+    }
+
+    volatile DateTime[] _expected = [];
+
+    /// <summary>The <see cref="Track.Tag"/> of a filler put in a gap: one at a time, never a second after it.</summary>
+    public const string FillerTag = "filler";
+
+    const double FillerReach = 1;     // a filler "reaches" a gap if it ends at most this much before it ends
+    const double GapLookSeconds = 15; // how long before the next item starts the gap after the item on air is looked at
+    Guid? _gapLooked;                 // the item on air whose gap was looked at (once each)
+    bool _gapFilling;                 // looking for a filler (off the engine thread)
 
     /// <summary>
     /// After the time signal (Stop): an item that belongs to the hour before (left over), not started — the app knows
@@ -108,6 +129,7 @@ public sealed class PlayoutEngine : IDisposable
     const double Exact = 0.005;    // that close to its start time is on time
     DateTime _nextBacktimeFill;    // looking for a song to fill a gap before a backtimed break: not too often
     bool _backtimeFilling;         // that search is running (off the engine thread)
+    Guid? _noFillerFor;            // a backtimed break with no filler long enough for its gap: a song instead
     Guid? _backtimeReported;       // the backtimed item whose unfillable gap has been reported
 
     // Shared with polling readers; written only on the engine thread.
@@ -477,7 +499,9 @@ public sealed class PlayoutEngine : IDisposable
         // A hard one waiting while the player is stopped is due now: started at Play soon after, left out if much later.
         if (hard && !playing) tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow };
         InsertAfterOnAir(tracks, afterWaiting: !hard);
-        if (playing && (hard || (_current == null && _connecting == null)))
+        // A filler on air was only there to reach it: it fades and the event starts now.
+        bool afterFiller = _current?.Track.Tag == FillerTag;
+        if (playing && (hard || afterFiller || (_current == null && _connecting == null)))
         {
             Emit(L.F("{0}: on air", label));
             FadePlayingOut(EventFadeSeconds);
@@ -1001,6 +1025,7 @@ public sealed class PlayoutEngine : IDisposable
             Safe(RetryFill);
             WatchStream();
             Safe(PreconnectStream);
+            Safe(FillGap);
             Safe(CheckTimeSignal);
             Safe(CheckTimed);
         }
@@ -1690,6 +1715,75 @@ public sealed class PlayoutEngine : IDisposable
     }
 
     /// <summary>
+    /// A few seconds before the next item starts (AUTO): when a scheduled event or break is due, or the time signal
+    /// comes, a short gap after the item on air (up to <see cref="FillerGapSeconds"/>) gets one filler rather than a
+    /// song — the shortest filler that reaches it (it fades when the event, break or signal comes). None that long: the
+    /// next item plays as usual (an event that can wait waits for it, up to its limit). Never a second filler after one.
+    /// </summary>
+    void FillGap()
+    {
+        if (!_autoAdvance || _standby || _gapFilling || FillerFill is not { } fillers || _current is not { } deck || _connecting != null) return;
+        if (deck.Track.Tag == FillerTag || _gapLooked == deck.Track.Id) return;
+        if (Upcoming() is not { Count: > 0 } upcoming) return;
+        var (nextIndex, nextIn) = upcoming[0];
+        if (nextIn > GapLookSeconds) return;
+        _gapLooked = deck.Track.Id; // looked at once for this item, whatever comes of it
+        var next = nextIndex < _playlist.Count ? _playlist[nextIndex] : null;
+        // The event's own items come next (it is in already), or a timed item: nothing to fill.
+        if (next is { } n && (n.Event != null || n.StartBy != null || n.Tag == FillerTag)) return;
+        if (GapMoment() is not { } moment) return;
+        double gap = (moment.At - DateTime.UtcNow).TotalSeconds - nextIn;
+        if (gap < FillerMinGap || gap > FillerGapSeconds) return;
+
+        var paths = new List<string>();
+        for (int i = 0; i < BacktimeFillTries; i++)
+        {
+            string? path;
+            try { path = fillers(); } catch { break; }
+            if (path == null) break;
+            if (!_badFill.Contains(path) && !paths.Contains(path)) paths.Add(path);
+        }
+        if (paths.Count == 0) return;
+        _gapFilling = true;
+        var onAirId = deck.Track.Id;
+        Task.Run(() => paths.Select(p => SafeProbe(p)).OfType<Track>().ToList()).ContinueWith(probed => Post(() =>
+        {
+            _gapFilling = false;
+            if (!probed.IsCompletedSuccessfully || _current?.Track.Id != onAirId || Upcoming() is not { Count: > 0 } now) return;
+            var (index, startsIn) = now[0];
+            double stillGap = (moment.At - DateTime.UtcNow).TotalSeconds - startsIn;
+            if (stillGap < FillerMinGap) return;
+            // The shortest that reaches it (a longer one fades then); none: the next item plays, as without fillers.
+            var best = probed.Result.Where(t => Step(t) >= stillGap - FillerReach).MinBy(t => Step(t));
+            if (best == null)
+            {
+                Emit(L.F("{0:0} s before {1}: no filler that long; the next item plays", stillGap, moment.What));
+                return;
+            }
+            var filler = best with { Kind = TrackKind.Jingle, Tag = FillerTag };
+            _playlist.Insert(Math.Min(index, _playlist.Count), filler);
+            if (_loudness.Enabled) _loudnessWorker.Add(filler.Path);
+            Emit(L.F("{0:0} s before {1}: filler {2}", stillGap, moment.What, filler.Display));
+            PlaylistUpdated();
+        }));
+    }
+
+    /// <summary>What the gap after the item on air is up to: the next event or break due, or the time signal.</summary>
+    (DateTime At, string What)? GapMoment()
+    {
+        var now = DateTime.UtcNow;
+        (DateTime At, string What)? moment = null;
+        foreach (var at in _expected)
+            if (at > now && (moment == null || at < moment.Value.At)) moment = (at, L.F("the event at {0:HH:mm:ss}", at.ToLocalTime()));
+        if (_timeSignal.Mode != TimeSignalMode.Off && _signalHour is { } hour)
+        {
+            var signal = hour.ToUniversalTime().AddSeconds(-LeadFor(hour));
+            if (signal > now && (moment == null || signal < moment.Value.At)) moment = (signal, L.F("the time signal for {0:HH:mm}", hour));
+        }
+        return moment;
+    }
+
+    /// <summary>
     /// Backtiming: the item at <paramref name="ti"/> has to start in <paramref name="left"/> seconds. If the playlist
     /// would get there late, the last song before it that the operator may change goes after it (when that brings it
     /// closer); what is left over is faded at the time. If it would get there early, a fill song that fits the gap is
@@ -1728,8 +1822,10 @@ public sealed class PlayoutEngine : IDisposable
             }
             return; // what is on air then is faded at the time
         }
-        // A short gap: fillers (from a few seconds); a longer one: a song.
-        bool useFillers = FillerFill != null && -error < FillerGapSeconds;
+        // A short gap: one filler (from a few seconds); a longer one, or no filler long enough: a song.
+        bool fillerIn = _current?.Track.Tag == FillerTag
+                        || Enumerable.Range(_cursorIndex + 1, Math.Max(0, ti - _cursorIndex - 1)).Any(i => _playlist[i].Tag == FillerTag);
+        bool useFillers = FillerFill != null && -error < FillerGapSeconds && !fillerIn && _noFillerFor != timed.Id;
         double minGap = useFillers ? FillerMinGap : BacktimeMinGap;
         if (error >= -minGap || (useFillers ? FillerFill : Filler) is not { } filler || _backtimeFilling || DateTime.UtcNow < _nextBacktimeFill) return;
         _nextBacktimeFill = DateTime.UtcNow.AddSeconds(useFillers ? 2 : 10);
@@ -1765,8 +1861,21 @@ public sealed class PlayoutEngine : IDisposable
             if (!probed.IsCompletedSuccessfully || index <= _cursorIndex || Upcoming() is not { } now) return;
             double stillLeft = (_playlist[index].StartBy!.Value - DateTime.UtcNow).TotalSeconds;
             double stillGap = stillLeft - now.First(u => u.Index == index).At;
-            var best = probed.Result.Where(t => Step(t) <= stillGap + BacktimeTolerance).MaxBy(t => Step(t));
+            Track? best;
             bool faded = false;
+            if (useFillers)
+            {
+                // One filler: the shortest that reaches the break (it fades as the break starts); none: a song instead.
+                best = probed.Result.Where(t => Step(t) >= stillGap - FillerReach).MinBy(t => Step(t));
+                if (best == null)
+                {
+                    _noFillerFor = timedId;
+                    _nextBacktimeFill = DateTime.MinValue;
+                    return;
+                }
+                faded = Step(best) > stillGap + BacktimeTolerance;
+            }
+            else best = probed.Result.Where(t => Step(t) <= stillGap + BacktimeTolerance).MaxBy(t => Step(t));
             if (best == null)
             {
                 // None short enough: the shortest longer one, faded out when the break has to start (it starts on time).
@@ -1780,7 +1889,7 @@ public sealed class PlayoutEngine : IDisposable
                 _backtimeReported = timedId;
                 return;
             }
-            if (useFillers) best = best with { Kind = TrackKind.Jingle, Lock = ItemLock.Locked }; // not a song (reports, ERC); stays where it is
+            if (useFillers) best = best with { Kind = TrackKind.Jingle, Lock = ItemLock.Locked, Tag = FillerTag }; // not a song (reports, ERC); stays where it is
             _playlist.Insert(index, best);
             if (faded) _fadedFills.Add(best.Id);
             if (_loudness.Enabled) _loudnessWorker.Add(best.Path);
@@ -1940,7 +2049,7 @@ public sealed class PlayoutEngine : IDisposable
             FadeOutAndFree(deck.Handle, SignalFadeSeconds);
             // Only just started (the next hour's opening jingle, crossfaded in as a break ending on the hour ended):
             // it plays after the signal, from the start, rather than being lost.
-            if (_autoAdvance && DateTime.UtcNow - deck.Started < JustStarted && !deck.Track.IsStream
+            if (_autoAdvance && DateTime.UtcNow - deck.Started < JustStarted && !deck.Track.IsStream && deck.Track.Tag != FillerTag
                 && _playlist.FindIndex(t => t.Id == deck.Track.Id) is var i and >= 0 && i == _cursorIndex)
             {
                 _played.Remove(deck.Track.Id);

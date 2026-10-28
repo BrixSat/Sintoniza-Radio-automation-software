@@ -558,6 +558,8 @@ sealed class Scheduler : IDisposable
     public static readonly TimeSpan EndAtLead = TimeSpan.FromMinutes(15);
     /// <summary>Files of events coming up this soon are measured for loudness levelling ahead of time.</summary>
     static readonly TimeSpan Prepare = TimeSpan.FromMinutes(10);
+    /// <summary>Events and breaks due this soon are told to the engine (for the gap before them).</summary>
+    static readonly TimeSpan Expect = TimeSpan.FromMinutes(15);
 
     readonly PlayoutEngine _engine;
     readonly Timer _timer;
@@ -604,6 +606,7 @@ sealed class Scheduler : IDisposable
     {
         lock (_lock)
         {
+            _prepared = DateTime.MinValue; // what is coming is looked at again (and told to the engine) straight away
             var now = DateTime.Now;
             var copy = data.Clone();
             foreach (var entry in Entries(copy))
@@ -777,10 +780,20 @@ sealed class Scheduler : IDisposable
             Start(entry, at);
     }
 
-    /// <summary>Measures (for loudness levelling) the files of what starts in the next few minutes.</summary>
+    /// <summary>
+    /// Measures (for loudness levelling) the files of what starts in the next few minutes, and tells the engine when the
+    /// coming events and breaks are due (a short gap before one gets a filler). Not those that end at their time (they
+    /// are backtimed), nor a break with nothing booked (it is skipped).
+    /// </summary>
     void PrepareSoon(DateTime now)
     {
         _prepared = now;
+        var expected = new List<DateTime>();
+        foreach (var entry in Entries(_data).Where(e => e.Enabled && e.Start != EventStart.EndAt))
+            foreach (var at in entry.TimesOn(now.Date).Concat(entry.TimesOn(now.Date.AddDays(1)))
+                         .Where(t => t > now && t - now <= Expect && t > _data.LastStarted.GetValueOrDefault(entry.Id, DateTime.MinValue)))
+                if (entry is not AdBreak b || _data.InBreak(b, at).Count > 0) expected.Add(at.ToUniversalTime());
+        _engine.ExpectedEvents = expected;
         var files = new List<string>();
         foreach (var entry in Entries(_data).Where(e => e.Enabled))
             foreach (var at in entry.TimesOn(now.Date).Concat(entry.TimesOn(now.Date.AddDays(1))).Where(t => t > now && t - now <= Prepare))

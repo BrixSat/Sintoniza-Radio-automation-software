@@ -126,6 +126,71 @@ string? OnAir(PlayoutEngine e) => e.GetStatus().Current?.Path;
     e.Dispose();
 }
 
+// ───────────────────────── Fillers: one, for a small gap ─────────────────────────
+
+Console.WriteLine("Fillers (one, only for a small gap)");
+{
+    string Tone(string name, double seconds) => Audio.Make(Path.Combine(work, "filler-" + name), 1, seconds: seconds, rate: 8000, channels: 1)[0];
+    string f2 = Tone("2s", 2), f4 = Tone("4s", 4), f10 = Tone("10s", 10);
+    PlayoutEngine GapEngine(out List<PlaylistSnapshot> snaps)
+    {
+        var e = NewEngine();
+        var list = new List<PlaylistSnapshot>();
+        e.PlaylistChanged += s => { lock (list) list.Add(s); };
+        snaps = list;
+        e.CrossfadeSeconds = 0;
+        e.OtherCrossfadeSeconds = 0;
+        string[] all = [f2, f4, f10];
+        int n = 0;
+        e.FillerFill = () => all[n++ % all.Length];
+        e.FillerGapSeconds = 60;
+        return e;
+    }
+    int Fillers(List<PlaylistSnapshot> snaps) { lock (snaps) return snaps.Count == 0 ? 0 : snaps[^1].Items.Count(t => t.Tag == PlayoutEngine.FillerTag); }
+
+    // An event 6 s after the song on air ends: one filler that reaches it (10 s; 2 s and 4 s don't), faded when it starts.
+    {
+        var e = GapEngine(out var snaps);
+        e.AddFiles([songs[0], songs[1]]);
+        Thread.Sleep(300);
+        var due = DateTime.UtcNow.AddSeconds(4 + 6 + 0.3);
+        e.ExpectedEvents = [due];
+        e.Play();
+        Wait(() => e.GetStatus().Current?.Tag == PlayoutEngine.FillerTag, 8);
+        Check(OnAir(e) == f10, $"6 s before an event: one filler that reaches it ({Path.GetFileName(Path.GetDirectoryName(OnAir(e) ?? "") ?? "")})");
+        Check(Fillers(snaps) == 1, "…only one");
+        while (DateTime.UtcNow < due) Thread.Sleep(50);
+        e.InsertEvent("News", [new ScheduledItem(songs[2])], EventTiming.Soft); // the schedule puts it in at its time
+        Check(Wait(() => OnAir(e) == songs[2], 2), "the event starts on time: the filler fades");
+        e.Dispose();
+    }
+    // A gap of 30 s: no filler reaches it, the next song plays.
+    {
+        var e = GapEngine(out var snaps);
+        e.AddFiles([songs[0], songs[1]]);
+        Thread.Sleep(300);
+        e.ExpectedEvents = [DateTime.UtcNow.AddSeconds(4 + 30)];
+        e.Play();
+        Wait(() => OnAir(e) != null && OnAir(e) != songs[0], 8);
+        Check(OnAir(e) == songs[1] && Fillers(snaps) == 0, "30 s before an event, no filler that long: the next song");
+        e.Dispose();
+    }
+    // A break that ends at its time, 6 s of gap: one filler, not one after another.
+    {
+        var e = GapEngine(out var snaps);
+        e.AddFiles([songs[0]]);
+        Thread.Sleep(300);
+        e.Play();
+        Wait(() => OnAir(e) == songs[0], 3);
+        e.InsertEvent("Ads", [new ScheduledItem(songs[3], TrackKind.Commercial)], new EventTiming(EventStart.EndAt, EndsAt: DateTime.UtcNow.AddSeconds(3.5 + 6 + 4)));
+        Thread.Sleep(3000);
+        Check(Fillers(snaps) == 1, $"before a break that ends at its time: one filler ({Fillers(snaps)})");
+        Thread.Sleep(3000);
+        Check(Fillers(snaps) <= 1, "…never a second");
+        e.Dispose();
+    }
+}
+
 // ───────────────────────── Settings shared by the programs ─────────────────────────
 
 Console.WriteLine("Settings");

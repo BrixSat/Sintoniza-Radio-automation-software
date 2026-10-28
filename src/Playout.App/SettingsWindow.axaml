@@ -326,9 +326,9 @@
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,4,0,0">
-                            <TextBlock Text="Before a break that ends at its time, gaps up to" VerticalAlignment="Center" />
+                            <TextBlock Text="Before a scheduled event or break, and before the time signal, a gap up to" VerticalAlignment="Center" />
                             <NumericUpDown x:Name="FillerGapBox" Minimum="0" Maximum="600" Increment="10" FormatString="0" Width="110" />
-                            <TextBlock Text="s are filled from the Fillers category (longer ones with a song)" VerticalAlignment="Center" TextWrapping="Wrap" />
+                            <TextBlock Text="s gets one filler from the Fillers category, one that reaches it (none, or a longer gap: a song)" VerticalAlignment="Center" TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBlock Classes="note" Margin="28,0,0,0"
                                    Text="Songs are added to the end of the playlist. From the library: songs that may be picked automatically, rested longest first, using the play history of every studio sharing the library; with the library, the folder is used while the library can't be reached or has nothing to pick. From a folder: random songs from it and its subfolders, without recent repeats. Off: the player stops at the end of the playlist." />

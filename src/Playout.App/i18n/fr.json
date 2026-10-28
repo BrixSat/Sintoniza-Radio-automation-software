@@ -1630,8 +1630,6 @@
  "Buy me a coffee: buymeacoffee.com/sintoniza": "Offrez-moi un café : buymeacoffee.com/sintoniza",
  "Support Sintoniza (buy me a coffee)": "Soutenir Sintoniza (offrez-moi un café)",
  "Left out after the time signal (the hour before): {0}": "Laissé de côté après le top horaire (de l'heure d'avant) : {0}",
- "Before a break that ends at its time, gaps up to": "Avant une page qui finit à l'heure, les trous jusqu'à",
- "s are filled from the Fillers category (longer ones with a song)": "s sont comblés avec la catégorie Fillers (les plus longs avec une chanson)",
  "Sintoniza Rec — Settings": "Sintoniza Rec — Réglages",
  "Rádio Exemplo 99.9": "Radio Exemple 99.9",
  "An input of this computer (the desk's programme output into the sound card)": "Une entrée de cet ordinateur (la sortie programme de la console vers la carte son)",
@@ -2019,5 +2017,11 @@
  "Take {0} out of the library? The files aren't deleted; the play history keeps them.": "Retirer {0} de la bibliothèque ? Les fichiers ne sont pas supprimés ; l'historique les garde.",
  "Files that are still in a scanned folder come back at the next scan: move or delete them on disk too.": "Les fichiers encore dans un dossier analysé reviennent à la prochaine analyse : déplacez-les ou supprimez-les aussi sur le disque.",
  "1 song taken out of the library": "1 titre retiré de la bibliothèque",
- "{0} songs taken out of the library": "{0} titres retirés de la bibliothèque"
+ "{0} songs taken out of the library": "{0} titres retirés de la bibliothèque",
+ "Before a scheduled event or break, and before the time signal, a gap up to": "Avant un événement ou un bloc programmé, et avant le top horaire, un trou jusqu'à",
+ "s gets one filler from the Fillers category, one that reaches it (none, or a longer gap: a song)": "s reçoit un filler de la catégorie Fillers, un qui va jusque-là (aucun, ou un trou plus long : un titre)",
+ "{0:0} s before {1}: no filler that long; the next item plays": "{0:0} s avant {1} : aucun filler aussi long ; l'élément suivant passe",
+ "{0:0} s before {1}: filler {2}": "{0:0} s avant {1} : filler {2}",
+ "the event at {0:HH:mm:ss}": "l'événement de {0:HH:mm:ss}",
+ "the time signal for {0:HH:mm}": "le top horaire de {0:HH:mm}"
 }
