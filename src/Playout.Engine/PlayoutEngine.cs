@@ -573,7 +573,20 @@ public sealed class PlayoutEngine : IDisposable
         if (!play || _current != null) return;
         Emit(L.T("Carrying on after a restart"));
         if (NextTrack() is { } next) StartTrack(next, 0);
-        else StartFill();
+        else if (!StartFill()) WaitForItems();
+    }
+
+    /// <summary>
+    /// AUTO with nothing to play yet and no fill music (just started, the daily playlist on its way): on duty, and the
+    /// first item put in the playlist goes on air (see <see cref="Insert"/>), instead of staying stopped.
+    /// </summary>
+    void WaitForItems()
+    {
+        if (!_autoAdvance || _standby) return;
+        _waitingForFill = true;
+        _state = (int)PlayerState.Playing;
+        Emit(L.T("Waiting for something to play: the first item put in the playlist goes on air"));
+        PlaylistUpdated();
     }
 
     /// <summary>False when the engine thread has been stuck for <paramref name="seconds"/>: automation has stopped.</summary>
@@ -735,9 +748,10 @@ public sealed class PlayoutEngine : IDisposable
         if (_current != null && State == PlayerState.Paused) { SetPaused(false); return; }
         if (_current != null) return;
         if (DropStale()) PlaylistUpdated();
-        // At the end of the list, Play starts again from the top; with nothing in it, fill music (in AUTO).
+        // At the end of the list, Play starts again from the top; with nothing in it, fill music (in AUTO), or
+        // the first item that comes.
         if ((NextTrack() ?? _playlist.FirstOrDefault()) is { } next) StartTrack(next, ManualFade);
-        else StartFill();
+        else if (!StartFill()) WaitForItems();
     });
 
     /// <summary>Crossfade into the next playlist item immediately.</summary>

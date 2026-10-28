@@ -30,7 +30,8 @@ sealed class PlanPlayer
     readonly Func<ScheduleData?> _schedule;
     readonly Func<PlaylistGenerator.Options> _options;
     readonly Func<int> _daysAhead;
-    Task? _busy;
+    Task? _busy;    // putting an hour (or songs) in the playlist
+    Task? _keeping; // making the coming days' hours: never in the way of the playlist
     DateTime _nextCheck, _nextKeep, _nextSync, _nextOver;
     (DateTime Hour, DateTime Until)? _pending; // an hour just loaded, until its items are in the playlist
     readonly Dictionary<DateTime, DateTime> _empty = new(); // hours with nothing planned → when to look again
@@ -38,6 +39,12 @@ sealed class PlanPlayer
 
     sealed record PlannedOnAir(DateTime Hour, string Path);
     readonly HashSet<string> _reported = new();
+
+    /// <summary>A problem said once (from the plan-making and the loading, on their own threads).</summary>
+    bool Reported(string key)
+    {
+        lock (_reported) return _reported.Add(key);
+    }
     volatile bool _scheduleChanged;
 
     /// <summary>A line for the status bar and the log (raised off the UI thread).</summary>
@@ -50,7 +57,11 @@ sealed class PlanPlayer
         _schedule = schedule;
         _options = options;
         _daysAhead = daysAhead;
+        // At start the hour now goes in first; making the coming days' hours (which can take a while) after it.
+        _nextKeep = DateTime.Now + FirstKeep;
     }
+
+    static readonly TimeSpan FirstKeep = TimeSpan.FromSeconds(20);
 
     /// <summary>The schedule (templates, breaks) changed: the plan is looked at again straight away.</summary>
     public void ScheduleChanged() => _scheduleChanged = true;
@@ -92,12 +103,11 @@ sealed class PlanPlayer
         if (Standby || now < _nextCheck || _busy is { IsCompleted: false }) return;
         _nextCheck = now.AddSeconds(2);
 
-        if (now >= _nextKeep || _scheduleChanged)
+        if ((now >= _nextKeep || _scheduleChanged) && _keeping is not { IsCompleted: false })
         {
             _scheduleChanged = false;
             _nextKeep = now + KeepEvery;
-            _busy = Task.Run(() => Keep(now));
-            return;
+            _keeping = Task.Run(() => Keep(now));
         }
         if (!auto) return;
 
@@ -171,7 +181,7 @@ sealed class PlanPlayer
         try
         {
             int made = PlanMaker.Ensure(store, data, Options, Hour(now), now.Date.AddDays(_daysAhead() + 1), now + KeepNear, out var problems);
-            foreach (var p in problems) if (_reported.Add(p)) Say(p);
+            foreach (var p in problems) if (Reported(p)) Say(p);
             if (made > 0)
             {
                 Say(made == 1 ? L.T("Daily playlists: 1 hour made") : L.F("Daily playlists: {0} hours made", made));
@@ -182,7 +192,7 @@ sealed class PlanPlayer
         }
         catch (Exception ex)
         {
-            if (_reported.Add("keep:" + ex.Message)) Say(L.F("Daily playlists not made: {0}", ex.Message));
+            if (Reported("keep:" + ex.Message)) Say(L.F("Daily playlists not made: {0}", ex.Message));
         }
     }
 
@@ -191,11 +201,15 @@ sealed class PlanPlayer
     {
         List<PlanItem>? items = null;
         string? hourNote = null;
+        // Not known yet (just started: the library still opening, the schedule not read): looked at again in a few
+        // seconds, not taken as an hour with nothing planned.
+        bool notYet = Store == null;
         try
         {
             if (Store is { } store)
             {
                 var made = store.Hours(hour, hour.AddHours(1));
+                if (!made.ContainsKey(hour) && _schedule() == null) notYet = true;
                 if (!made.ContainsKey(hour) && _schedule() is { } data)
                 {
                     PlanMaker.Ensure(store, data, Options, hour, hour.AddHours(1), DateTime.MinValue, out _);
@@ -207,14 +221,20 @@ sealed class PlanPlayer
         }
         catch (Exception ex)
         {
-            if (_reported.Add("load:" + ex.Message)) Say(L.F("Daily playlist: the database can't be reached ({0}); the last copy is used", ex.Message));
+            if (Reported("load:" + ex.Message)) Say(L.F("Daily playlist: the database can't be reached ({0}); the last copy is used", ex.Message));
         }
         items ??= PlanCache.Items(hour);
+        if ((items == null || items.Count == 0) && notYet)
+        {
+            lock (_empty) _empty[hour] = DateTime.Now.AddSeconds(3);
+            _pending = null;
+            return;
+        }
         if (items == null || items.Count == 0)
         {
             lock (_empty) _empty[hour] = DateTime.Now.AddMinutes(1);
             _pending = null; // nothing is on its way
-            if (_reported.Add("empty:" + hour)) Say(L.F("Daily playlist {0:dd/MM HH}:00: nothing planned; fill music plays", hour));
+            if (Reported("empty:" + hour)) Say(L.F("Daily playlist {0:dd/MM HH}:00: nothing planned; fill music plays", hour));
             return;
         }
         lock (_empty) _empty.Remove(hour);

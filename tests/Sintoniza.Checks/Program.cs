@@ -158,6 +158,65 @@ Console.WriteLine("The on-air program (a library of its own)");
     Pump(10);
 }
 
+// ───────────────────────── A restart ─────────────────────────
+
+Console.WriteLine("A restart (yesterday's playlist saved, a daily playlist for every hour)");
+{
+    // Songs long enough for an hour of them, in their own folder and library.
+    string restartMedia = Path.Combine(work, "restart");
+    var tracks = Audio.Make(restartMedia, 12, seconds: 150, rate: 8000, channels: 1);
+    var settings = AppSettings.Load();
+    settings.Library = new LibrarySettings { File = Path.Combine(work, "restart.db") };
+    var db = LibraryDb.Open(settings.Library);
+    LibraryScanner.Scan(db, [restartMedia]);
+    long music = db.Categories().First(c => c.Role == "music").Id;
+    db.SetFolderCategory(restartMedia, music);
+    var store = new ScheduleStore(db);
+    var everyHour = Enum.GetValues<DayOfWeek>().SelectMany(d => Enumerable.Range(0, 24).Select(h => new WeekTime { Day = d, Time = $"{h:00}:00:00" })).ToList();
+    var data = new ScheduleData
+    {
+        Templates = { new PlaylistTemplate { Name = "Hits", Slots = everyHour,
+            Lines = Enumerable.Range(0, 12).Select(_ => new TemplateLine { Source = LineSource.Category, CategoryId = music, CategoryName = "Music", Kind = "music" }).ToList() } },
+    };
+    data.Normalize();
+    store.Save(data, null, "checks");
+    // Closed yesterday: 50 played, 3 jingles still to play.
+    settings.PlaylistItems = Enumerable.Range(0, 50).Select(i => new PlaylistEntry { Path = tracks[i % tracks.Length], PlayedAt = DateTime.UtcNow.AddDays(-1).AddMinutes(i * 3) })
+        .Concat(Enumerable.Range(0, 3).Select(i => new PlaylistEntry { Path = tracks[i], Kind = TrackKind.Jingle })).ToList();
+    settings.OnAirIndex = 49;
+    settings.WasPlaying = true;
+    settings.AutoAdvance = true;
+    settings.ResumeOnStart = true;
+    settings.FillEnabled = false;
+    settings.WasStandby = false;
+    settings.Save();
+    foreach (var file in new[] { "settings.json", "running" }.Select(f => Path.Combine(AppSettings.DataFolder, f)).Where(File.Exists))
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-1));
+
+    var started = DateTime.Now;
+    var win = new MainWindow { Width = 1400, Height = 860 };
+    win.Show();
+    var engine = (PlayoutEngine)typeof(MainWindow).GetField("_engine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win)!;
+    var tick = typeof(MainWindow).GetMethod("Tick", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    var now = DateTime.Now;
+    string thisHour = PlanPlayer.Tag(new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0), false)[..18];
+    bool OnAirFromPlan() => engine.GetStatus().Current?.Tag?.StartsWith(thisHour) == true;
+    while (!OnAirFromPlan() && (DateTime.Now - started).TotalSeconds < 30)
+    {
+        Dispatcher.UIThread.RunJobs();
+        tick.Invoke(win, null); // the screen's update (the headless timer seldom fires)
+        Thread.Sleep(200);
+    }
+    double seconds = (DateTime.Now - started).TotalSeconds;
+    Check(OnAirFromPlan() && seconds < 15, $"the hour now, from the daily playlist, is on air by itself ({seconds:0.0} s after the start)");
+    Pump(20);
+    var rows = (List<PlaylistRow>)typeof(MainWindow).GetField("_order", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win)!;
+    Check(rows.Count(r => r.IsPlayed) <= 10, $"yesterday's history isn't all put back ({rows.Count(r => r.IsPlayed)} played rows)");
+    Check(rows.Any(r => r.IsPlaying && r.Track.Tag?.StartsWith(thisHour) == true), "the screen shows it on air");
+    win.Close();
+    Pump(10);
+}
+
 // ───────────────────────── Sintoniza Pro ─────────────────────────
 
 Console.WriteLine("Sintoniza Pro");
@@ -237,20 +296,19 @@ Environment.Exit(fails == 0 ? 0 : 1);
 /// <summary>Short test tones as WAV files (nothing else needed to make them).</summary>
 static class Audio
 {
-    public static string[] Make(string folder, int count)
+    public static string[] Make(string folder, int count, double seconds = 4, int rate = 44100, int channels = 2)
     {
         Directory.CreateDirectory(folder);
         return Enumerable.Range(1, count).Select(n =>
         {
             string file = Path.Combine(folder, $"Check {n} - Tone {n}.wav");
-            if (!File.Exists(file)) Write(file, 300 + 100 * n, 4);
+            if (!File.Exists(file)) Write(file, 300 + 50 * n, seconds, rate, channels);
             return file;
         }).ToArray();
     }
 
-    static void Write(string file, double hz, double seconds)
+    static void Write(string file, double hz, double seconds, int rate, int channels)
     {
-        const int rate = 44100, channels = 2;
         int frames = (int)(rate * seconds);
         using var w = new BinaryWriter(File.Create(file));
         int bytes = frames * channels * 2;
@@ -260,7 +318,7 @@ static class Audio
         for (int i = 0; i < frames; i++)
         {
             short v = (short)(Math.Sin(2 * Math.PI * hz * i / rate) * 8000);
-            w.Write(v); w.Write(v);
+            for (int c = 0; c < channels; c++) w.Write(v);
         }
     }
 }

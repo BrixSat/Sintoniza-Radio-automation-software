@@ -364,6 +364,13 @@ public partial class MainWindow : Window
             _ = AskTakeOnAir();
             return;
         }
+        if (!_restored)
+        {
+            // Still putting the playlist back: Play then, not now (it would start an item that already played).
+            _playWhenRestored = true;
+            LastLog.Text = L.T("Starting: it plays as soon as the playlist is back");
+            return;
+        }
         bool stopped = _engine?.State == PlayerState.Stopped;
         _engine?.Play(stopped && Playlist.SelectedItem is PlaylistRow row ? row.Id : null);
     }
@@ -1477,7 +1484,17 @@ public partial class MainWindow : Window
             AppLog.Write(old
                 ? L.F("The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now", _settings.SavedAtUtc!.Value.ToLocalTime(), left)
                 : L.F("{0} items of daily playlist hours that have ended were left out", left));
+        // What already played: the last few, to see what just went on air (each one put back is a file opened
+        // again, slow over a network share; the as-run log has the rest).
+        int history = onAir + 1 - PlayedKeptAtStart;
+        if (history > 0)
+        {
+            items.RemoveRange(0, history);
+            _settings.OnAirIndex = onAir - history;
+        }
     }
+
+    const int PlayedKeptAtStart = 10;
 
     static void FillPlayedTimes(List<PlaylistEntry> items, int onAirIndex)
     {
@@ -2102,6 +2119,7 @@ public partial class MainWindow : Window
 
     readonly DispatcherTimer _saveTimer;
     bool _restored; // the saved playlist is back in the engine: from now on the playlist is saved
+    bool _playWhenRestored; // Play was pressed while it was being put back
 
     /// <summary>
     /// Puts back the saved playlist position and, if AUTO was playing when the app closed, crashed or the computer
@@ -2114,7 +2132,7 @@ public partial class MainWindow : Window
         int index = _settings.PlaylistItems.Take(_settings.OnAirIndex + 1).Count(Playable) - 1;
         // In AUTO it plays (as when it closed, or when it was stopped and closed: AUTO is what the station runs on).
         bool play = _settings.ResumeOnStart && _settings.AutoAdvance && (_settings.WasPlaying || _settings.PlaylistItems.Count > 0);
-        await _engine!.Resume(index, play);
+        await _engine!.Resume(index, play || _playWhenRestored);
         _restored = true;
         if (!IsStandby && _settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)
             && _engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming(); // (not if going on air started it)

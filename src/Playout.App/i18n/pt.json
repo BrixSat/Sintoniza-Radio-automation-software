@@ -2001,5 +2001,7 @@
  "This computer is on air. Standby: {0}": "Este computador está no ar. Em reserva: {0}",
  "This computer is on air. No other computer is standby.": "Este computador está no ar. Nenhum outro computador está em reserva.",
  "Not saved: the hour was being read again. Try again.": "Não guardado: a hora estava a ser lida de novo. Tente outra vez.",
- "The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now": "A playlist é de {0:dd/MM HH:mm}, quando o programa correu pela última vez: os {1} itens que faltava tocar ficaram de fora; a playlist diária continua a partir de agora"
+ "The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now": "A playlist é de {0:dd/MM HH:mm}, quando o programa correu pela última vez: os {1} itens que faltava tocar ficaram de fora; a playlist diária continua a partir de agora",
+ "Starting: it plays as soon as the playlist is back": "A arrancar: toca assim que a playlist estiver de volta",
+ "Waiting for something to play: the first item put in the playlist goes on air": "À espera de algo para tocar: o primeiro item que entrar na playlist vai para o ar"
 }
