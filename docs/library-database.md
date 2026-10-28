@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **16**. The scripts that create the tables are
+Schema version **17**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -42,7 +42,9 @@ settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) a
 [`sqlite-15.sql`](../src/Playout.Library/Schema/sqlite-15.sql) and
 [`mysql-15.sql`](../src/Playout.Library/Schema/mysql-15.sql) (notes for the presenter in the daily playlists), then
 [`sqlite-16.sql`](../src/Playout.Library/Schema/sqlite-16.sql) and
-[`mysql-16.sql`](../src/Playout.Library/Schema/mysql-16.sql) (the studios, and which one is on air). The app creates the tables itself the
+[`mysql-16.sql`](../src/Playout.Library/Schema/mysql-16.sql) (the studios, and which one is on air), then
+[`sqlite-17.sql`](../src/Playout.Library/Schema/sqlite-17.sql) and
+[`mysql-17.sql`](../src/Playout.Library/Schema/mysql-17.sql) (the play history by station). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -66,6 +68,10 @@ connect, Settings → Library → Test says which of these it is.
   sees the music under another path (Windows `Z:\`, a Mac's `/Volumes/radio`) translates them itself (Settings →
   Library → This computer's paths); what is kept is always the library's form. Paths are compared exactly
   (case and accents count) and may be up to 760 characters long.
+- **Stations.** One library can hold several stations: the music, its categories and folders, and the users are
+  shared; each station's schedule, daily playlists, settings, studios, play history and as-run log carry its
+  `station_id`. Each computer works for one station (its settings; 1 for now). Another program writing a station's
+  data sets `station_id` (1 when there is only one).
 - `schema_info` holds `version`. A program that finds a version it doesn't know should not write. The app
   refuses to open a library made by a newer version, so studios sharing one should run the same version.
 
@@ -138,7 +144,8 @@ SQLite), or the studios won't see the change until they restart.
 
 ### `plays`
 
-Every item that went on air: the as-run history. Rotation rules (artist and title separation) and reports use it.
+Every item that went on air: the as-run history. Rotation rules (artist and title separation) and reports use it,
+each station its own plays.
 
 | Column | Type | |
 | --- | --- | --- |
@@ -147,7 +154,8 @@ Every item that went on air: the as-run history. Rotation rules (artist and titl
 | `path`, `artist`, `title` | text | as played, so the history stays readable if the track is deleted |
 | `started_at` | time | when it went on air |
 | `source` | text | `playlist` or `cart` |
-| `station_id`, `log_item_id`, `ended_at`, `kind` | | from schema 3, not used |
+| `station_id` | integer | the station that played it (from 17; earlier plays are station 1's) |
+| `log_item_id`, `ended_at`, `kind` | | from schema 3, not used |
 
 ### `track_categories`
 

@@ -16,8 +16,8 @@ sealed class ScheduleStore(LibraryDb db)
     /// <summary>The database it reads and saves.</summary>
     public LibraryDb Db => db;
 
-    /// <summary>One station for now (the stations table can hold more).</summary>
-    public const long Station = 1;
+    /// <summary>The station whose schedule this is: this computer's (<see cref="CurrentStation"/>).</summary>
+    public static long Station => CurrentStation.Id;
     /// <summary>How the one-off times of an event are kept (local).</summary>
     const string DateFormat = "yyyy-MM-ddTHH:mm:ss";
 

@@ -106,7 +106,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 16;
+    public const int SchemaVersion = 17;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -698,25 +698,26 @@ public sealed partial class LibraryDb
         using var c = Connect();
         long? trackId = TrackIdByPath(c, path);
         c.Execute("""
-            INSERT INTO plays (track_id, path, artist, title, started_at, source)
-            VALUES (@trackId, @path, @artist, @title, @started, @source)
-            """, new { trackId, path, artist = Clip(artist, 500), title = Clip(title, 500), started = Time(startedUtc), source });
+            INSERT INTO plays (track_id, path, artist, title, started_at, source, station_id)
+            VALUES (@trackId, @path, @artist, @title, @started, @source, @station)
+            """, new { trackId, path, artist = Clip(artist, 500), title = Clip(title, 500), started = Time(startedUtc), source, station = CurrentStation.Id });
     }
 
-    /// <summary>When a file last went on air (UTC), in any studio sharing the library; null if never.</summary>
+    /// <summary>When a file last went on air (UTC) on this station, in any of its studios; null if never.</summary>
     public DateTime? LastStarted(string path)
     {
         using var c = Connect();
-        var at = c.ExecuteScalar<string?>($"SELECT MAX(started_at) FROM plays WHERE {PathIs("path")}", new { path });
+        var at = c.ExecuteScalar<string?>($"SELECT MAX(started_at) FROM plays WHERE station_id = @station AND {PathIs("path")}", new { path, station = CurrentStation.Id });
         return at == null ? null : ParseTime(at);
     }
 
-    /// <summary>When each of these files last went on air (files never played are left out).</summary>
+    /// <summary>When each of these files last went on air on this station (files never played are left out).</summary>
     public Dictionary<long, DateTime> LastPlayed(IEnumerable<long> trackIds)
     {
         using var c = Connect();
         return c.Query<(long Id, string At)>(
-                "SELECT track_id, MAX(started_at) FROM plays WHERE track_id IN @ids GROUP BY track_id", new { ids = trackIds.ToArray() })
+                "SELECT track_id, MAX(started_at) FROM plays WHERE track_id IN @ids AND station_id = @station GROUP BY track_id",
+                new { ids = trackIds.ToArray(), station = CurrentStation.Id })
             .ToDictionary(r => r.Id, r => DateTime.Parse(r.At, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal));
     }
 
@@ -734,11 +735,11 @@ public sealed partial class LibraryDb
                        t.cue_in AS CueIn, t.cue_out AS CueOut, t.mix AS Mix, t.album AS Album, t.tempo AS Tempo, t.energy AS Energy,
                        t.play_from AS PlayFrom, t.play_until AS PlayUntil, t.play_days AS PlayDays, t.play_hours AS PlayHours,
                        t.max_day AS MaxDay, t.max_week AS MaxWeek,
-                       (SELECT MAX(p.started_at) FROM plays p WHERE p.track_id = t.id) AS Last
+                       (SELECT MAX(p.started_at) FROM plays p WHERE p.track_id = t.id AND p.station_id = @station) AS Last
                 FROM tracks t
                 WHERE t.enabled = 1 AND t.missing = 0
                   AND (t.category_id IN @categories OR t.id IN (SELECT track_id FROM track_categories WHERE category_id IN @categories))
-                """, new { categories })
+                """, new { categories, station = CurrentStation.Id })
             .Select(r => new RotationTrack(r.Id, r.Path, r.Artist, r.Last == null ? null : ParseTime(r.Last), r.Title, r.Duration, r.CueIn, r.CueOut, r.Mix,
                 r.Album, r.Tempo, r.Energy, SongRestrictions.Make(r.PlayFrom, r.PlayUntil, r.PlayDays, r.PlayHours, r.MaxDay, r.MaxWeek)))
             .ToList();
@@ -774,29 +775,30 @@ public sealed partial class LibraryDb
     {
         using var c = Connect();
         return c.Query<(string Path, string At)>(
-                "SELECT path, started_at FROM plays WHERE started_at >= @from AND started_at < @to AND source <> 'cart' ORDER BY started_at",
-                new { from = Time(fromUtc), to = Time(toUtc) })
+                "SELECT path, started_at FROM plays WHERE station_id = @station AND started_at >= @from AND started_at < @to AND source <> 'cart' ORDER BY started_at",
+                new { from = Time(fromUtc), to = Time(toUtc), station = CurrentStation.Id })
             .Select(r => (r.Path, ParseTime(r.At)))
             .ToList();
     }
 
-    /// <summary>What went on air since <paramref name="sinceUtc"/>, in any studio sharing the library.</summary>
+    /// <summary>What went on air on this station since <paramref name="sinceUtc"/>, in any of its studios.</summary>
     public List<RecentPlay> PlaysSince(DateTime sinceUtc)
     {
         using var c = Connect();
         return c.Query<(long? TrackId, string Artist, string At, string? Album, int? Tempo)>(
-                "SELECT p.track_id, p.artist, p.started_at, t.album, t.tempo FROM plays p LEFT JOIN tracks t ON t.id = p.track_id WHERE p.started_at >= @since",
-                new { since = Time(sinceUtc) })
+                "SELECT p.track_id, p.artist, p.started_at, t.album, t.tempo FROM plays p LEFT JOIN tracks t ON t.id = p.track_id WHERE p.station_id = @station AND p.started_at >= @since",
+                new { since = Time(sinceUtc), station = CurrentStation.Id })
             .Select(r => new RecentPlay(r.TrackId, r.Artist, ParseTime(r.At), r.Album ?? "", r.Tempo))
             .ToList();
     }
 
-    /// <summary>The last item that went on air in any studio (UTC), or null.</summary>
+    /// <summary>The last item that went on air on this station, in any of its studios (UTC), or null.</summary>
     public (string Title, string Artist, DateTime At)? LastPlay()
     {
         using var c = Connect();
         var r = c.QueryFirstOrDefault<(string Title, string Artist, string At)?>(
-            $"SELECT title, artist, started_at FROM plays WHERE source = 'playlist' ORDER BY started_at DESC {(_mySql ? "LIMIT 1" : "LIMIT 1")}");
+            "SELECT title, artist, started_at FROM plays WHERE station_id = @station AND source = 'playlist' ORDER BY started_at DESC LIMIT 1",
+            new { station = CurrentStation.Id });
         return r is { } p ? (p.Title, p.Artist, ParseTime(p.At)) : null;
     }
 

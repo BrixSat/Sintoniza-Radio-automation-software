@@ -54,6 +54,19 @@ CHAPTERS = [
     ("fig", "settings-library", "Definições → Biblioteca", [
         ("LibraryTypeBox", "Onde fica a biblioteca: <i>SQLite</i> (um ficheiro neste computador) ou <i>MySQL / MariaDB</i> (um servidor partilhado por vários estúdios)."),
         ("TestLibraryButton", "<b>Testar</b> abre-a (e cria as tabelas da primeira vez).")]),
+    ("p", "<b>Música partilhada em Windows, Mac e Linux.</b> Com uma biblioteca partilhada as músicas ficam com o caminho que vê o "
+          "computador que as analisou (<i>/mnt/radio/Pop/musica.mp3</i> num estúdio Linux). Um computador Windows ou Mac vê a mesma partilha "
+          "noutro sítio (<i>Z:\\</i>, <i>\\\\servidor\\radio</i>, <i>/Volumes/radio</i>): mais abaixo no separador Biblioteca, diga onde, uma vez."),
+    ("fig", "settings-paths", "Definições → Biblioteca → Caminhos deste computador", [
+        ("PathMapRows", "<b>Na biblioteca</b>, o início dos caminhos da biblioteca; <b>neste computador</b>, onde isso está aqui (ou <b>Pasta…</b> para o escolher)."),
+        ("AddPathMapButton", "<b>Adicionar</b> uma linha: sugere onde começam as músicas da biblioteca."),
+        ("TestPathMapButton", "<b>Testar</b> procura algumas músicas da biblioteca neste computador…"),
+        ("PathMapNote", "…e diz quantas encontrou (e, de uma que não encontrou, onde procurou). Depois <b>Guardar</b>."),
+    ], True),
+    ("tip", "A partir daí tudo nesse computador abre os ficheiros onde eles estão (tocar, ouvir, formas de onda, etiquetas, análises, "
+            "takes, voice tracks), e o que ele acrescenta fica com o caminho da biblioteca, para todos os estúdios o encontrarem. A Pro, "
+            "o Rec e o Import nesse computador usam a mesma definição. A partilha tem de ser uma pasta: uma unidade mapeada ou "
+            "<i>\\\\servidor\\partilha</i> no Windows, montada em /mnt no Linux (não um endereço <i>smb://</i> do gestor de ficheiros), /Volumes num Mac."),
     ("fig", "settings-safety", "Definições → Segurança", [
         ("ResumeBox", "<b>Continuar a tocar ao arrancar, se estiver em AUTO</b>, <b>Voltar a arrancar se falhar</b>, <b>Arrancar quando inicio sessão</b>: para uma estação que nunca sai do ar."),
         ("BackupBox", "<b>Cópias de segurança</b>: todos os dias, da base de dados e dos ficheiros da estação.")]),
@@ -209,6 +222,23 @@ CHAPTERS = [
     ]),
     ("fig", "remote-phone", "O controlo remoto num telemóvel: o mesmo, um painel debaixo do outro", []),
     ("warn", "É HTTP simples, para a rede da própria estação. De fora, use-o só pela VPN da estação — nunca abra a porta no router. Cinco palavras-passe erradas bloqueiam a página um minuto."),
+    ("h2", "Vários computadores: um no ar, os outros em reserva"),
+    ("p", "Com uma biblioteca MySQL partilhada, cada computador com o Sintoniza Emi da estação conhece os outros. <b>Um está no ar</b>; "
+          "os outros estão <b>em reserva</b>: prontos e em silêncio — sem playlist, sem sinal horário, sem stream, nada no histórico. "
+          "O primeiro a arrancar vai para o ar. No que está no ar, a luz <b>NO AR</b> na barra de estado mostra os que estão em reserva; "
+          "a barra de estado da Sintoniza Pro também."),
+    ("fig", "main-standby", "Um computador em reserva", [
+        ("StandbyBanner", "<b>RESERVA</b>: outro computador está no ar…"),
+        ("StandbyText", "…qual, o que está a tocar, e se este vai para o ar sozinho."),
+        ("TakeOnAirButton", "<b>Ir para o ar</b> (ou Play): este computador vai para o ar, depois de perguntar; o outro para e fica em reserva. Em AUTO começa a hora atual a partir do item planeado para agora."),
+    ], True),
+    ("fig", "settings-studios", "Definições → Segurança → Vários computadores no ar", [
+        ("TakeOverBox", "<b>Sozinho</b>: quando o computador no ar não responde há este tempo (falhou, foi desligado, perdeu a rede), este vai para o ar."),
+        ("TakeOverSecondsBox", "Quanto tempo, em segundos (15 de início). Desligado num computador que nunca deve ficar com o ar, p. ex. um computador de produção com o Emi aberto."),
+    ], True),
+    ("warn", "Um computador que perde a rede continua a tocar (não sabe que outro ficou com o ar): até voltar, tocam os dois; depois vê "
+             "o outro no ar e fica em reserva. Os carts continuam a tocar num computador em reserva, mas não entram no histórico. "
+             "Todos os estúdios têm de ter a mesma versão: o primeiro a arrancar uma nova atualiza a base de dados, e uma mais antiga deixa de a abrir."),
     ("h2", "O microfone (rádio web)"),
     ("p", "Com <i>Rádio web</i> escolhido (Pro → Definições da estação), o botão <b>MIC</b> (F9) abre o microfone e a música e os carts "
           "baixam enquanto está aberto: manter premido para falar, ou premir para ligar e premir para desligar (Definições → "
@@ -219,8 +249,8 @@ CHAPTERS = [
         ["Geral", "O idioma dos ecrãs"],
         ["Áudio", "Saídas da Música / Cartwall / Pré-escuta"],
         ["Microfone", "(rádio web) entrada, níveis, quanto baixa a música"],
-        ["Segurança", "Arranque e falhas, o registo, cópias de segurança"],
-        ["Biblioteca", "A base de dados, análises automáticas"],
+        ["Segurança", "Arranque e falhas, vários computadores no ar (a reserva a ficar com o ar), o registo, cópias de segurança"],
+        ["Biblioteca", "A base de dados, análises automáticas, os caminhos deste computador (música partilhada noutro caminho)"],
         ["Atalhos", "Teclas para Play, Pausa, Seguinte, Parar, MIC, o stream e cada cart"],
         ["RDS", "Se este computador envia para o codificador RDS, e como chega a ele"],
         ["Playlist", "Quanto da hora seguinte a playlist mostra"],
@@ -258,6 +288,18 @@ CHAPTERS = [
         ("StatusVersion", "A <b>barra de estado</b>: versão, estação, base de dados, utilizador, alterações por guardar…"),
         ("StatusClock", "…e a data e a hora."),
     ]),
+    ("p", "Com uma biblioteca partilhada, a barra de estado diz também qual computador está no ar e quais estão em reserva (capítulo 3)."),
+    ("h2", "Músicas"),
+    ("p", "A biblioteca inteira: pesquisa, categorias, tempo e energia, etiquetas. Clique com o botão direito numa música para a categoria, as restrições, os dados da ERC, <b>Editar etiquetas…</b> e <b>Editar pontos de cue…</b>."),
+    ("fig", "pro-songs", "Músicas: a ouvir uma música", [
+        ("SearchBox", "Pesquisar por título, artista ou álbum…"),
+        ("CategoryBox", "…numa categoria (com as categorias dentro dela)."),
+        ("TrackList", "<b>Duplo clique</b> numa música (ou selecione-a e carregue em Espaço) para a ouvir."),
+        ("ListenButton", "▶ / ❚❚ e ■: tocar, pausa, parar."),
+        ("ListenSlider", "Arraste para ir para outro momento."),
+        ("ListenTitle", "O que está a tocar. Ouve-se na saída de <b>Pré-escuta</b> deste computador (Definições → Áudio), nunca no ar."),
+    ]),
+    ("tip", "<b>Editar pontos de cue…</b> abre o mesmo editor que na emissão (a forma de onda, Cue In, Intro, Outro, Mix, Cue Out): guardado na biblioteca para todos os estúdios, a emissão usa-os dentro de um minuto, e as playlists diárias contam a nova duração."),
     ("h2", "Categorias"),
     ("p", "Todas as estações têm as mesmas oito categorias no topo, que não podem mudar de nome, de sítio nem ser apagadas: "
           "<b>Music</b>, <b>Jingles</b>, <b>Promos</b>, <b>ProgAutor</b> (programas gravados fora), <b>Fillers</b>, <b>Redação</b> "
@@ -568,6 +610,8 @@ CHAPTERS = [
         ["Uma música é saltada com “FileOpen”", "O ficheiro não está onde a biblioteca diz: <b>Analisar</b> de novo."],
         ["O que oiço na pré-escuta vai para o ar", "Definições → Áudio → <b>Pré-escuta</b>: escolha uma saída que não seja do ar (auscultadores, PFL)."],
         ["Algo correu mal no ar", "Definições → Segurança → <b>Abrir a pasta dos registos</b>: um ficheiro por dia. Definições → Alertas pode avisá-lo por Telegram ou e-mail."],
+        ["Um estúdio Windows ou Mac não encontra as músicas", "Definições → Biblioteca → <b>Caminhos deste computador</b>: onde está a música da biblioteca nesse computador; <b>Testar</b> diz quantas músicas encontra."],
+        ["O programa de emissão mostra RESERVA", "Outro computador está no ar (a barra diz qual). <b>Ir para o ar</b> se deve ser este."],
     ]),
 ]),
 ]

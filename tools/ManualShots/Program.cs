@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Playout.App;
@@ -267,6 +268,17 @@ Shot(main, "main", deck);
     if (logoPng != null) remoteHtml = remoteHtml.Replace("\"/api/logo\"", "\"data:image/png;base64," + Convert.ToBase64String(logoPng) + "\"", StringComparison.Ordinal);
     File.WriteAllText(Path.Combine(outDir, "remote-mock.html"), remoteHtml);
 }
+// A standby studio (another computer on air, a shared library): the bar at the top, as it shows it.
+{
+    var banner = main.FindControl<Border>("StandbyBanner")!;
+    main.FindControl<TextBlock>("StandbyText")!.Text = L.F("On air: {0}, playing {1}.", T("STUDIO-1", "ESTUDIO-1"), "Luna Vale - Golden Hour") + " "
+        + L.F("This computer goes on air by itself if it stops answering for {0} s.", 15);
+    banner.IsVisible = true;
+    Pump(10);
+    Shot(main, "main-standby", "StandbyBanner", "StandbyText", "TakeOnAirButton");
+    banner.IsVisible = false;
+    Pump(5);
+}
 main.FindControl<Avalonia.Controls.Primitives.ToggleButton>("LibraryTab")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 Pump(30);
 var tracks = main.FindControl<TrackLibraryView>("Tracks")!;
@@ -279,7 +291,7 @@ main.FindControl<Avalonia.Controls.Primitives.ToggleButton>("CartwallTab")!.Rais
 Pump(10);
 
 // Settings, tab by tab: this computer's (the on-air program) and the station's (Sintoniza Pro)
-string[] settingsTabs = ["station", "audio", "microphone", "timesignal", "takes", "safety", "library", "shortcuts", "streaming", "rds", "website", "alerts", "playlist", "remote", "about"];
+string[] settingsTabs = ["station", "audio", "microphone", "timesignal", "takes", "safety", "library", "shortcuts", "streaming", "rds", "website", "alerts", "playlist", "gpio", "remote", "about"];
 void SettingsShots(SettingsWindow sw, string prefix)
 {
     sw.Show();
@@ -297,6 +309,28 @@ void SettingsShots(SettingsWindow sw, string prefix)
     sw.Close();
 }
 SettingsShots(new SettingsWindow(settings, engine, main) { Width = 1100, Height = 760 }, "settings-");
+// This computer's paths (shared music under another path here) and several computers on air: further down their tabs.
+{
+    var sw = new SettingsWindow(settings, engine, main) { Width = 1100, Height = 760 };
+    sw.Show();
+    Pump(10);
+    var tabs = sw.GetVisualDescendants().OfType<TabControl>().First();
+    var items = tabs.Items.OfType<TabItem>().ToList();
+    tabs.SelectedIndex = Array.IndexOf(settingsTabs, "library");
+    Pump(15);
+    typeof(SettingsWindow).GetMethod("AddPathRow", Any)!.Invoke(sw, ["/mnt/radio", @"\\server\radio"]);
+    sw.FindControl<TextBlock>("PathMapNote")!.Text = L.F("✓ {0} of {1} songs found on this computer.", 20, 20);
+    Pump(10);
+    sw.FindControl<Control>("PathMapRows")!.BringIntoView();
+    Pump(15);
+    Shot(sw, "settings-paths", "PathMapRows", "AddPathMapButton", "TestPathMapButton", "PathMapNote");
+    tabs.SelectedIndex = Array.IndexOf(settingsTabs, "safety");
+    Pump(15);
+    sw.FindControl<Control>("TakeOverBox")!.BringIntoView();
+    Pump(15);
+    Shot(sw, "settings-studios", "TakeOverBox", "TakeOverSecondsBox");
+    sw.Close();
+}
 
 // Cue points and tags of a song
 string song = Directory.GetFiles(Path.Combine(music, folders[0])).Order().First();
@@ -366,6 +400,22 @@ schedule.Show();
 var proTick = typeof(ScheduleWindow).GetMethod("Tick", BindingFlags.NonPublic | BindingFlags.Instance)!;
 for (int i = 0; i < 60; i++) { proTick.Invoke(schedule, [store]); Pump(2); } // the headless timer seldom fires
 Shot(schedule, "production", "MainMenu", "SaveButton", "NavPanel", "HomeClock", "HomeToday", "HomeWarnings", "HomeComputer", "NowTitleText", "BoxStationText", "StatusVersion", "StatusClock");
+// Songs: the whole library, a song listened to in the bar at the bottom (the Preview output)
+{
+    Click(schedule.FindControl<Button>("NavSongs")!);
+    var songsView = schedule.FindControl<TrackLibraryView>("SongsView")!;
+    Pump(20);
+    var songList = songsView.GetLogicalDescendants().OfType<ListBox>().First(l => l.Name == "TrackList");
+    WaitFor(() => songList.ItemCount > 5, 30);
+    songList.SelectedIndex = 2;
+    Pump(10);
+    if (songsView.SelectedSong is { } picked) schedule.FindControl<ListenBar>("SongsListening")!.Listen(picked.Path, picked.Title);
+    Thread.Sleep(1500);
+    Pump(20);
+    Shot(schedule, "pro-songs", "SearchBox", "CategoryBox", "TrackList", "ListenButton", "ListenSlider", "ListenTitle");
+    schedule.FindControl<ListenBar>("SongsListening")!.Stop();
+    Pump(5);
+}
 var stabs = schedule.FindControl<TabControl>("Tabs")!;
 void Select(string list, int index) { var l = schedule.FindControl<ListBox>(list)!; l.SelectedIndex = index; Pump(10); }
 stabs.SelectedIndex = 0; Pump(20); Select("EventList", 0);

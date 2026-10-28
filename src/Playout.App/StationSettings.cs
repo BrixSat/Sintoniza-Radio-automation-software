@@ -156,7 +156,8 @@ public sealed class StationSettings
 /// <summary>The station's settings in the database: read, saved as a new version (a save over a newer one is refused).</summary>
 public sealed class StationStore(LibraryDb db)
 {
-    public const long Station = 1;
+    /// <summary>The station whose settings these are: this computer's (<see cref="CurrentStation"/>).</summary>
+    public static long Station => CurrentStation.Id;
 
     public LibraryDb Db => db;
 

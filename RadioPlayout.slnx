@@ -7,4 +7,7 @@
     <Project Path="src/Sintoniza.Rec/Sintoniza.Rec.csproj" />
     <Project Path="src/Sintoniza.Pro/Sintoniza.Pro.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sintoniza.Checks/Sintoniza.Checks.csproj" />
+  </Folder>
 </Solution>

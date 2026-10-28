@@ -77,6 +77,12 @@ public sealed class AppSettings
     public bool AutoAdvance { get; set; } = true;
     public List<PlaylistEntry> PlaylistItems { get; set; } = new();
 
+    /// <summary>
+    /// The station this computer works for, in a library that can hold several (<see cref="CurrentStation"/>): its
+    /// schedule, daily playlists, settings and play history. 1 until stations can be chosen.
+    /// </summary>
+    public long Station { get; set; } = 1;
+
     /// <summary>The music library database and the folders scanned into it (radio-import reads this too).</summary>
     public LibrarySettings Library { get; set; } = new();
 
@@ -195,6 +201,7 @@ public sealed class AppSettings
         var s = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<AppSettings>(json)) ?? new();
         s.SavedAtUtc = File.Exists(RunningFile) ? File.GetLastWriteTimeUtc(RunningFile) : File.Exists(FilePath) ? File.GetLastWriteTimeUtc(FilePath) : null;
         s.Normalize();
+        CurrentStation.Id = s.Station; // every program on this computer works for this station
         s._saved = JsonSerializer.Serialize(s, Json);
         return s;
     }

@@ -35,6 +35,7 @@
   <ItemGroup>
     <!-- The manual's screenshots (tools/ManualShots) open the windows as the app does. -->
     <InternalsVisibleTo Include="ManualShots" />
+    <InternalsVisibleTo Include="Sintoniza.Checks" />
   </ItemGroup>
 
   <ItemGroup>

@@ -60,7 +60,7 @@ public sealed class PlanItem
 /// </summary>
 public sealed class PlanStore(LibraryDb db)
 {
-    const long Station = 1;
+    static long Station => CurrentStation.Id; // this computer's station's daily playlists
     const string HourFormat = "yyyy-MM-ddTHH:00:00";
 
     public LibraryDb Db { get; } = db;

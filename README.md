@@ -386,7 +386,11 @@ Use `./build.sh win` or `./build.sh linux` for one platform, and
 
 To publish a GitHub Release, commit and push your changes, then run `./release.sh 1.0.0`. It builds all five packages,
 tags the commit `v1.0.0` and uploads them to the repository's Releases page. It needs the
-[GitHub CLI](https://cli.github.com/) (`sudo apt install gh`, then `gh auth login`).
+[GitHub CLI](https://cli.github.com/) (`sudo apt install gh`, then `gh auth login`). First it runs
+`scripts/check.sh` — everything builds with no warnings, every text is translated, and the headless checks in
+`tests/Sintoniza.Checks` pass (the on-air engine, the on-air program and Sintoniza Pro, with no sound and settings of
+their own) — and after building it opens the Windows and Linux packages to check that the programs in them can start.
+Nothing is published if any of it fails. `scripts/check.sh` can be run on its own at any time (about a minute).
 
 #### macOS
 

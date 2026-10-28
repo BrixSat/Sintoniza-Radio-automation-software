@@ -21,6 +21,9 @@ git rev-parse -q --verify "refs/tags/$tag" >/dev/null && fail "Tag $tag already 
 git fetch -q origin
 [[ -n "$(git branch -r --contains HEAD)" ]] || fail "This commit isn't on GitHub yet. Run: git push"
 
+# Builds, translations and the headless checks first: nothing is published if one fails.
+"$ROOT/scripts/check.sh"
+
 "$ROOT/build.sh" all "$version"
 
 files=(
@@ -31,6 +34,13 @@ files=(
   "$DIST/RadioPlayout-$version-linux-x64.tar.gz"
 )
 for f in "${files[@]}"; do [[ -f $f ]] || fail "Missing $f"; done
+# The packages as they will be downloaded: the programs inside can start (their compiled windows are there).
+check=$(mktemp -d)
+unzip -q "$DIST/RadioPlayout-$version-win-x64.zip" "*/SintonizaEmi.dll" -d "$check"
+grep -aqr CompiledAvaloniaXaml "$check" || { rm -rf "${check:?}"; fail "The Windows package's programs would not start (no compiled XAML)"; }
+tar -xzf "$DIST/RadioPlayout-$version-linux-x64.tar.gz" -C "$check" --wildcards "*/SintonizaEmi.dll"
+[[ $(grep -alr CompiledAvaloniaXaml "$check" | wc -l) -ge 2 ]] || { rm -rf "${check:?}"; fail "The Linux package's programs would not start (no compiled XAML)"; }
+rm -rf "${check:?}"
 
 echo "▶ Publishing $tag"
 git tag -a "$tag" -m "Sintoniza $tag"

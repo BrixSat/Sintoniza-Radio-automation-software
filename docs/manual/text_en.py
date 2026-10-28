@@ -51,6 +51,19 @@ CHAPTERS = [
     ("fig", "settings-library", "Settings → Library", [
         ("LibraryTypeBox", "Where the library lives: <i>SQLite</i> (a file on this computer) or <i>MySQL / MariaDB</i> (a server several studios share)."),
         ("TestLibraryButton", "<b>Test</b> opens it (and makes its tables the first time).")]),
+    ("p", "<b>Shared music on Windows, Mac and Linux.</b> With a shared library the songs are kept with the path the computer that "
+          "scanned them sees (<i>/mnt/radio/Pop/song.mp3</i> on a Linux studio). A Windows or Mac computer sees the same share "
+          "somewhere else (<i>Z:\\</i>, <i>\\\\server\\radio</i>, <i>/Volumes/radio</i>): further down the Library tab, say where, once."),
+    ("fig", "settings-paths", "Settings → Library → This computer's paths", [
+        ("PathMapRows", "<b>In the library</b>, the start of the library's paths; <b>on this computer</b>, where that is here (or <b>Folder…</b> to pick it)."),
+        ("AddPathMapButton", "<b>Add</b> a line: it suggests where the library's songs start."),
+        ("TestPathMapButton", "<b>Test</b> looks for a few of the library's songs on this computer…"),
+        ("PathMapNote", "…and says how many it found (and, for one it didn't, where it looked). Then <b>Save</b>."),
+    ], True),
+    ("tip", "Everything on that computer then opens the files where they are on it (playing, listening, waveforms, tags, scans, "
+            "takes, voice tracks), and whatever it adds is kept with the library's path, so every studio finds it. Pro, Rec and "
+            "Import on that computer use the same setting. The share has to be a folder: a mapped drive or <i>\\\\server\\share</i> on "
+            "Windows, mounted under /mnt on Linux (not an <i>smb://</i> address of the file manager), /Volumes on a Mac."),
     ("fig", "settings-safety", "Settings → Safety", [
         ("ResumeBox", "<b>Carry on playing when the app starts, if it is in AUTO</b>, <b>Start the app again if it crashes</b>, <b>Start the app when I log in</b>: for a station that is never off air."),
         ("BackupBox", "<b>Backups</b>: every day, of the database and the station's files.")]),
@@ -206,6 +219,23 @@ CHAPTERS = [
     ]),
     ("fig", "remote-phone", "The web remote on a phone: the same, one panel under the other", []),
     ("warn", "It is plain HTTP, for the station's own network. From outside, use it only through the station's VPN — never open its port on the router. Five wrong passwords lock the page for a minute."),
+    ("h2", "Several computers: one on air, the others standby"),
+    ("p", "With a shared MySQL library every computer running Sintoniza Emi for the station knows the others. <b>One is on air</b>; "
+          "the others are <b>standby</b>: ready and silent — no playlist, no time signal, no stream, nothing in the play history. "
+          "The first to start goes on air. On the one on air the <b>ON AIR</b> light in the status bar lists the standby ones; "
+          "Sintoniza Pro's status bar shows them too."),
+    ("fig", "main-standby", "A standby computer", [
+        ("StandbyBanner", "<b>STANDBY</b>: another computer is on air…"),
+        ("StandbyText", "…which one, what it is playing, and whether this one takes over by itself."),
+        ("TakeOnAirButton", "<b>Take on air</b> (or Play): this computer goes on air, after asking; the other one stops and goes standby. In AUTO it starts the hour now from the item planned for now."),
+    ], True),
+    ("fig", "settings-studios", "Settings → Safety → Several computers on air", [
+        ("TakeOverBox", "<b>By itself</b>: when the computer on air hasn't answered for this long (it crashed, was switched off, lost the network), this one goes on air."),
+        ("TakeOverSecondsBox", "How long, in seconds (15 at first). Off on a computer that should never take over, e.g. a production computer with Emi open."),
+    ], True),
+    ("warn", "A computer cut off from the network keeps playing (it can't know another took over): until it is back, both play; then it "
+             "finds the other on air and goes standby. Carts still play on a standby computer, but don't go in the play history. "
+             "Every studio must run the same version: the first to start a new one updates the database, and an older one can't open it."),
     ("h2", "The microphone (web radio)"),
     ("p", "With <i>Web radio</i> chosen (Pro → Station settings), the <b>MIC</b> button (F9) opens the microphone and the music and carts fade down while it is open: hold to talk, or press on and press off (Settings → Microphone). With <i>FM radio</i> the microphone goes through the desk."),
     ("h2", "All the settings"),
@@ -214,8 +244,8 @@ CHAPTERS = [
         ["General", "The language of the screens"],
         ["Audio", "Outputs for Music / Cartwall / Preview"],
         ["Microphone", "(web radio) input, levels, how far the music goes down"],
-        ["Safety", "Start-up and crash behaviour, the log, backups"],
-        ["Library", "The database, automatic scans"],
+        ["Safety", "Start-up and crash behaviour, several computers on air (standby taking over), the log, backups"],
+        ["Library", "The database, automatic scans, this computer's paths (shared music under another path)"],
         ["Shortcuts", "Keys for Play, Pause, Next, Stop, MIC, the stream and each cart"],
         ["RDS", "Whether this computer sends to the RDS encoder, and how it reaches it"],
         ["Playlist", "How much of the next hour the playlist shows"],
@@ -253,6 +283,18 @@ CHAPTERS = [
         ("StatusVersion", "The <b>status bar</b>: version, station, database, user, unsaved changes…"),
         ("StatusClock", "…and the date and time."),
     ]),
+    ("p", "With a shared library the status bar also says which computer is on air and which are standby (chapter 3)."),
+    ("h2", "Songs"),
+    ("p", "The whole library: search, categories, tempo and energy, tags. Right-click a song for its category, restrictions, ERC details, <b>Edit tags…</b> and <b>Edit cue points…</b>."),
+    ("fig", "pro-songs", "Songs: listening to a song", [
+        ("SearchBox", "Search by title, artist or album…"),
+        ("CategoryBox", "…in a category (with the categories under it)."),
+        ("TrackList", "<b>Double-click</b> a song (or select it and press Space) to listen to it."),
+        ("ListenButton", "▶ / ❚❚ and ■: play, pause, stop."),
+        ("ListenSlider", "Drag to go to another moment."),
+        ("ListenTitle", "What is playing. Listening is on this computer's <b>Preview</b> output (Settings → Audio), never on air."),
+    ]),
+    ("tip", "<b>Edit cue points…</b> opens the same editor as on air (the waveform, Cue In, Intro, Outro, Mix, Cue Out): saved in the library for every studio, the playout takes them within a minute, and the daily playlists count the new length."),
     ("h2", "Categories"),
     ("p", "Every station has the same eight categories at the top, which can't be renamed, moved or deleted: <b>Music</b>, "
           "<b>Jingles</b>, <b>Promos</b>, <b>ProgAutor</b> (shows recorded outside), <b>Fillers</b>, <b>Redação</b> (news), "
@@ -563,6 +605,8 @@ CHAPTERS = [
         ["A song is skipped with “FileOpen”", "The file isn't where the library says: <b>Scan</b> again."],
         ["Listening is heard on air", "Settings → Audio → <b>Preview</b>: choose an output that isn't on air (headphones, PFL)."],
         ["Something went wrong on air", "Settings → Safety → <b>Open log folder</b>: one file a day. Settings → Alerts can warn you by Telegram or e-mail."],
+        ["A Windows or Mac studio doesn't find the songs", "Settings → Library → <b>This computer's paths</b>: where the library's music is on that computer; <b>Test</b> says how many songs it finds."],
+        ["The on-air program shows STANDBY", "Another computer is on air (the bar says which). <b>Take on air</b> if this one should be."],
     ]),
 ]),
 ]
