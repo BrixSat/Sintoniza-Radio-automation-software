@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Playout.Library;
@@ -285,7 +286,33 @@ public partial class TrackLibraryView : UserControl
             menu.Items.Add(new Separator());
             menu.Items.Add(Item(L.T("Edit tags…"), () => EditTagsRequested?.Invoke(paths[0])));
             if (EditCuesRequested != null) menu.Items.Add(Item(L.T("Edit cue points…"), () => EditCuesRequested?.Invoke(paths[0])));
+            menu.Items.Add(Item(L.T("Copy the file's path"), async () =>
+            {
+                if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) await clipboard.SetTextAsync(paths[0]);
+                StatusText.Text = paths[0];
+            }));
         }
+        // Sintoniza Pro (it edits the library): songs whose files are gone, or that shouldn't be in it.
+        if (CanEditCategories)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item(L.T("Take out of the library") + many + "…", async () => await RemoveFromLibrary(rows)));
+        }
+    }
+
+    /// <summary>Takes songs out of the library, after asking; their files stay where they are.</summary>
+    async Task RemoveFromLibrary(List<LibraryRow> rows)
+    {
+        if (TopLevel.GetTopLevel(this) is not Window owner || _service?.Db is not { } db || rows.Count == 0) return;
+        int gone = await Task.Run(() => rows.Count(r => !SharedPaths.FileExists(r.Path)));
+        string what = rows.Count == 1 ? $"“{(rows[0].Track.Artist.Length > 0 ? $"{rows[0].Track.Artist} - {rows[0].Track.Title}" : rows[0].Track.Title)}”" : L.F("{0} songs", rows.Count);
+        string message = L.F("Take {0} out of the library? The files aren't deleted; the play history keeps them.", what)
+            + (gone == rows.Count ? "" : "\n\n" + L.T("Files that are still in a scanned folder come back at the next scan: move or delete them on disk too."));
+        if (!await Dialogs.Confirm(owner, L.T("Take out of the library"), message, L.T("Take out"))) return;
+        var ids = rows.Select(r => r.Id).ToList();
+        int removed = await Task.Run(() => db.RemoveTracks(ids));
+        StatusText.Text = removed == 1 ? L.T("1 song taken out of the library") : L.F("{0} songs taken out of the library", removed);
+        _service.NotifyChanged();
     }
 
     /// <summary>The folders of each category, for the editor (set by the main window).</summary>

@@ -621,6 +621,33 @@ public sealed partial class LibraryDb
         tx.Commit();
     }
 
+    /// <summary>
+    /// Takes songs out of the library (their files aren't touched; the play history keeps their artist, title and
+    /// time), as a scan does with files that are gone. If something still points at one (a table of an older version),
+    /// it is marked missing instead. Returns how many went.
+    /// </summary>
+    public int RemoveTracks(IReadOnlyCollection<long> trackIds)
+    {
+        if (trackIds.Count == 0) return 0;
+        using var c = Connect();
+        var rows = trackIds.Select(id => new { id, now = Now() }).ToList();
+        try
+        {
+            using var tx = c.BeginTransaction();
+            c.Execute("DELETE FROM track_categories WHERE track_id = @id", rows, tx);
+            int removed = c.Execute("DELETE FROM tracks WHERE id = @id", rows, tx);
+            tx.Commit();
+            return removed;
+        }
+        catch (DbException)
+        {
+            using var tx = c.BeginTransaction();
+            int marked = c.Execute("UPDATE tracks SET missing = 1, updated_at = @now WHERE id = @id", rows, tx);
+            tx.Commit();
+            return marked;
+        }
+    }
+
     public void SetAttributes(IEnumerable<long> trackIds, TrackAttributes a)
     {
         var sets = new List<string> { "updated_at = @now" };

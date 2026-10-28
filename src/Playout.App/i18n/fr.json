@@ -2013,5 +2013,11 @@
  "From {0}": "De {0}",
  "a file from the category · only when the section after it has adverts": "un fichier de la catégorie · seulement quand la section suivante a des spots",
  "a file from the category, a different one each time": "un fichier de la catégorie, un différent à chaque fois",
- " · the category isn't there any more": " · la catégorie n'existe plus"
+ " · the category isn't there any more": " · la catégorie n'existe plus",
+ "Copy the file's path": "Copier le chemin du fichier",
+ "Take out of the library": "Retirer de la bibliothèque",
+ "Take {0} out of the library? The files aren't deleted; the play history keeps them.": "Retirer {0} de la bibliothèque ? Les fichiers ne sont pas supprimés ; l'historique les garde.",
+ "Files that are still in a scanned folder come back at the next scan: move or delete them on disk too.": "Les fichiers encore dans un dossier analysé reviennent à la prochaine analyse : déplacez-les ou supprimez-les aussi sur le disque.",
+ "1 song taken out of the library": "1 titre retiré de la bibliothèque",
+ "{0} songs taken out of the library": "{0} titres retirés de la bibliothèque"
 }

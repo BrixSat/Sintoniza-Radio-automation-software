@@ -271,6 +271,18 @@ Console.WriteLine("Sintoniza Pro");
     var labels = menu.Items.OfType<MenuItem>().Select(m => m.Header as string).ToList();
     Check(labels.Contains("Listen") && labels.Contains("Edit cue points…") && labels.Contains("Edit tags…") && !labels.Contains("Add to playlist"),
         "Songs' menu: Listen, Edit cue points…, Edit tags…, no Add to playlist");
+    Check(labels.Contains("Copy the file's path") && labels.Contains("Take out of the library…"), "…Copy the file's path, Take out of the library…");
+    {
+        // A song whose file is gone: taken out of the library (and its categories); a file still there isn't touched.
+        string gone = Path.Combine(work, "gone.wav");
+        File.Copy(songs[3], gone, true);
+        LibraryScanner.ScanFile(db, gone);
+        var track = db.GetByPath(gone)!;
+        db.SetAlsoIn([track.Id], db.Categories().First(c => c.Role == "jingles").Id, true);
+        File.Delete(gone);
+        Check(db.RemoveTracks([track.Id]) == 1 && db.GetByPath(gone) == null, "Take out of the library: the song is gone from it");
+        Check(File.Exists(songs[3]), "…and no file is deleted");
+    }
     menu.Items.OfType<MenuItem>().First(m => (m.Header as string) == "Edit cue points…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
     WaitUi(() => win.OwnedWindows.OfType<CueEditorWindow>().Any(), 5);
     var editor = win.OwnedWindows.OfType<CueEditorWindow>().FirstOrDefault();
