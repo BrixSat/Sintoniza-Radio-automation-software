@@ -33,7 +33,6 @@
  "5 · Fast": "5 · Rápido",
  "; {0} old ones removed": "; {0} antigas apagadas",
  "A backup fails": "Uma cópia de segurança falha",
- "A break plays its running order: jingles, and in each section the adverts booked into it that day (Clients tab). A break with no adverts is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before: songs that wouldn't fit move after it and a gap is filled with a fill song.": "Um bloco toca o seu alinhamento: jingles e, em cada secção, os spots marcados nela nesse dia (separador Clientes). Um bloco sem spots é saltado. Um que acaba à sua hora (p. ex. 59:55, antes das notícias) entra na playlist 15 minutos antes: as músicas que não cabem passam para depois dele e um intervalo é preenchido com uma música de enchimento.",
  "A break plays the adverts placed in it that day (Adverts tab), between the jingles; one with none is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before: songs that wouldn't fit move after it and a gap is filled with a fill song.": "Um bloco toca os anúncios colocados nele nesse dia (separador Anúncios), entre os jingles; um bloco sem anúncios é saltado. Um que acaba à sua hora (p. ex. 59:55, antes do noticiário) entra na playlist 15 minutos antes: as músicas que não cabem passam para depois dele e um vazio é preenchido com uma música de enchimento.",
  "A click places it": "Um clique coloca-a",
  "A disk has less than": "Um disco tem menos de",
@@ -2003,5 +2002,16 @@
  "Not saved: the hour was being read again. Try again.": "Não guardado: a hora estava a ser lida de novo. Tente outra vez.",
  "The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now": "A playlist é de {0:dd/MM HH:mm}, quando o programa correu pela última vez: os {1} itens que faltava tocar ficaram de fora; a playlist diária continua a partir de agora",
  "Starting: it plays as soon as the playlist is back": "A arrancar: toca assim que a playlist estiver de volta",
- "Waiting for something to play: the first item put in the playlist goes on air": "À espera de algo para tocar: o primeiro item que entrar na playlist vai para o ar"
+ "Waiting for something to play: the first item put in the playlist goes on air": "À espera de algo para tocar: o primeiro item que entrar na playlist vai para o ar",
+ "{0}: plays after the time signal (it had only just started)": "{0}: toca depois do sinal horário (tinha acabado de começar)",
+ "A break plays its running order: jingles (a file, or one taken from a category — Jingles, Promos, Fillers… — a different one each time), and in each section the adverts booked into it that day (Clients tab). A break with no adverts is skipped. One that ends at its time (e.g. 59:55, before the news) goes into the playlist 15 minutes before, measured with everything in it: songs that wouldn't fit move after it and a gap is filled with a fill song.": "Um bloco toca o seu alinhamento: jingles (um ficheiro, ou um tirado de uma categoria — Jingles, Promos, Fillers… — um diferente de cada vez) e, em cada secção, os spots marcados nela nesse dia (separador Clientes). Um bloco sem spots é saltado. Um que acaba à sua hora (p. ex. 59:55, antes das notícias) entra na playlist 15 minutos antes, medido com tudo o que tem: as músicas que não cabem passam para depois dele e um intervalo é preenchido com uma música de enchimento.",
+ "From a category…": "De uma categoria…",
+ "A file from a category (Jingles, Promos, Fillers…), a different one each time the break goes on air": "Um ficheiro de uma categoria (Jingles, Promos, Fillers…), um diferente de cada vez que o bloco vai para o ar",
+ "{0}: nothing to take from {1}, left out": "{0}: nada para tirar de {1}, ficou de fora",
+ "its category": "a sua categoria",
+ "The music library isn't available, or has no categories but Music.": "A biblioteca não está disponível, ou não tem categorias além de Música.",
+ "From {0}": "De {0}",
+ "a file from the category · only when the section after it has adverts": "um ficheiro da categoria · só quando a secção a seguir tem spots",
+ "a file from the category, a different one each time": "um ficheiro da categoria, um diferente de cada vez",
+ " · the category isn't there any more": " · a categoria já não existe"
 }

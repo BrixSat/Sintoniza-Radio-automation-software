@@ -358,6 +358,9 @@ sealed class ScheduleStore(LibraryDb db)
 /// </summary>
 sealed class ScheduleSource(Func<LibraryDb?> db)
 {
+    /// <summary>The library, if it can be reached (parts of a break taken from a category).</summary>
+    public LibraryDb? Db => db();
+
     static string CacheFile => Path.Combine(AppSettings.DataFolder, "schedule-cache.json");
     readonly object _lock = new();
     bool _importTried;

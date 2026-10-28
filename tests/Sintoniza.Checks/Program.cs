@@ -106,6 +106,26 @@ string? OnAir(PlayoutEngine e) => e.GetStatus().Current?.Path;
     Check(true, "no crash when an item ends after the engine was closed");
 }
 
+{
+    // The time signal (Stop mode) taking the air 1 s into an item (the next hour's opening jingle, crossfaded in as a
+    // break ending on the hour ended): it plays again after the signal, from the start, rather than being lost.
+    var any = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+    var e = NewEngine();
+    e.AddFiles([songs[0], songs[1]]);
+    Thread.Sleep(300);
+    e.Play();
+    Wait(() => OnAir(e) == songs[0], 3);
+    Thread.Sleep(1000);
+    var post = typeof(PlayoutEngine).GetMethod("Post", any)!;
+    void Run(string method) => post.Invoke(e, [new Action(() => typeof(PlayoutEngine).GetMethod(method, any)!.Invoke(e, null))]);
+    Run("TakeOffAirForSignal");
+    Thread.Sleep(1000);
+    Run("ResumeAfterSignal");
+    Wait(() => e.GetStatus().Current != null, 3);
+    Check(OnAir(e) == songs[0] && e.GetStatus().Position < 2, "the time signal: an item that had only just started plays again after it");
+    e.Dispose();
+}
+
 // ───────────────────────── Settings shared by the programs ─────────────────────────
 
 Console.WriteLine("Settings");
@@ -273,6 +293,71 @@ Console.WriteLine("Sintoniza Pro");
     Pump(10);
 }
 
+// ───────────────────────── Ad breaks ─────────────────────────
+
+Console.WriteLine("Ad breaks (parts taken from a category)");
+{
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    string Folder(string name, int count, int from)
+    {
+        string folder = Path.Combine(work, "breaks", name);
+        Directory.CreateDirectory(folder);
+        foreach (var (tone, n) in Audio.Make(Path.Combine(work, "tones-" + name), count).Select((t, n) => (t, n)))
+            File.Copy(tone, Path.Combine(folder, $"{name} {n + from}.wav"), true);
+        return folder;
+    }
+    string promos = Folder("Promo", 2, 1), fillers = Folder("Filler", 1, 1), adverts = Folder("Advert", 1, 1);
+    LibraryScanner.Scan(db, [Path.Combine(work, "breaks")]);
+    var categories = db.Categories();
+    long promosId = categories.First(c => c.Role == "promos").Id, fillersId = categories.First(c => c.Role == "fillers").Id;
+    db.SetFolderCategory(promos, promosId);
+    db.SetFolderCategory(fillers, fillersId);
+    var now = DateTime.Now;
+    var at = new DateTime(now.Year, now.Month, now.Day, now.Hour, 50, 0);
+    var adBreak = new AdBreak
+    {
+        Name = "Ads", Times = [$"{at:HH:mm}"], Start = EventStart.EndAt,
+        Parts = [BreakPart.FromCategory(promosId, "Promos"), new BreakPart { Kind = PartKind.Section, Section = "Ads" }, BreakPart.FromCategory(fillersId, "Fillers")],
+    };
+    var data = new ScheduleData
+    {
+        Breaks = { adBreak },
+        Clients = { new AdClient { Name = "Shop", Campaigns = { new AdCampaign { Name = "Autumn", Section = "Ads", Files = [Directory.GetFiles(adverts)[0]],
+            Placements = [new AdPlacement { Day = at.DayOfWeek, Time = $"{at:HH:mm}:00" }] } } } },
+    };
+    data.Normalize();
+    var picker = ScheduleItems.CategoryPicker(db);
+    var items = ScheduleItems.For(data, adBreak, at, null, picker);
+    Check(items.Count == 3 && items[0].Path.Contains("Promo") && items[1].Kind == TrackKind.Commercial && items[2].Path.Contains("Filler")
+          && items.All(i => i.InBreak), "a break: a promo (from Promos), the advert, a filler (from Fillers)");
+    db.RecordPlay(items[0].Path, "", "promo", DateTime.UtcNow, "playlist");
+    var again = ScheduleItems.For(data, adBreak, at, null, picker);
+    Check(again[0].Path != items[0].Path && again[0].Path.Contains("Promo"), "the promo rested longest is taken: the other one next time");
+    var store = new ScheduleStore(db);
+    store.Save(data, null, "checks");
+    var loaded = store.Load().Data.Breaks.First(b => b.Name == "Ads");
+    Check(loaded.Parts[0].CategoryId == promosId && loaded.Parts[0].Section == "Promos" && loaded.Parts[2].CategoryId == fillersId,
+        "a part from a category is kept when the schedule is saved and read again");
+
+    // Ends at its time: it starts its whole length (promo, advert, filler) before.
+    var e = NewEngine();
+    var log = new List<string>();
+    e.Log += m => { lock (log) log.Add(m); };
+    e.AddFiles([songs[0], songs[1], songs[2]]);
+    Thread.Sleep(300);
+    e.Play();
+    Wait(() => OnAir(e) == songs[0], 3);
+    var endsAt = DateTime.UtcNow.AddSeconds(60);
+    e.InsertEvent("Ads", again, new EventTiming(EventStart.EndAt, EndsAt: endsAt));
+    Wait(() => { lock (log) return log.Any(l => l.Contains("to end at")); }, 3);
+    string line; lock (log) line = log.FirstOrDefault(l => l.Contains("to end at")) ?? "";
+    var times = System.Text.RegularExpressions.Regex.Matches(line, @"\d\d:\d\d:\d\d").Select(m => TimeSpan.Parse(m.Value)).ToList();
+    double planned = times.Count >= 2 ? (times[^1] - times[^2]).TotalSeconds : -1; // "starts at … to end at …" (after the log's own time)
+    Check(planned is >= 9 and <= 13, $"ends at its time: it starts the length of all three before ({planned:0} s for 3 × 4 s, crossfades in){(planned < 0 ? " — " + string.Join(" | ", log) : "")}");
+    e.Dispose();
+}
+
 // ───────────────────────── Several stations in one library ─────────────────────────
 
 Console.WriteLine("Stations");
@@ -280,14 +365,16 @@ Console.WriteLine("Stations");
     var settings = AppSettings.Load();
     Check(CurrentStation.Id == settings.Station, "the station is this computer's setting");
     var db = LibraryDb.Open(settings.Library);
-    var since = DateTime.UtcNow.AddSeconds(-1); // not the plays of the checks above
+    Thread.Sleep(1100); // the plays of the checks above are before this (times are to the second)
+    var since = DateTime.UtcNow;
+    Thread.Sleep(1100);
     db.RecordPlay(songs[0], "Check 1", "Tone 1", DateTime.UtcNow, "playlist");
     long first = CurrentStation.Id;
     CurrentStation.Id = first + 1;
     Check(db.PlaysSince(since).Count == 0 && db.LastStarted(songs[0]) == null, "another station doesn't count this station's plays");
     db.RecordPlay(songs[1], "Check 2", "Tone 2", DateTime.UtcNow, "playlist");
     CurrentStation.Id = first;
-    Check(db.PlaysSince(since).Count == 1 && db.LastStarted(songs[0]) != null, "…and this station only its own");
+    Check(db.PlaysSince(since).Count == 1 && db.LastStarted(songs[0]) != null, $"…and this station only its own ({db.PlaysSince(since).Count} plays since, last {db.LastStarted(songs[0])})");
 }
 
 Console.WriteLine(fails == 0 ? $"All {passes} checks passed." : $"{fails} of {passes + fails} checks FAILED.");

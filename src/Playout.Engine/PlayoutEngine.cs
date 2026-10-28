@@ -27,6 +27,7 @@ public sealed class PlayoutEngine : IDisposable
     const int KeepPlayed = 500;            // played items kept above the cursor when fill music grows the playlist
     const double EventFadeSeconds = 2;     // a hard scheduled event fades out what is on air over this
     static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(2); // a scheduled item this far past its latest start is left out
+    static readonly TimeSpan JustStarted = TimeSpan.FromSeconds(6); // on air less than this when the time signal takes over: played again after it
     const double BacktimeTolerance = 5;    // backtiming leaves an item this many seconds early or late alone
     const double BacktimeMinGap = 15;
     const double FillerMinGap = 2;         // a gap a filler fills (fillers can be faded at any point)      // a smaller gap before a backtimed break isn't filled: it starts that much early
@@ -1934,7 +1935,20 @@ public sealed class PlayoutEngine : IDisposable
         _connectAttempt++; // a stream still connecting is not put on air; the next item takes its connection
         _connecting = null;
         FadePlayingOut(SignalFadeSeconds);
-        if (_current is { } deck) FadeOutAndFree(deck.Handle, SignalFadeSeconds);
+        if (_current is { } deck)
+        {
+            FadeOutAndFree(deck.Handle, SignalFadeSeconds);
+            // Only just started (the next hour's opening jingle, crossfaded in as a break ending on the hour ended):
+            // it plays after the signal, from the start, rather than being lost.
+            if (_autoAdvance && DateTime.UtcNow - deck.Started < JustStarted && !deck.Track.IsStream
+                && _playlist.FindIndex(t => t.Id == deck.Track.Id) is var i and >= 0 && i == _cursorIndex)
+            {
+                _played.Remove(deck.Track.Id);
+                _playlist[i] = _playlist[i] with { PlayedAt = null };
+                _cursorIndex = i - 1;
+                Emit(L.F("{0}: plays after the time signal (it had only just started)", deck.Track.Display));
+            }
+        }
         SetCurrent(null);
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();

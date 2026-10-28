@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Playout.Engine;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -409,10 +410,26 @@ public sealed class BreakPart
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public PartKind Kind { get; set; }
-    /// <summary>A jingle's file.</summary>
+    /// <summary>A jingle's file, or <see cref="CategoryPrefix"/> and a category's id: one of its files, chosen as the break goes on air.</summary>
     public string Path { get; set; } = "";
-    /// <summary>A section's name ("Before the hour", "Promos"…): campaigns are booked into it by name.</summary>
+    /// <summary>
+    /// A section's name ("Before the hour", "Promos"…): campaigns are booked into it by name. A part from a category:
+    /// the category's name, as shown.
+    /// </summary>
     public string Section { get; set; } = "";
+
+    /// <summary>
+    /// A part that takes a file from a library category (Jingles, Promos, Fillers… not Music) each time the break goes
+    /// on air. Kept as a jingle whose file is "category:" and the category's id: a version without it leaves it out as
+    /// a jingle it can't find.
+    /// </summary>
+    public const string CategoryPrefix = "category:";
+
+    [JsonIgnore]
+    public long? CategoryId => Kind == PartKind.Jingle && Path.StartsWith(CategoryPrefix, StringComparison.Ordinal)
+        && long.TryParse(Path.AsSpan(CategoryPrefix.Length), out long id) ? id : null;
+
+    public static BreakPart FromCategory(long categoryId, string name) => new() { Kind = PartKind.Jingle, Path = CategoryPrefix + categoryId, Section = name };
     /// <summary>A jingle that only plays when the section after it has adverts (a section opener).</summary>
     public bool OnlyWithAdverts { get; set; }
 }
@@ -796,7 +813,7 @@ sealed class Scheduler : IDisposable
     {
         ScheduleData data;
         lock (_lock) data = _data;
-        return ScheduleItems.For(data, entry, at, quiet ? null : Say);
+        return ScheduleItems.For(data, entry, at, quiet ? null : Say, _source?.Db is { } db ? ScheduleItems.CategoryPicker(db) : null);
     }
 
     void Say(string message) => Message?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
@@ -818,7 +835,8 @@ public static class ScheduleItems
     /// What an event or break plays at <paramref name="at"/> (the files as they are now: a folder's newest file, the
     /// adverts booked). <paramref name="say"/> gets what is left out and why; null: quiet (looking ahead).
     /// </summary>
-    public static List<ScheduledItem> For(ScheduleData data, ScheduleEntry entry, DateTime at, Action<string>? say)
+    /// <param name="fromCategory">Picks a file from a category for a part that takes one (null: no library, left out).</param>
+    public static List<ScheduledItem> For(ScheduleData data, ScheduleEntry entry, DateTime at, Action<string>? say, Func<long, (string Path, TrackKind Kind)?>? fromCategory = null)
     {
         bool quiet = say == null;
         void Say(string message) => say?.Invoke(message);
@@ -867,13 +885,35 @@ public static class ScheduleItems
                     // A section opener: only when the section after it has adverts.
                     if (part.OnlyWithAdverts && b.Parts.Skip(i + 1).FirstOrDefault(x => x.Kind == PartKind.Section) is { } next
                         && (sections.GetValueOrDefault(next.Section.Trim())?.Count ?? 0) == 0) continue;
-                    if (SharedPaths.FileExists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
+                    if (part.CategoryId is { } category)
+                    {
+                        if (fromCategory?.Invoke(category) is { } picked) items.Add(new ScheduledItem(picked.Path, picked.Kind, InBreak: true));
+                        else if (!quiet) Say(L.F("{0}: nothing to take from {1}, left out", label, part.Section.Length > 0 ? part.Section : L.T("its category")));
+                    }
+                    else if (SharedPaths.FileExists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
                     else if (!quiet && part.Path.Length > 0) Say(L.F("{0}: jingle not found, left out: {1}", label, part.Path));
                 }
                 break;
         }
         return items;
     }
+
+    /// <summary>
+    /// A file from a category (and the ones under it) for a break: the one rested longest, among a few at random, that
+    /// may play now (song restrictions) and is there. Adverts' categories (Spots) give adverts, the rest jingles.
+    /// </summary>
+    public static Func<long, (string Path, TrackKind Kind)?> CategoryPicker(LibraryDb db) => id =>
+    {
+        var now = DateTime.Now;
+        var kind = db.Categories().FirstOrDefault(c => c.Id == id)?.Kind == "commercial" ? TrackKind.Commercial : TrackKind.Jingle;
+        var tracks = db.RotationTracks([id]).Where(t => t.Rules?.AllowsAt(now) != false).ToList();
+        // The least recently played third, shuffled: not always the same one, never one just played.
+        var candidates = tracks.OrderBy(t => t.LastPlayed ?? DateTime.MinValue).Take(Math.Max(1, (tracks.Count + 2) / 3))
+            .OrderBy(_ => Random.Shared.Next()).Concat(tracks).Take(12);
+        foreach (var t in candidates)
+            if (SharedPaths.FileExists(t.Path)) return (t.Path, kind);
+        return null;
+    };
 
     /// <summary>
     /// What an event's file is in the playlist: a jingle or an advert by where it is kept (a Jingles folder…); the rest

@@ -443,10 +443,14 @@ and what the host may do with it in the playlist (remove/move, only move, or not
 
 ### Ad breaks
 
-A break has a **running order**: jingles (**Jingle…**) and **sections** (e.g. *Before the hour*), where the adverts
-booked in that section go. *Play this jingle only when the section after it has adverts* makes a section opener. A
-break with nothing booked is skipped. Place breaks on the calendar; start and lock options as for events (breaks are
-locked by default).
+A break has a **running order**: jingles (**Jingle…**, a file), parts **from a category** (**From a category…**:
+Jingles, Promos, Fillers, Spots… — any but Music — a different file each time the break goes on air, the one rested
+longest) and **sections** (e.g. *Before the hour*), where the adverts booked in that section go; ▲ ▼ put them before
+or after the adverts. *Play this jingle only when the section after it has adverts* makes a section opener. A break
+with nothing booked is skipped. Place breaks on the calendar; start and lock options as for events (breaks are
+locked by default). One that **ends at its time** is measured with everything in it — jingles, parts from a
+category, adverts — and starts that long before. On the hour with the time signal set to stop what plays, the next
+hour's first item, if it had only just started when the pips came, plays after them instead of being cut.
 
 ### Clients
 

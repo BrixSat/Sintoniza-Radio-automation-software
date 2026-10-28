@@ -31,6 +31,7 @@ public sealed class PlaylistGenerator
     const double OldestShare = 0.25;
 
     readonly LibraryDb _db;
+    Func<long, (string Path, TrackKind Kind)?>? _picker; // a break's parts taken from a category
     readonly ScheduleData _data;
     readonly Options _options;
     readonly Dictionary<long, List<RotationTrack>> _categories = new();
@@ -205,7 +206,7 @@ public sealed class PlaylistGenerator
                          ? t > hour && t <= hour.AddHours(1)
                          : t >= hour && t < hour.AddHours(1)))
             {
-                var parts = ScheduleItems.For(_data, entry, at, null).Select(i => i.StreamName != null
+                var parts = ScheduleItems.For(_data, entry, at, null, _picker ??= ScheduleItems.CategoryPicker(_db)).Select(i => i.StreamName != null
                     ? new PlannedPart(i.Path, TrackKind.Stream, i.StreamName, null, i.StreamSeconds)
                     : new PlannedPart(i.Path, i.Kind ?? TrackClassifier.Classify(i.Path), Path.GetFileNameWithoutExtension(i.Path), i.Advertiser, Length(i.Path)))
                     .ToList();

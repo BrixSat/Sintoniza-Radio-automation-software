@@ -625,6 +625,7 @@ public partial class ScheduleWindow : Window
             if (SelectedBreak == null || await PickFile(L.T("Jingle")) is not { } path) return;
             AddPart(new BreakPart { Kind = PartKind.Jingle, Path = path });
         };
+        AddCategoryPartButton.Click += (_, _) => ChooseCategoryPart();
         AddSectionButton.Click += (_, _) =>
         {
             if (SelectedBreak is not { } b) return;
@@ -663,6 +664,34 @@ public partial class ScheduleWindow : Window
 
     AdBreak? SelectedBreak => (BreakList.SelectedItem as ScheduleRow)?.Item as AdBreak;
     BreakPart? SelectedPart => (PartList.SelectedItem as ScheduleRow)?.Item as BreakPart;
+
+    /// <summary>
+    /// From a category…: the library's categories but Music (and Takes: the time and temperature have their own
+    /// lines), to take a file from each time the break goes on air.
+    /// </summary>
+    void ChooseCategoryPart()
+    {
+        if (SelectedBreak == null) return;
+        var left = new HashSet<long>();
+        foreach (var root in _categories.Where(c => c.Role is "music" or "takes"))
+            left.UnionWith(CategoryTree.WithDescendants(_categories, [root.Id]));
+        var choices = CategoryTree.Flatten(_categories).Where(x => !left.Contains(x.Category.Id)).ToList();
+        if (choices.Count == 0)
+        {
+            ErrorText.Text = L.T("The music library isn't available, or has no categories but Music.");
+            return;
+        }
+        var menu = new MenuFlyout();
+        foreach (var (category, depth) in choices)
+        {
+            var item = new MenuItem { Header = $"{new string(' ', 4 * depth)}{KindIcon(category.Kind)}  {category.Name}" };
+            long id = category.Id;
+            item.Click += (_, _) => AddPart(BreakPart.FromCategory(id, CategoryTree.PathOf(_categories, id)));
+            menu.Items.Add(item);
+        }
+        Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(AddCategoryPartButton, menu);
+        menu.ShowAt(AddCategoryPartButton);
+    }
 
     /// <summary>Puts a part after the selected one (or at the end).</summary>
     void AddPart(BreakPart part)
@@ -709,7 +738,11 @@ public partial class ScheduleWindow : Window
         _loading = false;
     }
 
-    ScheduleRow PartRow(AdBreak b, BreakPart p) => new(p, () => p.Kind == PartKind.Jingle
+    ScheduleRow PartRow(AdBreak b, BreakPart p) => new(p, () => p.CategoryId is { } category
+        ? ("♪  " + L.F("From {0}", _categories.Any(c => c.Id == category) ? CategoryTree.PathOf(_categories, category) : p.Section),
+            (p.OnlyWithAdverts ? L.T("a file from the category · only when the section after it has adverts") : L.T("a file from the category, a different one each time"))
+            + (_categories.Count > 0 && _categories.All(c => c.Id != category) ? L.T(" · the category isn't there any more") : ""), true)
+        : p.Kind == PartKind.Jingle
         ? ("♪  " + (Path.GetFileNameWithoutExtension(p.Path) is { Length: > 0 } n ? n : L.T("Jingle")),
             (p.OnlyWithAdverts ? L.T("jingle · only when the section after it has adverts") : L.T("jingle")) + (SharedPaths.FileExists(p.Path) ? "" : L.T(" · not found")), true)
         : ("€  " + p.Section, L.F("advert section · {0} today", Plural(b.TimesOn(DateTime.Today).Sum(t => _data.InSection(b, p.Section, t).Count), "{0} advert", "{0} adverts")), true));
