@@ -848,8 +848,12 @@ public static class ScheduleItems
     /// What an event or break plays at <paramref name="at"/> (the files as they are now: a folder's newest file, the
     /// adverts booked). <paramref name="say"/> gets what is left out and why; null: quiet (looking ahead).
     /// </summary>
-    /// <param name="fromCategory">Picks a file from a category for a part that takes one (null: no library, left out).</param>
-    public static List<ScheduledItem> For(ScheduleData data, ScheduleEntry entry, DateTime at, Action<string>? say, Func<long, (string Path, TrackKind Kind)?>? fromCategory = null)
+    /// <param name="fromCategory">
+    /// Picks a file from a category for a part that takes one, not one of the files given (the break's other parts
+    /// took them); null: no library, left out.
+    /// </param>
+    public static List<ScheduledItem> For(ScheduleData data, ScheduleEntry entry, DateTime at, Action<string>? say,
+        Func<long, IReadOnlySet<string>, (string Path, TrackKind Kind)?>? fromCategory = null)
     {
         bool quiet = say == null;
         void Say(string message) => say?.Invoke(message);
@@ -900,7 +904,9 @@ public static class ScheduleItems
                         && (sections.GetValueOrDefault(next.Section.Trim())?.Count ?? 0) == 0) continue;
                     if (part.CategoryId is { } category)
                     {
-                        if (fromCategory?.Invoke(category) is { } picked) items.Add(new ScheduledItem(picked.Path, picked.Kind, InBreak: true));
+                        // Not a file the break plays already (two parts from Jingles: two different jingles).
+                        var taken = items.Select(x => x.Path).ToHashSet(StringComparer.Ordinal);
+                        if (fromCategory?.Invoke(category, taken) is { } picked) items.Add(new ScheduledItem(picked.Path, picked.Kind, InBreak: true));
                         else if (!quiet) Say(L.F("{0}: nothing to take from {1}, left out", label, part.Section.Length > 0 ? part.Section : L.T("its category")));
                     }
                     else if (SharedPaths.FileExists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
@@ -915,11 +921,13 @@ public static class ScheduleItems
     /// A file from a category (and the ones under it) for a break: the one rested longest, among a few at random, that
     /// may play now (song restrictions) and is there. Adverts' categories (Spots) give adverts, the rest jingles.
     /// </summary>
-    public static Func<long, (string Path, TrackKind Kind)?> CategoryPicker(LibraryDb db) => id =>
+    public static Func<long, IReadOnlySet<string>, (string Path, TrackKind Kind)?> CategoryPicker(LibraryDb db) => (id, taken) =>
     {
         var now = DateTime.Now;
         var kind = db.Categories().FirstOrDefault(c => c.Id == id)?.Kind == "commercial" ? TrackKind.Commercial : TrackKind.Jingle;
         var tracks = db.RotationTracks([id]).Where(t => t.Rules?.AllowsAt(now) != false).ToList();
+        // Not one this break plays already, while the category has another.
+        if (tracks.Any(t => !taken.Contains(t.Path))) tracks = tracks.Where(t => !taken.Contains(t.Path)).ToList();
         // The least recently played third, shuffled: not always the same one, never one just played.
         var candidates = tracks.OrderBy(t => t.LastPlayed ?? DateTime.MinValue).Take(Math.Max(1, (tracks.Count + 2) / 3))
             .OrderBy(_ => Random.Shared.Next()).Concat(tracks).Take(12);

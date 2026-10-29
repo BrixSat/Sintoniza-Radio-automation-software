@@ -38,6 +38,7 @@ public partial class CategoriesWindow : PageWindow
         FoldersPanel.IsVisible = folders != null;
         AddFolderButton.Click += async (_, _) => await AddFolder();
         RemoveFolderButton.Click += async (_, _) => await RemoveFolder();
+        FolderList.SelectionChanged += (_, _) => RemoveFolderButton.IsEnabled = FolderList.SelectedItem != null;
         ScanFoldersButton.Click += async (_, _) => await ScanFolders();
 
         foreach (var color in Palette)
@@ -351,23 +352,42 @@ public partial class CategoriesWindow : PageWindow
 
     async Task DeleteCategory()
     {
-        if (Selected is not { } row) return;
-        // Its songs leave it (back to a folder's category, if any): the categories under it move up with theirs.
-        string songs = row.Own switch
+        if (Selected is not { } row || _service?.Db is not { } db) return;
+        // Its songs that are in no other category leave the library (their files stay); the ones also in another
+        // category stay there; the categories under it move up with theirs.
+        List<(long Id, string Path)> only;
+        int onDisk;
+        try
         {
-            0 => L.T("No songs are in it."),
-            1 => L.T("The 1 song in it leaves it: it goes back to the category of a folder above (Music), if there is one."),
-            _ => L.F("The {0:N0} songs in it leave it: they go back to the category of a folder above (Music), if there is one.", row.Own),
+            only = await Task.Run(() => db.SongsOnlyIn(row.Category.Id));
+            onDisk = await Task.Run(() => only.Count(s => SharedPaths.FileExists(s.Path)));
+        }
+        catch (Exception ex)
+        {
+            ErrorText.Text = L.F("Not saved: {0}", ex.Message);
+            return;
+        }
+        int elsewhere = Math.Max(0, row.Own - only.Count);
+        var lines = new List<string>
+        {
+            only.Count switch
+            {
+                0 => L.T("No song is only in it."),
+                1 => L.T("The 1 song that is only in it leaves the library (its file isn't deleted)."),
+                _ => L.F("The {0:N0} songs that are only in it leave the library (their files aren't deleted).", only.Count),
+            },
         };
-        if (_rows.Any(r => r.Category.ParentId == row.Category.Id))
-            songs += " " + L.T("The categories under it move up to where it is now.");
-        if (!await Dialogs.Confirm(DialogOwner, L.T("Delete category"), L.F("Delete \"{0}\"? {1}", row.Category.Name, songs), L.T("Delete"))) return;
+        if (elsewhere > 0) lines.Add(elsewhere == 1 ? L.T("1 song also in another category stays there.") : L.F("{0:N0} songs also in another category stay there.", elsewhere));
+        if (_rows.Any(r => r.Category.ParentId == row.Category.Id)) lines.Add(L.T("The categories under it move up to where it is now."));
+        if (onDisk > 0) lines.Add(L.T("Files still in a scanned folder come back at the next scan, in the category of their folder: move or delete them on disk too."));
+        if (!await Dialogs.Confirm(DialogOwner, L.T("Delete category"), L.F("Delete \"{0}\"?", row.Category.Name) + "\n\n" + string.Join("\n", lines), L.T("Delete"))) return;
         int index = _rows.IndexOf(row);
         long? next = _rows.ElementAtOrDefault(index + 1)?.Category.Id ?? _rows.ElementAtOrDefault(index - 1)?.Category.Id;
-        if (await Change(db => db.DeleteCategory(row.Category.Id), next)) StatusText.Text = L.F("Deleted {0}", row.Category.Name);
+        int removed = 0;
+        if (await Change(d => removed = d.DeleteCategoryAndSongs(row.Category.Id), next))
+            StatusText.Text = removed == 0 ? L.F("Deleted {0}", row.Category.Name) : L.F("Deleted {0}; {1} taken out of the library", row.Category.Name, Plural(removed, "{0} song", "{0} songs"));
     }
 
-    /// <summary>The categories beside this one (the same parent), in their order.</summary>
     /// <summary>The categories beside it (at the top: the station's own, after the eight fixed ones, which keep their order).</summary>
     List<CategoryRow> Siblings(CategoryRow row) => _rows.Where(r => r.Category.ParentId == row.Category.ParentId && !r.Category.IsFixed).ToList();
 

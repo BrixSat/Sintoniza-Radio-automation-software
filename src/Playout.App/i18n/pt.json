@@ -2025,5 +2025,14 @@
  "the time signal for {0:HH:mm}": "o sinal horário das {0:HH:mm}",
  "{0}: {1}. One of the station's eight categories: it can't be renamed, moved or deleted. Put your own categories under it (New under it), or beside it (New at the top).": "{0}: {1}. Uma das oito categorias da estação: não pode ser renomeada, movida nem apagada. Ponha as suas categorias debaixo dela (Nova dentro desta) ou ao lado (Nova no topo).",
  "New at the top": "Nova no topo",
- "A top-level category of the station's own, beside the eight (it can be renamed, moved and deleted)": "Uma categoria de topo da própria estação, ao lado das oito (pode mudar de nome, de sítio e ser apagada)"
+ "A top-level category of the station's own, beside the eight (it can be renamed, moved and deleted)": "Uma categoria de topo da própria estação, ao lado das oito (pode mudar de nome, de sítio e ser apagada)",
+ "No song is only in it.": "Nenhuma música está só nela.",
+ "The 1 song that is only in it leaves the library (its file isn't deleted).": "A 1 música que só está nela sai da biblioteca (o ficheiro não é apagado).",
+ "The {0:N0} songs that are only in it leave the library (their files aren't deleted).": "As {0:N0} músicas que só estão nela saem da biblioteca (os ficheiros não são apagados).",
+ "1 song also in another category stays there.": "1 música também noutra categoria fica lá.",
+ "{0:N0} songs also in another category stay there.": "{0:N0} músicas também noutra categoria ficam lá.",
+ "Files still in a scanned folder come back at the next scan, in the category of their folder: move or delete them on disk too.": "Os ficheiros que ainda estão numa pasta analisada voltam na próxima análise, na categoria da sua pasta: mova-os ou apague-os no disco também.",
+ "Deleted {0}; {1} taken out of the library": "{0} apagada; {1} tiradas da biblioteca",
+ "Remove folder": "Remover pasta",
+ "The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories.": "A pasta selecionada acima: as suas músicas saem desta categoria (não da biblioteca). Para apagar a categoria, Apagar debaixo da lista de categorias."
 }

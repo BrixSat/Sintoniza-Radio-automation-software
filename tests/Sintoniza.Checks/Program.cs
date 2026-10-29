@@ -408,6 +408,12 @@ Console.WriteLine("Ad breaks (parts taken from a category)");
     var items = ScheduleItems.For(data, adBreak, at, null, picker);
     Check(items.Count == 3 && items[0].Path.Contains("Promo") && items[1].Kind == TrackKind.Commercial && items[2].Path.Contains("Filler")
           && items.All(i => i.InBreak), "a break: a promo (from Promos), the advert, a filler (from Fillers)");
+    {
+        var twice = new AdBreak { Name = "Twice", Times = [$"{at:HH:mm}"],
+            Parts = [BreakPart.FromCategory(promosId, "Promos"), new BreakPart { Kind = PartKind.Section, Section = "Ads" }, BreakPart.FromCategory(promosId, "Promos")] };
+        var both = ScheduleItems.For(data, twice, at, null, picker);
+        Check(both.Count == 3 && both[0].Path != both[2].Path, "from Promos before and after the adverts: two different promos");
+    }
     db.RecordPlay(items[0].Path, "", "promo", DateTime.UtcNow, "playlist");
     var again = ScheduleItems.For(data, adBreak, at, null, picker);
     Check(again[0].Path != items[0].Path && again[0].Path.Contains("Promo"), "the promo rested longest is taken: the other one next time");
@@ -454,6 +460,25 @@ Console.WriteLine("Categories (the eight fixed ones, and the station's own at th
     try { db.DeleteCategory(promos); } catch (InvalidOperationException) { refused = true; }
     db.DeleteCategory(own);
     Check(refused && db.Categories().All(c => c.Id != own), "the eight can't be deleted; the station's own can");
+    {
+        // Delete a category: what is only in it leaves the library, what is also elsewhere stays there; no file goes.
+        long musicId = db.Categories().First(c => c.Role == "music").Id, jingles = db.Categories().First(c => c.Role == "jingles").Id;
+        long sweeper = db.AddCategory("Sweeper", "music", null, musicId);
+        string a = Path.Combine(work, "sweeper-a.wav"), b = Path.Combine(work, "sweeper-b.wav");
+        File.Copy(songs[0], a, true);
+        File.Copy(songs[1], b, true);
+        LibraryScanner.ScanFile(db, a);
+        LibraryScanner.ScanFile(db, b);
+        long ta = db.GetByPath(a)!.Id, tb = db.GetByPath(b)!.Id;
+        db.SetCategory([ta, tb], sweeper);
+        db.SetAlsoIn([tb], jingles, true);
+        Check(db.SongsOnlyIn(sweeper).Select(s => s.Id).SequenceEqual([ta]), "a category: the songs only in it are known");
+        int removed = db.DeleteCategoryAndSongs(sweeper);
+        Check(removed == 1 && db.GetByPath(a) == null && db.Categories().All(c => c.Id != sweeper), "Delete: the category goes, with the song only in it");
+        var kept = db.GetByPath(b);
+        Check(kept != null && (kept.CategoryId == jingles || kept.AlsoIn.Contains(jingles)), "…the song also in Jingles stays there");
+        Check(File.Exists(a) && File.Exists(b), "…and no file is deleted");
+    }
     var all = db.Categories();
     var music = (List<long>)typeof(LibraryFill).GetMethod("MusicCategories", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.Invoke(null, [all])!;
     Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");

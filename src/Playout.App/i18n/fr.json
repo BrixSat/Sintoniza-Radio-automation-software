@@ -2025,5 +2025,14 @@
  "the time signal for {0:HH:mm}": "le top horaire de {0:HH:mm}",
  "{0}: {1}. One of the station's eight categories: it can't be renamed, moved or deleted. Put your own categories under it (New under it), or beside it (New at the top).": "{0} : {1}. L'une des huit catégories de la station : elle ne peut pas être renommée, déplacée ni supprimée. Mettez vos catégories en dessous (Nouvelle sous celle-ci) ou à côté (Nouvelle en haut).",
  "New at the top": "Nouvelle en haut",
- "A top-level category of the station's own, beside the eight (it can be renamed, moved and deleted)": "Une catégorie de premier niveau propre à la station, à côté des huit (elle peut être renommée, déplacée et supprimée)"
+ "A top-level category of the station's own, beside the eight (it can be renamed, moved and deleted)": "Une catégorie de premier niveau propre à la station, à côté des huit (elle peut être renommée, déplacée et supprimée)",
+ "No song is only in it.": "Aucun titre n'est seulement dans celle-ci.",
+ "The 1 song that is only in it leaves the library (its file isn't deleted).": "Le titre qui n'est que dans celle-ci quitte la bibliothèque (son fichier n'est pas supprimé).",
+ "The {0:N0} songs that are only in it leave the library (their files aren't deleted).": "Les {0:N0} titres qui ne sont que dans celle-ci quittent la bibliothèque (leurs fichiers ne sont pas supprimés).",
+ "1 song also in another category stays there.": "1 titre aussi dans une autre catégorie y reste.",
+ "{0:N0} songs also in another category stay there.": "{0:N0} titres aussi dans une autre catégorie y restent.",
+ "Files still in a scanned folder come back at the next scan, in the category of their folder: move or delete them on disk too.": "Les fichiers encore dans un dossier analysé reviennent à la prochaine analyse, dans la catégorie de leur dossier : déplacez-les ou supprimez-les aussi sur le disque.",
+ "Deleted {0}; {1} taken out of the library": "{0} supprimée ; {1} retirés de la bibliothèque",
+ "Remove folder": "Retirer le dossier",
+ "The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories.": "Le dossier sélectionné ci-dessus : ses titres quittent cette catégorie (pas la bibliothèque). Pour supprimer la catégorie, Supprimer sous la liste des catégories."
 }

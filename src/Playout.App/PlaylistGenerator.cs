@@ -31,7 +31,7 @@ public sealed class PlaylistGenerator
     const double OldestShare = 0.25;
 
     readonly LibraryDb _db;
-    Func<long, (string Path, TrackKind Kind)?>? _picker; // a break's parts taken from a category
+    Func<long, IReadOnlySet<string>, (string Path, TrackKind Kind)?>? _picker; // a break's parts taken from a category
     readonly ScheduleData _data;
     readonly Options _options;
     readonly Dictionary<long, List<RotationTrack>> _categories = new();

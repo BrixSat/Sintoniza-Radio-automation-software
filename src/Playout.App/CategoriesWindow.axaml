@@ -104,7 +104,8 @@
                     <ListBox x:Name="FolderList" Height="110" Background="#13161C" />
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <Button x:Name="AddFolderButton" Content="Add folder…" />
-                        <Button x:Name="RemoveFolderButton" Content="Remove" />
+                        <Button x:Name="RemoveFolderButton" Content="Remove folder" IsEnabled="False"
+                                ToolTip.Tip="The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories." />
                         <Button x:Name="ScanFoldersButton" Content="⟳ Scan its folders now" ToolTip.Tip="Look for songs added to (or taken out of) this category's folders, now" />
                     </StackPanel>
                     <TextBlock Classes="note"

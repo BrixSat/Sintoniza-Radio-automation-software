@@ -463,6 +463,34 @@ public sealed partial class LibraryDb
     }
 
     /// <summary>Deletes a category: its songs lose it, its sub-categories move up to where it was.</summary>
+    /// <summary>
+    /// The songs a category holds that are in no other category (their own and none "also in" another): the ones that
+    /// would be left without a category if it went. Their ids and files.
+    /// </summary>
+    public List<(long Id, string Path)> SongsOnlyIn(long categoryId)
+    {
+        using var c = Connect();
+        return c.Query<(long Id, string Path)>("""
+            SELECT t.id, t.path FROM tracks t
+            WHERE (t.category_id = @categoryId
+                   OR (t.category_id IS NULL AND EXISTS (SELECT 1 FROM track_categories a WHERE a.track_id = t.id AND a.category_id = @categoryId)))
+              AND NOT EXISTS (SELECT 1 FROM track_categories o WHERE o.track_id = t.id AND o.category_id <> @categoryId)
+            """, new { categoryId }).ToList();
+    }
+
+    /// <summary>
+    /// Deletes a category and takes out of the library the songs that were only in it (see <see cref="SongsOnlyIn"/>;
+    /// their files aren't touched). Songs also in another category stay there. Returns how many songs went.
+    /// </summary>
+    public int DeleteCategoryAndSongs(long id)
+    {
+        if (Categories().FirstOrDefault(x => x.Id == id) is { IsFixed: true } f) throw new InvalidOperationException($"{f.Name} is one of the station's eight categories: it can't be deleted.");
+        var only = SongsOnlyIn(id).Select(s => s.Id).ToList();
+        int removed = RemoveTracks(only);
+        DeleteCategory(id);
+        return removed;
+    }
+
     public void DeleteCategory(long id)
     {
         if (Categories().FirstOrDefault(x => x.Id == id) is { IsFixed: true } f) throw new InvalidOperationException($"{f.Name} is one of the station's eight categories: it can't be deleted.");
