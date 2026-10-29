@@ -51,6 +51,7 @@ public partial class CategoriesWindow : PageWindow
 
         CategoryList.SelectionChanged += (_, _) => ShowSelected();
         AddChildButton.Click += async (_, _) => await AddCategory(Selected?.Category.Id);
+        AddTopButton.Click += async (_, _) => await AddCategory(null);
         DeleteButton.Click += async (_, _) => await DeleteCategory();
         UpButton.Click += async (_, _) => await Move(-1);
         DownButton.Click += async (_, _) => await Move(1);
@@ -135,7 +136,7 @@ public partial class CategoriesWindow : PageWindow
         NameBox.IsEnabled = ParentBox.IsEnabled = KindBox.IsEnabled = !isFixed;
         FixedPanel.IsVisible = isFixed;
         if (FixedCategories.ByRole(row?.Category.Role) is { } f)
-            FixedNote.Text = L.F("{0}: {1}. One of the station's eight categories: it can't be renamed, moved or deleted. Put your own categories under it (New under it).",
+            FixedNote.Text = L.F("{0}: {1}. One of the station's eight categories: it can't be renamed, moved or deleted. Put your own categories under it (New under it), or beside it (New at the top).",
                 f.Name, L.T(f.Help));
         var siblings = row == null || isFixed ? [] : Siblings(row);
         int index = row == null ? -1 : siblings.IndexOf(row);
@@ -145,7 +146,7 @@ public partial class CategoriesWindow : PageWindow
         NameBox.Text = row.Category.Name;
         var inside = CategoryTree.WithDescendants(_all, [row.Category.Id]);
         var parents = new List<ParentChoice>();
-        if (isFixed) parents.Add(new ParentChoice(null, L.T("(top level)")));
+        parents.Add(new ParentChoice(null, L.T("(top level)")));
         parents.AddRange(_rows.Where(r => !inside.Contains(r.Category.Id)).Select(r => new ParentChoice(r.Category.Id, CategoryTree.PathOf(_all, r.Category.Id))));
         ParentBox.ItemsSource = parents;
         ParentBox.SelectedItem = parents.FirstOrDefault(p => p.Id == row.Category.ParentId) ?? parents[0];
@@ -367,7 +368,8 @@ public partial class CategoriesWindow : PageWindow
     }
 
     /// <summary>The categories beside this one (the same parent), in their order.</summary>
-    List<CategoryRow> Siblings(CategoryRow row) => _rows.Where(r => r.Category.ParentId == row.Category.ParentId).ToList();
+    /// <summary>The categories beside it (at the top: the station's own, after the eight fixed ones, which keep their order).</summary>
+    List<CategoryRow> Siblings(CategoryRow row) => _rows.Where(r => r.Category.ParentId == row.Category.ParentId && !r.Category.IsFixed).ToList();
 
     /// <summary>Moves the selected category up or down among its siblings; their order is saved as 1, 2, 3….</summary>
     async Task Move(int by)
@@ -379,10 +381,11 @@ public partial class CategoriesWindow : PageWindow
         var order = siblings.Select(r => r.Category).ToList();
         (order[index], order[to]) = (order[to], order[index]);
         var changed = new List<LibraryCategory>();
+        int first = row.Category.ParentId == null ? FixedCategories.All.Count + 1 : 1; // at the top, after the eight
         for (int i = 0; i < order.Count; i++)
         {
-            if (order[i].SortOrder == i + 1) continue;
-            order[i].SortOrder = i + 1;
+            if (order[i].SortOrder == first + i) continue;
+            order[i].SortOrder = first + i;
             changed.Add(order[i]);
         }
         await Change(db => { foreach (var c in changed) db.UpdateCategory(c); }, row.Category.Id);

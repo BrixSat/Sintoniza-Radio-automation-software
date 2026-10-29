@@ -87,9 +87,10 @@ At the top there are always the same eight, with a `role`, which the app makes w
 can't be deleted, renamed or moved: **Music** (`music`), **Jingles** (`jingles`), **Promos** (`promos`), **ProgAutor**
 (`progautor`: shows recorded outside), **Fillers** (`fillers`), **Redação** (`redacao`: news), **Spots** (`spots`:
 adverts) and **Takes** (`takes`: voice inserts). A top-level category of the same name is taken as the fixed one
-(Musicas → Music, Ads → Spots…); any other top-level category is moved under the fixed one of its kind (music →
-Music, jingle → Jingles, commercial → Spots, other → ProgAutor). A program that adds categories should put them under
-one of these.
+(Musicas → Music, Ads → Spots…). A station may add its own top-level categories beside them (`role` null), with a
+`kind` that says how what they hold is played. Only when a library from before the fixed categories is opened the
+first time are its top-level categories moved under the fixed one of their kind (music → Music, jingle → Jingles,
+commercial → Spots, other → ProgAutor).
 
 | Column | Type | |
 | --- | --- | --- |

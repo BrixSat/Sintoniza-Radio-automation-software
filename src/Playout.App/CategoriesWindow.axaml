@@ -41,6 +41,7 @@
             <DockPanel>
                 <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
                     <Button x:Name="AddChildButton" Content="New under it" Classes="accent" ToolTip.Tip="A sub-category of the selected one (e.g. Music › 80s)" />
+                    <Button x:Name="AddTopButton" Content="New at the top" ToolTip.Tip="A top-level category of the station's own, beside the eight (it can be renamed, moved and deleted)" />
                     <Button x:Name="DeleteButton" Content="Delete" />
                     <Button x:Name="UpButton" Content="▲" ToolTip.Tip="Move up (order in lists)" />
                     <Button x:Name="DownButton" Content="▼" ToolTip.Tip="Move down" />

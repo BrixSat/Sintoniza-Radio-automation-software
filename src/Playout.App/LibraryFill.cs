@@ -134,7 +134,7 @@ sealed class LibraryFill
                         var all = db.Categories();
                         var ids = _role != null ? CategoryTree.WithDescendants(all, all.Where(c => c.Role == _role).Select(c => c.Id).ToList()).ToList()
                             : _categories.Count > 0 ? _categories
-                            : all.Where(c => c.Kind == "music").Select(c => c.Id).ToList();
+                            : MusicCategories(all);
                         found = db.RotationTracks(ids).Select(t => new Candidate(t, Artist(t.Artist))).ToArray();
                     }
                     lock (_lock)
@@ -151,5 +151,15 @@ sealed class LibraryFill
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Every music category but the Fillers (and the ones under them): those are short beds and sweepers, one at a
+    /// time in a small gap (see PlayoutEngine.FillGap), never songs.
+    /// </summary>
+    static List<long> MusicCategories(IReadOnlyList<LibraryCategory> all)
+    {
+        var fillers = CategoryTree.WithDescendants(all, all.Where(c => c.Role == "fillers").Select(c => c.Id).ToList()).ToHashSet();
+        return all.Where(c => c.Kind == "music" && !fillers.Contains(c.Id)).Select(c => c.Id).ToList();
     }
 }

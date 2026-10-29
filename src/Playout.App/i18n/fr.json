@@ -1271,7 +1271,6 @@
  "Copy cartwall": "Copier la cartwall",
  "No sound: drop a file on the cart, or choose one.": "Pas de son : déposez un fichier sur le cart, ou choisissez-en un.",
  "■ Stop": "■ Arrêter",
- "{0}: {1}. One of the station's eight categories: it can't be renamed, moved or deleted. Put your own categories under it (New under it).": "{0} : {1}. L'une des huit catégories de la station : elle ne peut pas être renommée, déplacée ni supprimée. Mettez vos catégories en dessous (Nouvelle sous celle-ci).",
  "Station jingles and IDs": "Jingles et identifiants de la station",
  "Promotions of the station and its shows": "Promotions de la station et de ses émissions",
  "Shows recorded outside": "Émissions enregistrées à l'extérieur",
@@ -2023,5 +2022,8 @@
  "{0:0} s before {1}: no filler that long; the next item plays": "{0:0} s avant {1} : aucun filler aussi long ; l'élément suivant passe",
  "{0:0} s before {1}: filler {2}": "{0:0} s avant {1} : filler {2}",
  "the event at {0:HH:mm:ss}": "l'événement de {0:HH:mm:ss}",
- "the time signal for {0:HH:mm}": "le top horaire de {0:HH:mm}"
+ "the time signal for {0:HH:mm}": "le top horaire de {0:HH:mm}",
+ "{0}: {1}. One of the station's eight categories: it can't be renamed, moved or deleted. Put your own categories under it (New under it), or beside it (New at the top).": "{0} : {1}. L'une des huit catégories de la station : elle ne peut pas être renommée, déplacée ni supprimée. Mettez vos catégories en dessous (Nouvelle sous celle-ci) ou à côté (Nouvelle en haut).",
+ "New at the top": "Nouvelle en haut",
+ "A top-level category of the station's own, beside the eight (it can be renamed, moved and deleted)": "Une catégorie de premier niveau propre à la station, à côté des huit (elle peut être renommée, déplacée et supprimée)"
 }

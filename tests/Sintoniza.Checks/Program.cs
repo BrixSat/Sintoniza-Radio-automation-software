@@ -435,6 +435,30 @@ Console.WriteLine("Ad breaks (parts taken from a category)");
     e.Dispose();
 }
 
+// ───────────────────────── Categories ─────────────────────────
+
+Console.WriteLine("Categories (the eight fixed ones, and the station's own at the top)");
+{
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    long own = db.AddCategory("Archive", "other", null, null);
+    db = LibraryDb.Open(settings.Library); // opened again: nothing moves it
+    var archive = db.Categories().First(c => c.Id == own);
+    Check(archive.ParentId == null && !archive.IsFixed, "a top-level category of the station's own stays at the top");
+    long promos = db.Categories().First(c => c.Role == "promos").Id;
+    Check(db.AddCategory("promos", "jingle", null, null) == promos, "a top-level one named as one of the eight is that one");
+    bool refused = false;
+    try { archive.Name = "Jingles"; db.UpdateCategory(archive); } catch (InvalidOperationException) { refused = true; }
+    Check(refused, "…and an own one can't take one of their names");
+    refused = false;
+    try { db.DeleteCategory(promos); } catch (InvalidOperationException) { refused = true; }
+    db.DeleteCategory(own);
+    Check(refused && db.Categories().All(c => c.Id != own), "the eight can't be deleted; the station's own can");
+    var all = db.Categories();
+    var music = (List<long>)typeof(LibraryFill).GetMethod("MusicCategories", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.Invoke(null, [all])!;
+    Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");
+}
+
 // ───────────────────────── Several stations in one library ─────────────────────────
 
 Console.WriteLine("Stations");

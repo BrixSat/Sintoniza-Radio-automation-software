@@ -296,7 +296,9 @@ computer is on air and which are standby.
 - **Categories** — the library's categories. Every station has the same eight at the top, which can't be renamed,
   moved or deleted: **Music**, **Jingles**, **Promos**, **ProgAutor** (shows recorded outside), **Fillers**,
   **Redação** (news), **Spots** (adverts) and **Takes** (voice inserts: the time, the temperature… as if a host were
-  there). Make your own under them (*New under it*: Music › 80s, Spots › Clients…), each with its colour and folders.
+  there). Make your own under them (*New under it*: Music › 80s, Spots › Clients…) or beside them at the top (*New at
+  the top*, with its kind: music, jingle, advert or other); those can be renamed, moved and deleted like any other.
+  Each has its colour and folders.
   **⟳ Scan its folders now** (with a category selected) looks for songs added to or taken out of its folders straight
   away; the on-air program also watches those folders and scans them by itself. **Removing** a folder from a
   category, or deleting a category, takes its songs out of it (also those that were only *also in* it); they go back

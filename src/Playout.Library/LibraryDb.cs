@@ -417,11 +417,8 @@ public sealed partial class LibraryDb
     /// </summary>
     public long AddCategory(string name, string kind, string? color, long? parentId = null)
     {
-        // Everything goes under one of the eight fixed ones; a top-level name is taken as the fixed one of that name.
-        if (parentId == null)
-            return Categories().FirstOrDefault(x => FixedCategories.ByRole(x.Role) is { } f
-                       && (Normalize(f.Name) == Normalize(name).Trim() || f.Aliases.Contains(Normalize(name).Trim())))?.Id
-                ?? throw new InvalidOperationException($"New categories go under one of the station's eight ({string.Join(", ", FixedCategories.All.Select(f => f.Name))}).");
+        // At the top, a name of one of the eight fixed ones is that one (not a second of the same name).
+        if (parentId == null && FixedFor(name) is { } same) return same.Id;
         using var c = Connect();
         if (parentId == null && c.ExecuteScalar<long>($"SELECT COUNT(*) FROM categories WHERE parent_id IS NULL AND {NoCase("name")} = @name", new { name }) > 0)
             throw new InvalidOperationException($"There is already a category called {name}.");
@@ -443,12 +440,26 @@ public sealed partial class LibraryDb
                 new { category.Color, category.ErcPortuguese, category.ErcLanguage, category.ErcNationality, fixedOne.Id });
             return;
         }
-        if (category.ParentId == null) throw new InvalidOperationException("A category goes under one of the station's eight.");
         using var c = Connect();
+        if (category.ParentId == null)
+        {
+            // At the top, beside the eight: not with one of their names, nor one another top-level category has.
+            if (FixedFor(category.Name) != null)
+                throw new InvalidOperationException($"{category.Name.Trim()} is the name of one of the station's eight categories.");
+            if (c.ExecuteScalar<long>($"SELECT COUNT(*) FROM categories WHERE parent_id IS NULL AND id <> @Id AND {NoCase("name")} = @Name", category) > 0)
+                throw new InvalidOperationException($"There is already a category called {category.Name.Trim()}.");
+        }
         if (category.ParentId is { } parent && CategoryTree.WithDescendants(Categories(), [category.Id]).Contains(parent))
             throw new InvalidOperationException("A category can't go under itself or one of its own sub-categories.");
         c.Execute("UPDATE categories SET parent_id = @ParentId, name = @Name, kind = @Kind, color = @Color, sort_order = @SortOrder, "
                   + "erc_portuguese = @ErcPortuguese, erc_language = @ErcLanguage, erc_nationality = @ErcNationality WHERE id = @Id", category);
+    }
+
+    /// <summary>The fixed top-level category a name stands for (its name or one of its other names), or null.</summary>
+    LibraryCategory? FixedFor(string name)
+    {
+        string key = Normalize(name).Trim();
+        return Categories().FirstOrDefault(x => FixedCategories.ByRole(x.Role) is { } f && (Normalize(f.Name) == key || f.Aliases.Contains(key)));
     }
 
     /// <summary>Deletes a category: its songs lose it, its sub-categories move up to where it was.</summary>

@@ -299,7 +299,7 @@ CHAPTERS = [
     ("p", "Every station has the same eight categories at the top, which can't be renamed, moved or deleted: <b>Music</b>, "
           "<b>Jingles</b>, <b>Promos</b>, <b>ProgAutor</b> (shows recorded outside), <b>Fillers</b>, <b>Redação</b> (news), "
           "<b>Spots</b> (adverts) and <b>Takes</b> (voice inserts: the time, the temperature… as if a host were there). "
-          "Your own go under them."),
+          "Your own go under them (<b>New under it</b>), or beside them at the top (<b>New at the top</b>), and can be renamed, moved and deleted."),
     ("fig", "categories-fixed", "Categories: one of the station's eight", [
         ("CategoryList", "The categories, as a tree; 🔒 = one of the station's eight."),
         ("FixedPanel", "What it is for; only its colour and folders change."),

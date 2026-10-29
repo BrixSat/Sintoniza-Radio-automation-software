@@ -304,7 +304,7 @@ CHAPTERS = [
     ("p", "Todas as estações têm as mesmas oito categorias no topo, que não podem mudar de nome, de sítio nem ser apagadas: "
           "<b>Music</b>, <b>Jingles</b>, <b>Promos</b>, <b>ProgAutor</b> (programas gravados fora), <b>Fillers</b>, <b>Redação</b> "
           "(noticiário), <b>Spots</b> (anúncios) e <b>Takes</b> (inserções de voz: as horas, a temperatura… como se houvesse um "
-          "locutor). As suas ficam debaixo delas."),
+          "locutor). As suas ficam debaixo delas (<b>Nova dentro desta</b>) ou ao lado no topo (<b>Nova no topo</b>), e essas podem mudar de nome, de sítio e ser apagadas."),
     ("fig", "categories-fixed", "Categorias: uma das oito da estação", [
         ("CategoryList", "As categorias, em árvore; 🔒 = uma das oito da estação."),
         ("FixedPanel", "Para que serve; só mudam a cor e as pastas."),

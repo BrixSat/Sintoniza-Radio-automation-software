@@ -3,7 +3,10 @@ using Dapper;
 
 namespace Playout.Library;
 
-/// <summary>A top-level category every station has: it can't be deleted, renamed or moved; the others go under these.</summary>
+/// <summary>
+/// A top-level category every station has: it can't be deleted, renamed or moved. A station adds its own categories
+/// under these, or beside them at the top.
+/// </summary>
 /// <param name="Role">Kept in categories.role.</param>
 /// <param name="Kind">music | jingle | commercial | other: how what it holds is played and reported.</param>
 /// <param name="Aliases">Top-level categories taken in as this one (names compared without case or accents).</param>
@@ -45,6 +48,9 @@ public static class FixedCategories
         var rows = c.Query<(long Id, long? ParentId, string Name, string Kind, string? Color, string? Role)>(
             "SELECT id, parent_id, name, kind, color, role FROM categories", transaction: tx).ToList();
         string Key(string name) => normalize(name).Trim();
+        // The first time (a library from before the fixed categories): its top-level ones go under them. After that,
+        // top-level categories of the station's own stay where they are.
+        bool firstTime = !rows.Any(r => r.Role != null);
         var ids = new Dictionary<string, long>();
         int order = 1;
         foreach (var f in All)
@@ -71,7 +77,7 @@ public static class FixedCategories
             ids[f.Role] = id;
         }
         // The other top-level categories go under the one for their kind; a name taken there gets a number.
-        foreach (var r in rows.Where(r => r.ParentId == null && r.Role == null))
+        foreach (var r in rows.Where(r => firstTime && r.ParentId == null && r.Role == null))
         {
             long home = ids[HomeFor(r.Kind)];
             var siblings = rows.Where(x => x.ParentId == home).Select(x => Key(x.Name)).ToHashSet();

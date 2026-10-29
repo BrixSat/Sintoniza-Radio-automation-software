@@ -666,14 +666,16 @@ public partial class ScheduleWindow : Window
     BreakPart? SelectedPart => (PartList.SelectedItem as ScheduleRow)?.Item as BreakPart;
 
     /// <summary>
-    /// From a category…: the library's categories but Music (and Takes: the time and temperature have their own
-    /// lines), to take a file from each time the break goes on air.
+    /// From a category…: the library's categories but music ones (Music and a station's own top-level ones of songs;
+    /// Fillers stay) and Takes (the time and temperature have their own lines), to take a file from each time the
+    /// break goes on air.
     /// </summary>
     void ChooseCategoryPart()
     {
         if (SelectedBreak == null) return;
         var left = new HashSet<long>();
-        foreach (var root in _categories.Where(c => c.Role is "music" or "takes"))
+        // Music (the fixed one, and a station's own top-level ones of songs), and Takes.
+        foreach (var root in _categories.Where(c => c.Role is "music" or "takes" || (c.ParentId == null && c.Role == null && c.Kind == "music")))
             left.UnionWith(CategoryTree.WithDescendants(_categories, [root.Id]));
         var choices = CategoryTree.Flatten(_categories).Where(x => !left.Contains(x.Category.Id)).ToList();
         if (choices.Count == 0)
