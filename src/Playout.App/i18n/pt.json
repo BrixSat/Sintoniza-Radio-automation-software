@@ -2034,5 +2034,12 @@
  "Files still in a scanned folder come back at the next scan, in the category of their folder: move or delete them on disk too.": "Os ficheiros que ainda estão numa pasta analisada voltam na próxima análise, na categoria da sua pasta: mova-os ou apague-os no disco também.",
  "Deleted {0}; {1} taken out of the library": "{0} apagada; {1} tiradas da biblioteca",
  "Remove folder": "Remover pasta",
- "The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories.": "A pasta selecionada acima: as suas músicas saem desta categoria (não da biblioteca). Para apagar a categoria, Apagar debaixo da lista de categorias."
+ "The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories.": "A pasta selecionada acima: as suas músicas saem desta categoria (não da biblioteca). Para apagar a categoria, Apagar debaixo da lista de categorias.",
+ "{0}: the player is stopped; the break goes on air anyway in {1:0} s": "{0}: o leitor está parado; o bloco vai para o ar na mesma daqui a {1:0} s",
+ "{0}: the player is paused; the break goes on air anyway in {1:0} s": "{0}: o leitor está em pausa; o bloco vai para o ar na mesma daqui a {1:0} s",
+ "{0}: on air although the player was stopped; it stops again after the break": "{0}: no ar apesar de o leitor estar parado; volta a parar depois do bloco",
+ "{0}: over; the player stops again, as it was": "{0}: terminado; o leitor volta a parar, como estava",
+ "PLAYER STOPPED: IT PLAYS ANYWAY": "LEITOR PARADO: VAI PARA O AR NA MESMA",
+ "PLAYER PAUSED: IT PLAYS ANYWAY": "LEITOR EM PAUSA: VAI PARA O AR NA MESMA",
+ "{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.": "{0}: chegou a hora com o leitor parado; vai para o ar às {1:HH:mm:ss} e o leitor volta a parar depois. Tocar começa-o já, e a lista continua depois dele."
 }

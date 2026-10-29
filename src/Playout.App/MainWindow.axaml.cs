@@ -934,6 +934,19 @@ public partial class MainWindow : Window
     /// </summary>
     void UpdateBreakCountdown(DateTime now)
     {
+        // An ad break due while the player is stopped or paused: it goes on air in a few seconds all the same.
+        if (_engine?.StoppedBreak is { } due)
+        {
+            var wait = due.At.ToLocalTime() - now;
+            BreakBadge.IsVisible = true;
+            BreakSign.Text = PlaylistRow.Currency;
+            BreakTime.Text = (wait > TimeSpan.Zero ? wait : TimeSpan.Zero).ToString(@"mm\:ss");
+            BreakHowText.Text = "· " + (_engine?.State == PlayerState.Paused ? L.T("PLAYER PAUSED: IT PLAYS ANYWAY") : L.T("PLAYER STOPPED: IT PLAYS ANYWAY"));
+            BreakBadge.Classes.Set("soon", true);
+            ToolTip.SetTip(BreakBadge, L.F("{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.",
+                due.What, due.At.ToLocalTime()));
+            return;
+        }
         var left = _nextBreak is { } b ? b.At - now : TimeSpan.MaxValue;
         bool show = left > TimeSpan.Zero && left <= TimeSpan.FromMinutes(10);
         BreakBadge.IsVisible = show;

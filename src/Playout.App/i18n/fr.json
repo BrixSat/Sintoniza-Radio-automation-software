@@ -2034,5 +2034,12 @@
  "Files still in a scanned folder come back at the next scan, in the category of their folder: move or delete them on disk too.": "Les fichiers encore dans un dossier analysé reviennent à la prochaine analyse, dans la catégorie de leur dossier : déplacez-les ou supprimez-les aussi sur le disque.",
  "Deleted {0}; {1} taken out of the library": "{0} supprimée ; {1} retirés de la bibliothèque",
  "Remove folder": "Retirer le dossier",
- "The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories.": "Le dossier sélectionné ci-dessus : ses titres quittent cette catégorie (pas la bibliothèque). Pour supprimer la catégorie, Supprimer sous la liste des catégories."
+ "The folder selected above: its songs leave this category (not the library). To delete the category, Delete under the list of categories.": "Le dossier sélectionné ci-dessus : ses titres quittent cette catégorie (pas la bibliothèque). Pour supprimer la catégorie, Supprimer sous la liste des catégories.",
+ "{0}: the player is stopped; the break goes on air anyway in {1:0} s": "{0} : le lecteur est arrêté ; l'écran passe quand même à l'antenne dans {1:0} s",
+ "{0}: the player is paused; the break goes on air anyway in {1:0} s": "{0} : le lecteur est en pause ; l'écran passe quand même à l'antenne dans {1:0} s",
+ "{0}: on air although the player was stopped; it stops again after the break": "{0} : à l'antenne bien que le lecteur soit arrêté ; il s'arrête de nouveau après l'écran",
+ "{0}: over; the player stops again, as it was": "{0} : terminé ; le lecteur s'arrête de nouveau, comme avant",
+ "PLAYER STOPPED: IT PLAYS ANYWAY": "LECTEUR ARRÊTÉ : IL PASSE QUAND MÊME",
+ "PLAYER PAUSED: IT PLAYS ANYWAY": "LECTEUR EN PAUSE : IL PASSE QUAND MÊME",
+ "{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.": "{0} : prévu alors que le lecteur est arrêté ; il passe à l'antenne à {1:HH:mm:ss} et le lecteur s'arrête de nouveau après. Lecture le lance maintenant, et la liste continue après lui."
 }

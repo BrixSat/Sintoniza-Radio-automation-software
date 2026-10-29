@@ -27,6 +27,7 @@ public sealed class PlayoutEngine : IDisposable
     const int KeepPlayed = 500;            // played items kept above the cursor when fill music grows the playlist
     const double EventFadeSeconds = 2;     // a hard scheduled event fades out what is on air over this
     static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(2); // a scheduled item this far past its latest start is left out
+    const double StoppedBreakWarnSeconds = 10; // an ad break due while the player is stopped goes on air this long after the warning
     static readonly TimeSpan JustStarted = TimeSpan.FromSeconds(6); // on air less than this when the time signal takes over: played again after it
     const double BacktimeTolerance = 5;    // backtiming leaves an item this many seconds early or late alone
     const double BacktimeMinGap = 15;
@@ -104,6 +105,12 @@ public sealed class PlayoutEngine : IDisposable
 
     volatile DateTime[] _expected = [];
 
+    /// <summary>
+    /// An ad break that came due while the player was stopped or paused: it goes on air at its time anyway (adverts
+    /// are paid for), a few seconds after this warning. Null when there is none.
+    /// </summary>
+    public BreakWarning? StoppedBreak => _stoppedBreak;
+
     /// <summary>The <see cref="Track.Tag"/> of a filler put in a gap: one at a time, never a second after it.</summary>
     public const string FillerTag = "filler";
 
@@ -131,6 +138,8 @@ public sealed class PlayoutEngine : IDisposable
     bool _backtimeFilling;         // that search is running (off the engine thread)
     Guid? _noFillerFor;            // a backtimed break with no filler long enough for its gap: a song instead
     Guid? _backtimeReported;       // the backtimed item whose unfillable gap has been reported
+    volatile BreakWarning? _stoppedBreak; // an ad break due while the player is stopped or paused, about to go on air
+    string? _breakThenStop;        // the event of the ad break put on air that way: once it ends, the player stops again
 
     // Shared with polling readers; written only on the engine thread.
     volatile Deck? _current;
@@ -494,10 +503,12 @@ public sealed class PlayoutEngine : IDisposable
         }
 
         bool hard = timing.Start == EventStart.Hard;
+        bool isBreak = IsBreak(tracks[0]);
         if (!hard && timing.MaxDelay is { } delay && delay > TimeSpan.Zero)
             tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow + delay };
         // A hard one waiting while the player is stopped is due now: started at Play soon after, left out if much later.
-        if (hard && !playing) tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow };
+        // An ad break too, and it goes on air by itself after a warning (BreakWhileStopped).
+        if ((hard || isBreak) && !playing) tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow };
         InsertAfterOnAir(tracks, afterWaiting: !hard);
         // A filler on air was only there to reach it: it fades and the event starts now.
         bool afterFiller = _current?.Track.Tag == FillerTag;
@@ -507,6 +518,7 @@ public sealed class PlayoutEngine : IDisposable
             FadePlayingOut(EventFadeSeconds);
             StartTrack(tracks[0], _current == null ? 0 : EventFadeSeconds);
         }
+        else if (isBreak && !playing) _nextTimedCheck = DateTime.MinValue; // announced at once
         else
         {
             Emit(playing ? L.F("{0}: plays next", label)
@@ -760,6 +772,7 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Start playback. With an id, crossfade into that item now; otherwise resume or start the next item.</summary>
     public void Play(Guid? id = null) => Post(() =>
     {
+        _breakThenStop = null; // the operator plays: the playlist goes on after a break
         if (id is { } target)
         {
             var t = _playlist.FirstOrDefault(x => x.Id == target);
@@ -782,6 +795,7 @@ public sealed class PlayoutEngine : IDisposable
     /// <summary>Crossfade into the next playlist item immediately.</summary>
     public void Next() => Post(() =>
     {
+        _breakThenStop = null;
         CutShort(L.T("pressed Next"));
         if (NextTrack() is not { } next) { StopInternal(); return; }
         FadePlayingOut(ManualFade);
@@ -792,7 +806,26 @@ public sealed class PlayoutEngine : IDisposable
     {
         CutShort(L.T("stopped the player"));
         StopInternal();
+        BreaksStillDue();
     });
+
+    /// <summary>
+    /// Stopped or paused while an ad break that is already due waits for the item on air to end: it is still due now,
+    /// so it goes on air after the warning (<see cref="BreakWhileStopped"/>).
+    /// </summary>
+    void BreaksStillDue()
+    {
+        for (int i = Math.Max(0, _cursorIndex + 1); i < _playlist.Count; i++)
+        {
+            var t = _playlist[i];
+            bool first = i == 0 || _playlist[i - 1].Event != t.Event; // not the rest of a break the operator stopped
+            if (IsBreak(t) && first && t.StartBy == null && !_played.Contains(t.Id)) _playlist[i] = t with { StartBy = DateTime.UtcNow };
+        }
+        _nextTimedCheck = DateTime.MinValue;
+    }
+
+    /// <summary>An item of a scheduled ad break (an advert, or a jingle of its running order).</summary>
+    static bool IsBreak(Track t) => t.Event != null && (t.InBreak || t.Kind == TrackKind.Commercial);
 
     /// <summary>The operator takes a locked item off air early: said in the log (the as-run log has how long it played).</summary>
     void CutShort(string how)
@@ -821,7 +854,9 @@ public sealed class PlayoutEngine : IDisposable
     public void TogglePause() => Post(() =>
     {
         if (_current == null) return;
+        _breakThenStop = null;
         SetPaused(State != PlayerState.Paused);
+        if (State == PlayerState.Paused) BreaksStillDue();
     });
 
     /// <summary>Fire a cart (jingle/ID) over whatever is on air. Returns a handle for <see cref="StopCart"/>.</summary>
@@ -1120,13 +1155,19 @@ public sealed class PlayoutEngine : IDisposable
         return i >= 0 && i < _playlist.Count ? _playlist[i] : null;
     }
 
+    /// <summary>Goes on to the next item by itself: in AUTO, and through an ad break put on air while the player was stopped.</summary>
+    bool Advancing => _autoAdvance || _breakThenStop != null;
+
+    /// <summary>The ad break put on air while the player was stopped ends before <paramref name="next"/>: the player stops then.</summary>
+    bool StopsAfterBreak(Track next) => _breakThenStop != null && next.Event != _breakThenStop;
+
     /// <summary>Fade for the outgoing deck when the operator changes item by hand.</summary>
     double ManualFade => Math.Max(CrossfadeSeconds, StopFadeSeconds);
 
     void OnCrossfadePoint(int handle)
     {
-        if (_current is not { } deck || deck.Handle != handle || !_autoAdvance) return;
-        if (NextTrack() is { } next && next.Id != _connecting) StartTrack(next, deck.MixFade);
+        if (_current is not { } deck || deck.Handle != handle || !Advancing) return;
+        if (NextTrack() is { } next && next.Id != _connecting && !StopsAfterBreak(next)) StartTrack(next, deck.MixFade);
     }
 
     void OnTrackEnd(int handle)
@@ -1134,14 +1175,15 @@ public sealed class PlayoutEngine : IDisposable
         _playingOut.Remove(handle);
         if (_current?.Handle != handle) return; // a faded-out deck finishing, nothing to do
         if (_current.Track.IsStream) Emit(L.F("Stream ended: {0}", _current.Track.Title));
-        if (_autoAdvance && NextTrack() is { } next)
+        if (Advancing && NextTrack() is { } next)
         {
             if (next.Id == _connecting) { SetCurrent(null); PlaylistUpdated(); return; } // on air as soon as it connects
             StartTrack(next, 0);
             return;
         }
         SetCurrent(null);
-        if (StartFill()) return;
+        if (_breakThenStop == null && StartFill()) return; // a break put on air while stopped: stopped again after it
+        _breakThenStop = null;
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
     }
@@ -1156,7 +1198,7 @@ public sealed class PlayoutEngine : IDisposable
             FadeOutAndFree(handle, CueOutFadeSeconds);
             return;
         }
-        if (_autoAdvance && NextTrack() is { } next)
+        if (Advancing && NextTrack() is { } next)
         {
             if (next.Id == _connecting)
             {
@@ -1170,7 +1212,8 @@ public sealed class PlayoutEngine : IDisposable
         }
         FadeOutAndFree(handle, CueOutFadeSeconds);
         SetCurrent(null);
-        if (StartFill()) return;
+        if (_breakThenStop == null && StartFill()) return; // a break put on air while stopped: stopped again after it
+        _breakThenStop = null;
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();
     }
@@ -1181,6 +1224,13 @@ public sealed class PlayoutEngine : IDisposable
         if (_standby)
         {
             if (_current == null) StopInternal();
+            return;
+        }
+        if (StopsAfterBreak(track))
+        {
+            Emit(L.F("{0}: over; the player stops again, as it was", _breakThenStop!));
+            if (_current is { } deck) { FadeOutAndFree(deck.Handle, outgoingFade ?? StopFadeSeconds); SetCurrent(null); }
+            StopInternal();
             return;
         }
         _connectAttempt++;
@@ -1233,7 +1283,7 @@ public sealed class PlayoutEngine : IDisposable
         // Its voice track would talk about a song that didn't play: skipped too.
         while (_cursorIndex >= 0 && _cursorIndex + 1 < _playlist.Count && _playlist[_cursorIndex + 1].FollowsPrevious)
             _played.Add(_playlist[++_cursorIndex].Id);
-        if (_autoAdvance && NextTrack() is { } after && after.Id != track.Id) StartTrack(after, outgoingFade);
+        if (Advancing && NextTrack() is { } after && after.Id != track.Id) StartTrack(after, outgoingFade);
         else PlaylistUpdated();
     }
 
@@ -1456,6 +1506,7 @@ public sealed class PlayoutEngine : IDisposable
     void StopInternal()
     {
         _resumeAfterSignal = false;
+        _breakThenStop = null;
         _waitingForFill = false;
         _connectAttempt++;
         _connecting = null;
@@ -1657,7 +1708,12 @@ public sealed class PlayoutEngine : IDisposable
         var now = DateTime.UtcNow;
         if (now < _nextTimedCheck) return;
         _nextTimedCheck = now.AddSeconds(0.5);
-        if (State != PlayerState.Playing) return;
+        if (State != PlayerState.Playing)
+        {
+            BreakWhileStopped(now);
+            return;
+        }
+        _stoppedBreak = null;
         if (DropStale()) PlaylistUpdated();
         // The one due first, wherever it is in the list: one queued behind another timed item (an event with a
         // shorter delay after a break) is kept to its time too, not left to go stale.
@@ -1688,6 +1744,41 @@ public sealed class PlayoutEngine : IDisposable
             return;
         }
         if (timed.Backtime && _autoAdvance && _connecting == null) Backtime(ti, left);
+    }
+
+    /// <summary>
+    /// Twice a second while the player is stopped or paused: an ad break that comes due (or was due, waiting) is
+    /// announced (<see cref="StoppedBreak"/>) and goes on air <see cref="StoppedBreakWarnSeconds"/> later, whatever is
+    /// paused; once it ends the player stops again. Play before then starts it at once, and the playlist goes on.
+    /// </summary>
+    void BreakWhileStopped(DateTime now)
+    {
+        // Off air only for the time signal (Stop mode): what comes next starts after it.
+        if (_standby || _connecting != null || _resumeAfterSignal) { _stoppedBreak = null; return; }
+        int bi = -1;
+        for (int i = Math.Max(0, _cursorIndex + 1); i < _playlist.Count; i++)
+            if (IsBreak(_playlist[i]) && _playlist[i].StartBy is { } by && !_played.Contains(_playlist[i].Id) && (bi < 0 || by < _playlist[bi].StartBy!.Value)) bi = i;
+        if (bi < 0 || (_playlist[bi].StartBy!.Value - now).TotalSeconds > StoppedBreakWarnSeconds)
+        {
+            _stoppedBreak = null;
+            return;
+        }
+        var t = _playlist[bi];
+        if (_stoppedBreak is not { } warning || warning.Id != t.Id)
+        {
+            var at = new DateTime(Math.Max(t.StartBy!.Value.Ticks, now.AddSeconds(StoppedBreakWarnSeconds).Ticks), DateTimeKind.Utc);
+            _stoppedBreak = new BreakWarning(t.Id, t.Event!, at);
+            Emit(State == PlayerState.Paused
+                ? L.F("{0}: the player is paused; the break goes on air anyway in {1:0} s", t.Event!, (at - now).TotalSeconds)
+                : L.F("{0}: the player is stopped; the break goes on air anyway in {1:0} s", t.Event!, (at - now).TotalSeconds));
+            return;
+        }
+        if (now < warning.At) return;
+        _stoppedBreak = null;
+        Emit(L.F("{0}: on air although the player was stopped; it stops again after the break", t.Event!));
+        KeepSkipped(t);
+        _breakThenStop = t.Event;
+        StartTrack(t, _current == null ? 0 : EventFadeSeconds);
     }
 
     /// <summary>
@@ -2040,7 +2131,7 @@ public sealed class PlayoutEngine : IDisposable
         foreach (int cart in _carts.Keys) StopCart(cart);
         bool playing = State == PlayerState.Playing && (_current != null || _connecting != null);
         if (!playing) return; // stopped or paused: the operator is in charge
-        _resumeAfterSignal = _autoAdvance;
+        _resumeAfterSignal = Advancing;
         _connectAttempt++; // a stream still connecting is not put on air; the next item takes its connection
         _connecting = null;
         FadePlayingOut(SignalFadeSeconds);

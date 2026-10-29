@@ -141,6 +141,9 @@ public sealed record EventTiming(EventStart Start, TimeSpan? MaxDelay = null, Da
 
 public enum PlayerState { Stopped, Playing, Paused }
 
+/// <summary>An ad break due while the player is stopped or paused: <paramref name="What"/> goes on air at <paramref name="At"/> (UTC).</summary>
+public sealed record BreakWarning(Guid Id, string What, DateTime At);
+
 public enum StreamState { Off, Connecting, OnAir, Failed }
 
 /// <summary>Published by the engine whenever the playlist or the on-air cursor changes.</summary>

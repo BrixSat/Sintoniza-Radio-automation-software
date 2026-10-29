@@ -80,6 +80,23 @@ string? OnAir(PlayoutEngine e) => e.GetStatus().Current?.Path;
     e.Dispose();
 }
 {
+    // The operator stops the player; an ad break comes due: a warning, then it plays all the same, then stopped again.
+    var e = NewEngine();
+    e.ConfigureFill(() => songs[2]);
+    e.AddFiles([songs[0], songs[1]]);
+    Thread.Sleep(200);
+    e.Play();
+    Wait(() => OnAir(e) == songs[0], 3);
+    e.Stop();
+    Wait(() => e.State == PlayerState.Stopped, 3);
+    e.InsertEvent("Ad break 12:00", [new ScheduledItem(songs[3], TrackKind.Commercial, InBreak: true), new ScheduledItem(songs[2], TrackKind.Jingle, InBreak: true)], EventTiming.Soft);
+    Check(Wait(() => e.StoppedBreak != null, 2) && e.GetStatus().Current == null, "an ad break due while stopped: warned, not on air yet");
+    Check(Wait(() => OnAir(e) == songs[3], 13), "…on air a few seconds later all the same");
+    Check(Wait(() => OnAir(e) == songs[2], 8), "…all of it");
+    Check(Wait(() => e.State == PlayerState.Stopped && e.GetStatus().Current == null, 8), "…then the player stops again, as the operator left it");
+    e.Dispose();
+}
+{
     var e = NewEngine();
     PlaylistSnapshot? last = null;
     e.PlaylistChanged += snap => last = snap;
