@@ -10,3 +10,5 @@ dist/
 competition
 build/
 __pycache__/
+# Work folders of Claude Code sessions (git worktrees): never part of the project
+.claude/worktrees/
