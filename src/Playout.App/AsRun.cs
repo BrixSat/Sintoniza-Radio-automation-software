@@ -144,6 +144,7 @@ sealed class AsRunLog
         TrackKind.Stream => "Stream",
         TrackKind.Programme => "Programme",
         TrackKind.Voice => "Voice track",
+        TrackKind.Pause => "Pause",
         _ => "Music",
     };
 

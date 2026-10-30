@@ -569,7 +569,7 @@ public sealed class PlayoutEngine : IDisposable
         {
             Volatile.Write(ref _heartbeat, Environment.TickCount64);
             var track = item.StreamName != null
-                ? new Track(Guid.NewGuid(), item.Path.Trim(), "", item.StreamName, Math.Max(0, item.StreamSeconds), TrackKind.Stream)
+                ? new Track(Guid.NewGuid(), item.Path.Trim(), "", item.StreamName, Math.Max(0, item.StreamSeconds), StreamKind(item.Path))
                 : Takes.KindOf(item.Path) is { } take
                     ? new Track(Guid.NewGuid(), item.Path, "", TakeTitle(take), Takes.Estimate(take), TrackKind.Jingle)
                 : SafeProbe(item.Path, exact);
@@ -647,10 +647,11 @@ public sealed class PlayoutEngine : IDisposable
 
     /// <summary>
     /// The crossfade from <paramref name="from"/> into <paramref name="to"/> (null: not known yet): song to song the
-    /// crossfade, anything with a jingle, advert or programme on either side the other one.
+    /// crossfade, anything with a jingle, advert or programme on either side the other one; none into or out of a
+    /// pause (it starts as the item before ends, and the next item as it ends).
     /// </summary>
     public double CrossfadeBetween(Track from, Track? to) =>
-        IsSong(from) && (to == null || IsSong(to)) ? CrossfadeSeconds : OtherCrossfadeSeconds;
+        from.IsPause || to?.IsPause == true ? 0 : IsSong(from) && (to == null || IsSong(to)) ? CrossfadeSeconds : OtherCrossfadeSeconds;
 
     public void AddFiles(IEnumerable<string> paths, int insertAt = -1)
     {
@@ -662,9 +663,18 @@ public sealed class PlayoutEngine : IDisposable
         });
     }
 
-    /// <summary>Adds another station's internet stream (http/https URL), played for <paramref name="seconds"/> or, with 0, until Stop or Next.</summary>
+    /// <summary>
+    /// Adds another station's internet stream (http/https URL), an input or a pause (<see cref="Pause.Path"/>), played
+    /// for <paramref name="seconds"/> or, with 0, until Stop or Next.
+    /// </summary>
     public void AddStream(string url, string name, double seconds, int insertAt = -1) => Post(() =>
-        Insert([new Track(Guid.NewGuid(), url.Trim(), "", string.IsNullOrWhiteSpace(name) ? url.Trim() : name.Trim(), Math.Max(0, seconds), TrackKind.Stream)], insertAt));
+        Insert([new Track(Guid.NewGuid(), url.Trim(), "", string.IsNullOrWhiteSpace(name) ? url.Trim() : name.Trim(), Math.Max(0, seconds), StreamKind(url))], insertAt));
+
+    /// <summary>Adds a pause: no sound for <paramref name="seconds"/> (0: until Next), with what to talk about as its title.</summary>
+    public void AddPause(string comment, double seconds, int insertAt = -1) =>
+        AddStream(Pause.Path, string.IsNullOrWhiteSpace(comment) ? L.T("Pause") : comment, seconds, insertAt);
+
+    static TrackKind StreamKind(string path) => Pause.Is(path) ? TrackKind.Pause : TrackKind.Stream;
 
     void Insert(List<Track> tracks, int insertAt)
     {
@@ -703,6 +713,15 @@ public sealed class PlayoutEngine : IDisposable
             _playlist.RemoveAt(i);
             if (i <= _cursorIndex) _cursorIndex--;
         }
+        PlaylistUpdated();
+    });
+
+    /// <summary>Changes a pause that isn't on air yet: what to talk about, and how long (0: until Next).</summary>
+    public void EditPause(Guid id, string comment, double seconds) => Post(() =>
+    {
+        int i = _playlist.FindIndex(t => t.Id == id);
+        if (i < 0 || !_playlist[i].IsPause || _played.Contains(id) || _current?.Track.Id == id || _connecting == id) return;
+        _playlist[i] = _playlist[i] with { Title = string.IsNullOrWhiteSpace(comment) ? L.T("Pause") : comment.Trim(), Duration = Math.Max(0, seconds) };
         PlaylistUpdated();
     });
 
@@ -1005,7 +1024,7 @@ public sealed class PlayoutEngine : IDisposable
                 _streamRetries = 0;
             }
             Emit(L.F("Streaming to {0} ({1} {2} kbps)", server, s.Format, s.Bitrate));
-            if (_current?.Track is { } t) BassEnc.CastSetTitle(enc, t.Display, null);
+            if (_current?.Track is { IsPause: false } t) BassEnc.CastSetTitle(enc, t.Display, null);
         });
     }
 
@@ -1174,7 +1193,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         _playingOut.Remove(handle);
         if (_current?.Handle != handle) return; // a faded-out deck finishing, nothing to do
-        if (_current.Track.IsStream) Emit(L.F("Stream ended: {0}", _current.Track.Title));
+        if (_current.Track is { IsStream: true, IsPause: false }) Emit(L.F("Stream ended: {0}", _current.Track.Title));
         if (Advancing && NextTrack() is { } next)
         {
             if (next.Id == _connecting) { SetCurrent(null); PlaylistUpdated(); return; } // on air as soon as it connects
@@ -1313,7 +1332,7 @@ public sealed class PlayoutEngine : IDisposable
         // Opened ahead and still good (one that failed is tried again: the network may be back).
         if (_streamConnection is { } c && c.Id == track.Id && !c.Handle.IsFaulted && !c.Handle.IsCanceled) return c.Handle;
         DropConnection();
-        var task = Task.Run(() =>
+        var task = Pause.Is(track.Path) ? Silence() : Task.Run(() =>
         {
             // An input of this computer (live): captured from now on.
             if (LiveInput.Is(track.Path)) return LiveInput.Open(track.Path);
@@ -1322,6 +1341,13 @@ public sealed class PlayoutEngine : IDisposable
         });
         _streamConnection = (track.Id, task);
         return task;
+    }
+
+    /// <summary>A pause: its silence, at once (nothing to connect to).</summary>
+    static Task<int> Silence()
+    {
+        try { return Task.FromResult(Pause.Open()); }
+        catch (Exception ex) { return Task.FromException<int>(ex); }
     }
 
     void DropConnection()
@@ -1388,7 +1414,7 @@ public sealed class PlayoutEngine : IDisposable
         _cursorIndex = _playlist.FindIndex(t => t.Id == track.Id);
         if (_cursorIndex >= 0) _playlist[_cursorIndex] = _playlist[_cursorIndex] with { PlayedAt = DateTime.UtcNow }; // for the playlist's times
 
-        if (_encoder is var enc and not 0) BassEnc.CastSetTitle(enc, track.Display, null);
+        if (_encoder is var enc and not 0 && !track.IsPause) BassEnc.CastSetTitle(enc, track.Display, null); // a pause's notes are for the presenter
         Emit(L.F("On air: {0}", track.Display));
         OnAir?.Invoke(track);
 
@@ -1548,7 +1574,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         // Waiting for fill music counts too: nothing is on air although the player should be playing.
         bool watching = _silence.Enabled && State == PlayerState.Playing && (_current != null || _waitingForFill)
-                        && _connecting == null && !_mic.IsLive;
+                        && _connecting == null && !_mic.IsLive && _current?.Track.IsPause != true; // a pause is silent on purpose
         if (watching)
         {
             var (left, right) = _graph.Levels();

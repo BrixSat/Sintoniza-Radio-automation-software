@@ -2041,5 +2041,20 @@
  "{0}: over; the player stops again, as it was": "{0} : terminé ; le lecteur s'arrête de nouveau, comme avant",
  "PLAYER STOPPED: IT PLAYS ANYWAY": "LECTEUR ARRÊTÉ : IL PASSE QUAND MÊME",
  "PLAYER PAUSED: IT PLAYS ANYWAY": "LECTEUR EN PAUSE : IL PASSE QUAND MÊME",
- "{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.": "{0} : prévu alors que le lecteur est arrêté ; il passe à l'antenne à {1:HH:mm:ss} et le lecteur s'arrête de nouveau après. Lecture le lance maintenant, et la liste continue après lui."
+ "{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.": "{0} : prévu alors que le lecteur est arrêté ; il passe à l'antenne à {1:HH:mm:ss} et le lecteur s'arrête de nouveau après. Lecture le lance maintenant, et la liste continue après lui.",
+ "Add pause": "Ajouter une pause",
+ "No sound for a while, so the presenter can talk: the next item starts when it ends.": "Pas de son pendant un moment, pour que l'animateur parle : l'élément suivant démarre à la fin.",
+ "What to talk about": "De quoi parler",
+ "e.g. Weather and traffic": "ex. Météo et circulation",
+ "Shown as its title in the playlist and on air, and in the notes when it is next. It never goes out on RDS or the stream.": "Affiché comme titre dans la liste et à l'antenne, et dans les notes quand il est le suivant. Il ne part jamais sur le RDS ni sur le stream.",
+ "How long": "Durée",
+ "minutes:seconds": "minutes:secondes",
+ "Until I press Next": "Jusqu'à ce que j'appuie sur Suivant",
+ "Pause…": "Pause…",
+ "Add a pause: no sound for a while, so the presenter can talk, with what to talk about": "Ajouter une pause : pas de son pendant un moment, pour que l'animateur parle, avec le sujet",
+ "Pause: no sound, the presenter talks": "Pause : pas de son, l'animateur parle",
+ "Edit pause": "Modifier la pause",
+ "Enter how long the pause is, e.g. 1:30 for a minute and a half": "Indiquez la durée de la pause, ex. 1:30 pour une minute et demie",
+ "Edit pause…": "Modifier la pause…",
+ "Pause (the presenter talks)": "Pause (l'animateur parle)"
 }

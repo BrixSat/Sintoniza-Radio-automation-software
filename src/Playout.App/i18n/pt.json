@@ -2041,5 +2041,20 @@
  "{0}: over; the player stops again, as it was": "{0}: terminado; o leitor volta a parar, como estava",
  "PLAYER STOPPED: IT PLAYS ANYWAY": "LEITOR PARADO: VAI PARA O AR NA MESMA",
  "PLAYER PAUSED: IT PLAYS ANYWAY": "LEITOR EM PAUSA: VAI PARA O AR NA MESMA",
- "{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.": "{0}: chegou a hora com o leitor parado; vai para o ar às {1:HH:mm:ss} e o leitor volta a parar depois. Tocar começa-o já, e a lista continua depois dele."
+ "{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.": "{0}: chegou a hora com o leitor parado; vai para o ar às {1:HH:mm:ss} e o leitor volta a parar depois. Tocar começa-o já, e a lista continua depois dele.",
+ "Add pause": "Adicionar pausa",
+ "No sound for a while, so the presenter can talk: the next item starts when it ends.": "Sem som durante um tempo, para o locutor falar: o item seguinte começa quando acabar.",
+ "What to talk about": "De que falar",
+ "e.g. Weather and traffic": "ex. Meteorologia e trânsito",
+ "Shown as its title in the playlist and on air, and in the notes when it is next. It never goes out on RDS or the stream.": "Aparece como título na lista e no ar, e nas notas quando é o seguinte. Nunca sai no RDS nem no stream.",
+ "How long": "Quanto tempo",
+ "minutes:seconds": "minutos:segundos",
+ "Until I press Next": "Até carregar em Seguinte",
+ "Pause…": "Pausa…",
+ "Add a pause: no sound for a while, so the presenter can talk, with what to talk about": "Adicionar uma pausa: sem som durante um tempo, para o locutor falar, com o assunto",
+ "Pause: no sound, the presenter talks": "Pausa: sem som, o locutor fala",
+ "Edit pause": "Editar pausa",
+ "Enter how long the pause is, e.g. 1:30 for a minute and a half": "Indique quanto tempo dura a pausa, ex. 1:30 para minuto e meio",
+ "Edit pause…": "Editar pausa…",
+ "Pause (the presenter talks)": "Pausa (o locutor fala)"
 }

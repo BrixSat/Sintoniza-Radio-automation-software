@@ -277,6 +277,8 @@
                                           ToolTip.Tip="Show this hour and the next (on) or the whole playlist (off)" />
                             <Button x:Name="AddStreamButton" Classes="tool" Content="Stream…"
                                     ToolTip.Tip="Add another station's internet stream, for a set time or until Stop" />
+                            <Button x:Name="AddPauseButton" Classes="tool" Content="Pause…"
+                                    ToolTip.Tip="Add a pause: no sound for a while, so the presenter can talk, with what to talk about" />
                             <Button x:Name="OpenListButton" Classes="tool" Content="Open…" ToolTip.Tip="Open a playlist (M3U)" />
                             <Button x:Name="SaveListButton" Classes="tool" Content="Save…" ToolTip.Tip="Save the playlist (M3U, Ctrl/Cmd+S)" />
                             <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
@@ -317,6 +319,7 @@
                                         <Border Grid.ColumnSpan="6" Classes="jingle-bg" IsVisible="{Binding IsJingleRow}" />
                                         <Border Grid.ColumnSpan="6" Classes="programme-bg" IsVisible="{Binding IsProgramme}" />
                                         <Border Grid.ColumnSpan="6" Classes="stream-bg" IsVisible="{Binding IsStreamRow}" />
+                                        <Border Grid.ColumnSpan="6" Classes="programme-bg" IsVisible="{Binding IsPause}" />
                                         <Border Grid.ColumnSpan="6" Classes="row-bg" IsVisible="{Binding IsPlaying}" />
                                         <c:ProgressFill Grid.ColumnSpan="6" Classes="row-progress" Value="{Binding Progress}"
                                                         IsVisible="{Binding IsPlaying}" />
@@ -328,6 +331,7 @@
                                             <TextBlock Classes="kind-currency" Text="{Binding CurrencySign}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="{x:Static app:Strings.Advert}" />
                                             <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="{x:Static app:Strings.InternetStream}" />
                                             <PathIcon Classes="kind programme" Data="{StaticResource IconMic}" IsVisible="{Binding IsProgramme}" ToolTip.Tip="{x:Static app:Strings.Programme}" />
+                                            <PathIcon Classes="kind programme" Data="{StaticResource IconPause}" IsVisible="{Binding IsPause}" ToolTip.Tip="{x:Static app:Strings.PauseItem}" />
                                         </Panel>
                                         <StackPanel Grid.Column="3" VerticalAlignment="Center">
                                             <DockPanel>

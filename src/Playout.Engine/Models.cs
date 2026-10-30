@@ -5,8 +5,10 @@ namespace Playout.Engine;
 /// or Next. Programme: speech and shows put on air by a scheduled event (news bulletins…): not a song for RDS, the
 /// website or music reports. Voice: a voice track (the host's talk recorded ahead of time, between two songs): it can
 /// start over the end of the song before it (<see cref="Track.Overlap"/>) and belongs to it (<see cref="Track.FollowsPrevious"/>).
+/// Pause: no sound, for <see cref="Track.Duration"/> seconds or, with 0, until Next, while the presenter talks; its
+/// title is what to talk about (see <see cref="Playout.Engine.Pause"/>). It plays like a stream.
 /// </summary>
-public enum TrackKind { Music, Jingle, Commercial, Stream, Programme, Voice }
+public enum TrackKind { Music, Jingle, Commercial, Stream, Programme, Voice, Pause }
 
 /// <summary>
 /// The usual radio markers for a file, in seconds from the start of the file. Null = not set.
@@ -74,7 +76,10 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
     /// <summary>A note for the presenter (from the daily playlists), shown on air before and while it plays; the engine only carries it.</summary>
     public string? Note { get; init; }
 
-    public bool IsStream => Kind == TrackKind.Stream;
+    /// <summary>Not a file: a stream, or a pause (silence) that plays like one.</summary>
+    public bool IsStream => Kind is TrackKind.Stream or TrackKind.Pause;
+
+    public bool IsPause => Kind == TrackKind.Pause;
 
     /// <summary>A take: put together from its files when it starts (see <see cref="Takes"/>).</summary>
     public bool IsTake => Takes.IsTake(Path);

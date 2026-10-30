@@ -7,6 +7,7 @@ public static class Strings
     public static string Jingle => L.T("Jingle");
     public static string Advert => L.T("Advert");
     public static string InternetStream => L.T("Internet stream");
+    public static string PauseItem => L.T("Pause (the presenter talks)");
     public static string Programme => L.T("Programme (news, shows)");
     public static string HasCues => L.T("Has cue points");
     public static string Cue => L.T("CUE");

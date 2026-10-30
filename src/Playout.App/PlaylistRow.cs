@@ -18,7 +18,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
         {
             if (Equals(_track, value)) return;
             _track = value;
-            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip), nameof(IsAdBreak), nameof(IsJingleRow), nameof(IsProgramme), nameof(IsStreamRow) })
+            foreach (var name in new[] { nameof(Track), nameof(Title), nameof(Artist), nameof(HasArtist), nameof(Length), nameof(HasCues), nameof(HasEvent), nameof(EventTag), nameof(EventTip), nameof(IsLocked), nameof(LockTip), nameof(IsTimed), nameof(TimedTip), nameof(IsAdBreak), nameof(IsJingleRow), nameof(IsProgramme), nameof(IsStreamRow), nameof(IsPause) })
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
     }
@@ -40,7 +40,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
         get
         {
             if (IsPreview) return Track.Artist;
-            string text = Track.IsStream ? Track.Path : Track.Kind == TrackKind.Commercial && Track.Advertiser is { } a ? a : Track.Artist;
+            string text = Track.IsPause ? L.T("Pause: no sound, the presenter talks") : Track.IsStream ? Track.Path : Track.Kind == TrackKind.Commercial && Track.Advertiser is { } a ? a : Track.Artist;
             if (Track.StartBy is { } by)
             {
                 string how = Track.Backtime ? L.F("timed to start at {0:HH:mm:ss} and end on time", by.ToLocalTime()) : L.F("can wait until {0:HH:mm:ss}", by.ToLocalTime());
@@ -81,7 +81,9 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     /// <summary>A jingle, promo or ID (not one of an ad break's).</summary>
     public bool IsJingleRow => Track.Kind == TrackKind.Jingle && !IsAdBreak;
     /// <summary>Another station's stream.</summary>
-    public bool IsStreamRow => Track.IsStream;
+    public bool IsStreamRow => Track.Kind == TrackKind.Stream;
+    /// <summary>A pause: no sound while the presenter talks; its title is what about.</summary>
+    public bool IsPause => Track.IsPause;
 
     /// <summary>This computer's currency sign (€, $, £…).</summary>
     public static string SystemCurrency { get; } =
@@ -93,7 +95,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
 
     /// <summary>The money sign changed in Settings.</summary>
     public void RefreshCurrency() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrencySign)));
-    public bool IsStream => Track.IsStream;
+    public bool IsStream => Track.Kind == TrackKind.Stream;
 
     double _progress;
     /// <summary>0..1 while on air, drives the row's background fill.</summary>

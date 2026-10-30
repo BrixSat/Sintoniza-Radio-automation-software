@@ -80,6 +80,22 @@ string? OnAir(PlayoutEngine e) => e.GetStatus().Current?.Path;
     e.Dispose();
 }
 {
+    // A pause: no sound for its time (not taken for dead air), then the next item; kept with the saved playlist.
+    var e = NewEngine();
+    e.ConfigureSilence(new SilenceSettings(Enabled: true, Seconds: 1));
+    e.AddPause("Weather and traffic", 3);
+    e.AddFiles([songs[1]]);
+    Thread.Sleep(300);
+    e.Play();
+    Check(Wait(() => e.GetStatus().Current is { IsPause: true, Title: "Weather and traffic" }, 3), "a pause goes on air, with what to talk about as its title");
+    Thread.Sleep(2000);
+    Check(e.GetStatus().Current?.IsPause == true, "…silent, and not skipped as dead air");
+    Check(Wait(() => OnAir(e) == songs[1], 4), "…the next item when its time is up");
+    var saved = PlaylistEntry.From(new Track(Guid.NewGuid(), Pause.Path, "", "Weather and traffic", 90, TrackKind.Pause));
+    Check(saved.IsStream && saved.StreamSeconds == 90 && saved.StreamName == "Weather and traffic", "a pause is saved with the playlist (its time and what about)");
+    e.Dispose();
+}
+{
     // The operator stops the player; an ad break comes due: a warning, then it plays all the same, then stopped again.
     var e = NewEngine();
     e.ConfigureFill(() => songs[2]);

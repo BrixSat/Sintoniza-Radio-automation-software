@@ -195,6 +195,7 @@ public partial class MainWindow : Window
         };
 
         AddStreamButton.Click += async (_, _) => await AddStream();
+        AddPauseButton.Click += async (_, _) => await AddPause();
         OpenListButton.Click += async (_, _) => await OpenPlaylist();
         SaveListButton.Click += async (_, _) => await SavePlaylist();
         RemoveButton.Click += (_, _) => RemoveSelected();
@@ -212,9 +213,12 @@ public partial class MainWindow : Window
         editSegue.Click += async (_, _) => await EditSelectedSegue();
         var editTags = new MenuItem { Header = L.T("Edit tags…"), InputGesture = new KeyGesture(Key.T, CommandModifiers) };
         editTags.Click += async (_, _) => await EditSelectedTags();
+        var editPause = new MenuItem { Header = L.T("Edit pause…") };
+        editPause.Click += async (_, _) => await EditSelectedPause();
         var remove = new MenuItem { Header = L.T("Remove"), InputGesture = new KeyGesture(Key.Delete) };
         remove.Click += (_, _) => RemoveSelected();
-        Playlist.ContextMenu = new ContextMenu { Items = { editCues, editSegue, editTags, remove } };
+        Playlist.ContextMenu = new ContextMenu { Items = { editCues, editSegue, editTags, editPause, remove } };
+        Playlist.ContextMenu.Opening += (_, _) => editPause.IsVisible = Playlist.SelectedItem is PlaylistRow { IsPause: true };
 
         Playlist.KeyDown += (_, e) =>
         {
@@ -1355,7 +1359,8 @@ public partial class MainWindow : Window
     /// <summary>The presenter's notes: the one of the item on air, and the next item's (to prepare).</summary>
     void ShowNotes(PlaylistSnapshot snap)
     {
-        string? Note(Guid? id) => id is { } i ? snap.Items.FirstOrDefault(t => t.Id == i)?.Note : null;
+        // A pause's title is what to talk about: a note too.
+        string? Note(Guid? id) => id is { } i && snap.Items.FirstOrDefault(t => t.Id == i) is { } t ? t.Note ?? (t.IsPause ? t.Title : null) : null;
         string? now = Note(snap.CurrentId), next = Note(snap.NextId);
         NoteNowText.Text = string.IsNullOrWhiteSpace(now) ? "" : "📝 " + now;
         NoteNowText.IsVisible = NoteNowText.Text.Length > 0;
@@ -1454,7 +1459,7 @@ public partial class MainWindow : Window
                 continue;
             }
             if (line.Length == 0 || line.StartsWith('#')) continue;
-            if (PlayoutEngine.IsUrl(line))
+            if (PlayoutEngine.IsUrl(line) || Pause.Is(line)) // a pause: its time and what to talk about in #EXTINF
                 entries.Add(new PlaylistEntry
                 {
                     Path = line,
@@ -1587,6 +1592,22 @@ public partial class MainWindow : Window
         if (_engine == null) return;
         if (await new StreamDialog().ShowDialog<StreamRequest?>(this) is not { } s) return;
         _engine.AddStream(s.Url, s.Name, s.Seconds, s.PlayNext ? NextInsertIndex() : -1);
+    }
+
+    async Task AddPause()
+    {
+        if (_engine == null) return;
+        if (await new PauseDialog().ShowDialog<PauseRequest?>(this) is not { } p) return;
+        _engine.AddPause(p.Comment, p.Seconds, p.PlayNext ? NextInsertIndex() : -1);
+    }
+
+    /// <summary>A pause not on air yet: what to talk about, and how long.</summary>
+    async Task EditSelectedPause()
+    {
+        if (_engine == null || Playlist.SelectedItem is not PlaylistRow { IsPause: true, IsPlaying: false, IsPlayed: false } row) return;
+        var editing = new PauseRequest(row.Track.Title, row.Track.Duration, false);
+        if (await new PauseDialog(editing).ShowDialog<PauseRequest?>(this) is not { } p) return;
+        _engine.EditPause(row.Id, p.Comment, p.Seconds);
     }
 
     async Task SavePlaylist()
@@ -2277,7 +2298,7 @@ public partial class MainWindow : Window
         if (_gpio.Count == 0) return;
         bool playing = st.State == PlayerState.Playing;
         bool silence = playing && st.Silence >= Math.Max(5, _settings.Silence?.Seconds ?? 15); // as the alerts count it
-        var now = new GpioState(playing, AdvertOnAir(st), playing && st.Current?.IsStream == true, silence);
+        var now = new GpioState(playing, AdvertOnAir(st), playing && st.Current?.Kind == TrackKind.Stream, silence);
         if (_gpioShown == now) return;
         _gpioShown = now;
         foreach (var source in _gpio) source.Show(now);
