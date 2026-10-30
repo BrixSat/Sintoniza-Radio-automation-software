@@ -30,4 +30,5 @@ for f in "${files[@]}"; do [[ -f $f ]] || fail "Missing $f"; done
 
 echo "▶ Adding the macOS apps to $tag"
 gh release upload "$tag" "${files[@]}" --clobber
+"$ROOT/scripts/release-downloads.sh" "$version"
 echo "Done: $(gh release view "$tag" --json url --jq .url)"

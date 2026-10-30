@@ -46,3 +46,4 @@ echo "▶ Publishing $tag"
 git tag -a "$tag" -m "Sintoniza $tag"
 git push -q origin "$tag"
 gh release create "$tag" "${files[@]}" --verify-tag --title "Sintoniza $tag" --generate-notes
+"$ROOT/scripts/release-downloads.sh" "$version"
