@@ -643,6 +643,49 @@ Console.WriteLine("Categories (the eight fixed ones, and the station's own at th
     Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");
 }
 
+// ───────────────────────── Series ─────────────────────────
+
+Console.WriteLine("Series (a file for each weekday and for a date)");
+{
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    var monday = DateTime.Today.AddDays(((int)DayOfWeek.Monday - (int)DateTime.Today.DayOfWeek + 7) % 7).AddHours(9);
+    var horoscope = new ScheduledEvent
+    {
+        Name = "Horoscope", Path = songs[3],
+        Series =
+        [
+            new SeriesFile { Day = DayOfWeek.Monday, Path = songs[0] },
+            new SeriesFile { Day = DayOfWeek.Tuesday, Path = songs[1] },
+            new SeriesFile { Date = monday.Date.AddDays(7), Path = songs[2] },
+        ],
+    };
+    var data = new ScheduleData();
+    data.Events.Add(horoscope);
+    string? Plays(DateTime at) => ScheduleItems.For(data, horoscope, at, null).FirstOrDefault()?.Path;
+    Check(Plays(monday) == songs[0] && Plays(monday.AddDays(1)) == songs[1], "Monday's file on a Monday, Tuesday's on a Tuesday");
+    Check(Plays(monday.AddDays(7)) == songs[2], "…the file for a date before its weekday's");
+    Check(Plays(monday.AddDays(3)) == songs[3], "…a day with none: the event's own file");
+    horoscope.Series.Add(new SeriesFile { Date = monday.Date.AddDays(14) });
+    Check(Plays(monday.AddDays(14)) == null, "…a date left empty: nothing that day, not Monday's file");
+    horoscope.Series.RemoveAt(3);
+    horoscope.Path = "";
+    var said = new List<string>();
+    Check(ScheduleItems.For(data, horoscope, monday.AddDays(3), said.Add).Count == 0 && said.Any(m => m.Contains("series")), $"…or nothing, and why ({said.FirstOrDefault()})");
+
+    var store = new ScheduleStore(db);
+    var (before, version) = store.Load();
+    var copy = before.Clone();
+    copy.Events.Add(horoscope);
+    store.Save(copy, version, "checks");
+    var back = store.Load().Data.Events.First(e => e.Id == horoscope.Id);
+    Check(back.Series.Count == 3 && back.PathOn(monday.AddDays(7)) == songs[2] && back.PathOn(monday.AddDays(1)) == songs[1],
+        "a series is kept in the library (weekdays and dates)");
+    var (now, v2) = store.Load();
+    now.Events.RemoveAll(e => e.Id == horoscope.Id);
+    store.Save(now, v2, "checks");
+}
+
 // ───────────────────────── Now playing for the website ─────────────────────────
 
 Console.WriteLine("Now playing for the website (templates, files, the delay, songs kept off it)");

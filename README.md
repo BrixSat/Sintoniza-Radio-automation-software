@@ -160,7 +160,9 @@ engine for decoding, mixing and streaming.
   to fill many cells, or click a time for every day; rows can be every 5 to 60 minutes from any minute (every hour
   at :20), and exact times such as 12:59:55 can be added as rows. Other items show faintly in their cells.
   - **Events** play a file, the newest file in a folder (a news bulletin downloaded there; optionally only if it
-    is recent) or another station's stream for a set time.
+    is recent) or another station's stream for a set time. A **series** plays another file on some days: one for each
+    day of the week (a horoscope Monday to Sunday) and one for given dates (an episode on its day); a day without one
+    plays the event's own file, or nothing.
   - **Ad breaks** have a **running order**, built like a small playlist: jingles and named **advert sections**
     (for example *Antes do SH*, *Depois do SH*, *Promos*). A section plays the adverts booked into it that day; a
     jingle can be set to play only when the section after it has adverts (a section opener). A break with no

@@ -2175,5 +2175,18 @@
  "Not on the website": "Hors du site",
  "no answer from the FTP server": "pas de réponse du serveur FTP",
  "the picture for songs without a cover isn't there: {0}": "l'image pour les titres sans pochette n'existe pas : {0}",
- "what is on air isn't for the website (a pause, or a song kept off it): nothing sent": "ce qui passe à l'antenne n'est pas pour le site (une pause, ou un titre hors du site) : rien envoyé"
+ "what is on air isn't for the website (a pause, or a song kept off it): nothing sent": "ce qui passe à l'antenne n'est pas pour le site (une pause, ou un titre hors du site) : rien envoyé",
+ "A series: another file on some days": "Une série : un autre fichier certains jours",
+ "Add a date": "Ajouter une date",
+ "{0}: nothing in the series for {1:dddd, d MMMM}, skipped": "{0} : rien dans la série pour {1:dddd d MMMM}, ignoré",
+ "series, else {0}": "série, sinon {0}",
+ "series": "série",
+ "As above": "Comme au-dessus",
+ "Series: file for {0}": "Série : fichier pour {0}",
+ "Series: folder whose newest file plays on {0}": "Série : dossier dont le fichier le plus récent passe le {0}",
+ "Remove this date": "Retirer cette date",
+ "{0} (past)": "{0} (passé)",
+ "A file (or a folder, or a stream) for a day of the week, e.g. a horoscope Monday to Sunday, or for a date, e.g. an episode on its day. On a day, the date's file plays (a date left empty: nothing that day), else the weekday's, else the one above (left empty: nothing that day).": "Un fichier (ou un dossier, ou un stream) pour un jour de la semaine, p. ex. un horoscope du lundi au dimanche, ou pour une date, p. ex. un épisode à son jour. Un jour donné, le fichier de la date passe (une date vide : rien ce jour-là), sinon celui du jour de la semaine, sinon celui du dessus (vide : rien ce jour-là).",
+ "Remove past dates": "Retirer les dates passées",
+ "Empty: nothing on this day": "Vide : rien ce jour-là"
 }

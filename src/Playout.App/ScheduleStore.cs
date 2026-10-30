@@ -116,6 +116,13 @@ sealed class ScheduleStore(LibraryDb db)
         public string? Date { get; set; }
         public string Time { get; set; } = "";
     }
+    sealed class SeriesRow
+    {
+        public string EntryId { get; set; } = "";
+        public long? Weekday { get; set; }
+        public string? Date { get; set; }
+        public string Path { get; set; } = "";
+    }
     sealed class StateRow
     {
         public string EntryId { get; set; } = "";
@@ -149,6 +156,9 @@ sealed class ScheduleStore(LibraryDb db)
             p, tx).ToLookup(r => r.EntryId);
         var dates = c.Query<DateRow>(
             "SELECT d.entry_id AS EntryId, d.at AS At FROM schedule_dates d JOIN schedule_entries e ON e.id = d.entry_id WHERE e.station_id = @Station ORDER BY d.at",
+            p, tx).ToLookup(r => r.EntryId);
+        var series = c.Query<SeriesRow>(
+            "SELECT f.entry_id AS EntryId, f.weekday AS Weekday, f.date AS Date, f.path AS Path FROM event_series f JOIN schedule_entries e ON e.id = f.entry_id WHERE e.station_id = @Station ORDER BY f.id",
             p, tx).ToLookup(r => r.EntryId);
         var parts = c.Query<PartRow>(
             """
@@ -204,7 +214,11 @@ sealed class ScheduleStore(LibraryDb db)
                     ArtistHours = e.ArtistHours, AlbumHours = e.AlbumHours, MaxSlowInRow = (int)e.MaxSlowInRow,
                 },
                 "show" => new LiveShow { Presenter = e.Presenter ?? "", Minutes = e.ShowMinutes, Notes = e.Notes ?? "" },
-                _ => new ScheduledEvent { Path = e.Path, StreamMinutes = e.StreamMinutes, MaxAgeMinutes = (int)e.MaxAgeMinutes },
+                _ => new ScheduledEvent
+                {
+                    Path = e.Path, StreamMinutes = e.StreamMinutes, MaxAgeMinutes = (int)e.MaxAgeMinutes,
+                    Series = series[e.Id].Select(r => new SeriesFile { Day = r.Weekday is { } w ? (DayOfWeek)w : null, Date = Day(r.Date), Path = r.Path }).ToList(),
+                },
             };
             entry.Id = Guid.Parse(e.Id);
             entry.Name = e.Name;
@@ -288,6 +302,9 @@ sealed class ScheduleStore(LibraryDb db)
                 entry.Slots.DistinctBy(s => (s.Day, s.Time)).Select(s => new { id, weekday = (int)s.Day, time = s.Time }), tx);
             c.Execute("INSERT INTO schedule_dates (entry_id, at) VALUES (@id, @at)",
                 entry.Dates.Distinct().Select(d => new { id, at = d.ToString(DateFormat, CultureInfo.InvariantCulture) }), tx);
+            if (ev != null)
+                c.Execute("INSERT INTO event_series (entry_id, weekday, date, path) VALUES (@id, @weekday, @date, @path)",
+                    ev.Series.Select(f => new { id, weekday = f.Date == null && f.Day is { } d ? (int?)d : null, date = Text(f.Date), path = f.Path.Trim() }), tx);
             if (entry is AdBreak b)
                 c.Execute("INSERT INTO break_parts (entry_id, position, kind, path, section, only_with_adverts) VALUES (@id, @position, @kind, @path, @section, @only)",
                     b.Parts.Select((part, i) => new { id, position = i, kind = part.Kind.ToString(), path = part.Path, section = part.Section, only = part.OnlyWithAdverts ? 1 : 0 }), tx);

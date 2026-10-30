@@ -427,7 +427,16 @@ every hour, every day).
 
 Something that plays at set times: a file, the **newest file in a folder** (e.g. the news, skipped if older than N
 minutes), an internet stream, or an **input of the studio computer, live** (**Input…**: the desk's line, a satellite
-receiver for the network news, a remote studio) for N minutes. Choose how it starts:
+receiver for the network news, a remote studio) for N minutes.
+
+**A series** (under *A series: another file on some days*): a different file on some days, in the same slot. Give
+a file (or a folder, or a stream) for each day of the week — a horoscope Monday to Sunday — and, with **Add a date**,
+one for a particular day — an episode, a special for a holiday. On a day, the date's file plays, else that weekday's,
+else the file in **Play** (left empty: the event is skipped that day, and the log says so). A date left empty means
+nothing that day (no horoscope on Christmas Day). Past dates are shown greyed; **Remove past dates** clears them. The
+event's stream time and folder age apply to the series' streams and folders too.
+
+Choose how it starts:
 
 - **Soft:** after the item on air ends (at most N minutes late).
 - **Hard:** on the second (what is on air fades out).

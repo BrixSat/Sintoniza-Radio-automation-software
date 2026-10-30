@@ -304,6 +304,18 @@
                                 <TextBlock Classes="label" Text="Play the stream or input for (minutes, 0 = until Stop or Next)" TextWrapping="Wrap" />
                                 <NumericUpDown x:Name="EventStreamMinutesBox" Minimum="0" Maximum="1440" Increment="5" FormatString="0" Width="130" HorizontalAlignment="Left" />
                             </StackPanel>
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="A series: another file on some days" />
+                                <TextBlock Classes="note" TextWrapping="Wrap"
+                                           Text="A file (or a folder, or a stream) for a day of the week, e.g. a horoscope Monday to Sunday, or for a date, e.g. an episode on its day. On a day, the date's file plays (a date left empty: nothing that day), else the weekday's, else the one above (left empty: nothing that day)." />
+                                <StackPanel x:Name="EventSeriesDays" Spacing="4" />
+                                <StackPanel x:Name="EventSeriesDates" Spacing="4" />
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <CalendarDatePicker x:Name="EventSeriesDateBox" Width="150" SelectedDateFormat="Short" />
+                                    <Button x:Name="EventSeriesDateButton" Content="Add a date" />
+                                    <Button x:Name="EventSeriesPastButton" Content="Remove past dates" />
+                                </StackPanel>
+                            </StackPanel>
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="EventSoftBox" GroupName="EventStart" Content="Soft: after the item on air ends" />

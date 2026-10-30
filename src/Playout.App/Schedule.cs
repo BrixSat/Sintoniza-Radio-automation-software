@@ -82,6 +82,12 @@ public sealed class ScheduleData
         Shows ??= new();
         LastStarted ??= new();
         foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks).Concat(Templates).Concat(Shows)) e.Normalize();
+        foreach (var e in Events)
+        {
+            e.Series ??= new();
+            e.Series.RemoveAll(f => f == null || f.Day == null && f.Date == null);
+            foreach (var f in e.Series) f.Path ??= "";
+        }
         foreach (var c in Clients)
         {
             c.Campaigns ??= new();
@@ -336,6 +342,25 @@ public sealed class ScheduledEvent : ScheduleEntry
     public double StreamMinutes { get; set; }
     /// <summary>A folder's newest file is only played if it is at most this old (0 = any age): an old bulletin isn't news.</summary>
     public int MaxAgeMinutes { get; set; }
+    /// <summary>A series: another file on some weekdays (a horoscope Monday to Sunday) or dates (an episode on its day).</summary>
+    public List<SeriesFile> Series { get; set; } = new();
+
+    /// <summary>
+    /// What it plays on <paramref name="at"/>'s day (local): the series' file for that date (left empty: nothing that
+    /// day), else for that weekday, else <see cref="Path"/> (empty: nothing that day).
+    /// </summary>
+    public string PathOn(DateTime at) =>
+        (Series.FirstOrDefault(f => f.Date?.Date == at.Date)
+         ?? Series.FirstOrDefault(f => f.Date == null && f.Day == at.DayOfWeek && f.Path.Trim().Length > 0))?.Path.Trim() ?? Path;
+}
+
+/// <summary>A file of a series: every week on <see cref="Day"/>, or only on <see cref="Date"/>.</summary>
+public sealed class SeriesFile
+{
+    public DayOfWeek? Day { get; set; }
+    public DateTime? Date { get; set; }
+    /// <summary>A file, a folder (its newest file) or a stream, as an event's path.</summary>
+    public string Path { get; set; } = "";
 }
 
 /// <summary>
@@ -957,21 +982,24 @@ public static class ScheduleItems
         switch (entry)
         {
             case ScheduledEvent e:
-                if (PlayoutEngine.IsStreamSource(e.Path))
-                    items.Add(new ScheduledItem(e.Path.Trim(), StreamName: string.IsNullOrWhiteSpace(e.Name) ? e.Path.Trim() : e.Name.Trim(),
+                string path = e.PathOn(at); // a series: that day's file
+                if (PlayoutEngine.IsStreamSource(path))
+                    items.Add(new ScheduledItem(path.Trim(), StreamName: string.IsNullOrWhiteSpace(e.Name) ? path.Trim() : e.Name.Trim(),
                         StreamSeconds: Math.Max(0, e.StreamMinutes) * 60));
-                else if (SharedPaths.DirectoryExists(e.Path))
+                else if (SharedPaths.DirectoryExists(path))
                 {
-                    var newest = AudioFiles.InFolder(e.Path).Select(f => new FileInfo(SharedPaths.ToLocal(f))).MaxBy(f => f.LastWriteTimeUtc);
-                    if (newest == null) { if (!quiet) Say(L.F("{0}: no audio files in {1}", label, e.Path)); }
+                    var newest = AudioFiles.InFolder(path).Select(f => new FileInfo(SharedPaths.ToLocal(f))).MaxBy(f => f.LastWriteTimeUtc);
+                    if (newest == null) { if (!quiet) Say(L.F("{0}: no audio files in {1}", label, path)); }
                     else if (e.MaxAgeMinutes > 0 && DateTime.UtcNow - newest.LastWriteTimeUtc > TimeSpan.FromMinutes(e.MaxAgeMinutes))
                     {
                         if (!quiet) Say(L.F("{0}: skipped, the newest file ({1}) is older than {2} minutes", label, newest.Name, e.MaxAgeMinutes));
                     }
                     else items.Add(new ScheduledItem(SharedPaths.ToLibrary(newest.FullName), EventKind(newest.FullName)));
                 }
-                else if (SharedPaths.FileExists(e.Path)) items.Add(new ScheduledItem(e.Path, EventKind(e.Path)));
-                else if (!quiet) Say(string.IsNullOrWhiteSpace(e.Path) ? L.F("{0}: nothing chosen to play", label) : L.F("{0}: not found: {1}", label, e.Path));
+                else if (SharedPaths.FileExists(path)) items.Add(new ScheduledItem(path, EventKind(path)));
+                else if (!quiet) Say(string.IsNullOrWhiteSpace(path)
+                    ? e.Series.Count > 0 ? L.F("{0}: nothing in the series for {1:dddd, d MMMM}, skipped", label, at) : L.F("{0}: nothing chosen to play", label)
+                    : L.F("{0}: not found: {1}", label, path));
                 break;
 
             case AdBreak b:

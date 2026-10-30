@@ -213,6 +213,7 @@ public partial class ScheduleWindow : Window
         EventMaxAgeBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.MaxAgeMinutes = (int)(EventMaxAgeBox.Value ?? 0));
         EventStreamMinutesBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.StreamMinutes = (double)(EventStreamMinutesBox.Value ?? 0));
         WireStart(EventList, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel);
+        WireSeries();
     }
 
     void ShowEvent()
@@ -228,6 +229,7 @@ public partial class ScheduleWindow : Window
         ShowStart(e, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel);
         _loading = false;
         ShowEventPathKind();
+        ShowSeries(e);
         _eventCalendar.Rebuild();
     }
 
@@ -237,8 +239,10 @@ public partial class ScheduleWindow : Window
         string path = EventPathBox.Text?.Trim() ?? "";
         bool stream = PlayoutEngine.IsStreamSource(path);
         bool folder = !stream && path.Length > 0 && SharedPaths.DirectoryExists(path);
-        EventStreamPanel.IsVisible = stream;
-        EventFolderPanel.IsVisible = folder;
+        // The series' files share these settings: shown when any of them needs them too.
+        var series = (SelectedEvent?.Series ?? []).Select(f => f.Path.Trim()).Where(p => p.Length > 0).ToList();
+        EventStreamPanel.IsVisible = stream || series.Any(PlayoutEngine.IsStreamSource);
+        EventFolderPanel.IsVisible = folder || series.Any(p => !PlayoutEngine.IsStreamSource(p) && SharedPaths.DirectoryExists(p));
         EventPathNote.Text = path.Length == 0 ? "" :
             LiveInput.Is(path) ? L.F("An input of the studio computer, live: {0}.", LiveInput.DeviceOf(path) is { Length: > 0 } d ? d : L.T("the default input")) :
             stream ? L.T("An internet stream.") :
@@ -272,6 +276,7 @@ public partial class ScheduleWindow : Window
     ScheduleRow EventRow(ScheduledEvent e) => new(e, () =>
     {
         string what = LiveInput.Is(e.Path) ? L.T("live input") : PlayoutEngine.IsUrl(e.Path) ? L.T("stream") : SharedPaths.DirectoryExists(e.Path) ? L.T("newest in folder") : Path.GetFileName(e.Path);
+        if (e.Series.Count > 0) what = what.Length > 0 ? L.F("series, else {0}", what) : L.T("series");
         return (EntryName(e), $"{SlotsSummary(e)} · {StartText(e)}{(what.Length > 0 ? " · " + what : "")}", e.Enabled);
     });
 
