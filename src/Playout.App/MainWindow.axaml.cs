@@ -2339,7 +2339,7 @@ public partial class MainWindow : Window
         _web = null;
         if (_settings.WebNowPlaying is not { Enabled: true } settings || IsStandby) return; // standby: the one on air sends
         string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
-        var web = new WebNowPlaying(settings, station);
+        var web = new WebNowPlaying(settings, station, path => _library.Db?.IsNotForWeb(path) ?? false);
         web.StatusChanged += error => Dispatcher.UIThread.Post(() =>
         {
             if (web != _web) return;

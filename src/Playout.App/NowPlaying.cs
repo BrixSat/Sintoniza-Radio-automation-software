@@ -1,23 +1,122 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Playout.Engine;
 
 namespace Playout.App;
 
-/// <summary>Now playing for the station's website: sent as JSON to an address of your choice (see docs/now-playing).</summary>
+/// <summary>
+/// Now playing for the station's website (see docs/now-playing): sent as JSON to an address of your choice, and/or
+/// written from templates to files or FTP (a text line, an XML or HTML page, the cover picture).
+/// </summary>
 public sealed class WebNowPlayingSettings
 {
     public bool Enabled { get; set; }
-    /// <summary>Where the JSON is posted, e.g. https://example.com/nowplaying.php.</summary>
+    /// <summary>Where the JSON is posted, e.g. https://example.com/nowplaying.php; empty: only the outputs.</summary>
     public string Url { get; set; } = "";
     /// <summary>Sent in the X-Api-Key header, so the page can refuse posts that aren't from the station.</summary>
     public string Key { get; set; } = "";
     /// <summary>Only songs (and streams): during jingles and adverts the website keeps showing the last song.</summary>
     public bool SongsOnly { get; set; } = true;
+    /// <summary>Seconds every change is held back, so the website changes when listeners of the stream hear it.</summary>
+    public double DelaySeconds { get; set; }
+    /// <summary>The JSON has the song's cover picture (a data: URL), when the file has one.</summary>
+    public bool SendCover { get; set; }
+    /// <summary>Files and FTP uploads made from templates.</summary>
+    public List<MetadataOutput> Outputs { get; set; } = new();
 
-    public WebNowPlayingSettings Clone() => (WebNowPlayingSettings)MemberwiseClone();
+    public WebNowPlayingSettings Clone()
+    {
+        var copy = (WebNowPlayingSettings)MemberwiseClone();
+        copy.Outputs = Outputs.Select(o => o.Clone()).ToList();
+        return copy;
+    }
+}
+
+/// <summary>What an output writes: a text from its template, or the cover picture.</summary>
+public enum MetadataOutputKind { Text, Cover }
+
+/// <summary>A file, or an FTP upload, written each time now playing changes.</summary>
+public sealed class MetadataOutput
+{
+    public bool Enabled { get; set; } = true;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public MetadataOutputKind Kind { get; set; }
+    /// <summary>Text: the fields of <see cref="MetadataTemplate"/>; may have several lines (an XML or HTML page).</summary>
+    public string Template { get; set; } = "{artist} - {title}";
+    /// <summary>Cover: the picture written when the song has none (the station's logo); empty: the file is left as it was.</summary>
+    public string Fallback { get; set; } = "";
+    /// <summary>
+    /// A file on this computer (or a share), ftp://server/folder/file (ftps:// for FTP over TLS), or an http(s)://
+    /// address that takes the file in a PUT (docs/now-playing/nowplaying.php?file=nowplaying.txt does).
+    /// </summary>
+    public string Target { get; set; } = "";
+    /// <summary>FTP only.</summary>
+    public string User { get; set; } = "";
+    /// <summary>FTP: the password; HTTP: the key, sent in the X-Api-Key header.</summary>
+    public string Password { get; set; } = "";
+
+    public MetadataOutput Clone() => (MetadataOutput)MemberwiseClone();
+
+    public bool IsFtp => Target.Trim().StartsWith("ftp://", StringComparison.OrdinalIgnoreCase) || IsFtps;
+    bool IsFtps => Target.Trim().StartsWith("ftps://", StringComparison.OrdinalIgnoreCase);
+    public bool IsHttp => Target.Trim().StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                          || Target.Trim().StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The target as shown in messages.</summary>
+    public string Display => Target.Trim();
+
+    /// <summary>Writes the bytes to the file (whole, never half) or uploads them. Throws with a readable message.</summary>
+    public async Task WriteAsync(byte[] bytes, HttpClient http, CancellationToken token)
+    {
+        string target = Target.Trim();
+        if (target.Length == 0) throw new InvalidOperationException(L.T("no file or FTP address set"));
+        if (IsHttp)
+        {
+            using var put = new HttpRequestMessage(HttpMethod.Put, target) { Content = new ByteArrayContent(bytes) };
+            put.Content.Headers.ContentType = new MediaTypeHeaderValue(Kind == MetadataOutputKind.Cover
+                ? (bytes.Length > 4 && bytes[0] == 0x89 && bytes[1] == 0x50 ? "image/png" : "image/jpeg") : "text/plain");
+            if (Password.Trim().Length > 0) put.Headers.Add("X-Api-Key", Password.Trim());
+            using var answer = await http.SendAsync(put, token);
+            if (!answer.IsSuccessStatusCode)
+                throw new HttpRequestException(L.F("the website answered {0} {1}", (int)answer.StatusCode, answer.ReasonPhrase));
+            return;
+        }
+        if (!IsFtp)
+        {
+            string path = Path.GetFullPath(target);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            string tmp = path + ".tmp";
+            await File.WriteAllBytesAsync(tmp, bytes);
+            File.Move(tmp, path, overwrite: true);
+            return;
+        }
+        if (!Uri.TryCreate(IsFtps ? "ftp://" + target[7..] : target, UriKind.Absolute, out var uri) || uri.AbsolutePath.EndsWith('/'))
+            throw new InvalidOperationException(L.T("the FTP address needs a file name (ftp://server/folder/file.txt)"));
+#pragma warning disable SYSLIB0014 // FtpWebRequest: .NET's only FTP client, and all this needs
+        var request = (FtpWebRequest)WebRequest.Create(uri);
+#pragma warning restore SYSLIB0014
+        request.Method = WebRequestMethods.Ftp.UploadFile;
+        request.Credentials = new NetworkCredential(User.Trim().Length > 0 ? User.Trim() : "anonymous", Password);
+        request.EnableSsl = IsFtps;
+        request.UseBinary = true;
+        request.UsePassive = true;
+        request.KeepAlive = false;
+        request.Timeout = 15000;
+        request.ContentLength = bytes.Length;
+        try
+        {
+            await using (var stream = await request.GetRequestStreamAsync()) await stream.WriteAsync(bytes);
+            using var response = (FtpWebResponse)await request.GetResponseAsync();
+        }
+        catch (WebException ex) when (ex.Response is FtpWebResponse r)
+        {
+            throw new InvalidOperationException(L.F("the FTP server answered {0}", r.StatusDescription?.Trim() ?? r.StatusCode.ToString()));
+        }
+    }
 }
 
 /// <summary>What the website gets. Times are UTC (ISO 8601).</summary>
@@ -26,7 +125,8 @@ public sealed record NowPlayingInfo(
     [property: JsonPropertyName("updated")] string Updated,
     [property: JsonPropertyName("now")] NowPlayingItem? Now,
     [property: JsonPropertyName("next")] NowPlayingItem? Next,
-    [property: JsonPropertyName("show")] ShowInfo? Show = null);
+    [property: JsonPropertyName("show")] ShowInfo? Show = null,
+    [property: JsonPropertyName("cover"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Cover = null);
 
 /// <summary>The live show on air (Sintoniza Pro → Shows): for RDS ({show}, {presenter}) and the website. Ends: UTC.</summary>
 public sealed record ShowInfo(
@@ -47,40 +147,118 @@ public sealed record NowPlayingItem(
 }
 
 /// <summary>
-/// Posts now playing to the website when what is on air (or next) changes. Runs in the background; when the website
-/// can't be reached it tries again (every 30 s, latest information only), so nothing piles up.
+/// The texts of the outputs: {artist}, {title}, {type}, {duration} (m:ss), {started} (local hh:mm), {next_artist},
+/// {next_title}, {station}, {show}, {presenter}. Nothing on air: {title} is the station's name. In a .xml, .html or
+/// .json file the fields are escaped for it. In other files, a line loses the separators an empty field leaves.
+/// </summary>
+public static class MetadataTemplate
+{
+    public static string Fill(string template, NowPlayingInfo info, string target = "")
+    {
+        string ext = Path.GetExtension(target.Trim()).ToLowerInvariant();
+        Func<string, string> escape = ext switch
+        {
+            ".xml" or ".html" or ".htm" => v => v.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;"),
+            ".json" => v => JsonEncodedText.Encode(v, JavaScriptEncoder.UnsafeRelaxedJsonEscaping).ToString(),
+            _ => v => v,
+        };
+        var now = info.Now;
+        string started = now?.Started is { } s && DateTime.TryParse(s, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var at)
+            ? at.ToLocalTime().ToString("HH:mm") : "";
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["artist"] = now?.Artist ?? "",
+            ["title"] = now?.Title ?? info.Station,
+            ["type"] = now?.Type ?? "",
+            ["duration"] = now is { Duration: > 0 } ? TimeSpan.FromSeconds(Math.Round(now.Duration)).ToString(now.Duration >= 3600 ? @"h\:mm\:ss" : @"m\:ss") : "",
+            ["started"] = started,
+            ["next_artist"] = info.Next?.Artist ?? "",
+            ["next_title"] = info.Next?.Title ?? "",
+            ["station"] = info.Station,
+            ["show"] = info.Show?.Name ?? "",
+            ["presenter"] = info.Show?.Presenter ?? "",
+        };
+        bool markup = ext is ".xml" or ".html" or ".htm" or ".json";
+        var lines = template.Replace("\r\n", "\n").Split('\n').Select(line =>
+        {
+            bool hadField = false;
+            foreach (var (name, value) in fields)
+            {
+                if (line.IndexOf("{" + name + "}", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                hadField = true;
+                line = line.Replace("{" + name + "}", escape(value.Trim()), StringComparison.OrdinalIgnoreCase);
+            }
+            // "{artist} - {title}" with no artist: "Title", not "- Title". Lines without fields, and markup, as they are.
+            return hadField && !markup
+                ? string.Join(' ', line.Split(' ', StringSplitOptions.RemoveEmptyEntries)).Trim(' ', '-', '–', '—', '|', '/', ':', '·')
+                : line;
+        });
+        return string.Join(Environment.NewLine, lines);
+    }
+}
+
+/// <summary>
+/// Sends now playing to the website when what is on air (or next) changes: the JSON post and the outputs. Runs in the
+/// background, each change held back by the delay; a target that can't be reached is tried again (every 30 s, latest
+/// information only), so nothing piles up. Songs marked "Not on the website" in the library are never sent: the
+/// website keeps what it had.
 /// </summary>
 public sealed class WebNowPlaying : IDisposable
 {
     static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
+    const int MaxCover = 1024 * 1024;
+
+    /// <summary>What was on air at a moment, to be sent when <see cref="Due"/> comes.</summary>
+    sealed record Change(Track? OnAir, DateTime Started, Track? Next, ShowInfo? Show, DateTime Due);
+
+    /// <summary>What the targets get: the JSON and the cover picture (null: none).</summary>
+    sealed record Prepared(NowPlayingInfo Info, byte[]? Cover);
+
+    /// <summary>The JSON post, or one output, and what it was last sent.</summary>
+    sealed class Target(string name, MetadataOutput? output)
+    {
+        public string Name { get; } = name;
+        public MetadataOutput? Output { get; } = output;
+        public Prepared? Sent;
+        public string? Error;
+    }
 
     readonly WebNowPlayingSettings _s;
     readonly string _station;
+    readonly Func<string, bool>? _notForWeb;
     readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(10) };
     readonly SemaphoreSlim _wake = new(0);
+    readonly SemaphoreSlim _sending = new(1, 1);
     readonly CancellationTokenSource _stop = new();
     readonly object _lock = new();
+    readonly Queue<Change> _changes = new();
+    readonly List<Target> _targets = new();
     string? _key;
     Guid? _nowId;
     DateTime _nowStarted;
-    NowPlayingInfo? _pending; // not sent yet
-    NowPlayingInfo? _last;    // last one sent (Send now sends it again)
+    Change? _lastChange;
+    Prepared? _current;
+    (string Path, byte[]? Cover)? _cover;
 
-    /// <summary>Null after a post that worked; the reason when the last one failed.</summary>
+    /// <summary>Null after sending worked everywhere; the reason when it last failed somewhere.</summary>
     public string? Error { get; private set; }
 
-    /// <summary>Raised (on a background thread) when posting starts failing or works again: the error, or null.</summary>
+    /// <summary>Raised (on a background thread) when sending starts failing or works again: the error, or null.</summary>
     public event Action<string?>? StatusChanged;
 
-    public WebNowPlaying(WebNowPlayingSettings settings, string station)
+    /// <param name="notForWeb">Whether the song with this file is kept off the website (asked in the background).</param>
+    public WebNowPlaying(WebNowPlayingSettings settings, string station, Func<string, bool>? notForWeb = null)
     {
         _s = settings.Clone();
         _station = station;
+        _notForWeb = notForWeb;
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RadioPlayout", Updates.CurrentText));
+        if (_s.Url.Trim().Length > 0 || _s.Outputs.All(o => !o.Enabled)) _targets.Add(new Target(L.T("website"), null));
+        foreach (var o in _s.Outputs.Where(o => o.Enabled)) _targets.Add(new Target(o.Display, o));
         Task.Run(Run);
     }
 
-    /// <summary>What is on air and next (null: nothing), and the live show. Cheap to call often: posts only when they change.</summary>
+    /// <summary>What is on air and next (null: nothing), and the live show. Cheap to call often: sends only when they change.</summary>
     public void Update(Track? onAir, Track? next, ShowInfo? show = null)
     {
         if (onAir?.Id != _nowId)
@@ -88,23 +266,35 @@ public sealed class WebNowPlaying : IDisposable
             _nowId = onAir?.Id;
             _nowStarted = DateTime.UtcNow;
         }
-        bool song = onAir == null || onAir.Kind is TrackKind.Music or TrackKind.Stream;
-        if (_s.SongsOnly && !song) return; // keep showing the last song
-        if (_s.SongsOnly && next != null && next.Kind is not (TrackKind.Music or TrackKind.Stream)) next = null;
         string key = $"{onAir?.Id}|{onAir?.Artist}|{onAir?.Title}|{next?.Id}|{next?.Artist}|{next?.Title}|{show?.Name}|{show?.Presenter}";
         if (key == _key) return;
         _key = key;
-        var info = new NowPlayingInfo(_station, DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            onAir == null ? null : NowPlayingItem.From(onAir, _nowStarted), next == null ? null : NowPlayingItem.From(next, null), show);
-        lock (_lock) _pending = info;
+        var change = new Change(onAir, _nowStarted, next, show, DateTime.UtcNow.AddSeconds(Math.Max(0, _s.DelaySeconds)));
+        lock (_lock) _changes.Enqueue(change);
         _wake.Release();
     }
 
-    /// <summary>Posts the latest information now and reports how it went (for the Test button).</summary>
+    /// <summary>Sends the latest information now, without the delay, and reports how it went (for the Send now button).</summary>
     public async Task<string?> SendNowAsync()
     {
-        lock (_lock) _pending ??= _last ?? new NowPlayingInfo(_station, DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"), null, null);
-        await Send();
+        await _sending.WaitAsync();
+        try
+        {
+            Change? latest;
+            lock (_lock)
+            {
+                latest = _changes.LastOrDefault() ?? _lastChange;
+                _changes.Clear();
+            }
+            if (latest != null) Prepare(latest);
+            _current ??= new Prepared(new NowPlayingInfo(_station, Stamp(DateTime.UtcNow), null, null), null);
+            foreach (var t in _targets) t.Sent = null;
+            await SendAll();
+        }
+        finally
+        {
+            _sending.Release();
+        }
         return Error;
     }
 
@@ -115,11 +305,27 @@ public sealed class WebNowPlaying : IDisposable
         {
             while (!token.IsCancellationRequested)
             {
-                await Send();
-                bool waiting;
-                lock (_lock) waiting = _pending != null;
-                // After a failure, try again in a while; otherwise wait for news.
-                await _wake.WaitAsync(waiting ? Retry : Timeout.InfiniteTimeSpan, token);
+                var wait = Timeout.InfiniteTimeSpan;
+                await _sending.WaitAsync(token);
+                try
+                {
+                    Change? due = null;
+                    lock (_lock)
+                    {
+                        while (_changes.Count > 0 && _changes.Peek().Due <= DateTime.UtcNow) due = _changes.Dequeue();
+                        if (_changes.Count > 0) wait = _changes.Peek().Due - DateTime.UtcNow;
+                    }
+                    if (due != null) Prepare(due);
+                    await SendAll();
+                    // After a failure, try again in a while; otherwise wait for news (or the next change's time).
+                    if (_targets.Any(t => t.Error != null) && (wait == Timeout.InfiniteTimeSpan || wait > Retry)) wait = Retry;
+                }
+                finally
+                {
+                    _sending.Release();
+                }
+                if (wait != Timeout.InfiniteTimeSpan && wait < TimeSpan.Zero) wait = TimeSpan.Zero;
+                await _wake.WaitAsync(wait, token);
             }
         }
         catch (OperationCanceledException)
@@ -127,34 +333,58 @@ public sealed class WebNowPlaying : IDisposable
         }
     }
 
-    readonly SemaphoreSlim _sending = new(1, 1);
-
-    async Task Send()
+    /// <summary>Makes what the targets get from a change; a change the website shouldn't show leaves it as it was.</summary>
+    void Prepare(Change c)
     {
-        await _sending.WaitAsync();
-        try
+        _lastChange = c;
+        if (c.OnAir != null && !Shown(c.OnAir)) return; // keep showing the last song
+        var next = c.Next != null && Shown(c.Next) ? c.Next : null;
+        byte[]? cover = null;
+        if (c.OnAir != null && (_s.SendCover || _targets.Any(t => t.Output?.Kind == MetadataOutputKind.Cover)))
         {
-            NowPlayingInfo? info;
-            lock (_lock) info = _pending;
-            if (info == null) return;
-            string? error = null;
+            if (_cover?.Path != c.OnAir.Path)
+            {
+                byte[]? read = c.OnAir.IsStream || c.OnAir.Kind == TrackKind.Pause ? null : Tags.ReadCover(c.OnAir.Path);
+                _cover = (c.OnAir.Path, read is { Length: <= MaxCover } ? read : null);
+            }
+            cover = _cover.Value.Cover;
+        }
+        string? coverUrl = _s.SendCover && cover != null ? $"data:{(IsPng(cover) ? "image/png" : "image/jpeg")};base64,{Convert.ToBase64String(cover)}" : null;
+        var info = new NowPlayingInfo(_station, Stamp(DateTime.UtcNow),
+            c.OnAir == null ? null : NowPlayingItem.From(c.OnAir, c.Started), next == null ? null : NowPlayingItem.From(next, null), c.Show, coverUrl);
+        if (_current != null && Same(_current.Info, info)) return;
+        _current = new Prepared(info, cover);
+    }
+
+    static bool Same(NowPlayingInfo a, NowPlayingInfo b) => a with { Updated = "" } == b with { Updated = "" };
+
+    /// <summary>A song the website may show: not a pause, not a jingle or advert with Songs only, not marked "Not on the website".</summary>
+    bool Shown(Track t)
+    {
+        if (t.Kind == TrackKind.Pause) return false;
+        if (_s.SongsOnly && t.Kind is not (TrackKind.Music or TrackKind.Stream)) return false;
+        if (t.IsStream || _notForWeb == null) return true;
+        try { return !_notForWeb(t.Path); }
+        catch { return true; } // the library can't be read: as usual
+    }
+
+    async Task SendAll()
+    {
+        if (_current is not { } current) return;
+        foreach (var t in _targets)
+        {
+            if (ReferenceEquals(t.Sent, current) || _stop.IsCancellationRequested) continue;
             try
             {
-                if (!Uri.TryCreate(_s.Url.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
-                    throw new InvalidOperationException(L.T("No website address set (http:// or https://)"));
-                using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+                if (t.Output == null) await Post(current.Info);
+                else if (t.Output.Kind == MetadataOutputKind.Cover)
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(info), Encoding.UTF8, "application/json"),
-                };
-                if (_s.Key.Trim().Length > 0) request.Headers.Add("X-Api-Key", _s.Key.Trim());
-                using var response = await _http.SendAsync(request, _stop.Token);
-                if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException(L.F("the website answered {0} {1}", (int)response.StatusCode, response.ReasonPhrase));
-                lock (_lock)
-                {
-                    if (_pending == info) _pending = null;
-                    _last = info;
+                    var bytes = current.Cover ?? (t.Output.Fallback.Trim() is { Length: > 0 } fallback && File.Exists(fallback) ? await File.ReadAllBytesAsync(fallback) : null);
+                    if (bytes != null) await t.Output.WriteAsync(bytes, _http, _stop.Token);
                 }
+                else await t.Output.WriteAsync(new UTF8Encoding(false).GetBytes(MetadataTemplate.Fill(t.Output.Template, current.Info, FileName(t.Output.Target))), _http, _stop.Token);
+                t.Sent = current;
+                t.Error = null;
             }
             catch (OperationCanceledException) when (_stop.IsCancellationRequested)
             {
@@ -162,17 +392,42 @@ public sealed class WebNowPlaying : IDisposable
             }
             catch (Exception ex)
             {
-                error = ex is TaskCanceledException ? L.T("no answer from the website") : ex.Message;
+                t.Error = ex is TaskCanceledException ? L.T("no answer") : ex.Message;
             }
-            if (error == Error) return;
-            Error = error;
-            StatusChanged?.Invoke(error);
         }
-        finally
-        {
-            _sending.Release();
-        }
+        string? error = _targets.FirstOrDefault(t => t.Error != null) is { } failed
+            ? (_targets.Count > 1 ? $"{failed.Name}: {failed.Error}" : failed.Error) : null;
+        if (error == Error) return;
+        Error = error;
+        StatusChanged?.Invoke(error);
     }
+
+    async Task Post(NowPlayingInfo info)
+    {
+        if (!Uri.TryCreate(_s.Url.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+            throw new InvalidOperationException(L.T("No website address set (http:// or https://)"));
+        using var request = new HttpRequestMessage(HttpMethod.Post, uri)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(info), Encoding.UTF8, "application/json"),
+        };
+        if (_s.Key.Trim().Length > 0) request.Headers.Add("X-Api-Key", _s.Key.Trim());
+        using var response = await _http.SendAsync(request, _stop.Token);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(L.F("the website answered {0} {1}", (int)response.StatusCode, response.ReasonPhrase));
+    }
+
+    /// <summary>The file name a target ends in (for an http address, its ?file=), which says how fields are escaped.</summary>
+    static string FileName(string target)
+    {
+        target = target.Trim();
+        if (Uri.TryCreate(target, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+            return System.Web.HttpUtility.ParseQueryString(uri.Query)["file"] ?? uri.AbsolutePath;
+        return target;
+    }
+
+    static string Stamp(DateTime utc) => utc.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+    static bool IsPng(byte[] b) => b.Length > 4 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47;
 
     public void Dispose()
     {

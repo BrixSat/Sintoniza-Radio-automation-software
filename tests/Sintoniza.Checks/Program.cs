@@ -643,6 +643,55 @@ Console.WriteLine("Categories (the eight fixed ones, and the station's own at th
     Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");
 }
 
+// ───────────────────────── Now playing for the website ─────────────────────────
+
+Console.WriteLine("Now playing for the website (templates, files, the delay, songs kept off it)");
+{
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    db.Refresh(songs[0]);
+    db.Refresh(songs[1]);
+    var hidden = db.GetByPath(songs[1])!;
+    db.SetAttributes([hidden.Id], new TrackAttributes(NotForWeb: true));
+    Check(db.IsNotForWeb(songs[1]) && !db.IsNotForWeb(songs[0]) && db.GetByIds([hidden.Id])[0].NotForWeb, "a song is marked Not on the website in the library");
+
+    var info = new NowPlayingInfo("Rádio Check", "", new NowPlayingItem("", "Só título", "music", 185, null), null, new ShowInfo("Manhãs", "Rita", ""));
+    Check(MetadataTemplate.Fill("{artist} - {title} | {presenter}", info) == "Só título | Rita", "a template: an empty artist leaves no separator");
+    Check(MetadataTemplate.Fill("<now>{title} &amp; {duration}</now>", info with { Now = info.Now! with { Title = "Rock & Roll" } }, "now.xml") == "<now>Rock &amp; Roll &amp; 3:05</now>",
+        "…escaped in an XML file");
+    Check(MetadataTemplate.Fill("{artist} - {title}", info with { Now = null }) == "Rádio Check", "…nothing on air: the station's name");
+
+    string text = Path.Combine(work, "web", "nowplaying.txt");
+    string xml = Path.Combine(work, "web", "nowplaying.xml");
+    if (Directory.Exists(Path.GetDirectoryName(text))) Directory.Delete(Path.GetDirectoryName(text)!, true);
+    var web = new WebNowPlayingSettings
+    {
+        Enabled = true, DelaySeconds = 2,
+        Outputs =
+        [
+            new MetadataOutput { Template = "{artist} - {title}", Target = text },
+            new MetadataOutput { Template = "<song><artist>{artist}</artist><next>{next_title}</next></song>", Target = xml },
+        ],
+    };
+    using var sender = new WebNowPlaying(web, "Rádio Check", db.IsNotForWeb);
+    var one = new Track(Guid.NewGuid(), songs[0], "Check 1", "Tone 1", 4);
+    var two = new Track(Guid.NewGuid(), songs[1], "Check 2", "Tone 2", 4);
+    sender.Update(one, two);
+    Thread.Sleep(1000);
+    Check(!File.Exists(text), "held back by the delay");
+    Check(Wait(() => File.Exists(text) && File.ReadAllText(text) == "Check 1 - Tone 1", 4), "…then written to the file from its template");
+    Check(File.Exists(xml) && File.ReadAllText(xml) == "<song><artist>Check 1</artist><next></next></song>", "…a song kept off the website isn't shown as next either");
+    sender.Update(two, null);
+    Thread.Sleep(3000);
+    Check(File.ReadAllText(text) == "Check 1 - Tone 1", "a song kept off the website: the file keeps the last song");
+    sender.Update(new Track(Guid.NewGuid(), songs[2], "Check 3", "Tone 3", 4, TrackKind.Jingle), null);
+    Thread.Sleep(3000);
+    Check(File.ReadAllText(text) == "Check 1 - Tone 1", "Songs only: a jingle leaves it too");
+    sender.Update(new Track(Guid.NewGuid(), songs[3], "Check 4", "Tone 4", 4), null);
+    Check(Wait(() => File.ReadAllText(text) == "Check 4 - Tone 4", 4), "the next song is written");
+    db.SetAttributes([hidden.Id], new TrackAttributes(NotForWeb: false));
+}
+
 // ───────────────────────── Several stations in one library ─────────────────────────
 
 Console.WriteLine("Stations");

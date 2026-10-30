@@ -53,6 +53,8 @@ public sealed class LibraryTrack
     public string? Language { get; set; }
     public bool Enabled { get; set; } = true;
     public bool Missing { get; set; }
+    /// <summary>Plays as usual, but the website and the now-playing files keep showing what was there before it.</summary>
+    public bool NotForWeb { get; set; }
     /// <summary>ERC: Portuguese music (null: as its categories say).</summary>
     public bool? ErcPortuguese { get; set; }
     /// <summary>ERC: the performer's country, as the ERC's code (null: as its categories say).</summary>
@@ -97,7 +99,7 @@ public sealed record LibraryStats(int Tracks, int Missing, int Uncategorised, do
 public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, string? Language = null, bool? Enabled = null,
     bool ClearTempo = false, bool ClearVoice = false, bool ClearLanguage = false, int? Energy = null, bool ClearEnergy = false,
     bool? ErcPortuguese = null, bool ClearErcPortuguese = false, string? ErcNationality = null, bool ClearErcNationality = false,
-    string? ErcRelease = null, bool ClearErcRelease = false);
+    string? ErcRelease = null, bool ClearErcRelease = false, bool? NotForWeb = null);
 
 /// <summary>
 /// The music library, in SQLite (a file) or MySQL / MariaDB (a server several studios share). Every call opens its
@@ -106,7 +108,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 19;
+    public const int SchemaVersion = 20;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -116,7 +118,8 @@ public sealed partial class LibraryDb
         album AS Album, genre AS Genre, year AS Year, isrc AS Isrc, duration AS Duration, category_id AS CategoryId,
         tempo AS Tempo, energy AS Energy, voice AS Voice, language AS Language, enabled AS Enabled, missing AS Missing,
         erc_portuguese AS ErcPortuguese, erc_nationality AS ErcNationality, erc_release AS ErcRelease,
-        play_from AS PlayFrom, play_until AS PlayUntil, play_days AS PlayDays, play_hours AS PlayHours, max_day AS MaxDay, max_week AS MaxWeek
+        play_from AS PlayFrom, play_until AS PlayUntil, play_days AS PlayDays, play_hours AS PlayHours, max_day AS MaxDay, max_week AS MaxWeek,
+        not_for_web AS NotForWeb
         """;
 
     readonly string _connectionString;
@@ -359,6 +362,13 @@ public sealed partial class LibraryDb
     {
         using var c = Connect();
         return TrackIdByPath(c, path) is { } id ? c.QueryFirstOrDefault<LibraryTrack>($"SELECT {TrackColumns} FROM tracks WHERE id = @id", new { id }) : null;
+    }
+
+    /// <summary>Whether the song with this file is kept off the website (false for files not in the library).</summary>
+    public bool IsNotForWeb(string path)
+    {
+        using var c = Connect();
+        return TrackIdByPath(c, path) is { } id && c.ExecuteScalar<long>("SELECT not_for_web FROM tracks WHERE id = @id", new { id }) != 0;
     }
 
     /// <summary>
@@ -695,13 +705,14 @@ public sealed partial class LibraryDb
         if (a.ClearVoice) sets.Add("voice = NULL"); else if (a.Voice != null) sets.Add("voice = @Voice");
         if (a.ClearLanguage) sets.Add("language = NULL"); else if (a.Language != null) sets.Add("language = @Language");
         if (a.Enabled != null) sets.Add("enabled = @Enabled");
+        if (a.NotForWeb != null) sets.Add("not_for_web = @NotForWeb");
         if (a.ClearErcPortuguese) sets.Add("erc_portuguese = NULL"); else if (a.ErcPortuguese != null) sets.Add("erc_portuguese = @ErcPortuguese");
         if (a.ClearErcNationality) sets.Add("erc_nationality = NULL"); else if (a.ErcNationality != null) sets.Add("erc_nationality = @ErcNationality");
         if (a.ClearErcRelease) sets.Add("erc_release = NULL"); else if (a.ErcRelease != null) sets.Add("erc_release = @ErcRelease");
         using var c = Connect();
         using var tx = c.BeginTransaction();
         c.Execute($"UPDATE tracks SET {string.Join(", ", sets)} WHERE id = @id",
-            trackIds.Select(id => new { id, now = Now(), a.Tempo, a.Energy, a.Voice, a.Language, a.Enabled, a.ErcPortuguese, a.ErcNationality, a.ErcRelease }), tx);
+            trackIds.Select(id => new { id, now = Now(), a.Tempo, a.Energy, a.Voice, a.Language, a.Enabled, a.ErcPortuguese, a.ErcNationality, a.ErcRelease, a.NotForWeb }), tx);
         tx.Commit();
     }
 

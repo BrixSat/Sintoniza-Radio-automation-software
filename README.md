@@ -223,8 +223,13 @@ engine for decoding, mixing and streaming.
   songs are turned down and quiet ones up (at most 6 dB by default, never past -1 dBFS peaks). The files are not
   changed. Off by default: switching it on makes the output quieter than most modern masters, so check the desk.
 - **Now playing on the website** (Settings → Website): when what is on air changes, the app posts it as JSON to an
-  address you choose, with a key. [docs/now-playing](docs/now-playing) has the format and a PHP page that keeps it
-  in `nowplaying.txt` and `nowplaying.json` for the website to show.
+  address you choose, with a key, and the cover picture if you want it. It also writes **files from templates**
+  (`{artist}`, `{title}`, `{next_title}`, `{show}`, `{presenter}`…: a line for the website or a streaming encoder, an
+  XML or HTML page) and the **cover picture** (or the station's logo when a song has none), to a file, by **FTP / FTPS**
+  or by **HTTP PUT**. Every change can be **held back** by the stream's delay, so the website changes when listeners
+  hear it. Songs marked **Not on the website** in the library (right-click) are never sent: the website keeps what it
+  had. [docs/now-playing](docs/now-playing) has the format and a PHP page that keeps it in `nowplaying.txt` and
+  `nowplaying.json`, and takes the uploaded files.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
   Click the STREAM button to start and stop (also while it is still connecting), or right-click it for Start / Stop;
   after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.
@@ -530,7 +535,6 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 
 - Auto cue (silence trimming) for files without cue points
 - News and network programmes fetched by FTP/HTTP before air time, checked to be new, with a fallback
-- More than one stream at a time (and AAC)
 - Several stations in one database and library
 - RT+ over UECP (it is sent with ASCII commands now)
 

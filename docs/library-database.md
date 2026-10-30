@@ -129,6 +129,7 @@ One row per audio file.
 | `voice` | text, null | `male`, `female`, `duo`, `group` or `instrumental` |
 | `language` | text, null | the language it is sung in: `pt-PT`, `pt-BR`, `en`, … (`pt` is taken as `pt-PT`) |
 | `enabled` | 0/1 | 0 = never picked automatically (rotation) |
+| `not_for_web` | 0/1 | 1 = plays as usual, but the website, the now-playing files and FTP uploads keep what they showed before it (from schema 20) |
 | `missing` | 0/1 | 1 = not found, but kept (only when the row can't be deleted). A scan takes files that are gone out of the library: deleted files, and every song of a deleted folder. Moved and renamed files are followed and keep their row |
 | `added_at`, `updated_at` | time | |
 | `search` | text | what search matches against. **Insert `''`**: the app fills it in (lower case, accents removed) when it opens the library |

@@ -641,44 +641,6 @@ public partial class SettingsWindow : PageWindow
     LoudnessSettings LoudnessFromUi() => new(LoudnessBox.IsChecked == true,
         (double)(LoudnessTargetBox.Value ?? -16), (double)(LoudnessBoostBox.Value ?? 6));
 
-    // ───────────────────────── Website ─────────────────────────
-
-    void LoadWeb(WebNowPlayingSettings web)
-    {
-        WebBox.IsChecked = web.Enabled;
-        WebUrlBox.Text = web.Url;
-        WebKeyBox.Text = web.Key;
-        WebSongsOnlyBox.IsChecked = web.SongsOnly;
-        WebPanel.IsEnabled = web.Enabled;
-        WebBox.IsCheckedChanged += (_, _) => WebPanel.IsEnabled = WebBox.IsChecked == true;
-        WebTestButton.Click += async (_, _) => await TestWeb();
-    }
-
-    WebNowPlayingSettings WebFromUi() => new()
-    {
-        Enabled = WebBox.IsChecked == true,
-        Url = WebUrlBox.Text?.Trim() ?? "",
-        Key = WebKeyBox.Text?.Trim() ?? "",
-        SongsOnly = WebSongsOnlyBox.IsChecked == true,
-    };
-
-    /// <summary>Sends what is on air now to the website, with the settings on screen.</summary>
-    async Task TestWeb()
-    {
-        var web = WebFromUi();
-        web.SongsOnly = false; // send whatever is on air
-        string station = StationNameBox.Text?.Trim() is { Length: > 0 } name ? name : AppInfo.Name;
-        var status = _engine?.GetStatus();
-        var onAir = status is { State: not PlayerState.Stopped } st ? st.Current : null;
-        WebTestButton.IsEnabled = false;
-        WebTestText.Text = L.T("Sending…");
-        using var output = new WebNowPlaying(web, station);
-        output.Update(onAir, null);
-        string? error = await output.SendNowAsync();
-        WebTestText.Text = error == null ? L.F("Sent: {0}", (onAir == null ? L.T("nothing on air") : onAir.Display)) : L.F("Failed: {0}", error);
-        WebTestButton.IsEnabled = true;
-    }
-
     void ShowFillFolder()
     {
         FillPanel.IsEnabled = FillBox.IsChecked == true;

@@ -280,6 +280,9 @@ public partial class TrackLibraryView : UserControl
         bool allEnabled = rows.All(r => r.Track.Enabled);
         menu.Items.Add(Item(Mark(L.T("Never pick automatically"), !allEnabled), () =>
             Edit(db => db.SetAttributes(ids, new TrackAttributes(Enabled: !allEnabled)))));
+        bool allHidden = rows.All(r => r.Track.NotForWeb);
+        menu.Items.Add(Item(Mark(L.T("Not on the website"), allHidden), () =>
+            Edit(db => db.SetAttributes(ids, new TrackAttributes(NotForWeb: !allHidden)))));
 
         if (rows.Count == 1)
         {

@@ -700,7 +700,7 @@
                     <CheckBox x:Name="WebBox" Content="Send now playing to the station's website" FontWeight="SemiBold" />
                     <StackPanel x:Name="WebPanel" Spacing="12">
                         <StackPanel>
-                            <TextBlock Classes="label" Text="Address it is sent to" />
+                            <TextBlock Classes="label" Text="Address the JSON is posted to (empty: only the files below)" />
                             <TextBox x:Name="WebUrlBox" PlaceholderText="https://www.example.com/nowplaying/nowplaying.php" />
                         </StackPanel>
                         <StackPanel>
@@ -708,12 +708,26 @@
                             <TextBox x:Name="WebKeyBox" PasswordChar="•" RevealPassword="False" />
                         </StackPanel>
                         <CheckBox x:Name="WebSongsOnlyBox" Content="Songs only: during jingles, adverts and programmes the website keeps the last song" />
+                        <CheckBox x:Name="WebCoverBox" Content="Send the song's cover picture too (in &quot;cover&quot;, when the file has one)" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Text="Hold every change back by" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="WebDelayBox" Minimum="0" Maximum="600" Increment="1" FormatString="0" Width="110" />
+                            <TextBlock Text="seconds (the stream's delay, so the website changes when listeners hear it)" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420" />
+                        </StackPanel>
+                        <TextBlock Classes="label" Text="FILES AND FTP" FontWeight="SemiBold" Margin="0,8,0,0" />
+                        <TextBlock Classes="note"
+                                   Text="Each one is written when now playing changes: a text from a template (a line for the website or a streaming encoder, an XML or HTML page), or the cover picture. To a file (on this computer or a share), by FTP (ftp://server/folder/file.txt, or ftps:// for FTP over TLS), or to a web page that takes it in an HTTP PUT (https://…/nowplaying.php?file=nowplaying.txt, the example PHP page does; the password box is its key)." />
+                        <StackPanel x:Name="WebOutputsPanel" Spacing="10" />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="AddWebTextButton" Content="Add a text" />
+                            <Button x:Name="AddWebCoverButton" Content="Add the cover picture" />
+                        </StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="10">
                             <Button x:Name="WebTestButton" Content="Send now" ToolTip.Tip="Send what is on air now, with these settings" />
                             <TextBlock x:Name="WebTestText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
                         </StackPanel>
                         <TextBlock Classes="note"
-                                   Text="When what is on air (or next) changes, the app sends it as JSON (station, now, next: artist, title, type, duration, start time) in a POST, with the key in the X-Api-Key header. If the website can't be reached it tries again every 30 seconds. The docs/now-playing folder of the project (on GitHub) has an example PHP page that keeps it in nowplaying.txt and nowplaying.json for the website to show." />
+                                   Text="When what is on air (or next) changes, the app sends it as JSON (station, now, next: artist, title, type, duration, start time; the live show) in a POST, with the key in the X-Api-Key header. If the website or a file can't be reached it tries again every 30 seconds. Songs marked Not on the website in the library (right-click) are never sent: the website keeps what it had. The docs/now-playing folder of the project (on GitHub) has an example PHP page that keeps it in nowplaying.txt and nowplaying.json for the website to show." />
                     </StackPanel>
                 </StackPanel>
                 </ScrollViewer>
