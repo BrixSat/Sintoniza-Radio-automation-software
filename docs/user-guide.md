@@ -71,10 +71,18 @@ they are changed in Pro only.
   next thing with a fixed time (an event, an ad break, a timed item), with a large countdown that turns amber in the
   last minute and red in the last 10 seconds — stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
 - **Bottom left — the playlist.** **Bottom right — Cartwall / Library / Folders** tabs.
-- **Status line** (bottom): **Settings**, **Reports**, **Log out**, the **status lights** — **STREAM**, **RDS**, **REC**
-  (Sintoniza Rec on this computer: green recording, amber recording silence, red open but not recording, grey not
-  running), **LIBRARY**, **ALERTS** (red while a problem is going on; point at it for what) — and the last thing that
-  happened (also in the log, Settings → Safety → Open log folder).
+- **Under the deck — the ON AIR sign and the status lamps.** A red **MIC LIVE** sign while the microphone is open
+  (the MIC button, or the desk's mic fader by GPIO), **ON AIR · show** during a live show and **ON AIR · LIVE INPUT**
+  while an input of the computer is on air. Beside it, a lamp for each part, with what it is doing: **STUDIO** (this
+  computer on air, and the standby ones), **STREAM**, **RDS**, **WEBSITE**, **REC** (Sintoniza Rec on this computer:
+  green recording, amber recording silence, red open but not recording, grey not running), **LIBRARY**, **TODAY'S
+  PLAYLIST** (red when an hour coming up has an hour template but no daily playlist), **DEAD AIR**, **MIC**, **GPIO**
+  and **ALERTS** (red while a problem is going on). Green working, amber a warning, red a problem, grey off; point at
+  one for the whole story, click it for its settings. Settings → Screen chooses which lamps show, puts them back as
+  small lights in the status line instead, switches the sign off, and turns on **big counters** (the time remaining,
+  the cue points, the next event and the top of the hour in big digits, to read across the studio).
+- **Status line** (bottom): **Settings**, **Reports**, **Log out**, the lamps when they aren't a panel, and the last
+  thing that happened (also in the log, Settings → Safety → Open log folder).
 
 ### Logging in
 
@@ -187,7 +195,8 @@ the database can be fixed.
 | Shortcuts | keys for transport, MIC, stream and carts |
 | RDS | whether this computer sends to the RDS encoder, and how it reaches it |
 | Playlist | how much of the next hour the playlist shows |
-| GPIO | the desk's faders and lights, by a serial port, the network or MIDI: what each input does (fader start, Next, Stop, a cart) and what each output shows (on air, an advert, a live input, silence) — see below |
+| Screen | the status lamps (a panel or small lights, which ones), big counters, the ON AIR sign |
+| GPIO | the desk's faders and lights, by a serial port, the network or MIDI: what each input does (fader start, Next, Stop, a cart) and what each output shows (on air, an advert, a live input, silence, the ON AIR sign for a studio lamp); an input can be the mic fader (MIC LIVE) — see below |
 | Remote | the web remote: on/off, port, its address (it logs in with the station's users) |
 | About | version, updates, the manual |
 
@@ -219,7 +228,7 @@ of the file manager; on Windows a mapped drive or `\\server\share`; on a Mac it 
 With a shared MySQL library every computer running Sintoniza Emi for the station knows the others. **One is on
 air**; the others are **standby**: ready and silent — no playlist, no time signal, no stream, nothing in the play
 history — with an amber **STANDBY** bar at the top saying which computer is on air and what it is playing. The
-first to start goes on air. On the one on air an **ON AIR** light in the status bar lists the standby computers;
+first to start goes on air. On the one on air the **STUDIO** lamp lists the standby computers;
 Sintoniza Pro's status bar shows them too.
 
 - **Take on air** (or Play) on a standby computer puts it on air, after asking: the one on air stops and goes

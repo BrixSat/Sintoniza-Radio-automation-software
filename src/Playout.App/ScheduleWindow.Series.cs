@@ -40,7 +40,7 @@ public partial class ScheduleWindow
         {
             var day = (DayOfWeek)(((int)first + i) % 7);
             string current = e?.Series.FirstOrDefault(f => f.Date == null && f.Day == day)?.Path ?? "";
-            EventSeriesDays.Children.Add(SeriesRow(language.TextInfo.ToTitleCase(language.DateTimeFormat.GetDayName(day)), current, false,
+            EventSeriesDays.Children.Add(SeriesRow(FirstUpper(language.DateTimeFormat.GetDayName(day), language), current, false,
                 path => Edit<ScheduledEvent>(EventList, ev =>
                 {
                     // Changed where it is, so typing and undoing it leaves the series as it was (no "unsaved changes").
@@ -74,6 +74,9 @@ public partial class ScheduleWindow
         }
         toFocus?.Focus();
     }
+
+    /// <summary>"segunda-feira" → "Segunda-feira": only the first letter (title case would make it "Segunda-Feira").</summary>
+    static string FirstUpper(string text, CultureInfo culture) => text.Length > 0 ? char.ToUpper(text[0], culture) + text[1..] : text;
 
     /// <summary>A day (or date) with its file: typed, or chosen as a file or folder; <paramref name="remove"/> for a date.</summary>
     Control SeriesRow(string label, string path, bool past, Action<string> changed, Action? remove)

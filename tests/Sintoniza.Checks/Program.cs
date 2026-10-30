@@ -331,10 +331,48 @@ Console.WriteLine("The on-air program (a library of its own)");
     Check(win.Requests.Count == 0 && WaitUi(() => Field("_snapshot") is PlaylistSnapshot snap && snap.Items.Any(t => t.Path == songs[2] && t.Note == "Request from Ana: Happy birthday"), 3),
         "…the presenter puts it on next, with who it is for and the message as its note");
 
+    // The on-air screen: the status lamps, the ON AIR sign, the desk's mic fader, big counters.
+    var tick = typeof(MainWindow).GetMethod("Tick", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    void Ticks() { for (int i = 0; i < 3; i++) tick.Invoke(win, null); Pump(3); }
+    Ticks();
+    var sign = win.FindControl<Border>("OnAirSign")!;
+    var signText = win.FindControl<TextBlock>("OnAirSignText")!;
+    Check(sign.IsVisible && signText.Text?.Contains("Manhãs") == true, $"the ON AIR sign is lit during the live show ({signText.Text})");
+    var lamps = win.FindControl<WrapPanel>("LampPanel")!;
+    Check(lamps.IsVisible && lamps.Children.Count >= 9, $"the status lamps are a panel under the deck ({lamps.Children.Count} lamps)");
+    var onGpio = typeof(MainWindow).GetMethod("OnGpio", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    onGpio.Invoke(win, [GpioAction.MicLive, 0]);
+    Ticks();
+    Check(signText.Text == "MIC LIVE" && Field("_signLit") is true, "the desk's mic fader up (GPIO): MIC LIVE, and the sign's GPIO output on");
+    var settings2 = (AppSettings)Field("_settings")!;
+    settings2.Screen = new ScreenSettings { StatusPanel = false, BigCounters = true, OnAirSign = false, HiddenLamps = ["rec"] };
+    typeof(MainWindow).GetMethod("ApplyScreen", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(win, null);
+    Ticks();
+    Check(!sign.IsVisible && Field("_signLit") is true, "the sign switched off in Settings: not shown, its GPIO output still on");
+    Check(!lamps.IsVisible && win.FindControl<StackPanel>("Lights")!.Children.Count >= 9, "lamps as small lights in the status bar");
+    Check(win.FindControl<TextBlock>("Remaining")!.FontSize >= 60, "big counters");
+    // GPIO turned off with the fader up: nobody will say it came down, so it isn't MIC LIVE for ever.
+    typeof(MainWindow).GetMethod("StopGpio", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(win, null);
+    Check(Field("_deskMic") is false, "GPIO stopped: the desk's mic fader no longer counts as up");
+    settings2.Screen = new ScreenSettings();
+
+    // A serial port's output set to the ON AIR sign: on with the sign, off without it (not held on).
+    var pins = new TestPins();
+    var serial = new GpioService(pins, new GpioSettings { Enabled = true, Dtr = GpioSignal.MicLive, Rts = GpioSignal.OnAir }, poll: false);
+    bool offAtStart = !pins.DtrOn;
+    serial.Show(new GpioState(true, false, false, false, MicLive: true));
+    bool onWithSign = pins.DtrOn && pins.RtsOn;
+    serial.Show(new GpioState(true, false, false, false, MicLive: false));
+    Check(offAtStart && onWithSign && !pins.DtrOn, "a serial GPIO output for the ON AIR sign follows the sign");
+    serial.Dispose();
+
     // The show ends: AUTO again (as the screen sees it a second after the end).
     follow.Invoke(win, [showStart.AddMinutes(60).AddSeconds(1)]);
     Pump(5);
     Check(autoSwitch.IsChecked == true && engine.AutoAdvance, "the show is over: AUTO again");
+    // Only the sign (a whole screen update would follow the show again by the real clock, where it is still on).
+    typeof(MainWindow).GetMethod("UpdateOnAirSign", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(win, [null]);
+    Check(!sign.IsVisible, "…and the ON AIR sign goes out");
     win.Close();
     Pump(10);
 }
@@ -793,6 +831,18 @@ Console.WriteLine("Stations");
 
 Console.WriteLine(fails == 0 ? $"All {passes} checks passed." : $"{fails} of {passes + fails} checks FAILED.");
 Environment.Exit(fails == 0 ? 0 : 1);
+
+/// <summary>A serial port's lines, for the GPIO checks: the outputs as last set.</summary>
+sealed class TestPins : IGpioPins
+{
+    public bool DtrOn, RtsOn;
+    public bool Cts => false;
+    public bool Dsr => false;
+    public bool Dcd => false;
+    public bool Dtr { set => DtrOn = value; }
+    public bool Rts { set => RtsOn = value; }
+    public void Dispose() { }
+}
 
 /// <summary>Short test tones as WAV files (nothing else needed to make them).</summary>
 static class Audio

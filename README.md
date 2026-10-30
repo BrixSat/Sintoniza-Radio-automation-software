@@ -18,6 +18,11 @@ engine for decoding, mixing and streaming.
 
 - **On-air deck**: title and artist, the album cover (when the file has one), a scrolling waveform with a playhead, a full-track overview with the
   crossfade zone marked, elapsed/remaining time (turns red in the last 10 s), and the next item.
+- **Status lamps and the ON AIR sign**: under the deck, a lamp for the studio, stream, RDS, website, Sintoniza Rec,
+  library, today's daily playlists, dead air, the mic, GPIO and alerts, each with what it is doing (click one for its
+  settings); a red **MIC LIVE / ON AIR** sign while the mic is open (the MIC button or the desk's mic fader by GPIO) or
+  a live show or input is on air, also on a GPIO output for a real studio lamp; and **big counters** to read across
+  the studio. Each is chosen per computer (Settings → Screen).
 - **Transport**: Play, Pause, Next (crossfades straight away) and Stop. The button for the current state lights up,
   and Next flashes on every track change. **Adverts are protected**: while one is on air, Next, Pause and Stop
   (and putting another item on air) ask first, and only a click on the button in that question does it, so a paid

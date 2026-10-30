@@ -125,8 +125,8 @@ public partial class MainWindow
             : onAir.Playing.Length > 0 ? L.F("On air: {0}, playing {1}.", onAir.Computer, onAir.Playing)
             : L.F("On air: {0}.", onAir.Computer);
         string then = _settings.TakeOver
-            ? L.F("This computer goes on air by itself if it stops answering for {0} s.", Math.Max(5, _settings.TakeOverSeconds))
+            ? L.F("This computer goes on air automatically if the master stops answering for {0} s.", Math.Max(5, _settings.TakeOverSeconds))
             : L.T("This computer goes on air only when you press Take on air.");
-        StandbyText.Text = $"{state} {then}";
+        StandbyText.Text = $"{state}\n{then}"; // what is on air on the first line, what this computer does on the second
     }
 }

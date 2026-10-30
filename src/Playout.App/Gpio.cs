@@ -15,6 +15,10 @@ public enum GpioAction
     PlayPause,
     /// <summary>Fire a cart of the cartwall on screen (<see cref="GpioInput.Cart"/>, 1 = the first).</summary>
     Cart,
+    /// <summary>The desk's mic fader opened: MIC LIVE on the screen's sign (and the <see cref="GpioSignal.MicLive"/> output).</summary>
+    MicLive,
+    /// <summary>The desk's mic fader closed.</summary>
+    MicOff,
 }
 
 /// <summary>What a GPIO output shows (its contact is closed while it is so).</summary>
@@ -29,6 +33,8 @@ public enum GpioSignal
     Live,
     /// <summary>Dead air: nothing is heard although something is playing.</summary>
     Silence,
+    /// <summary>The ON AIR sign is lit: the mic is open, a live show or a live input is on air (a studio's red lamp).</summary>
+    MicLive,
 }
 
 /// <summary>An input line and what it does.</summary>
@@ -64,7 +70,7 @@ public sealed class GpioSettings
 }
 
 /// <summary>What the GPIO outputs show: what is on air now.</summary>
-public readonly record struct GpioState(bool Playing, bool Advert, bool Live, bool Silence)
+public readonly record struct GpioState(bool Playing, bool Advert, bool Live, bool Silence, bool MicLive = false)
 {
     public bool Is(GpioSignal signal) => signal switch
     {
@@ -72,6 +78,7 @@ public readonly record struct GpioState(bool Playing, bool Advert, bool Live, bo
         GpioSignal.Advert => Advert,
         GpioSignal.Live => Live,
         GpioSignal.Silence => Silence,
+        GpioSignal.MicLive => MicLive,
         _ => false,
     };
 }
@@ -167,10 +174,10 @@ public sealed class GpioService : IGpioSource
         }
     }
 
-    public void Show(GpioState state) => Show(state.Playing, state.Advert, state.Live, state.Silence);
+    public void Show(GpioState state) => Show(state.Playing, state.Advert, state.Live, state.Silence, state.MicLive);
 
     /// <summary>Sets the outputs from what is on air now.</summary>
-    public void Show(bool playing, bool advert, bool live, bool silence)
+    public void Show(bool playing, bool advert, bool live, bool silence, bool micLive = false)
     {
         bool On(GpioSignal signal) => signal switch
         {
@@ -178,6 +185,7 @@ public sealed class GpioService : IGpioSource
             GpioSignal.Advert => advert,
             GpioSignal.Live => live,
             GpioSignal.Silence => silence,
+            GpioSignal.MicLive => micLive,
             _ => true, // not used as an output: held on, as the supply of the input contacts
         };
         try

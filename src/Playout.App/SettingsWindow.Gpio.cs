@@ -27,6 +27,8 @@ public partial class SettingsWindow
         GpioAction.Stop => L.T("Stop"),
         GpioAction.PlayPause => L.T("Pause / carry on"),
         GpioAction.Cart => L.T("Cart"),
+        GpioAction.MicLive => L.T("Mic fader up (MIC LIVE)"),
+        GpioAction.MicOff => L.T("Mic fader down"),
         _ => L.T("Nothing"),
     };
 
@@ -36,6 +38,7 @@ public partial class SettingsWindow
         GpioSignal.Advert => L.T("An advert on air"),
         GpioSignal.Live => L.T("A live input or stream on air"),
         GpioSignal.Silence => L.T("Silence (dead air)"),
+        GpioSignal.MicLive => L.T("The ON AIR sign (mic live, live show or input)"),
         _ => L.T("Not used (held on: the supply for the inputs)"),
     };
 

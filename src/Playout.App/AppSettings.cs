@@ -68,6 +68,8 @@ public sealed class AppSettings
     public AlertSettings Alerts { get; set; } = new();
     /// <summary>GPIO through a serial port (this computer's: the desk is wired to it).</summary>
     public GpioSettings Gpio { get; set; } = new();
+    /// <summary>What the on-air screen shows: the status lamps, big counters, the ON AIR sign (this computer's).</summary>
+    public ScreenSettings Screen { get; set; } = new();
     /// <summary>Top of the hour time signal: off, over what is playing, or instead of it.</summary>
     public TimeSignalSettings TimeSignal { get; set; } = new();
     /// <summary>Keyboard shortcuts by action id (see <see cref="global::Playout.App.Shortcuts"/>), as KeyGesture text; empty = none.</summary>
@@ -232,6 +234,8 @@ public sealed class AppSettings
         Silence ??= new();
         Rds ??= new();
         WebNowPlaying ??= new();
+        Screen ??= new();
+        Screen.HiddenLamps ??= new();
         Loudness ??= new();
         Library ??= new();
         Library.Folders ??= new();

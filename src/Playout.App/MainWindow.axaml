@@ -238,6 +238,15 @@
             </Border>
         </Grid>
 
+        <!-- ═════════ ON AIR sign and the status lamps (Settings → Screen) ═════════ -->
+        <Grid DockPanel.Dock="Top" x:Name="ScreenStrip" ColumnDefinitions="Auto,*" Margin="0,0,0,12" IsVisible="False">
+            <Border x:Name="OnAirSign" CornerRadius="8" Padding="18,6" Margin="0,0,10,0" Background="#E5484D" IsVisible="False"
+                    MinHeight="46">
+                <TextBlock x:Name="OnAirSignText" FontSize="24" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
+            </Border>
+            <WrapPanel Grid.Column="1" x:Name="LampPanel" ItemSpacing="8" LineSpacing="8" VerticalAlignment="Center" />
+        </Grid>
+
         <!-- ═════════ Status bar ═════════ -->
         <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="2,10,2,0">
             <Button x:Name="SettingsButton" Classes="tool" ToolTip.Tip="Settings (Ctrl/Cmd+,)">

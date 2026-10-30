@@ -144,6 +144,7 @@ public partial class MainWindow : Window
         }
         ApplyWebNowPlaying();
         ApplyRemote();
+        ApplyScreen(); // with or without sound: the lamps, the counters and the sign as this computer has them
         StartBackups();
         AppLog.Write($"Started {AppInfo.Name} {Updates.CurrentText}");
 
@@ -619,6 +620,7 @@ public partial class MainWindow : Window
         Part("watch", () => WatchDisplay(st));
         Part("break countdown", () => UpdateBreakCountdown(now));
         Part("stream", () => UpdateStreamStatus(st));
+        Part("on-air sign", () => UpdateOnAirSign(st));
         Part("gpio", () => ShowGpio(st));
 
         // Once a second is plenty for the date, ETA column and station info.
@@ -1248,72 +1250,6 @@ public partial class MainWindow : Window
 
     static readonly IBrush Amber = new SolidColorBrush(Color.Parse("#F5A524")), LightOk = new SolidColorBrush(Color.Parse("#3ECF8E")),
         LightOff = new SolidColorBrush(Color.Parse("#4A5060")), LightBad = new SolidColorBrush(Color.Parse("#E5484D"));
-    readonly Dictionary<string, (Ellipse Dot, Border Pill)> _lights = new();
-
-    /// <summary>A status light in the status bar: its dot, name and tooltip.</summary>
-    void Light(string name, IBrush colour, string tip)
-    {
-        if (!_lights.TryGetValue(name, out var light))
-        {
-            var dot = new Ellipse { Width = 8, Height = 8, VerticalAlignment = VerticalAlignment.Center };
-            var pill = new Border
-            {
-                Padding = new Thickness(7, 2), CornerRadius = new CornerRadius(9), Background = new SolidColorBrush(Color.Parse("#1B1F27")),
-                Child = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal, Spacing = 5,
-                    Children = { dot, new TextBlock { Text = name, FontSize = 11, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center } },
-                },
-            };
-            Lights.Children.Add(pill);
-            _lights[name] = light = (dot, pill);
-        }
-        light.Dot.Fill = colour;
-        ToolTip.SetTip(light.Pill, tip);
-    }
-
-    /// <summary>Stream, RDS, Sintoniza Rec, the library and alerts at a glance: green working, red a problem, grey off.</summary>
-    void UpdateLights()
-    {
-        var st = _lastStreamState;
-        if (!_settings.UsesStreaming) Light(L.T("STREAM"), LightOff, L.T("No stream set up"));
-        else Light(L.T("STREAM"), st switch { StreamState.OnAir => LightOk, StreamState.Connecting => Amber, StreamState.Failed => LightBad, _ => LightOff },
-            st switch
-            {
-                StreamState.OnAir => L.T("Streaming"),
-                StreamState.Connecting => L.T("Connecting to the stream server"),
-                StreamState.Failed => L.T("The stream can't connect"),
-                _ => L.T("Stream off"),
-            });
-
-        if (_rds == null) Light("RDS", LightOff, L.T("RDS off (Settings)"));
-        else Light("RDS", _rds.Error == null ? LightOk : LightBad, _rds.Error == null ? L.T("RDS: sending to the encoder") : L.F("RDS: can't send ({0})", _rds.Error));
-
-        var rec = RecService.ReadStatus();
-        Light("REC", rec == null ? LightOff : !rec.Recording ? LightBad : rec.SilentSeconds >= 30 ? Amber : LightOk,
-            rec == null ? L.T("Sintoniza Rec isn't running on this computer")
-            : !rec.Recording ? L.T("Sintoniza Rec is open but NOT recording")
-            : rec.SilentSeconds >= 30 ? L.F("Sintoniza Rec is recording silence ({0:0} s)", rec.SilentSeconds)
-            : L.F("Sintoniza Rec is recording: {0}", Path.GetFileName(rec.File ?? "")));
-
-        Light(L.T("LIBRARY"), _library.Db != null ? LightOk : _library.Error != null ? LightBad : LightOff,
-            _library.Db != null ? L.T("The library is open") : _library.Error is { } error ? L.F("The library can't be reached: {0}", error) : L.T("No library"));
-
-        // Several computers for the station (a shared library): this one on air, and the standby ones.
-        if (_role?.Studios is { } studios && !IsStandby)
-        {
-            var standby = studios.Studios.Where(st => !st.OnAir && studios.Silent(st) < TimeSpan.FromMinutes(1)).Select(st => st.Computer).ToList();
-            Light(L.T("ON AIR"), LightOk, standby.Count > 0
-                ? L.F("This computer is on air. Standby: {0}", string.Join(", ", standby))
-                : L.T("This computer is on air. No other computer is standby."));
-        }
-
-        var problems = _health?.Active ?? [];
-        var alerts = _settings.Alerts;
-        Light(L.T("ALERTS"), problems.Count > 0 ? LightBad : alerts.Enabled && alerts.HasChannel ? LightOk : LightOff,
-            problems.Count > 0 ? string.Join("\n", problems) : alerts.Enabled && alerts.HasChannel ? L.T("Alerts on: nothing wrong") : L.T("Alerts off (Settings)"));
-    }
-
     void CountPlayed()
     {
         if (_playedDay != DateTime.Today) { _playedDay = DateTime.Today; _playedToday = 0; }
@@ -1869,7 +1805,8 @@ public partial class MainWindow : Window
         return true;
     }
 
-    async Task OpenSettings()
+    /// <param name="tab">The tab it opens at (its English name, e.g. "RDS"); null: the first.</param>
+    async Task OpenSettings(string? tab = null)
     {
         if (_settingsOpen) return;
         _settingsOpen = true;
@@ -1880,6 +1817,7 @@ public partial class MainWindow : Window
             string libraryBefore = _settings.Library.ConnectionKey();
             var micBefore = _settings.ActiveMic;
             var settingsWindow = new SettingsWindow(_settings, _engine, this);
+            if (tab != null) settingsWindow.ShowTab(tab);
             // Its GPIO test opens the port: let go of it meanwhile.
             settingsWindow.GpioTestRequested += testing => { if (testing) StopGpio(); else ApplyGpio(); };
             bool saved = await settingsWindow.ShowDialog<bool>(this);
@@ -1899,6 +1837,7 @@ public partial class MainWindow : Window
             ApplyStationSettings();
             ApplyShortcuts();
             ApplyRemote();
+            ApplyScreen();
             LastLog.Text = L.T("Settings saved");
         }
         finally
@@ -2271,6 +2210,7 @@ public partial class MainWindow : Window
         _gpio.Clear();
         _gpioKey = "";
         _gpioShown = null;
+        _deskMic = false; // nobody tells it the fader came down any more: not MIC LIVE for ever
     }
 
     /// <summary>A desk contact closed or opened. Next and Stop aren't done while an advert is on air (as on screen, without asking).</summary>
@@ -2292,6 +2232,11 @@ public partial class MainWindow : Window
             case GpioAction.Stop: engine.Stop(); break;
             case GpioAction.PlayPause: engine.TogglePause(); break;
             case GpioAction.Cart when cart >= 1 && cart <= _page.Carts.Count: ToggleCart(cart - 1); break;
+            case GpioAction.MicLive or GpioAction.MicOff:
+                _deskMic = action == GpioAction.MicLive;
+                UpdateOnAirSign(st);
+                UpdateLights();
+                break;
         }
         AppLog.Write(L.F("GPIO: {0}", what));
     }
@@ -2302,7 +2247,7 @@ public partial class MainWindow : Window
         if (_gpio.Count == 0) return;
         bool playing = st.State == PlayerState.Playing;
         bool silence = playing && st.Silence >= Math.Max(5, _settings.Silence?.Seconds ?? 15); // as the alerts count it
-        var now = new GpioState(playing, AdvertOnAir(st), playing && st.Current?.Kind == TrackKind.Stream, silence);
+        var now = new GpioState(playing, AdvertOnAir(st), playing && st.Current?.Kind == TrackKind.Stream, silence, _signLit);
         if (_gpioShown == now) return;
         _gpioShown = now;
         foreach (var source in _gpio) source.Show(now);
@@ -2366,6 +2311,7 @@ public partial class MainWindow : Window
 
     void ShowSilence(PlayerStatus st)
     {
+        _lastSilence = st.State == PlayerState.Playing ? st.Silence : 0;
         bool silent = st.Silence >= 5;
         SilenceBadge.IsVisible = silent;
         if (silent)

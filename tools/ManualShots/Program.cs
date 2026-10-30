@@ -271,8 +271,8 @@ Shot(main, "main", deck);
 // A standby studio (another computer on air, a shared library): the bar at the top, as it shows it.
 {
     var banner = main.FindControl<Border>("StandbyBanner")!;
-    main.FindControl<TextBlock>("StandbyText")!.Text = L.F("On air: {0}, playing {1}.", T("STUDIO-1", "ESTUDIO-1"), "Luna Vale - Golden Hour") + " "
-        + L.F("This computer goes on air by itself if it stops answering for {0} s.", 15);
+    main.FindControl<TextBlock>("StandbyText")!.Text = L.F("On air: {0}, playing {1}.", T("STUDIO-1", "ESTUDIO-1"), "Luna Vale - Golden Hour") + "\n"
+        + L.F("This computer goes on air automatically if the master stops answering for {0} s.", 15);
     banner.IsVisible = true;
     Pump(10);
     Shot(main, "main-standby", "StandbyBanner", "StandbyText", "TakeOnAirButton");

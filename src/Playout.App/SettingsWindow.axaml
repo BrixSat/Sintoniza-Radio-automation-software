@@ -830,6 +830,23 @@
                 </ScrollViewer>
             </TabItem>
 
+            <!-- ───────── The on-air screen (this computer's) ───────── -->
+            <TabItem Header="Screen" Classes="computer">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Spacing="14" Margin="0,12,16,0">
+                        <CheckBox x:Name="StatusPanelBox" Content="Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar)" />
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Lamps shown" />
+                            <WrapPanel x:Name="LampBoxes" ItemSpacing="14" LineSpacing="6" />
+                        </StackPanel>
+                        <CheckBox x:Name="BigCountersBox" Content="Big counters: the time remaining, the cue points, the next event and the top of the hour, to be read across the studio" />
+                        <CheckBox x:Name="OnAirSignBox" Content="ON AIR sign: MIC LIVE while the mic is open (or the desk's mic fader is up, by GPIO), ON AIR during a live show or a live input" />
+                        <TextBlock Classes="note"
+                                   Text="Click a lamp on the on-air screen to open its settings. A GPIO output can light a real studio lamp with the sign, and a GPIO input can tell it the desk's mic fader is up (GPIO tab)." />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
             <!-- ───────── GPIO (this computer's: the desk is wired to it) ───────── -->
             <TabItem Header="GPIO" Classes="computer">
                 <ScrollViewer>

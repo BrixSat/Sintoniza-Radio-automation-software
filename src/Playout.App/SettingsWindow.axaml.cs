@@ -287,6 +287,7 @@ public partial class SettingsWindow : PageWindow
         PlanDaysBox.Value = Math.Clamp(settings.PlanDaysAhead, 0, 14);
         ShowAlerts(settings.Alerts ?? new());
         BuildGpio(settings.Gpio ?? new());
+        LoadScreen(settings.Screen ?? new());
         var devices = PlayoutEngine.GetOutputDevices().Prepend(DefaultDevice).ToList();
         SetupOutput(MusicDeviceBox, MusicChannelBox, MusicTestButton, devices, settings.MusicOutput ?? new());
         SetupOutput(CartDeviceBox, CartChannelBox, CartTestButton, devices, settings.CartOutput ?? new());
@@ -978,6 +979,7 @@ public partial class SettingsWindow : PageWindow
         _settings.PlanDaysAhead = (int)(PlanDaysBox.Value ?? 2);
         _settings.Alerts = AlertsFromUi();
         _settings.Gpio = GpioFromUi();
+        _settings.Screen = ScreenFromUi();
         _settings.MusicOutput = RouteFrom(MusicDeviceBox, MusicChannelBox);
         _settings.CartOutput = RouteFrom(CartDeviceBox, CartChannelBox);
         _settings.PreviewOutput = RouteFrom(PreviewDeviceBox, PreviewChannelBox);
@@ -1010,6 +1012,38 @@ public partial class SettingsWindow : PageWindow
     }
 
     /// <summary>Hides the other scope's tabs and parts, and opens on the first tab left.</summary>
+    // ───────────────────────── Screen ─────────────────────────
+
+    readonly Dictionary<string, CheckBox> _lampBoxes = new();
+
+    void LoadScreen(ScreenSettings screen)
+    {
+        StatusPanelBox.IsChecked = screen.StatusPanel;
+        BigCountersBox.IsChecked = screen.BigCounters;
+        OnAirSignBox.IsChecked = screen.OnAirSign;
+        foreach (var (id, name) in MainWindow.LampIds)
+        {
+            var box = new CheckBox { Content = name, IsChecked = !screen.HiddenLamps.Contains(id) };
+            _lampBoxes[id] = box;
+            LampBoxes.Children.Add(box);
+        }
+    }
+
+    ScreenSettings ScreenFromUi() => new()
+    {
+        StatusPanel = StatusPanelBox.IsChecked == true,
+        BigCounters = BigCountersBox.IsChecked == true,
+        OnAirSign = OnAirSignBox.IsChecked == true,
+        HiddenLamps = _lampBoxes.Where(b => b.Value.IsChecked != true).Select(b => b.Key).ToList(),
+    };
+
+    /// <summary>Opens at a tab, by its English name ("RDS", "GPIO"…), if it is shown here.</summary>
+    public void ShowTab(string english)
+    {
+        if (this.GetLogicalDescendants().OfType<TabControl>().FirstOrDefault() is not { } tabs) return;
+        if (tabs.Items.OfType<TabItem>().FirstOrDefault(t => t.IsVisible && (t.Header as string) == L.T(english)) is { } tab) tabs.SelectedItem = tab;
+    }
+
     void ApplyScope()
     {
         string hide = _scope == SettingsScope.Station ? "computer" : "station";
