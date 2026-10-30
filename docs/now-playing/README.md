@@ -16,7 +16,8 @@ one) changes, the app sends a `POST` to the address you set, with this JSON body
 - `show` is the live show on air (Sintoniza Pro → Shows), with when it ends; `null` when none is.
 - `cover` is there only with **Send the song's cover picture too** ticked and when the file has one: the picture as a
   `data:image/jpeg;base64,…` (or `image/png`) address, at most 1 MB. The PHP example saves it as `cover.jpg` (or
-  `cover.png`) and puts that file's address in `nowplaying.json` instead.
+  `cover.png`) and puts that file's address from the website's root (`/nowplaying/cover.jpg?…`) in `nowplaying.json`
+  instead.
 - Songs marked **Not on the website** in the library (right-click → *Not on the website*) are never sent, nor shown
   as `next`: the website keeps what it had. RDS is not affected.
 - **Hold every change back by** delays every post and file by that many seconds: set it to the stream's delay, so
@@ -51,7 +52,7 @@ Where it goes:
 |---|---|
 | `C:\web\nowplaying.txt`, `/srv/www/np.xml`, a share | written whole (to a temporary file, then renamed) |
 | `ftp://ftp.example.com/www/nowplaying.txt` | FTP upload (passive), with the user and password; `ftps://` for FTP over TLS |
-| `https://www.example.com/nowplaying/nowplaying.php?file=nowplaying.txt` | HTTP `PUT` of the file, with the password box sent as the key in `X-Api-Key` |
+| `https://www.example.com/nowplaying/nowplaying.php?file=song.txt` | HTTP `PUT` of the file, with the password box sent as the key in `X-Api-Key` |
 
 Any answer from 200 to 299 counts as received. An output that fails is tried again every 30 seconds with the latest
 information; the others go on.
@@ -75,9 +76,9 @@ It keeps three files next to itself:
 | `cover.jpg` / `cover.png` | The song's cover, when the app sends covers |
 
 It also keeps the files of the outputs that are sent to it: an output's address is the page with `?file=` and a
-name (`nowplaying.php?file=cover.jpg`), and its password box has the same key. Only plain names ending in `.txt`,
-`.xml`, `.html`, `.htm`, `.json`, `.jpg`, `.jpeg` or `.png` are taken (never `.php`, nor its own `nowplaying.json` and
-`history.json`), up to 2 MB.
+name (`nowplaying.php?file=cover.jpg`), and its password box has the same key. Only plain names with one dot, ending in `.txt`,
+`.xml`, `.html`, `.htm`, `.json`, `.jpg`, `.jpeg` or `.png` are taken (never `.php`, nor its own `nowplaying.txt`,
+`nowplaying.json` and `history.json`), up to 2 MB.
 
 Opened with a `GET` (a browser, or your website's JavaScript), the same address answers with `nowplaying.json`.
 For example:

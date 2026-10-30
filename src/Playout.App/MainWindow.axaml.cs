@@ -2318,6 +2318,7 @@ public partial class MainWindow : Window
     PlaylistGenerator.Options PlanOptions() => new(_settings.Crossfade, _settings.OtherCrossfade,
         TimeSpan.FromHours(_settings.FillSongHours), TimeSpan.FromMinutes(_settings.FillArtistMinutes));
     WebNowPlaying? _web;
+    string? _webKey;
     ReportsWindow? _reports;
 
     void OpenReports()
@@ -2335,10 +2336,15 @@ public partial class MainWindow : Window
     /// <summary>Starts (or restarts, with new settings) posting now playing to the website.</summary>
     void ApplyWebNowPlaying()
     {
+        string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
+        // Any station setting saved in Pro comes here: started again only for its own, so changes held back by the
+        // delay aren't lost.
+        string key = IsStandby ? "" : station + System.Text.Json.JsonSerializer.Serialize(_settings.WebNowPlaying);
+        if (key == _webKey) return;
+        _webKey = key;
         _web?.Dispose();
         _web = null;
         if (_settings.WebNowPlaying is not { Enabled: true } settings || IsStandby) return; // standby: the one on air sends
-        string station = string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName;
         var web = new WebNowPlaying(settings, station, path => _library.Db?.IsNotForWeb(path) ?? false);
         web.StatusChanged += error => Dispatcher.UIThread.Post(() =>
         {

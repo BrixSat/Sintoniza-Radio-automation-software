@@ -51,7 +51,7 @@ public sealed class MetadataOutput
     public string Fallback { get; set; } = "";
     /// <summary>
     /// A file on this computer (or a share), ftp://server/folder/file (ftps:// for FTP over TLS), or an http(s)://
-    /// address that takes the file in a PUT (docs/now-playing/nowplaying.php?file=nowplaying.txt does).
+    /// address that takes the file in a PUT (docs/now-playing/nowplaying.php?file=song.txt does).
     /// </summary>
     public string Target { get; set; } = "";
     /// <summary>FTP only.</summary>
@@ -61,12 +61,18 @@ public sealed class MetadataOutput
 
     public MetadataOutput Clone() => (MetadataOutput)MemberwiseClone();
 
+    /// <summary>How long an FTP upload may take.</summary>
+    public static TimeSpan FtpTimeout { get; set; } = TimeSpan.FromSeconds(20);
+
+    [JsonIgnore]
     public bool IsFtp => Target.Trim().StartsWith("ftp://", StringComparison.OrdinalIgnoreCase) || IsFtps;
     bool IsFtps => Target.Trim().StartsWith("ftps://", StringComparison.OrdinalIgnoreCase);
+    [JsonIgnore]
     public bool IsHttp => Target.Trim().StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                           || Target.Trim().StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The target as shown in messages.</summary>
+    [JsonIgnore]
     public string Display => Target.Trim();
 
     /// <summary>Writes the bytes to the file (whole, never half) or uploads them. Throws with a readable message.</summary>
@@ -87,11 +93,19 @@ public sealed class MetadataOutput
         }
         if (!IsFtp)
         {
-            string path = Path.GetFullPath(target);
+            // Chosen on any studio's computer: as this one sees the shared folder (Settings → Paths).
+            string path = Path.GetFullPath(SharedPaths.ToLocal(target));
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            string tmp = path + ".tmp";
-            await File.WriteAllBytesAsync(tmp, bytes);
-            File.Move(tmp, path, overwrite: true);
+            string tmp = $"{path}.{Guid.NewGuid():N}.tmp"; // its own, so Send now and the playout never share one
+            try
+            {
+                await File.WriteAllBytesAsync(tmp, bytes, token);
+                File.Move(tmp, path, overwrite: true);
+            }
+            finally
+            {
+                File.Delete(tmp);
+            }
             return;
         }
         if (!Uri.TryCreate(IsFtps ? "ftp://" + target[7..] : target, UriKind.Absolute, out var uri) || uri.AbsolutePath.EndsWith('/'))
@@ -105,16 +119,23 @@ public sealed class MetadataOutput
         request.UseBinary = true;
         request.UsePassive = true;
         request.KeepAlive = false;
-        request.Timeout = 15000;
         request.ContentLength = bytes.Length;
+        // The async calls don't heed Timeout: a server that stops answering (a blocked data port) is cut off here.
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(token);
+        limit.CancelAfter(FtpTimeout);
+        using var abort = limit.Token.Register(request.Abort);
         try
         {
-            await using (var stream = await request.GetRequestStreamAsync()) await stream.WriteAsync(bytes);
+            await using (var stream = await request.GetRequestStreamAsync()) await stream.WriteAsync(bytes, limit.Token);
             using var response = (FtpWebResponse)await request.GetResponseAsync();
         }
         catch (WebException ex) when (ex.Response is FtpWebResponse r)
         {
             throw new InvalidOperationException(L.F("the FTP server answered {0}", r.StatusDescription?.Trim() ?? r.StatusCode.ToString()));
+        }
+        catch (Exception) when (limit.IsCancellationRequested && !token.IsCancellationRequested)
+        {
+            throw new InvalidOperationException(L.T("no answer from the FTP server"));
         }
     }
 }
@@ -153,12 +174,42 @@ public sealed record NowPlayingItem(
 /// </summary>
 public static class MetadataTemplate
 {
+    static readonly System.Text.RegularExpressions.Regex FieldPattern = new(@"\{([a-z_]+)\}", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    const char Empty = '\u0001';
+    const string Separators = "-–—|/:·";
+
+    /// <summary>
+    /// Takes out the empty fields with the separator they leave: "{artist} - {title}" with no artist is "Title", and
+    /// "A - {x} - B" is "A - B". The song's own text is never changed.
+    /// </summary>
+    static string DropEmpty(string line)
+    {
+        int at;
+        while ((at = line.IndexOf(Empty)) >= 0)
+        {
+            // A separator stuck to a word ("Mode:", "-Title") is part of that text, not one to take out.
+            int left = at;
+            while (left > 0 && (line[left - 1] == ' ' || Separators.Contains(line[left - 1]) && (left < 2 || line[left - 2] == ' ' || Separators.Contains(line[left - 2])))) left--;
+            bool separatorLeft = line.AsSpan(left, at - left).IndexOfAny(Separators) >= 0;
+            if (separatorLeft && left > 0)
+            {
+                line = line[..left] + line[(at + 1)..]; // "A - {x}…": the separator before it goes
+                continue;
+            }
+            int right = at + 1;
+            while (right < line.Length && (line[right] == ' ' || Separators.Contains(line[right]) && (right + 1 >= line.Length || line[right + 1] == ' ' || Separators.Contains(line[right + 1])))) right++;
+            bool textBoth = left > 0 && right < line.Length;
+            line = line[..left] + (textBoth ? " " : "") + line[right..]; // "{x} - B", "♪ {x} - B": the one after it
+        }
+        return line;
+    }
+
     public static string Fill(string template, NowPlayingInfo info, string target = "")
     {
         string ext = Path.GetExtension(target.Trim()).ToLowerInvariant();
         Func<string, string> escape = ext switch
         {
-            ".xml" or ".html" or ".htm" => v => v.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;"),
+            ".xml" or ".html" or ".htm" => v => v.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;"),
             ".json" => v => JsonEncodedText.Encode(v, JavaScriptEncoder.UnsafeRelaxedJsonEscaping).ToString(),
             _ => v => v,
         };
@@ -179,19 +230,13 @@ public static class MetadataTemplate
             ["presenter"] = info.Show?.Presenter ?? "",
         };
         bool markup = ext is ".xml" or ".html" or ".htm" or ".json";
+        // In one pass, so a value with {braces} in it stays as it is; an empty field is marked for the clean-up below.
         var lines = template.Replace("\r\n", "\n").Split('\n').Select(line =>
         {
-            bool hadField = false;
-            foreach (var (name, value) in fields)
-            {
-                if (line.IndexOf("{" + name + "}", StringComparison.OrdinalIgnoreCase) < 0) continue;
-                hadField = true;
-                line = line.Replace("{" + name + "}", escape(value.Trim()), StringComparison.OrdinalIgnoreCase);
-            }
-            // "{artist} - {title}" with no artist: "Title", not "- Title". Lines without fields, and markup, as they are.
-            return hadField && !markup
-                ? string.Join(' ', line.Split(' ', StringSplitOptions.RemoveEmptyEntries)).Trim(' ', '-', '–', '—', '|', '/', ':', '·')
-                : line;
+            string filled = FieldPattern.Replace(line, m => fields.TryGetValue(m.Groups[1].Value, out var value)
+                ? value.Trim().Length > 0 ? escape(value.Trim()) : markup ? "" : Empty.ToString()
+                : m.Value);
+            return markup ? filled : DropEmpty(filled);
         });
         return string.Join(Environment.NewLine, lines);
     }
@@ -287,6 +332,8 @@ public sealed class WebNowPlaying : IDisposable
                 _changes.Clear();
             }
             if (latest != null) Prepare(latest);
+            // What is on air isn't for the website: nothing sent, rather than "nothing on air".
+            if (_current == null && latest?.OnAir != null) return L.T("what is on air isn't for the website (a pause, or a song kept off it): nothing sent");
             _current ??= new Prepared(new NowPlayingInfo(_station, Stamp(DateTime.UtcNow), null, null), null);
             foreach (var t in _targets) t.Sent = null;
             await SendAll();
@@ -309,13 +356,14 @@ public sealed class WebNowPlaying : IDisposable
                 await _sending.WaitAsync(token);
                 try
                 {
-                    Change? due = null;
+                    var due = new List<Change>();
                     lock (_lock)
                     {
-                        while (_changes.Count > 0 && _changes.Peek().Due <= DateTime.UtcNow) due = _changes.Dequeue();
+                        while (_changes.Count > 0 && _changes.Peek().Due <= DateTime.UtcNow) due.Add(_changes.Dequeue());
                         if (_changes.Count > 0) wait = _changes.Peek().Due - DateTime.UtcNow;
                     }
-                    if (due != null) Prepare(due);
+                    // In order: if the last is a song kept off the website, the one before it is what is shown.
+                    foreach (var change in due) Prepare(change);
                     await SendAll();
                     // After a failure, try again in a while; otherwise wait for news (or the next change's time).
                     if (_targets.Any(t => t.Error != null) && (wait == Timeout.InfiniteTimeSpan || wait > Retry)) wait = Retry;
@@ -368,38 +416,46 @@ public sealed class WebNowPlaying : IDisposable
         catch { return true; } // the library can't be read: as usual
     }
 
+    /// <summary>Every target that hasn't got the latest yet, all at once: one that is slow or down holds up no other.</summary>
     async Task SendAll()
     {
         if (_current is not { } current) return;
-        foreach (var t in _targets)
-        {
-            if (ReferenceEquals(t.Sent, current) || _stop.IsCancellationRequested) continue;
-            try
-            {
-                if (t.Output == null) await Post(current.Info);
-                else if (t.Output.Kind == MetadataOutputKind.Cover)
-                {
-                    var bytes = current.Cover ?? (t.Output.Fallback.Trim() is { Length: > 0 } fallback && File.Exists(fallback) ? await File.ReadAllBytesAsync(fallback) : null);
-                    if (bytes != null) await t.Output.WriteAsync(bytes, _http, _stop.Token);
-                }
-                else await t.Output.WriteAsync(new UTF8Encoding(false).GetBytes(MetadataTemplate.Fill(t.Output.Template, current.Info, FileName(t.Output.Target))), _http, _stop.Token);
-                t.Sent = current;
-                t.Error = null;
-            }
-            catch (OperationCanceledException) when (_stop.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception ex)
-            {
-                t.Error = ex is TaskCanceledException ? L.T("no answer") : ex.Message;
-            }
-        }
+        await Task.WhenAll(_targets.Where(t => !ReferenceEquals(t.Sent, current)).Select(t => SendTo(t, current)));
+        if (_stop.IsCancellationRequested) return;
         string? error = _targets.FirstOrDefault(t => t.Error != null) is { } failed
             ? (_targets.Count > 1 ? $"{failed.Name}: {failed.Error}" : failed.Error) : null;
         if (error == Error) return;
         Error = error;
         StatusChanged?.Invoke(error);
+    }
+
+    async Task SendTo(Target t, Prepared current)
+    {
+        try
+        {
+            if (t.Output == null) await Post(current.Info);
+            else if (t.Output.Kind == MetadataOutputKind.Cover)
+            {
+                var bytes = current.Cover;
+                if (bytes == null && t.Output.Fallback.Trim() is { Length: > 0 } fallback)
+                {
+                    string file = SharedPaths.ToLocal(fallback);
+                    if (!File.Exists(file)) throw new FileNotFoundException(L.F("the picture for songs without a cover isn't there: {0}", file));
+                    bytes = await File.ReadAllBytesAsync(file, _stop.Token);
+                }
+                if (bytes != null) await t.Output.WriteAsync(bytes, _http, _stop.Token);
+            }
+            else await t.Output.WriteAsync(new UTF8Encoding(false).GetBytes(MetadataTemplate.Fill(t.Output.Template, current.Info, FileName(t.Output.Target))), _http, _stop.Token);
+            t.Sent = current;
+            t.Error = null;
+        }
+        catch (OperationCanceledException) when (_stop.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            t.Error = ex is TaskCanceledException ? L.T("no answer") : ex.Message;
+        }
     }
 
     async Task Post(NowPlayingInfo info)

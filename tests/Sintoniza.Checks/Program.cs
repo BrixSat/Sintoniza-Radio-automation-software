@@ -660,6 +660,14 @@ Console.WriteLine("Now playing for the website (templates, files, the delay, son
     Check(MetadataTemplate.Fill("<now>{title} &amp; {duration}</now>", info with { Now = info.Now! with { Title = "Rock & Roll" } }, "now.xml") == "<now>Rock &amp; Roll &amp; 3:05</now>",
         "…escaped in an XML file");
     Check(MetadataTemplate.Fill("{artist} - {title}", info with { Now = null }) == "Rádio Check", "…nothing on air: the station's name");
+    Check(MetadataTemplate.Fill("♪ {artist} - {title}", info) == "♪ Só título" && MetadataTemplate.Fill("{station} - {artist} - {title}", info) == "Rádio Check - Só título",
+        "…an empty field in the middle takes one separator with it");
+    var odd = info with { Now = new NowPlayingItem("{title}", "Re:  Two  Spaces -", "music", 0, null) };
+    Check(MetadataTemplate.Fill("{artist} / {title}", odd) == "{title} / Re:  Two  Spaces -", "…the song's own text is never changed (braces, spaces, a dash at the end)");
+    var mode = info with { Now = new NowPlayingItem("", "Mode:", "music", 0, null), Show = null };
+    Check(MetadataTemplate.Fill("{title} - {artist}", mode) == "Mode:" && MetadataTemplate.Fill("Now: {show} | {title}", mode) == "Now: Mode:",
+        "…a separator stuck to a word stays (\"Mode:\", \"Now:\")");
+    Check(MetadataTemplate.Fill("<a title='{title}'>", info with { Now = info.Now! with { Title = "O'Neil" } }, "a.html") == "<a title='O&#39;Neil'>", "…quotes escaped in HTML");
 
     string text = Path.Combine(work, "web", "nowplaying.txt");
     string xml = Path.Combine(work, "web", "nowplaying.xml");
@@ -690,6 +698,35 @@ Console.WriteLine("Now playing for the website (templates, files, the delay, son
     sender.Update(new Track(Guid.NewGuid(), songs[3], "Check 4", "Tone 4", 4), null);
     Check(Wait(() => File.ReadAllText(text) == "Check 4 - Tone 4", 4), "the next song is written");
     db.SetAttributes([hidden.Id], new TrackAttributes(NotForWeb: false));
+
+    // An FTP server that takes the connection and never answers, and a fallback picture that isn't there: the
+    // file beside them is written at once, and the others fail with a reason instead of hanging.
+    var silent = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    silent.Start();
+    var held = new List<System.Net.Sockets.TcpClient>();
+    _ = Task.Run(async () => { try { while (true) held.Add(await silent.AcceptTcpClientAsync()); } catch { } });
+    MetadataOutput.FtpTimeout = TimeSpan.FromSeconds(2);
+    string beside = Path.Combine(work, "web", "beside.txt");
+    var stalled = new WebNowPlayingSettings
+    {
+        Enabled = true,
+        Outputs =
+        [
+            new MetadataOutput { Target = $"ftp://127.0.0.1:{((System.Net.IPEndPoint)silent.LocalEndpoint).Port}/np.txt" },
+            new MetadataOutput { Kind = MetadataOutputKind.Cover, Target = Path.Combine(work, "web", "cover.jpg"), Fallback = Path.Combine(work, "no-logo.png") },
+            new MetadataOutput { Template = "{title}", Target = beside },
+        ],
+    };
+    using var stuck = new WebNowPlaying(stalled, "Rádio Check");
+    var started = DateTime.UtcNow;
+    stuck.Update(new Track(Guid.NewGuid(), songs[2], "Check 3", "Tone 3", 4), null);
+    Check(Wait(() => File.Exists(beside), 1.5), "a stalled FTP server holds up no other output");
+    var sendNow = stuck.SendNowAsync();
+    // Waited for with the UI thread running: the send finishes on it, as when the Send now button awaits it.
+    Check(WaitUi(() => sendNow.IsCompleted, 8) && sendNow.Result is { Length: > 0 }, $"…it gives up with a reason ({(sendNow.IsCompleted ? sendNow.Result : "still waiting")})");
+    Check(stuck.Error != null, "…and the picture that isn't there is reported, not skipped");
+    silent.Stop();
+    held.ForEach(c => c.Dispose());
 }
 
 // ───────────────────────── Several stations in one library ─────────────────────────

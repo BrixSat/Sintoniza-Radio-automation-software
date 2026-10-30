@@ -42,15 +42,20 @@ if (!hash_equals(API_KEY, $_SERVER['HTTP_X_API_KEY'] ?? '')) {
 }
 
 // A file from Settings → Website → Files (an address ending in ?file=name): saved next to this page as it comes.
-// Only plain names of text, page and picture files, so nothing that runs (.php) can be put on the website.
+// Only plain names of text, page and picture files with a single dot, so nothing that runs (x.php, or x.php.txt on
+// servers that run any name with .php in it) can be put on the website.
 if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     $name = (string)($_GET['file'] ?? '');
-    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\.(txt|xml|html|htm|json|jpg|jpeg|png)$/i', $name)
-        || in_array(strtolower($name), ['nowplaying.json', 'history.json'], true)) {
+    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}\.(txt|xml|html|htm|json|jpg|jpeg|png)$/iD', $name)
+        || in_array(strtolower($name), ['nowplaying.txt', 'nowplaying.json', 'history.json'], true)) {
         http_response_code(400);
-        exit('Use ?file= with a name such as nowplaying.txt, nowplaying.xml or cover.jpg');
+        exit('Use ?file= with a name such as song.txt, song.xml or cover.jpg');
     }
-    $body = file_get_contents('php://input');
+    if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 2 * 1024 * 1024) {
+        http_response_code(413);
+        exit('Too big');
+    }
+    $body = file_get_contents('php://input', false, null, 0, 2 * 1024 * 1024 + 1);
     if ($body === false || strlen($body) > 2 * 1024 * 1024) {
         http_response_code(413);
         exit('Too big');
@@ -92,7 +97,8 @@ if (is_string($data['cover'] ?? null) && preg_match('#^data:image/(jpeg|png);bas
     $picture = base64_decode($m[2], true);
     if ($picture !== false) {
         save("$dir/cover.$ext", $picture);
-        $data['cover'] = "cover.$ext?" . time();
+        // From the website's root (/nowplaying/cover.jpg), so a page in any folder finds it.
+        $data['cover'] = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/') . "/cover.$ext?" . time();
     } else {
         unset($data['cover']);
     }

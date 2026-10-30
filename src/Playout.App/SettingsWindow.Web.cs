@@ -37,6 +37,8 @@ public partial class SettingsWindow
             _webOutputs.Add(new MetadataOutput { Kind = MetadataOutputKind.Cover, Template = "" });
             ShowWebOutputs();
         };
+        // Only the on-air program has something to send; Sintoniza Pro (where this tab is) has nothing on air.
+        WebTestButton.IsVisible = WebTestText.IsVisible = _engine != null;
         WebTestButton.Click += async (_, _) => await TestWeb();
     }
 
@@ -91,7 +93,7 @@ public partial class SettingsWindow
                     SuggestedFileName = o.Kind == MetadataOutputKind.Cover ? "cover.jpg" : "nowplaying.txt",
                     ShowOverwritePrompt = false,
                 });
-                if (file?.TryGetLocalPath() is { } path) target.Text = path;
+                if (file?.TryGetLocalPath() is { } path) target.Text = SharedPaths.ToLibrary(path); // as every studio sees it
             };
             panel.Children.Add(Labelled(L.T("File, FTP or web address"), WithButton(target, choose)));
 
@@ -129,7 +131,7 @@ public partial class SettingsWindow
                         Title = L.T("Picture for songs without a cover"),
                         FileTypeFilter = [new FilePickerFileType(L.T("Images")) { Patterns = ["*.png", "*.jpg", "*.jpeg"] }],
                     });
-                    if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) fallback.Text = path;
+                    if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) fallback.Text = SharedPaths.ToLibrary(path);
                 };
                 panel.Children.Add(Labelled(L.T("For songs without a cover (e.g. the station's logo)"), WithButton(fallback, pick)));
                 panel.Children.Add(new TextBlock
@@ -167,6 +169,7 @@ public partial class SettingsWindow
     /// <summary>Sends what is on air now to the website and the outputs, with the settings on screen.</summary>
     async Task TestWeb()
     {
+        if (_engine == null) return;
         var web = WebFromUi();
         web.SongsOnly = false; // send whatever is on air
         web.DelaySeconds = 0;
@@ -175,7 +178,7 @@ public partial class SettingsWindow
         var onAir = status is { State: not PlayerState.Stopped } st ? st.Current : null;
         WebTestButton.IsEnabled = false;
         WebTestText.Text = L.T("Sending…");
-        using var output = new WebNowPlaying(web, station);
+        using var output = new WebNowPlaying(web, station, path => _main?.MusicLibrary.Db?.IsNotForWeb(path) ?? false);
         output.Update(onAir, null);
         string? error = await output.SendNowAsync();
         WebTestText.Text = error == null ? L.F("Sent: {0}", (onAir == null ? L.T("nothing on air") : onAir.Display)) : L.F("Failed: {0}", error);

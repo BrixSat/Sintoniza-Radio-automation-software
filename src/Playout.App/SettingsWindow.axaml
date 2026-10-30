@@ -716,7 +716,7 @@
                         </StackPanel>
                         <TextBlock Classes="label" Text="FILES AND FTP" FontWeight="SemiBold" Margin="0,8,0,0" />
                         <TextBlock Classes="note"
-                                   Text="Each one is written when now playing changes: a text from a template (a line for the website or a streaming encoder, an XML or HTML page), or the cover picture. To a file (on this computer or a share), by FTP (ftp://server/folder/file.txt, or ftps:// for FTP over TLS), or to a web page that takes it in an HTTP PUT (https://…/nowplaying.php?file=nowplaying.txt, the example PHP page does; the password box is its key)." />
+                                   Text="Each one is written when now playing changes: a text from a template (a line for the website or a streaming encoder, an XML or HTML page), or the cover picture. To a file (on this computer or a share), by FTP (ftp://server/folder/file.txt, or ftps:// for FTP over TLS), or to a web page that takes it in an HTTP PUT (https://…/nowplaying.php?file=song.txt, the example PHP page does; the password box is its key)." />
                         <StackPanel x:Name="WebOutputsPanel" Spacing="10" />
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <Button x:Name="AddWebTextButton" Content="Add a text" />
