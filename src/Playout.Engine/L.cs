@@ -10,7 +10,7 @@ public static class L
 {
     static IReadOnlyDictionary<string, string> _texts = new Dictionary<string, string>();
 
-    /// <summary>"en", "pt" or "fr".</summary>
+    /// <summary>"en", "pt", "fr", or another language with a translation file ("de", "pt-BR").</summary>
     public static string Language { get; private set; } = "en";
 
     public static void Use(string language, IReadOnlyDictionary<string, string> texts)

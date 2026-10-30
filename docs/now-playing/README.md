@@ -8,9 +8,12 @@ one) changes, the app sends a `POST` to the address you set, with this JSON body
   "station": "Rádio Exemplo",
   "updated": "2026-10-15T10:31:07Z",
   "now":  { "artist": "Dulce Pontes", "title": "Canção do Mar", "type": "music", "duration": 212.4, "started": "2026-10-15T10:31:06Z" },
-  "next": { "artist": "Xutos & Pontapés", "title": "A Minha Casinha", "type": "music", "duration": 185, "started": null }
+  "next": { "artist": "Xutos & Pontapés", "title": "A Minha Casinha", "type": "music", "duration": 185, "started": null },
+  "show": { "name": "Manhãs", "presenter": "Rita", "ends": "2026-10-15T11:00:00Z" }
 }
 ```
+
+- `show` is the live show on air (Sintoniza Pro → Shows), with when it ends; `null` when none is.
 
 - `now` and `next` are `null` when there is nothing (the player is stopped, or the playlist ends).
 - `type` is `music`, `jingle`, `advert`, `stream` or `programme` (news and shows from the schedule). With **Songs

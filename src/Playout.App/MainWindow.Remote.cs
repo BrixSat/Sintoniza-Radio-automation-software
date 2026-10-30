@@ -102,6 +102,8 @@ public partial class MainWindow : IRemoteHandler
             cartwalls = _settings.Cartwalls.Select(c => c.Name).ToList(),
             carts,
             lastLog = LastLog.Text,
+            show = ShowNow,
+            requests = _requests.Select(r => new { id = r.Id.ToString(), song = r.Display, dedication = r.Dedication, by = r.TakenBy, at = r.At.ToString("HH:mm") }).ToList(),
             currency = PlaylistRow.Currency,
             words = new { scheduled = Strings.Scheduled, wontPlay = Strings.WontPlay, cue = Strings.Cue },
             rowColors = PlaylistLook.Kinds.ToDictionary(k => k.Key, k => Css(
@@ -207,6 +209,20 @@ public partial class MainWindow : IRemoteHandler
                 string path = c["path"]?.GetValue<string>() ?? "";
                 if (!SharedPaths.FileExists(path)) return new { ok = false, message = L.F("Not found: {0}", path) };
                 AddPaths([path], NextInsertIndex());
+                break;
+            case "request":
+                // A request taken by phone, for the presenter to put on (or not): the song's names from the library.
+                string song = c["path"]?.GetValue<string>() ?? "";
+                var known = _library.Db?.GetByPath(song);
+                if (AddRequest(song, known?.Title is { Length: > 0 } title ? title : Path.GetFileNameWithoutExtension(song), known?.Artist ?? "",
+                        c["listener"]?.GetValue<string>() ?? "", c["message"]?.GetValue<string>() ?? "", L.T("the web remote")) is { } problem)
+                    return new { ok = false, message = problem };
+                break;
+            case "accept" when Id() is { } id:
+                AcceptRequest(id);
+                break;
+            case "decline" when Id() is { } id:
+                DeclineRequest(id);
                 break;
             default:
                 return new { ok = false, message = L.F("Unknown command: {0}", cmd) };

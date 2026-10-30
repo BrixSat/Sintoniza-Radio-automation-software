@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **17**. The scripts that create the tables are
+Schema version **19**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -44,7 +44,11 @@ settings), then [`sqlite-10.sql`](../src/Playout.Library/Schema/sqlite-10.sql) a
 [`sqlite-16.sql`](../src/Playout.Library/Schema/sqlite-16.sql) and
 [`mysql-16.sql`](../src/Playout.Library/Schema/mysql-16.sql) (the studios, and which one is on air), then
 [`sqlite-17.sql`](../src/Playout.Library/Schema/sqlite-17.sql) and
-[`mysql-17.sql`](../src/Playout.Library/Schema/mysql-17.sql) (the play history by station). The app creates the tables itself the
+[`mysql-17.sql`](../src/Playout.Library/Schema/mysql-17.sql) (the play history by station), then
+[`sqlite-18.sql`](../src/Playout.Library/Schema/sqlite-18.sql) and
+[`mysql-18.sql`](../src/Playout.Library/Schema/mysql-18.sql) (a client's sector, a break's longest length), then
+[`sqlite-19.sql`](../src/Playout.Library/Schema/sqlite-19.sql) and
+[`mysql-19.sql`](../src/Playout.Library/Schema/mysql-19.sql) (live shows). The app creates the tables itself the
 first time it opens an empty database, and upgrades an older one, so only the database and a user with rights to
 create and alter tables are needed:
 
@@ -232,12 +236,12 @@ changes. Ids are text (`CHAR(36)`, a GUID). Days: `weekday` 0 = Sunday … 6 = S
 
 | Table | |
 | --- | --- |
-| `schedule_entries` | `type` `event` (a file, the newest file in a folder, or a stream at set times), `break` (an ad break) or `playlist` (an hour template); `name`, `enabled`, `start_mode` (`Soft`, `Hard`, `EndAt`), `max_delay_minutes`, `lock_level` (`Free`, `Movable`, `Locked`); for events `path`, `stream_minutes`, `max_age_minutes`; for hour templates `artist_hours` (0 = the playout's artist rest time), `album_hours` (0 = no album rule), `max_slow_in_row` (songs of tempo 1–2; 0 = any); `position` keeps the order of the lists |
+| `schedule_entries` | `type` `event` (a file, the newest file in a folder, or a stream at set times), `break` (an ad break), `playlist` (an hour template) or `show` (a live show: `presenter`, `show_minutes` from each time, `notes` for the presenter, MySQL `NULL` = none); `name`, `enabled`, `start_mode` (`Soft`, `Hard`, `EndAt`), `max_delay_minutes`, `lock_level` (`Free`, `Movable`, `Locked`); for events `path`, `stream_minutes`, `max_age_minutes`; for hour templates `artist_hours` (0 = the playout's artist rest time), `album_hours` (0 = no album rule), `max_slow_in_row` (songs of tempo 1–2; 0 = any); for breaks `max_seconds` (the longest it should be; 0 = no limit); `position` keeps the order of the lists |
 | `schedule_slots` | `entry_id`, `weekday`, `time`: when each entry runs, every week (for an `EndAt` break, when it ends) |
 | `schedule_dates` | `entry_id`, `at` (local `yyyy-MM-ddTHH:mm:ss`): when an entry runs once, besides its weekly times (e.g. a stream put in a day's playlist) |
 | `break_parts` | a break's running order: `position`, `kind` (`Jingle`, `Section`), `path` of a jingle, `section` name, `only_with_adverts` (a section opener) |
 | `playlist_lines` | an hour template's lines, in `position` order: `source` `Category` (`category_id`, `category_name`, `kind`; `tempo_min`, `tempo_max`, `energy_min`, `energy_max`: the songs it may pick, null = any) or `Folder` (`folder`) or `Take` (`folder`: `take:time`, `take:temperature` or `take:time+temperature`, put together by the playout when it goes on air) |
-| `ad_clients` | advertisers: `name` (on the proof of broadcast), `enabled` |
+| `ad_clients` | advertisers: `name` (on the proof of broadcast), `enabled`, `sector` (line of business: two clients of the same sector aren't put back to back in a break; `''` = none) |
 | `ad_campaigns` | a client's campaigns: `name`, `enabled`, `starts_on` and `ends_on` (null = no limit), `section` of the break they go in (`''` = its first), `place` (0 automatic, 1–5 from the start of the section, 6–10 at its end) |
 | `ad_campaign_files` | a campaign's adverts (they take turns): `position`, `path` |
 | `ad_placements` | where a campaign plays: the break at `time`, every week on `weekday`, or only on `date` |

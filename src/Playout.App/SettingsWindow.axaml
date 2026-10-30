@@ -83,6 +83,8 @@
                                 <TextBlock Classes="label" Text="Language" />
                                 <ComboBox x:Name="LanguageBox" MinWidth="200"
                                           ToolTip.Tip="The language of the windows and messages. Applies the next time the app starts." />
+                                <Button x:Name="TranslationsButton" Content="Add a language…" Margin="0,6,0,0"
+                                        ToolTip.Tip="Opens the translations folder: a translation file put there (de.json, es.json…) adds its language to this list, with no new version" />
                             </StackPanel>
                             <StackPanel Classes="station">
                                 <TextBlock Classes="label" Text="Station type" />
@@ -582,7 +584,7 @@
                             <CheckBox Grid.Column="2" x:Name="RdsJinglesBox" Content="Also during jingles, adverts and programmes" VerticalAlignment="Bottom" />
                         </Grid>
                         <TextBlock Classes="note"
-                                   Text="{}{artist}, {title} and {station} are filled in; up to 64 characters are sent. An empty PS uses the station name. A static PS is the norm: many countries don't allow a scrolling one." />
+                                   Text="{}{artist}, {title} and {station} are filled in, and during a live show {show} and {presenter}; up to 64 characters are sent. An empty PS uses the station name. A static PS is the norm: many countries don't allow a scrolling one." />
                         </StackPanel>
 
                         <StackPanel Spacing="12" Classes="computer">

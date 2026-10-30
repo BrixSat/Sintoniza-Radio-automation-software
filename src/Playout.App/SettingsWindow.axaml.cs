@@ -92,8 +92,15 @@ public partial class SettingsWindow : PageWindow
         GenreBox.Text = settings.StationGenre;
         UrlBox.Text = settings.StationUrl;
         CurrencyBox.Text = settings.CurrencySign;
-        LanguageBox.ItemsSource = Localization.Languages.Select(l => l.Code == "" ? L.T(l.Name) : l.Name).ToList();
-        LanguageBox.SelectedIndex = Math.Max(0, Array.FindIndex(Localization.Languages, l => l.Code == settings.Language));
+        // Looked for again: a translation file put in the folder since the app started is in the list.
+        Localization.Rescan();
+        _languages = Localization.Languages.ToList();
+        // The one chosen stays chosen even if its file has gone since (it is in English until it is back).
+        if (settings.Language is { Length: > 0 } chosen && !_languages.Any(l => l.Code.Equals(chosen, StringComparison.OrdinalIgnoreCase)))
+            _languages.Add((chosen, chosen));
+        LanguageBox.ItemsSource = _languages.Select(l => l.Code == "" ? L.T(l.Name) : l.Name).ToList();
+        LanguageBox.SelectedIndex = Math.Max(0, _languages.FindIndex(l => l.Code.Equals(settings.Language, StringComparison.OrdinalIgnoreCase)));
+        TranslationsButton.Click += (_, _) => OpenTranslations();
         CurrencyBox.PlaceholderText = PlaylistRow.SystemCurrency;
         SetLogo(settings.LogoPath);
 
@@ -879,6 +886,22 @@ public partial class SettingsWindow : PageWindow
         if (_main?.LastBackup is { } last) BackupStatusText.Text = L.F("Last: {0:yyyy-MM-dd HH:mm}", last.LastWriteTime);
     }
 
+    List<(string Code, string Name)> _languages = new();
+
+    /// <summary>The settings folder's translations folder, with a README on how to make a translation file.</summary>
+    static void OpenTranslations()
+    {
+        string folder = Localization.Folders[^1];
+        try
+        {
+            Directory.CreateDirectory(folder);
+            string readme = Path.Combine(folder, "README.txt");
+            if (!File.Exists(readme)) File.WriteAllText(readme, Localization.TranslatorNotes);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true });
+        }
+        catch { /* no file manager */ }
+    }
+
     TimeSignalSettings SignalFromUi() => new(
         (TimeSignalMode)Math.Max(0, TimeSignalModeBox.SelectedIndex),
         SignalFileRadio.IsChecked == true ? _signalFile ?? "" : "",
@@ -945,7 +968,7 @@ public partial class SettingsWindow : PageWindow
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
         _settings.CurrencySign = CurrencyBox.Text?.Trim() ?? "";
-        _settings.Language = Localization.Languages[Math.Max(0, LanguageBox.SelectedIndex)].Code;
+        _settings.Language = _languages[Math.Max(0, LanguageBox.SelectedIndex)].Code;
         _settings.LogoPath = _logoPath;
 
         _settings.StationType = StationTypeBox.SelectedIndex == 1 ? StationType.Web : StationType.Fm;

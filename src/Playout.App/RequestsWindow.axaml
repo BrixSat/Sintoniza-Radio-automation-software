@@ -1,0 +1,70 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.RequestsWindow"
+        Icon="/Assets/icon.ico"
+        Title="Requests"
+        Width="760" Height="640" MinWidth="560" MinHeight="460"
+        WindowStartupLocation="CenterOwner">
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+    </Window.Styles>
+    <Grid RowDefinitions="Auto,*,Auto,*" Margin="18">
+        <StackPanel Spacing="8">
+            <TextBlock Text="Take a request" FontSize="16" FontWeight="SemiBold" />
+            <TextBox x:Name="SearchBox" PlaceholderText="Search the library: artist, title…" />
+        </StackPanel>
+        <ListBox Grid.Row="1" x:Name="SongList" Background="#13161C" Margin="0,8,0,0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="app:RequestSong">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Length}" Classes="digits" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel Grid.Row="2" Spacing="8" Margin="0,10,0,14">
+            <Grid ColumnDefinitions="200,10,*">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="For (the listener)" />
+                    <TextBox x:Name="ListenerBox" MaxLength="80" PlaceholderText="e.g. Ana, from Braga" />
+                </StackPanel>
+                <StackPanel Grid.Column="2">
+                    <TextBlock Classes="label" Text="Message (for the presenter to read)" />
+                    <TextBox x:Name="MessageBox" MaxLength="300" PlaceholderText="e.g. Happy birthday to João" />
+                </StackPanel>
+            </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button x:Name="TakeButton" Content="Take the request" Classes="accent" IsEnabled="False" />
+                <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+        <DockPanel Grid.Row="3">
+            <TextBlock DockPanel.Dock="Top" x:Name="WaitingText" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                <Button x:Name="AcceptButton" Content="▶ Play next" IsEnabled="False"
+                        ToolTip.Tip="Puts it right after the item on air, with who it is for and the message as its note" />
+                <Button x:Name="DeclineButton" Content="Turn down" IsEnabled="False" />
+            </StackPanel>
+            <ListBox x:Name="WaitingList" Background="#13161C">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="app:RequestRow">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Song}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Dedication}" FontSize="12" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding Taken}" FontSize="11" Foreground="{StaticResource TextMuted}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+    </Grid>
+</Window>

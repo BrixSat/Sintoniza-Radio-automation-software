@@ -1,0 +1,142 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.PresenterWindow"
+        Icon="/Assets/icon.ico"
+        Title="Presenter view"
+        Width="1100" Height="720" MinWidth="760" MinHeight="520"
+        Background="#0F1115"
+        WindowStartupLocation="CenterScreen">
+    <Window.Styles>
+        <Style Selector="TextBlock.big">
+            <Setter Property="FontSize" Value="44" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style Selector="Border.box">
+            <Setter Property="Background" Value="#1A1D24" />
+            <Setter Property="BorderBrush" Value="#2A2F3A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+        <Style Selector="Button.transport">
+            <Setter Property="FontSize" Value="22" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="MinWidth" Value="170" />
+            <Setter Property="Height" Value="64" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="18">
+        <!-- The show -->
+        <Border DockPanel.Dock="Top" Classes="box" Margin="0,0,0,14">
+            <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock x:Name="ShowText" FontSize="26" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="PresenterText" FontSize="16" Foreground="{StaticResource TextMuted}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Classes="caption" Text="SHOW ENDS IN" HorizontalAlignment="Right" />
+                    <TextBlock x:Name="ShowEndsText" Classes="digits" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Transport -->
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12" Margin="0,14,0,0">
+            <Button x:Name="PlayButton" Classes="transport accent" Content="▶  PLAY" ToolTip.Tip="Starts the next item (in ASSISTED, each item waits for this)" />
+            <Button x:Name="NextButton" Classes="transport" Content="⏭  NEXT" ToolTip.Tip="Goes to the next item now" />
+            <Button x:Name="StopButton" Classes="transport" Content="■  STOP" />
+            <TextBlock x:Name="ModeText" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0" />
+        </StackPanel>
+
+        <Grid ColumnDefinitions="*,16,380">
+            <!-- On air and next -->
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Classes="box">
+                    <StackPanel Spacing="6">
+                        <TextBlock Classes="caption" Text="ON AIR" />
+                        <TextBlock x:Name="TitleText" Classes="big" TextTrimming="CharacterEllipsis" />
+                        <TextBlock x:Name="ArtistText" FontSize="22" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis" />
+                        <WrapPanel ItemSpacing="28" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Classes="caption" Text="REMAINING" />
+                                <TextBlock x:Name="RemainingText" Classes="digits" FontSize="56" FontWeight="Bold" />
+                            </StackPanel>
+                            <StackPanel x:Name="TalkUpPanel">
+                                <TextBlock Classes="caption" Text="TALK UP" Foreground="{StaticResource NextUp}" />
+                                <TextBlock x:Name="TalkUpText" Classes="digits" FontSize="56" FontWeight="Bold" Foreground="{StaticResource NextUp}" />
+                            </StackPanel>
+                        </WrapPanel>
+                        <TextBlock x:Name="NoteNowText" FontSize="20" TextWrapping="Wrap" Foreground="{StaticResource NextUp}" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="box" Margin="0,14,0,0">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="caption" Text="NEXT" />
+                        <ItemsControl x:Name="NextList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="app:PresenterNextRow">
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                        <TextBlock Text="{Binding Text}" FontSize="{Binding Size}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Length}" Classes="digits" FontSize="{Binding Size}" Margin="12,0,0,0"
+                                                   Foreground="{StaticResource TextMuted}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="NoteNextText" FontSize="17" TextWrapping="Wrap" Foreground="{StaticResource NextUp}" />
+                    </StackPanel>
+                </Border>
+            </DockPanel>
+
+            <!-- Countdowns, notes, requests -->
+            <DockPanel Grid.Column="2">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,12,*">
+                    <Border Classes="box">
+                        <StackPanel>
+                            <TextBlock Classes="caption" Text="BREAK IN" />
+                            <TextBlock x:Name="BreakText" Classes="digits" FontSize="30" FontWeight="Bold" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Classes="box">
+                        <StackPanel>
+                            <TextBlock Classes="caption" Text="TOP OF HOUR" />
+                            <TextBlock x:Name="TopText" Classes="digits" FontSize="30" FontWeight="Bold" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Border DockPanel.Dock="Top" Classes="box" Margin="0,12,0,0" x:Name="ShowNotesBox">
+                    <StackPanel Spacing="4">
+                        <TextBlock Classes="caption" Text="SHOW NOTES" />
+                        <ScrollViewer MaxHeight="170">
+                            <TextBlock x:Name="ShowNotesText" FontSize="15" TextWrapping="Wrap" />
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+                <Border Classes="box" Margin="0,12,0,0">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Top" x:Name="RequestsCaption" Classes="caption" Text="REQUESTS" Margin="0,0,0,6" />
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                            <Button x:Name="AcceptButton" Content="▶ Play next" Classes="accent" IsEnabled="False" />
+                            <Button x:Name="DeclineButton" Content="Turn down" IsEnabled="False" />
+                        </StackPanel>
+                        <ListBox x:Name="RequestList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:RequestRow">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Song}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Dedication}" FontSize="12" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Taken}" FontSize="11" Foreground="{StaticResource TextMuted}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>

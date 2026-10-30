@@ -4,6 +4,7 @@
 // settings there.
 using Avalonia;
 using Avalonia.Controls;
+using ToggleButton = Avalonia.Controls.Primitives.ToggleButton;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -243,6 +244,31 @@ Console.WriteLine("Settings");
     after.Save();
 }
 
+Console.WriteLine("Translations");
+{
+    // A language added as a file in the settings folder's translations folder, with no new version.
+    string folder = Localization.Folders[^1];
+    Directory.CreateDirectory(folder);
+    File.WriteAllText(Path.Combine(folder, "de.json"), "{ \"Add pause\": \"Pause hinzufügen\", \"Remove\": \"\" }");
+    File.WriteAllText(Path.Combine(folder, "pt.json"), "{ \"Add pause\": \"Pôr pausa\" }");
+    Localization.Rescan();
+    Check(Localization.Languages.Any(l => l.Code == "de" && l.Name == "Deutsch"), "a translation file in the translations folder adds its language (Deutsch)");
+    Check(Localization.Languages.Count(l => l.Code == "pt") == 1, "…a built-in language is listed once");
+    Localization.Load("de");
+    Check(L.T("Add pause") == "Pause hinzufügen" && L.T("Remove") == "Remove", "…its texts are used; one left empty stays in English");
+    Localization.Load("pt");
+    Check(L.T("Add pause") == "Pôr pausa" && L.T("Edit pause") == "Editar pausa", "a file for a built-in language corrects its texts, the rest stay built in");
+    File.WriteAllText(Path.Combine(folder, "pt-BR.json"), "{ \"Edit pause\": \"Editar a pausa\" }");
+    Localization.Rescan();
+    Localization.Load("pt-BR");
+    Check(L.T("Edit pause") == "Editar a pausa" && L.T("Remove") == "Remover", "a country's variant (pt-BR) takes what it doesn't have from its language (pt), not English");
+    File.Delete(Path.Combine(folder, "pt-BR.json"));
+    File.Delete(Path.Combine(folder, "de.json"));
+    File.Delete(Path.Combine(folder, "pt.json"));
+    Localization.Rescan();
+    Localization.Load("en");
+}
+
 // ───────────────────────── The on-air program ─────────────────────────
 
 Console.WriteLine("The on-air program (a library of its own)");
@@ -251,7 +277,21 @@ Console.WriteLine("The on-air program (a library of its own)");
     settings.Library = new LibrarySettings { File = Path.Combine(work, "library.db") };
     settings.FillEnabled = false;
     settings.WasStandby = true; // even so: a library of its own is never standby
+    settings.AutoAdvance = true;
     settings.Save();
+    // A live show on air now: it started 10 minutes ago, for an hour.
+    var showStart = DateTime.Now.AddMinutes(-10);
+    showStart = showStart.AddTicks(-(showStart.Ticks % TimeSpan.TicksPerSecond));
+    {
+        var showDb = LibraryDb.Open(settings.Library);
+        var showData = new ScheduleData { Shows = { new LiveShow { Name = "Manhãs", Presenter = "Rita", Minutes = 60, Notes = "Guest at 10:30",
+            Slots = [new WeekTime { Day = showStart.DayOfWeek, Time = showStart.ToString("HH:mm:ss") }] } } };
+        showData.Normalize();
+        new ScheduleStore(showDb).Save(showData, null, "checks");
+        var back = new ScheduleStore(showDb).Load().Data.Shows.FirstOrDefault();
+        Check(back is { Presenter: "Rita", Minutes: 60, Notes: "Guest at 10:30" } && back.OnAirAt(DateTime.Now) != null,
+            "a live show is kept when the schedule is saved, and is on air at its time");
+    }
     var win = new MainWindow { Width = 1400, Height = 860 };
     win.Show();
     var engine = (PlayoutEngine)typeof(MainWindow).GetField("_engine", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win)!;
@@ -272,6 +312,29 @@ Console.WriteLine("The on-air program (a library of its own)");
     editor.FindControl<Button>("SaveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Pump(20);
     Check(editor.Saved && engine.GetCues(songs[0]).CueIn is { } cueIn && Math.Abs(cueIn - 1) < 0.01, "Edit cue points saves them");
+
+    // The show on air: ASSISTED, and the presenter view open.
+    var autoSwitch = win.FindControl<ToggleButton>("AutoSwitch")!;
+    var scheduler = (Scheduler)typeof(MainWindow).GetField("_scheduler", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win)!;
+    var follow = typeof(MainWindow).GetMethod("FollowShow", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    WaitUi(() => scheduler.Loaded && scheduler.ShowAt(DateTime.Now) != null, 15);
+    follow.Invoke(win, [DateTime.Now]); // as the screen does once a second (headless, its timer comes round rarely)
+    Pump(5);
+    Check(autoSwitch.IsChecked == false && !engine.AutoAdvance, "a live show on air: ASSISTED");
+    object? Field(string name) => typeof(MainWindow).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win);
+    Check(WaitUi(() => Field("_presenter") is PresenterWindow { IsVisible: true }, 3), "…and the presenter view opens");
+
+    // A request taken, then put on next by the presenter, with who it is for as its note.
+    Check(win.AddRequest(songs[2], "Song", "Band", "Ana", "Happy birthday", "staff") == null && win.Requests.Count == 1, "a request is taken");
+    var request = win.Requests[0];
+    win.AcceptRequest(request.Id);
+    Check(win.Requests.Count == 0 && WaitUi(() => Field("_snapshot") is PlaylistSnapshot snap && snap.Items.Any(t => t.Path == songs[2] && t.Note == "Request from Ana: Happy birthday"), 3),
+        "…the presenter puts it on next, with who it is for and the message as its note");
+
+    // The show ends: AUTO again (as the screen sees it a second after the end).
+    follow.Invoke(win, [showStart.AddMinutes(60).AddSeconds(1)]);
+    Pump(5);
+    Check(autoSwitch.IsChecked == true && engine.AutoAdvance, "the show is over: AUTO again");
     win.Close();
     Pump(10);
 }
@@ -310,6 +373,9 @@ Console.WriteLine("A restart (yesterday's playlist saved, a daily playlist for e
     settings.Save();
     foreach (var file in new[] { "settings.json", "running" }.Select(f => Path.Combine(AppSettings.DataFolder, f)).Where(File.Exists))
         File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddDays(-1));
+    // The copy of the schedule the last check's window kept is another library's (with a show on air now): not this one's.
+    foreach (var copy in new[] { "schedule-cache.json", "schedule-cache.json.bak" }.Select(f => Path.Combine(AppSettings.DataFolder, f)).Where(File.Exists))
+        File.Delete(copy);
 
     var started = DateTime.Now;
     var win = new MainWindow { Width = 1400, Height = 860 };
@@ -475,6 +541,66 @@ Console.WriteLine("Ad breaks (parts taken from a category)");
 }
 
 // ───────────────────────── Categories ─────────────────────────
+
+Console.WriteLine("Advertising (sectors, longest break, billing)");
+{
+    var at = DateTime.Today.AddHours(10);
+    var ads = Audio.Make(Path.Combine(work, "sector-ads"), 5);
+    AdClient Client(string name, string sector, int file) => new()
+    {
+        Name = name, Sector = sector,
+        Campaigns = { new AdCampaign { Name = name + " spring", Section = "Ads", Files = [ads[file]], Placements = [new AdPlacement { Day = at.DayOfWeek, Time = "10:00:00" }] } },
+    };
+    var adBreak = new AdBreak { Name = "Ads", Times = ["10:00"], Parts = [new BreakPart { Kind = PartKind.Section, Section = "Ads" }] };
+    // Booked one car dealer after the other: the bank and the shop go between them.
+    var data = new ScheduleData { Breaks = { adBreak }, Clients = { Client("Autos Silva", "Cars", 0), Client("Motor Sul", "cars", 1), Client("Banco Norte", "Banks", 2), Client("Loja", "", 3) } };
+    data.Normalize();
+    var order = data.InBreak(adBreak, at);
+    bool apart = order.Zip(order.Skip(1)).All(p => !p.First.Client.Clashes(p.Second.Client));
+    Check(order.Count == 4 && apart, $"two clients of the same sector are kept apart in the break ({string.Join(", ", order.Select(o => o.Client.Name))})");
+    // Only two car dealers: both still play (back to back, nothing to put between them).
+    var two = new ScheduleData { Breaks = { adBreak }, Clients = { Client("Autos Silva", "Cars", 0), Client("Motor Sul", "Cars", 1) } };
+    two.Normalize();
+    Check(two.InBreak(adBreak, at).Count == 2, "…when nothing can go between them, neither is left out");
+    // Booked with nothing back to back already: kept as booked.
+    var asBooked = new ScheduleData { Breaks = { adBreak }, Clients = { Client("Banco Norte", "Banks", 2), Client("Autos Silva", "Cars", 0), Client("Loja", "", 3), Client("Motor Sul", "Cars", 1) } };
+    asBooked.Normalize();
+    Check(string.Join(",", asBooked.InBreak(adBreak, at).Select(o => o.Client.Name)) == "Banco Norte,Autos Silva,Loja,Motor Sul", "…and an order with no clash stays as booked");
+    // The bank's file is missing: the break is ordered without it, the car dealers still apart.
+    var missingFile = Path.Combine(work, "gone.wav");
+    var gone = new ScheduleData { Breaks = { adBreak }, Clients = { Client("Autos Silva", "Cars", 0), Client("Banco Norte", "Banks", 2), Client("Motor Sul", "Cars", 1), Client("Loja", "", 3) } };
+    gone.Clients[1].Campaigns[0].Files = [missingFile];
+    gone.Normalize();
+    var played = ScheduleItems.For(gone, adBreak, at, null).Select(i => i.Advertiser).ToList();
+    Check(played.Count == 3 && played.IndexOf("Loja") == 1, $"…an advert whose file is missing is left out before the order is made ({string.Join(", ", played)})");
+
+    // Kept when saved and read again (schema 18).
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    adBreak.MaxSeconds = 90;
+    var store = new ScheduleStore(db);
+    store.Save(data, null, "checks");
+    var loaded = store.Load().Data;
+    Check(loaded.Clients.First(c => c.Name == "Motor Sul").Sector == "cars" && loaded.Breaks.First(b => b.Name == "Ads").MaxSeconds == 90,
+        "a client's sector and a break's longest length are kept when the schedule is saved");
+
+    // Billing: booked against the as-run log, as the certificates count it.
+    AsRunEntry Aired(string file, DateTime start, string client) =>
+        new(start, start.AddSeconds(30), "Advert", "Ads 10:00", "Ads 10:00", client, "", Path.GetFileNameWithoutExtension(file), "", "", "", "", "", file);
+    var day = DateTime.Today.AddDays(-1);
+    var yesterday = new DateTime(day.Year, day.Month, day.Day, 10, 0, 0);
+    foreach (var c in data.Clients) c.Campaigns[0].Placements = [new AdPlacement { Date = day, Time = "10:00:00" }];
+    var asRun = new List<AsRunEntry> { Aired(ads[0], yesterday.AddSeconds(5), "Autos Silva"), Aired(ads[2], yesterday.AddSeconds(40), "Banco Norte"),
+        Aired(ads[4], yesterday.AddHours(3), "Autos Silva") };
+    var bill = Billing.Build(data, asRun, day, day, DateTime.Now);
+    var silva = bill.Where(b => b.Client == "Autos Silva").ToList();
+    Check(silva.Sum(b => b.Aired) == 1 && silva.Sum(b => b.NotBooked) == 1 && silva.Sum(b => b.Seconds) == 60,
+        "billing: a client's spot on air, one more on air without being booked, and their time on air");
+    Check(bill.First(b => b.Client == "Motor Sul").Missed == 1 && bill.First(b => b.Client == "Banco Norte").Aired == 1,
+        "…a booked spot that didn't air is counted as not on air");
+    var csv = Billing.ToReport(bill, "Radio", day, day).ToCsv(';');
+    Check(csv.Contains("Autos Silva;Cars;") && csv.Contains("Motor Sul;cars;"), "…and goes to the CSV with the client's sector");
+}
 
 Console.WriteLine("Categories (the eight fixed ones, and the station's own at the top)");
 {

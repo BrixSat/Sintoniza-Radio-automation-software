@@ -3,6 +3,8 @@
 Collects every English text the app shows (XAML literals, and the C# strings given to L.T / L.F / Plural) and
 lists those without a translation in each language, and translations whose {0} placeholders differ.
 Run after adding or changing texts:  python3 scripts/i18n-check.py
+Checks every built-in language (src/Playout.App/i18n/*.json), or one file:  python3 scripts/i18n-check.py --file de.json
+A starting file for a new language, every text with an empty translation:  python3 scripts/i18n-check.py --template de > de.json
 """
 import re, glob, json, sys, html
 import os
@@ -18,6 +20,9 @@ for f in glob.glob(f'{root}/Playout.App/*.axaml'):
         if v.startswith('{') and not v.startswith('{}'): continue
         if v.startswith('{}'): v = v[2:]
         add(html.unescape(v).replace('&#10;', '\n'), f.split('/')[-1])
+# The web remote's page: its {{words}}, translated when it is served.
+for m in re.finditer(r'\{\{(.+?)\}\}', open(f'{root}/Playout.App/Assets/remote.html', encoding='utf-8').read()):
+    add(m.group(1), 'remote.html')
 def unescape(lit):
     return lit.encode('utf-8').decode('unicode_escape').encode('latin-1').decode('utf-8')
 lit = r'"((?:[^"\\]|\\.)*)"'
@@ -39,11 +44,20 @@ add("Automatic (this computer's language)", 'Localization.cs')
 for k in ['Date','Start','End','Duration','Seconds','Composer','Label','ISRC','Plays','Total time','Total seconds','Break','Type','Source','File']:
     add(k, 'Reports.cs')
 ph = lambda s: sorted(re.findall(r'\{(\d+)(?::[^}]*)?\}', s))
+if '--template' in sys.argv:
+    json.dump({k: '' for k in keys}, sys.stdout, ensure_ascii=False, indent=1)
+    print()
+    sys.exit(0)
 problems = 0
-for lang in ('pt', 'fr'):
-    table = json.load(open(os.path.join(root, 'Playout.App', 'i18n', lang + '.json'), encoding='utf-8'))
+if '--file' in sys.argv:
+    files = [sys.argv[sys.argv.index('--file') + 1]]
+else:
+    files = sorted(glob.glob(os.path.join(root, 'Playout.App', 'i18n', '*.json')))
+for path in files:
+    lang = os.path.splitext(os.path.basename(path))[0]
+    table = json.load(open(path, encoding='utf-8'))
     for k, where in keys.items():
-        if k not in table:
+        if not table.get(k):
             print(f'{lang}: no translation ({where}): {k!r}'); problems += 1
         elif ph(table[k]) != ph(k):
             print(f'{lang}: placeholders differ: {k!r} -> {table[k]!r}'); problems += 1

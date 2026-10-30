@@ -13,6 +13,7 @@ public partial class App : Application
     {
         var settings = AppSettings.Load();
         Localization.Load(settings.Language);
+        if (Localization.Problems.Length > 0) AppLog.Write("Translations: " + Localization.Problems);
         PlaylistLook.Apply(settings.PlaylistColors);
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

@@ -49,6 +49,10 @@ sealed class ScheduleStore(LibraryDb db)
         public double ArtistHours { get; set; }
         public double AlbumHours { get; set; }
         public long MaxSlowInRow { get; set; }
+        public double MaxSeconds { get; set; }
+        public string? Presenter { get; set; }
+        public double ShowMinutes { get; set; }
+        public string? Notes { get; set; }
     }
     sealed class SlotRow
     {
@@ -87,6 +91,7 @@ sealed class ScheduleStore(LibraryDb db)
         public string Id { get; set; } = "";
         public string Name { get; set; } = "";
         public long Enabled { get; set; }
+        public string Sector { get; set; } = "";
     }
     sealed class CampaignRow
     {
@@ -135,7 +140,8 @@ sealed class ScheduleStore(LibraryDb db)
             """
             SELECT id AS Id, type AS Type, name AS Name, enabled AS Enabled, start_mode AS StartMode, max_delay_minutes AS MaxDelayMinutes,
                    lock_level AS LockLevel, path AS Path, stream_minutes AS StreamMinutes, max_age_minutes AS MaxAgeMinutes,
-                   artist_hours AS ArtistHours, album_hours AS AlbumHours, max_slow_in_row AS MaxSlowInRow
+                   artist_hours AS ArtistHours, album_hours AS AlbumHours, max_slow_in_row AS MaxSlowInRow, max_seconds AS MaxSeconds,
+                   presenter AS Presenter, show_minutes AS ShowMinutes, notes AS Notes
             FROM schedule_entries WHERE station_id = @Station ORDER BY type, position
             """, p, tx).ToList();
         var slots = c.Query<SlotRow>(
@@ -155,7 +161,7 @@ sealed class ScheduleStore(LibraryDb db)
                    l.tempo_min AS TempoMin, l.tempo_max AS TempoMax, l.energy_min AS EnergyMin, l.energy_max AS EnergyMax
             FROM playlist_lines l JOIN schedule_entries e ON e.id = l.entry_id WHERE e.station_id = @Station ORDER BY l.position
             """, p, tx).ToLookup(r => r.EntryId);
-        var clients = c.Query<ClientRow>("SELECT id AS Id, name AS Name, enabled AS Enabled FROM ad_clients WHERE station_id = @Station ORDER BY position", p, tx).ToList();
+        var clients = c.Query<ClientRow>("SELECT id AS Id, name AS Name, enabled AS Enabled, sector AS Sector FROM ad_clients WHERE station_id = @Station ORDER BY position", p, tx).ToList();
         var campaigns = c.Query<CampaignRow>(
             """
             SELECT k.id AS Id, k.client_id AS ClientId, k.name AS Name, k.enabled AS Enabled, k.starts_on AS StartsOn, k.ends_on AS EndsOn,
@@ -181,6 +187,7 @@ sealed class ScheduleStore(LibraryDb db)
             {
                 "break" => new AdBreak
                 {
+                    MaxSeconds = e.MaxSeconds,
                     Parts = parts[e.Id].Select(r => new BreakPart
                     {
                         Kind = Enum.TryParse<PartKind>(r.Kind, out var k) ? k : PartKind.Jingle, Path = r.Path, Section = r.Section, OnlyWithAdverts = r.OnlyWithAdverts != 0,
@@ -196,6 +203,7 @@ sealed class ScheduleStore(LibraryDb db)
                     }).ToList(),
                     ArtistHours = e.ArtistHours, AlbumHours = e.AlbumHours, MaxSlowInRow = (int)e.MaxSlowInRow,
                 },
+                "show" => new LiveShow { Presenter = e.Presenter ?? "", Minutes = e.ShowMinutes, Notes = e.Notes ?? "" },
                 _ => new ScheduledEvent { Path = e.Path, StreamMinutes = e.StreamMinutes, MaxAgeMinutes = (int)e.MaxAgeMinutes },
             };
             entry.Id = Guid.Parse(e.Id);
@@ -211,13 +219,14 @@ sealed class ScheduleStore(LibraryDb db)
             {
                 case AdBreak b: data.Breaks.Add(b); break;
                 case PlaylistTemplate t: data.Templates.Add(t); break;
+                case LiveShow show: data.Shows.Add(show); break;
                 case ScheduledEvent ev: data.Events.Add(ev); break;
             }
         }
         foreach (var r in clients)
             data.Clients.Add(new AdClient
             {
-                Id = Guid.Parse(r.Id), Name = r.Name, Enabled = r.Enabled != 0,
+                Id = Guid.Parse(r.Id), Name = r.Name, Enabled = r.Enabled != 0, Sector = r.Sector,
                 Campaigns = campaigns[r.Id].Select(k => new AdCampaign
                 {
                     Id = Guid.Parse(k.Id), Name = k.Name, Enabled = k.Enabled != 0, From = Day(k.StartsOn), To = Day(k.EndsOn),
@@ -254,7 +263,8 @@ sealed class ScheduleStore(LibraryDb db)
 
         var entries = data.Events.Select((e, i) => (Entry: (ScheduleEntry)e, Type: "event", Position: i))
             .Concat(data.Breaks.Select((b, i) => (Entry: (ScheduleEntry)b, Type: "break", Position: i)))
-            .Concat(data.Templates.Select((t, i) => (Entry: (ScheduleEntry)t, Type: "playlist", Position: i)));
+            .Concat(data.Templates.Select((t, i) => (Entry: (ScheduleEntry)t, Type: "playlist", Position: i)))
+            .Concat(data.Shows.Select((s, i) => (Entry: (ScheduleEntry)s, Type: "show", Position: i)));
         foreach (var (entry, type, position) in entries)
         {
             string id = entry.Id.ToString();
@@ -262,15 +272,17 @@ sealed class ScheduleStore(LibraryDb db)
             c.Execute(
                 """
                 INSERT INTO schedule_entries (id, station_id, type, position, name, enabled, start_mode, max_delay_minutes, lock_level, path, stream_minutes, max_age_minutes,
-                                              artist_hours, album_hours, max_slow_in_row)
-                VALUES (@id, @Station, @type, @position, @name, @enabled, @start, @delay, @lock, @path, @stream, @age, @artistHours, @albumHours, @slow)
+                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, notes)
+                VALUES (@id, @Station, @type, @position, @name, @enabled, @start, @delay, @lock, @path, @stream, @age, @artistHours, @albumHours, @slow, @maxSeconds,
+                        @presenter, @showMinutes, @notes)
                 """,
                 new
                 {
                     id, Station, type, position, name = entry.Name, enabled = entry.Enabled ? 1 : 0, start = entry.Start.ToString(),
                     delay = entry.MaxDelayMinutes, @lock = entry.Lock.ToString(), path = ev?.Path ?? "", stream = ev?.StreamMinutes ?? 0, age = ev?.MaxAgeMinutes ?? 0,
                     artistHours = (entry as PlaylistTemplate)?.ArtistHours ?? 0, albumHours = (entry as PlaylistTemplate)?.AlbumHours ?? 0,
-                    slow = (entry as PlaylistTemplate)?.MaxSlowInRow ?? 0,
+                    slow = (entry as PlaylistTemplate)?.MaxSlowInRow ?? 0, maxSeconds = (entry as AdBreak)?.MaxSeconds ?? 0,
+                    presenter = (entry as LiveShow)?.Presenter ?? "", showMinutes = (entry as LiveShow)?.Minutes ?? 0, notes = (entry as LiveShow)?.Notes ?? "",
                 }, tx);
             c.Execute("INSERT INTO schedule_slots (entry_id, weekday, time) VALUES (@id, @weekday, @time)",
                 entry.Slots.DistinctBy(s => (s.Day, s.Time)).Select(s => new { id, weekday = (int)s.Day, time = s.Time }), tx);
@@ -294,8 +306,8 @@ sealed class ScheduleStore(LibraryDb db)
         for (int i = 0; i < data.Clients.Count; i++)
         {
             var client = data.Clients[i];
-            c.Execute("INSERT INTO ad_clients (id, station_id, position, name, enabled) VALUES (@id, @Station, @position, @name, @enabled)",
-                new { id = client.Id.ToString(), Station, position = i, name = client.Name, enabled = client.Enabled ? 1 : 0 }, tx);
+            c.Execute("INSERT INTO ad_clients (id, station_id, position, name, enabled, sector) VALUES (@id, @Station, @position, @name, @enabled, @sector)",
+                new { id = client.Id.ToString(), Station, position = i, name = client.Name, enabled = client.Enabled ? 1 : 0, sector = client.Sector.Trim() }, tx);
             for (int j = 0; j < client.Campaigns.Count; j++)
             {
                 var k = client.Campaigns[j];

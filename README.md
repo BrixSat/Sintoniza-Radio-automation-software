@@ -7,10 +7,12 @@ engine for decoding, mixing and streaming.
 
 ![Main window](docs/screenshot.png)
 
-> **Status:** in development. It plays a playlist on air with crossfades, fires jingles from a cartwall, streams to
-> Icecast/Shoutcast, plays events and ad breaks at set times, levels loudness, sends now playing to an RDS encoder
-> and the station's website, keeps a music library, play history and as-run log (music reports and proof of
-> broadcast), and guards against dead air. Hour templates and rotation are next (see [Roadmap](#roadmap)).
+> **Status:** in use, still growing. It plays a playlist on air with crossfades, fires jingles from a cartwall,
+> streams to Icecast/Shoutcast, plays events and ad breaks at set times, makes each hour's playlist from hour
+> templates and music rules ahead of time (Sintoniza Pro), takes voice tracks, levels loudness, sends now playing to
+> an RDS encoder and the station's website, keeps a music library, play history and as-run log (music reports, ERC
+> quotas and proof of broadcast), records what goes out (Sintoniza Rec), and guards against dead air. What comes next
+> is in the [Roadmap](#roadmap).
 
 ## Features
 
@@ -32,6 +34,10 @@ engine for decoding, mixing and streaming.
   the hour before isn't shown (Reports has it). The item on air is kept at the top of the list; scrolling away
   stops that until the next item goes on air, and **On air** (or **This hour**) jumps straight back to it. M3U
   open/save.
+- **Pauses in the playlist**: **Pause…** puts in an item with no sound, for a set time or until Next, while the
+  presenter talks. Its title is what to talk about: shown in the playlist, on air and in the notes when it is next,
+  never on RDS, the website or the stream. No crossfade into or out of it; dead-air detection leaves it alone.
+  Right-click → *Edit pause…* changes it before it plays. Saved with the playlist and in M3U files.
 - **Internet streams in the playlist**: put another station's stream in the playlist (**Stream…**) for a set time
   (it crossfades into the next item when the time is up) or until you press Stop or Next. It connects a few seconds
   before it is due, so there is no dead air, and if the stream drops the playlist moves on. Saved with the playlist
@@ -122,9 +128,23 @@ engine for decoding, mixing and streaming.
   kept by the daily playlists and fill music.
 - **Takes**: the time and the temperature (from Open-Meteo) put together from recorded files (HRS10 + MIN15, TMP18)
   the moment they go on air; a take line in an hour template.
+- **Live shows** (Sintoniza Pro → Shows): a show has a name, a presenter, a length and notes, and is placed on the
+  week like an event. While it is on, Sintoniza Emi is in ASSISTED (each item waits for the presenter's Play), the
+  **presenter view** opens, and the show and presenter go to RDS and the website. When it ends Emi goes back to
+  AUTO and, if nothing is on air, starts the playlist; closed during a show and started after it, Emi comes back in
+  AUTO. Ad breaks and events play as usual.
+- **Presenter view** (opens with a live show, or **Presenter view** above the playlist): a large, simple screen —
+  the show and how long until it ends, what is on air with its time left and a **TALK UP** countdown to the Intro
+  marker, the next three items, the notes (the item's, a pause's, the show's), countdowns to the next break and
+  the top of the hour, the requests waiting, and big PLAY, NEXT and STOP buttons.
+- **Listener requests** (**Requests…** above the playlist, or ♥ in the web remote): whoever takes a phone call or
+  a message finds the song in the library and writes who it is for and their message. The presenter puts each one
+  on next (who it is for and the message become its note, shown on air) or turns it down. The list is the studio's
+  own and nothing is open to the internet.
 - **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network, laid out as the
   on-air screen — the deck with the waveform and countdowns, ▶ ❚❚ ⏭ ■ and AUTO, the clock and level meters, the
-  playlist (play now / remove), the cartwalls, and a library search to add a song. It logs in with a station user who has the *Web remote* permission; five wrong
+  playlist (play now / remove), the cartwalls, a library search to add a song or take a listener's **request** (♥),
+  and the requests waiting (play next / turn down). It logs in with a station user who has the *Web remote* permission; five wrong
   passwords lock it for a minute. Plain HTTP: for the station's own network or its VPN only.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.
@@ -147,12 +167,17 @@ engine for decoding, mixing and streaming.
     adverts at all is skipped.
   - **Clients**: each client has campaigns. A campaign has its dates, one or more audio files
     (they take turns), the **section** it goes in and its **position**: automatic, 1–5 from the start of the
-    section or 6–10 at its end (10 = last); automatic ones never put the same client twice in a row where that can
-    be helped. The campaigns calendar shows a real week (with week navigation): one row per break time, and in
+    section or 6–10 at its end (10 = last). Each client can have a **sector** (Cars, Banks…): automatic adverts
+    are put so the same client, or two clients of the same sector, never follow each other where that can be
+    helped; none is ever left out, and the Home page says when it can't be helped. The campaigns calendar shows a real week (with week navigation): one row per break time, and in
     each cell how many adverts the campaign's section has there and how long they run (`02 | 0:45`). A click places
     the selected campaign in that break every week, or on that date only; only breaks that have its section can be
     clicked. The client's name goes on the proof of broadcast. Adverts made with earlier versions become a client
-    and a campaign each.
+    and a campaign each. **Billing…** counts every client's spots over a month (last month by default), campaign
+    by campaign: booked, on air, not on air, on air without being booked and time on air, as the certificates
+    count them, to save as CSV for the accounts or print.
+  - **Longest break**: an ad break can have a longest length (Ad breaks → Longest). The Home page warns when the
+    adverts booked today make it longer; nothing is left out on air.
   - **Shown ahead in the playlist**, item by item (a break's jingles and each advert with its advertiser, each with
     its start time): the events and breaks coming up appear in the playlist where they will play
     (tagged SCHEDULED, with their start time and how they start: hard, can wait N minutes, or ends at its time),
@@ -162,7 +187,9 @@ engine for decoding, mixing and streaming.
     The daily playlists are made from them ahead of time (see **Daily playlists**).
   - **Missed while stopped**: scheduled items whose time passed more than 2 minutes ago while the player wasn't
     playing (stopped overnight, after a restart) are left out, with a line in the log, not played late one after
-    the other.
+    the other. **Ad breaks are the exception**: one that comes due while the player is stopped or paused shows
+    *PLAYER STOPPED: IT PLAYS ANYWAY* with a countdown on the break badge and goes on air 10 seconds later (Play
+    starts it at once); after it the player stops again, as it was.
   - **Ad breaks stand out**: a green band behind their rows, the money sign (Settings → Station; empty = this
     computer's currency) instead of an icon on each advert, and the advertiser under it. When the next break is
     less than 10 minutes away, a **BREAK IN mm:ss** countdown shows on the deck with how it starts, red in its
@@ -230,9 +257,15 @@ engine for decoding, mixing and streaming.
   folder with a file for each hour, the hour's number at the end of the name (`HRS05.mp3` at 05:00, `HRS22.mp3`
   at 22:00; midnight 00 or 24), played instead of the signal (ending on the hour) or right after it; an hour
   without a file gets the signal only.
-- **Languages**: English, Português and Français (Settings → Station → Language, from the next start; automatic
-  follows the computer). Every window and message is translated; dates and day names follow the language. The
-  translations are in `src/Playout.App/i18n/`; `python3 scripts/i18n-check.py` lists texts that have none.
+- **Languages**: English, Português and Français built in (Settings → Station → Language, from the next start;
+  automatic follows the computer). Every window and message is translated; dates and day names follow the language.
+  **More languages without a new version**: Settings → Station → **Add a language…** opens the translations folder
+  (`translations` in the settings folder; a `translations` folder next to the program works for every user of the
+  computer). A file there named after a language (`de.json`, `es.json`, `pt-BR.json`) adds it to the list; one named
+  after a built-in language (`pt.json`) corrects or completes its texts. The file maps each English text to its
+  translation (`{"Add pause": "Pause hinzufügen"}`); texts left out stay in English. The built-in translations are in
+  `src/Playout.App/i18n/`: `python3 scripts/i18n-check.py` lists texts that have no translation (`--file de.json`
+  checks one file), and `--template de > de.json` writes a starting file with every text.
 - **Crossfade**: song to song as set in Settings → Audio; into or out of a jingle, promo, advert or programme its
   own value, 0 by default (the song ends, the jingle starts clean and plays to its end).
 - **Settings** (Ctrl/Cmd+,): station name, logo, genre, website and station type, crossfade length, audio outputs,
@@ -244,7 +277,8 @@ engine for decoding, mixing and streaming.
   installs it (Windows: the app closes and restarts on the new version; Linux: asks for the admin password, then
   offers a restart). Portable zip/tar copies open the download page instead.
 - **RDS** (Settings → RDS): the radio text shows artist and title of the song on air (your own template, up to 64
-  characters) and the station's text during jingles, adverts and when stopped; the PS is fixed. It is sent when
+  characters) and the station's text during jingles, adverts and when stopped; `{show}` and `{presenter}` put in the
+  live show on air (empty when none is); the PS is fixed. It is sent when
   the item changes and again every minute, so a restarted encoder catches up. Encoders are reached by TCP, UDP or
   a serial port, with **ASCII commands** (`RT=` / `PS=` by default, editable: PIRA32, P232, MRDS, DEVA and most
   others) or **UECP**; or the text is written to a file. *Send now* tests the connection. With ASCII commands it
@@ -495,11 +529,10 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 ## Roadmap
 
 - Auto cue (silence trimming) for files without cue points
-- The playout loading the daily logs (and reporting what aired or was missed), then a scheduling program with
-  screens for clocks, the week grid, advertisers, campaigns and checking each day's log
-- Live input switching and GPIO, voice tracking
+- News and network programmes fetched by FTP/HTTP before air time, checked to be new, with a fallback
+- More than one stream at a time (and AAC)
+- Several stations in one database and library
 - RT+ over UECP (it is sent with ASCII commands now)
-- REST API for remote control
 
 ## Support
 

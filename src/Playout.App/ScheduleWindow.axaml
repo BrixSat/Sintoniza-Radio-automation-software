@@ -119,6 +119,7 @@
                 <MenuItem x:Name="MenuTemplates" Header="Hour templates" />
                 <MenuItem x:Name="MenuDaily" Header="Daily playlists" />
                 <MenuItem x:Name="MenuEvents" Header="Events" />
+                <MenuItem x:Name="MenuShows" Header="Shows" />
                 <MenuItem x:Name="MenuErc" Header="ERC quotas" />
             </MenuItem>
             <MenuItem Header="_Traffic">
@@ -212,6 +213,7 @@
                         <Button x:Name="NavTemplates" Classes="nav" Content="▦   Hour templates" />
                         <Button x:Name="NavDaily" Classes="nav" Content="☰   Daily playlists" />
                         <Button x:Name="NavEvents" Classes="nav" Content="⏰   Events" />
+                        <Button x:Name="NavShows" Classes="nav" Content="🎙   Shows" />
                         <Button x:Name="NavErc" Classes="nav" Content="⚖   ERC quotas" />
                         <TextBlock Classes="navgroup" Text="TRAFFIC" />
                         <Button x:Name="NavBreaks" Classes="nav" Content="€   Ad breaks" />
@@ -391,6 +393,15 @@
                                 <RadioButton x:Name="BreakEndBox" GroupName="BreakStart" Content="Ends at its time (songs adjusted)" />
                             </StackPanel>
                             <StackPanel>
+                                <TextBlock Classes="label" Text="Longest" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                    <NumericUpDown x:Name="BreakMaxBox" Minimum="0" Maximum="3600" Increment="15" FormatString="0" Width="120" />
+                                    <TextBlock Text="seconds (0 = no limit)" VerticalAlignment="Center" />
+                                </WrapPanel>
+                                <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                           Text="The Home page warns when the adverts booked make the break longer. Nothing is left out on air." />
+                            </StackPanel>
+                            <StackPanel>
                                 <TextBlock Classes="label" Text="In the playlist, the host may" />
                                 <ComboBox x:Name="BreakLockBox" HorizontalAlignment="Stretch">
                                     <ComboBoxItem Content="Remove and move its items" />
@@ -447,12 +458,14 @@
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                        <WrapPanel Grid.Row="2" ItemSpacing="6" LineSpacing="6" Margin="0,8,0,0">
                             <Button x:Name="AddClientButton" Content="New" />
                             <Button x:Name="DeleteClientButton" Content="Delete" />
                             <Button x:Name="CertificateButton" Content="Certificate…"
                                     ToolTip.Tip="What was booked for the client against what went on air, spot by spot: to print for them, with each advert from the recordings" />
-                        </StackPanel>
+                            <Button x:Name="BillingButton" Content="Billing…"
+                                    ToolTip.Tip="Every client's spots over a month, campaign by campaign: booked, on air, not on air and time on air, to invoice (CSV or to print)" />
+                        </WrapPanel>
                         <TextBlock Grid.Row="3" Classes="label" Text="Campaigns" Margin="0,14,0,4" />
                         <ListBox Grid.Row="4" x:Name="CampaignList" Background="#13161C">
                             <ListBox.ItemTemplate>
@@ -506,6 +519,12 @@
                                 </StackPanel>
                                 <CheckBox Grid.Column="2" x:Name="ClientEnabledBox" Content="On" VerticalAlignment="Bottom" />
                             </Grid>
+                            <StackPanel x:Name="SectorPanel">
+                                <TextBlock Classes="label" Text="Sector" />
+                                <AutoCompleteBox x:Name="ClientSectorBox" MaxLength="100" FilterMode="Contains" MinimumPrefixLength="0"
+                                                 PlaceholderText="e.g. Cars, Banks, Supermarkets"
+                                                 ToolTip.Tip="Two clients of the same sector are never back to back in a break: other adverts go between them. Leave empty if it doesn't matter." />
+                            </StackPanel>
                             <Separator />
                             <StackPanel x:Name="CampaignPanel" Spacing="12">
                                 <Grid ColumnDefinitions="*,12,Auto">
@@ -683,6 +702,80 @@
                 </Grid>
             </TabItem>
             <!-- ───────── Daily playlists: made from the templates, as they will play ───────── -->
+            <!-- ───────── Live shows ───────── -->
+            <TabItem Header="Shows" x:Name="ShowsTab">
+                <Grid ColumnDefinitions="220,14,*,14,330" Margin="0,12,0,0">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                            <Button x:Name="AddShowButton" Content="New" />
+                            <Button x:Name="DeleteShowButton" Content="Delete" />
+                        </StackPanel>
+                        <ListBox x:Name="ShowList" Background="#13161C">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="app:ScheduleRow">
+                                    <StackPanel Opacity="{Binding Opacity}">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <DockPanel Grid.Column="2">
+                        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="6" Margin="0,0,0,8">
+                            <TextBlock Text="Rows every" VerticalAlignment="Center" />
+                            <ComboBox x:Name="ShowStepBox" Width="100" />
+                            <TextBlock Text="from minute" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="ShowOffsetBox" Minimum="0" Maximum="59" Increment="1" FormatString="0" Width="120" />
+                            <TextBox x:Name="ShowAddTimeBox" Width="96" PlaceholderText="hh:mm:ss or *:mm:ss" />
+                            <Button x:Name="ShowAddTimeButton" Content="Add row" ToolTip.Tip="A row for an exact time, e.g. 21:30" />
+                            <Button x:Name="ShowClearButton" Content="Clear" ToolTip.Tip="Take this show out of every day and time" />
+                        </WrapPanel>
+                        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,6,0,0"
+                                   Text="Click a cell to start the selected show at that day and time (or take it out); drag to do many cells. Other shows show faintly." />
+                        <Border Classes="calendar">
+                            <DockPanel>
+                                <Grid DockPanel.Dock="Top" x:Name="ShowHeader" Height="28" Background="#1A1D24" />
+                                <ScrollViewer x:Name="ShowScroll">
+                                    <c:WeekGrid x:Name="ShowGrid" />
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+                    </DockPanel>
+
+                    <ScrollViewer Grid.Column="4">
+                        <StackPanel x:Name="ShowPanel" Spacing="12" Margin="0,0,14,0">
+                            <Grid ColumnDefinitions="*,12,Auto">
+                                <StackPanel>
+                                    <TextBlock Classes="label" Text="Name" />
+                                    <TextBox x:Name="ShowNameBox" PlaceholderText="Morning show" MaxLength="60" />
+                                </StackPanel>
+                                <CheckBox Grid.Column="2" x:Name="ShowEnabledBox" Content="On" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Presenter" />
+                                <TextBox x:Name="ShowPresenterBox" MaxLength="100" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="How long" />
+                                <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                    <NumericUpDown x:Name="ShowMinutesBox" Minimum="5" Maximum="1440" Increment="15" FormatString="0" Width="120" />
+                                    <TextBlock Text="minutes, from each start" VerticalAlignment="Center" />
+                                </WrapPanel>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Notes for the presenter" />
+                                <TextBox x:Name="ShowNotesBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="120" MaxLength="4000"
+                                         PlaceholderText="Running order, guests, what to mention" />
+                            </StackPanel>
+                            <TextBlock Classes="note"
+                                       Text="While the show is on, the playout is in ASSISTED (each item waits for the presenter), the presenter view opens, and the show and presenter go to RDS and the website. When it ends, the playout goes back to AUTO and, if nothing is on air, starts the playlist. Ad breaks and events play as usual." />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
             <TabItem Header="Daily playlists" x:Name="DailyTab" />
             <!-- ───────── Home: the station at a glance ───────── -->
             <TabItem Header="Home" x:Name="HomeTab">

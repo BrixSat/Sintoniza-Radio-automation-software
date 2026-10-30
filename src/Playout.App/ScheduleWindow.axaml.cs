@@ -120,6 +120,7 @@ public partial class ScheduleWindow : Window
         WireEvents();
         WireTemplates();
         WireBreaks();
+        WireShows();
         WireClients();
         SaveButton.Click += (_, _) => Save();
         WireStation(store);
@@ -157,6 +158,7 @@ public partial class ScheduleWindow : Window
         EventList.SelectedIndex = _eventRows.Count > 0 ? 0 : -1;
         BreakList.SelectedIndex = _breakRows.Count > 0 ? 0 : -1;
         ClientList.SelectedIndex = _clientRows.Count > 0 ? 0 : -1;
+        LoadShows(data);
         ShowEvent();
         ShowBreak();
         ShowClient();
@@ -616,6 +618,7 @@ public partial class ScheduleWindow : Window
         };
         BreakNameBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Name = BreakNameBox.Text?.Trim() ?? "");
         BreakEnabledBox.IsCheckedChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Enabled = BreakEnabledBox.IsChecked == true);
+        BreakMaxBox.ValueChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.MaxSeconds = (double)(BreakMaxBox.Value ?? 0));
         WireStart(BreakList, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
 
         // The running order.
@@ -764,6 +767,7 @@ public partial class ScheduleWindow : Window
         _loading = true;
         BreakNameBox.Text = b?.Name ?? "";
         BreakEnabledBox.IsChecked = b?.Enabled ?? true;
+        BreakMaxBox.Value = (decimal)(b?.MaxSeconds ?? 0);
         ShowStart(b, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
         _loading = false;
         ShowParts(0);
@@ -802,6 +806,11 @@ public partial class ScheduleWindow : Window
             if (SelectedClient is not { } c) return;
             string station = _station?.StationName is { Length: > 0 } n ? n : _settings?.StationName ?? "";
             await new CertificateWindow(c, _library?.Db, _settings, station).ShowDialog(this);
+        };
+        BillingButton.Click += async (_, _) =>
+        {
+            string station = _station?.StationName is { Length: > 0 } n ? n : _settings?.StationName ?? "";
+            await new BillingWindow(_data.Clone(), _library?.Db, station).ShowDialog(this);
         };
         AddClientButton.Click += (_, _) =>
         {
@@ -852,6 +861,7 @@ public partial class ScheduleWindow : Window
 
         ClientNameBox.TextChanged += (_, _) => Edit<AdClient>(ClientList, c => c.Name = ClientNameBox.Text?.Trim() ?? "");
         ClientEnabledBox.IsCheckedChanged += (_, _) => Edit<AdClient>(ClientList, c => c.Enabled = ClientEnabledBox.IsChecked == true);
+        ClientSectorBox.TextChanged += (_, _) => Edit<AdClient>(ClientList, c => c.Sector = ClientSectorBox.Text?.Trim() ?? "");
         CampaignNameBox.TextChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Name = CampaignNameBox.Text?.Trim() ?? "");
         CampaignEnabledBox.IsCheckedChanged += (_, _) => Edit<AdCampaign>(CampaignList, k => k.Enabled = CampaignEnabledBox.IsChecked == true);
         AddFileButton.Click += async (_, _) =>
@@ -935,6 +945,9 @@ public partial class ScheduleWindow : Window
         _loading = true;
         ClientNameBox.Text = c?.Name ?? "";
         ClientEnabledBox.IsChecked = c?.Enabled ?? true;
+        // The sectors already given, to pick the same name.
+        ClientSectorBox.ItemsSource = _data.Clients.Select(x => x.Sector.Trim()).Where(x => x.Length > 0).Distinct(StringComparer.CurrentCultureIgnoreCase).Order().ToList();
+        ClientSectorBox.Text = c?.Sector ?? "";
         _loading = false;
         _campaignRows = c?.Campaigns.Select(CampaignRow).ToList() ?? new();
         CampaignList.ItemsSource = _campaignRows;
@@ -1076,7 +1089,8 @@ public partial class ScheduleWindow : Window
     ScheduleRow ClientRow(AdClient c) => new(c, () =>
     {
         int running = c.Campaigns.Count(k => k.Enabled && k.Placements.Count > 0 && !(k.To is { } to && to.Date < DateTime.Today));
-        return (ClientName(c), L.F("{0} · {1} running", Plural(c.Campaigns.Count, "{0} campaign", "{0} campaigns"), running), c.Enabled);
+        string detail = L.F("{0} · {1} running", Plural(c.Campaigns.Count, "{0} campaign", "{0} campaigns"), running);
+        return (ClientName(c), c.Sector.Trim() is { Length: > 0 } sector ? sector + " · " + detail : detail, c.Enabled);
     });
 
     ScheduleRow CampaignRow(AdCampaign k) => new(k, () =>
@@ -1300,7 +1314,8 @@ public partial class ScheduleWindow : Window
         foreach (var r in rows) r.Refresh();
     }
 
-    static string EntryName(ScheduleEntry e) => string.IsNullOrWhiteSpace(e.Name) ? e is AdBreak ? L.T("Ad break") : L.T("Event") : e.Name.Trim();
+    static string EntryName(ScheduleEntry e) =>
+        string.IsNullOrWhiteSpace(e.Name) ? e is AdBreak ? L.T("Ad break") : e is LiveShow ? L.T("Show") : L.T("Event") : e.Name.Trim();
 
     static string Plural(int n, string one, string many) => L.F(n == 1 ? one : many, n);
 
@@ -1367,6 +1382,13 @@ public partial class ScheduleWindow : Window
             list.SelectedItem = rows.FirstOrDefault(r => r.Item == entry);
             ErrorText.Text = L.F("{0} isn't in the calendar yet: click the days and times it runs (or switch it off).",
                 entry is PlaylistTemplate t ? TemplateName(t) : EntryName(entry));
+            return;
+        }
+        if (_data.Shows.FirstOrDefault(s => s.Enabled && s.Slots.Count == 0 && s.Dates.Count == 0) is { } show)
+        {
+            Tabs.SelectedItem = ShowsTab;
+            ShowList.SelectedItem = _showRows.FirstOrDefault(r => r.Item == show);
+            ErrorText.Text = L.F("{0} isn't in the calendar yet: click the days and times it runs (or switch it off).", EntryName(show));
             return;
         }
         foreach (var c in _data.Clients)

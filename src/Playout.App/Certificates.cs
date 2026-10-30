@@ -115,3 +115,48 @@ public static class Certificates
         a.Length > 0 && b.Length > 0 && (string.Equals(a, b, OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase)
                                          || string.Equals(Path.GetFileName(a), Path.GetFileName(b), StringComparison.OrdinalIgnoreCase));
 }
+
+/// <summary>A line of the billing summary: one campaign of a client over a period (an empty campaign: adverts that are no campaign's).</summary>
+public sealed record BillingLine(string Client, string Sector, string Campaign, int Booked, int Aired, int Missed, int NotBooked, double Seconds);
+
+/// <summary>
+/// What to invoice: for every client, campaign by campaign, the spots booked, on air, not on air and on air without
+/// being booked, and their time on air, over a period. Counted as the broadcast certificates count them
+/// (<see cref="Certificates.Build"/>), so the two always agree.
+/// </summary>
+public static class Billing
+{
+    public static List<BillingLine> Build(ScheduleData data, IReadOnlyList<AsRunEntry> asRun, DateTime from, DateTime to, DateTime now)
+    {
+        var lines = new List<BillingLine>();
+        foreach (var client in data.Clients)
+            foreach (var group in Certificates.Build(client, null, asRun, from, to, now).GroupBy(l => l.Campaign))
+            {
+                var spots = group.ToList();
+                int booked = spots.Count(l => l.Booked != null && l.Status != CertificateStatus.ToCome);
+                if (booked == 0 && spots.All(l => l.Aired == null)) continue; // nothing to invoice
+                lines.Add(new BillingLine(client.Name.Trim(), client.Sector.Trim(), group.Key, booked,
+                    spots.Count(l => l.Status == CertificateStatus.Aired), spots.Count(l => l.Status == CertificateStatus.Missed),
+                    spots.Count(l => l.Status == CertificateStatus.NotBooked), spots.Sum(l => l.Aired?.Seconds ?? 0)));
+            }
+        return lines.OrderBy(l => l.Client, StringComparer.CurrentCultureIgnoreCase).ThenBy(l => l.Campaign, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    public static Report ToReport(IReadOnlyList<BillingLine> lines, string station, DateTime from, DateTime to)
+    {
+        string period = from.Date == to.Date ? $"{from:yyyy-MM-dd}" : L.F("{0:yyyy-MM-dd} to {1:yyyy-MM-dd}", from, to);
+        string name = string.IsNullOrWhiteSpace(station) ? AppInfo.Name : station.Trim();
+        return new Report(L.F("{0}: adverts to invoice", name), period,
+            new[] { "Client", "Sector", "Campaign", "Booked", "On air", "Not on air", "On air, not booked", "Time on air" }.Select(L.T).ToArray(),
+            lines.Select(l => (IReadOnlyList<string>)new[]
+            {
+                l.Client, l.Sector, l.Campaign.Length > 0 ? l.Campaign : L.T("(no campaign)"), $"{l.Booked}", $"{l.Aired}", $"{l.Missed}", $"{l.NotBooked}",
+                Format.Duration(l.Seconds),
+            }).ToList(),
+            Summary(lines));
+    }
+
+    public static string Summary(IReadOnlyList<BillingLine> lines) =>
+        L.F("{0} clients · {1} spots on air of {2} booked · {3} not on air · {4} on air", lines.Select(l => l.Client).Distinct().Count(),
+            lines.Sum(l => l.Aired), lines.Sum(l => l.Booked), lines.Sum(l => l.Missed), Format.Duration(lines.Sum(l => l.Seconds)));
+}

@@ -83,17 +83,20 @@ public static class RdsText
     public const int PsLength = 8;
     public const int RtLength = 64;
 
-    /// <summary>The PS (exactly 8 characters) and RT (up to 64) for what is on air (null: nothing).</summary>
-    public static (string Ps, string Rt) Compose(RdsSettings s, Track? onAir, string station)
+    /// <summary>
+    /// The PS (exactly 8 characters) and RT (up to 64) for what is on air (null: nothing); <paramref name="show"/>: the
+    /// live show on air, for {show} and {presenter}.
+    /// </summary>
+    public static (string Ps, string Rt) Compose(RdsSettings s, Track? onAir, string station, ShowInfo? show = null)
     {
         string ps = s.Ps.Trim().Length > 0 ? s.Ps.Trim() : station.Trim().ToUpperInvariant();
         ps = ps.Length > PsLength ? ps[..PsLength] : ps.PadRight(PsLength);
 
         bool song = onAir != null && (onAir.Kind is TrackKind.Music or TrackKind.Stream || !s.DefaultForJingles);
         string rt = song
-            ? Fill(s.Template, onAir!.Artist, onAir.Title, station)
-            : Fill(s.DefaultText, "", "", station);
-        if (rt.Length == 0 && song) rt = Fill(s.DefaultText, "", "", station);
+            ? Fill(s.Template, onAir!.Artist, onAir.Title, station, show)
+            : Fill(s.DefaultText, "", "", station, show);
+        if (rt.Length == 0 && song) rt = Fill(s.DefaultText, "", "", station, show);
         return (ps, Cut(rt, RtLength));
     }
 
@@ -141,12 +144,14 @@ public static class RdsText
     static string Clean(string text) => string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>The template with its fields filled in; separators left over by an empty field are dropped.</summary>
-    static string Fill(string template, string artist, string title, string station)
+    static string Fill(string template, string artist, string title, string station, ShowInfo? show)
     {
         string text = template
             .Replace("{artist}", artist.Trim(), StringComparison.OrdinalIgnoreCase)
             .Replace("{title}", title.Trim(), StringComparison.OrdinalIgnoreCase)
-            .Replace("{station}", station.Trim(), StringComparison.OrdinalIgnoreCase);
+            .Replace("{station}", station.Trim(), StringComparison.OrdinalIgnoreCase)
+            .Replace("{show}", show?.Name.Trim() ?? "", StringComparison.OrdinalIgnoreCase)
+            .Replace("{presenter}", show?.Presenter.Trim() ?? "", StringComparison.OrdinalIgnoreCase);
         text = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         return text.Trim(' ', '-', '–', '—', '|', '/', ':', '·');
     }
@@ -314,13 +319,13 @@ public sealed class RdsOutput : IDisposable
         Task.Run(Run);
     }
 
-    /// <summary>What is on air now (null: nothing). Cheap to call often: sends only when the text changes.</summary>
-    public void Update(Track? onAir)
+    /// <summary>What is on air now (null: nothing), and the live show. Cheap to call often: sends only when the text changes.</summary>
+    public void Update(Track? onAir, ShowInfo? show = null)
     {
-        string key = onAir == null ? "" : $"{onAir.Id}|{onAir.Kind}|{onAir.Artist}|{onAir.Title}";
+        string key = (onAir == null ? "" : $"{onAir.Id}|{onAir.Kind}|{onAir.Artist}|{onAir.Title}") + $"|{show?.Name}|{show?.Presenter}";
         if (key == _key) return;
         _key = key;
-        var text = RdsText.Compose(_s, onAir, _station);
+        var text = RdsText.Compose(_s, onAir, _station, show);
         var tags = RdsText.RtPlusTags(_s, onAir, text.Rt);
         lock (_lock)
         {

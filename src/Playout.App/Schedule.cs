@@ -16,6 +16,8 @@ public sealed class ScheduleData
     public List<AdClient> Clients { get; set; } = new();
     /// <summary>Hour templates: the daily playlists are made from them (see <see cref="PlaylistGenerator"/>).</summary>
     public List<PlaylistTemplate> Templates { get; set; } = new();
+    /// <summary>Live shows: a presenter on air at set times (see <see cref="LiveShow"/>).</summary>
+    public List<LiveShow> Shows { get; set; } = new();
     /// <summary>Adverts as saved before clients and campaigns: <see cref="Normalize"/> turns them into those.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<AdSpot>? Spots { get; set; }
@@ -77,8 +79,9 @@ public sealed class ScheduleData
         Breaks ??= new();
         Clients ??= new();
         Templates ??= new();
+        Shows ??= new();
         LastStarted ??= new();
-        foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks).Concat(Templates)) e.Normalize();
+        foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks).Concat(Templates).Concat(Shows)) e.Normalize();
         foreach (var c in Clients)
         {
             c.Campaigns ??= new();
@@ -139,27 +142,69 @@ public sealed class ScheduleData
 
     /// <summary>
     /// The adverts in a section of a break at <paramref name="at"/>, in the order they play: positions 1–5 first, then
-    /// the automatic ones (the same client not twice in a row where it can be helped), then positions 6–10.
+    /// the automatic ones, then positions 6–10. The automatic ones are put so that the same client, or two clients of
+    /// the same sector, don't follow each other where it can be helped (none is left out).
     /// </summary>
-    public List<BookedAdvert> InSection(AdBreak b, string section, DateTime at)
+    /// <param name="plays">Which files can play (the others are left out before the order is made); null: all.</param>
+    public List<BookedAdvert> InSection(AdBreak b, string section, DateTime at, Func<string, bool>? plays = null)
     {
         var booked = new List<BookedAdvert>();
         foreach (var client in Clients.Where(c => c.Enabled))
             foreach (var k in client.Campaigns)
                 if (k.PlaysAt(at) && b.SectionOf(k) is { } s && s.Equals(section.Trim(), StringComparison.CurrentCultureIgnoreCase)
-                    && k.FileFor(at) is { } file)
+                    && k.FileFor(at) is { } file && (plays == null || plays(file)))
                     booked.Add(new BookedAdvert(client, k, file));
 
-        var auto = booked.Where(a => a.Campaign.Position == 0).ToList();
-        for (int i = 1; i < auto.Count; i++)
+        var first = booked.Where(a => a.Campaign.Position is >= 1 and <= 5).OrderBy(a => a.Campaign.Position).ToList();
+        var last = booked.Where(a => a.Campaign.Position >= 6).OrderBy(a => a.Campaign.Position).ToList();
+        return first.Concat(Apart(booked.Where(a => a.Campaign.Position == 0).ToList(), first.LastOrDefault(), last.FirstOrDefault())).Concat(last).ToList();
+    }
+
+    /// <summary>
+    /// The automatic adverts of a section in an order where none clashes with the one before it (<see
+    /// cref="AdClient.Clashes"/>), between <paramref name="before"/> and <paramref name="after"/> (the placed ones), as
+    /// close to the booking order as that allows. A clash that can't be helped stays (Sintoniza Pro warns of it).
+    /// </summary>
+    static List<BookedAdvert> Apart(List<BookedAdvert> left, BookedAdvert? before, BookedAdvert? after)
+    {
+        static bool Clash(BookedAdvert? a, BookedAdvert? b) => a != null && b != null && a.Client.Clashes(b.Client);
+        // Whether these can still be put with no two clashing ones together, after prev: the clients and sectors
+        // ("same client or same sector" groups them) fit when none has more than half, and prev's group a little less.
+        static bool Fits(List<BookedAdvert> rest, BookedAdvert? prev)
         {
-            if (auto[i].Client != auto[i - 1].Client) continue;
-            int j = auto.FindIndex(i + 1, a => a.Client != auto[i - 1].Client);
-            if (j > 0) (auto[i], auto[j]) = (auto[j], auto[i]);
+            int n = rest.Count;
+            foreach (var a in rest)
+            {
+                int group = rest.Count(b => Clash(a, b));
+                if (group > (n + 1) / 2 || (Clash(a, prev) && group > n / 2)) return false;
+            }
+            return true;
         }
-        return booked.Where(a => a.Campaign.Position is >= 1 and <= 5).OrderBy(a => a.Campaign.Position)
-            .Concat(auto)
-            .Concat(booked.Where(a => a.Campaign.Position >= 6).OrderBy(a => a.Campaign.Position)).ToList();
+        var order = new List<BookedAdvert>();
+        while (left.Count > 0)
+        {
+            var prev = order.Count > 0 ? order[^1] : before;
+            // As booked, where that leaves the rest a way through; else the client or sector with the most still to
+            // go (so its adverts aren't left for the end, one after the other); a clash only when it can't be helped.
+            var pick = left.FirstOrDefault(a => !Clash(a, prev) && Fits(left.Where(b => b != a).ToList(), a))
+                       ?? left.Where(a => !Clash(a, prev)).OrderByDescending(a => left.Count(b => Clash(a, b))).ThenBy(left.IndexOf).FirstOrDefault()
+                       ?? left[0];
+            order.Add(pick);
+            left.Remove(pick);
+        }
+        // The last one against the first of those placed at the end: moved up to where it clashes with neither neighbour.
+        if (order.Count > 1 && Clash(order[^1], after))
+        {
+            var end = order[^1];
+            for (int i = order.Count - 1; i >= 0; i--)
+                if (!Clash(end, i == 0 ? before : order[i - 1]) && !Clash(end, order[i]) && !Clash(order[^2], after))
+                {
+                    order.RemoveAt(order.Count - 1);
+                    order.Insert(i, end);
+                    break;
+                }
+        }
+        return order;
     }
 
     /// <summary>All the adverts in a break at <paramref name="at"/>, section by section.</summary>
@@ -294,6 +339,38 @@ public sealed class ScheduledEvent : ScheduleEntry
 }
 
 /// <summary>
+/// A live show: a presenter on air for <see cref="Minutes"/> from each of its times. The playout goes ASSISTED for
+/// it (each item waits for the presenter) and back to AUTO after it; its name and presenter go to RDS and the website,
+/// and its notes to the presenter view. Nothing is put in the playlist for it.
+/// </summary>
+public sealed class LiveShow : ScheduleEntry
+{
+    public string Presenter { get; set; } = "";
+    /// <summary>How long it is on air from each of its times, in minutes.</summary>
+    public double Minutes { get; set; } = 60;
+    /// <summary>For the presenter: the running order, what to mention, guests.</summary>
+    public string Notes { get; set; } = "";
+
+    /// <summary>The show's start and end around <paramref name="at"/> when it is on air then (it may have started yesterday).</summary>
+    public (DateTime Start, DateTime End)? OnAirAt(DateTime at)
+    {
+        if (!Enabled || Minutes <= 0) return null;
+        foreach (var start in TimesOn(at.Date.AddDays(-1)).Concat(TimesOn(at.Date)))
+            if (start <= at && at < start.AddMinutes(Minutes)) return (start, start.AddMinutes(Minutes));
+        return null;
+    }
+
+    /// <summary>The show on air at <paramref name="at"/> (the one that started last, if two overlap); null when none is.</summary>
+    public static (LiveShow Show, DateTime Start, DateTime End)? At(ScheduleData data, DateTime at)
+    {
+        (LiveShow Show, DateTime Start, DateTime End)? found = null;
+        foreach (var show in data.Shows)
+            if (show.OnAirAt(at) is { } t && (found == null || t.Start > found.Value.Start)) found = (show, t.Start, t.End);
+        return found;
+    }
+}
+
+/// <summary>
 /// An ad break: its running order of jingles and advert sections. A section plays the adverts booked into it that day;
 /// a break with none in any section is skipped.
 /// </summary>
@@ -302,6 +379,9 @@ public sealed class AdBreak : ScheduleEntry
     public AdBreak() => Lock = ItemLock.Locked;
 
     public List<BreakPart> Parts { get; set; } = new();
+
+    /// <summary>The longest it should be, in seconds (Sintoniza Pro warns when what is booked makes it longer); 0 = no limit.</summary>
+    public double MaxSeconds { get; set; }
 
     /// <summary>Breaks saved before the running order: <see cref="Normalize"/> puts these jingles in it.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -440,7 +520,13 @@ public sealed class AdClient
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "";
     public bool Enabled { get; set; } = true;
+    /// <summary>Its line of business (Cars, Banks…): two clients of the same sector are never back to back in a break. "" = none.</summary>
+    public string Sector { get; set; } = "";
     public List<AdCampaign> Campaigns { get; set; } = new();
+
+    /// <summary>Two clients that shouldn't follow each other in a break: the same one, or the same sector.</summary>
+    public bool Clashes(AdClient other) =>
+        other == this || (Sector.Trim().Length > 0 && Sector.Trim().Equals(other.Sector.Trim(), StringComparison.CurrentCultureIgnoreCase));
 }
 
 /// <summary>A client's campaign: its adverts, the section and place in the break they go in, and the breaks they are placed in.</summary>
@@ -630,6 +716,15 @@ sealed class Scheduler : IDisposable
                    || !old.Slots.Select(x => (x.Day, x.At)).ToHashSet().SetEquals(entry.Slots.Select(x => (x.Day, x.At)))
                    || !old.Dates.ToHashSet().SetEquals(entry.Dates);
         }
+    }
+
+    /// <summary>The schedule has been read from the database (not only the local copy).</summary>
+    public bool Loaded => Interlocked.Read(ref _version) >= 0;
+
+    /// <summary>The live show on air at <paramref name="at"/> (no copy of the schedule: asked every second).</summary>
+    public (LiveShow Show, DateTime Start, DateTime End)? ShowAt(DateTime at)
+    {
+        lock (_lock) return LiveShow.At(_data, at);
     }
 
     /// <summary>A copy of the schedule, for editing.</summary>
@@ -884,7 +979,12 @@ public static class ScheduleItems
                     .ToDictionary(n => n, n => data.InSection(b, n, at), StringComparer.CurrentCultureIgnoreCase);
                 var missing = sections.Values.SelectMany(v => v).Where(a => !SharedPaths.FileExists(a.File)).ToList();
                 if (!quiet) foreach (var a in missing) Say(L.F("{0}: advert not found, left out: {1}", label, a.File));
-                foreach (var list in sections.Values) list.RemoveAll(missing.Contains);
+                // Ordered again without them, so leaving one out doesn't put two of a sector together.
+                if (missing.Count > 0)
+                {
+                    var gone = missing.Select(a => a.File).ToHashSet(StringComparer.Ordinal);
+                    sections = sections.Keys.ToDictionary(n => n, n => data.InSection(b, n, at, f => !gone.Contains(f)), StringComparer.CurrentCultureIgnoreCase);
+                }
                 if (sections.Values.All(v => v.Count == 0))
                 {
                     if (!quiet) Say(L.F("{0}: no adverts booked, skipped", label));

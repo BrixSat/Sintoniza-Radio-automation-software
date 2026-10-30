@@ -25,7 +25,14 @@ public sealed record NowPlayingInfo(
     [property: JsonPropertyName("station")] string Station,
     [property: JsonPropertyName("updated")] string Updated,
     [property: JsonPropertyName("now")] NowPlayingItem? Now,
-    [property: JsonPropertyName("next")] NowPlayingItem? Next);
+    [property: JsonPropertyName("next")] NowPlayingItem? Next,
+    [property: JsonPropertyName("show")] ShowInfo? Show = null);
+
+/// <summary>The live show on air (Sintoniza Pro → Shows): for RDS ({show}, {presenter}) and the website. Ends: UTC.</summary>
+public sealed record ShowInfo(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("presenter")] string Presenter,
+    [property: JsonPropertyName("ends")] string Ends);
 
 public sealed record NowPlayingItem(
     [property: JsonPropertyName("artist")] string Artist,
@@ -73,8 +80,8 @@ public sealed class WebNowPlaying : IDisposable
         Task.Run(Run);
     }
 
-    /// <summary>What is on air and next (null: nothing). Cheap to call often: posts only when they change.</summary>
-    public void Update(Track? onAir, Track? next)
+    /// <summary>What is on air and next (null: nothing), and the live show. Cheap to call often: posts only when they change.</summary>
+    public void Update(Track? onAir, Track? next, ShowInfo? show = null)
     {
         if (onAir?.Id != _nowId)
         {
@@ -84,11 +91,11 @@ public sealed class WebNowPlaying : IDisposable
         bool song = onAir == null || onAir.Kind is TrackKind.Music or TrackKind.Stream;
         if (_s.SongsOnly && !song) return; // keep showing the last song
         if (_s.SongsOnly && next != null && next.Kind is not (TrackKind.Music or TrackKind.Stream)) next = null;
-        string key = $"{onAir?.Id}|{onAir?.Artist}|{onAir?.Title}|{next?.Id}|{next?.Artist}|{next?.Title}";
+        string key = $"{onAir?.Id}|{onAir?.Artist}|{onAir?.Title}|{next?.Id}|{next?.Artist}|{next?.Title}|{show?.Name}|{show?.Presenter}";
         if (key == _key) return;
         _key = key;
         var info = new NowPlayingInfo(_station, DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            onAir == null ? null : NowPlayingItem.From(onAir, _nowStarted), next == null ? null : NowPlayingItem.From(next, null));
+            onAir == null ? null : NowPlayingItem.From(onAir, _nowStarted), next == null ? null : NowPlayingItem.From(next, null), show);
         lock (_lock) _pending = info;
         _wake.Release();
     }

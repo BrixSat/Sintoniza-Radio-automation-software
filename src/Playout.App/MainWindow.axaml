@@ -266,11 +266,12 @@
 
             <Border Classes="panel" Padding="10">
                 <DockPanel>
-                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="4,0,0,8">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*" Margin="4,0,0,8">
                         <TextBlock Classes="caption" Text="PLAYLIST" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" x:Name="PlaylistInfo" Classes="muted" FontSize="12" VerticalAlignment="Center"
-                                   Margin="10,0,8,0" TextTrimming="CharacterEllipsis" />
-                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                                   Margin="10,0,8,0" TextTrimming="CharacterEllipsis" MaxWidth="220" />
+                        <!-- Wraps to a second line in a narrow window, rather than going off the edge -->
+                        <WrapPanel Grid.Column="2" ItemSpacing="4" LineSpacing="4" HorizontalAlignment="Right">
                             <Button x:Name="OnAirButton" Classes="tool" Content="On air"
                                     ToolTip.Tip="Go to the item on air, and keep it at the top again" />
                             <ToggleButton x:Name="HourViewButton" Classes="tool" Content="This hour"
@@ -279,13 +280,17 @@
                                     ToolTip.Tip="Add another station's internet stream, for a set time or until Stop" />
                             <Button x:Name="AddPauseButton" Classes="tool" Content="Pause…"
                                     ToolTip.Tip="Add a pause: no sound for a while, so the presenter can talk, with what to talk about" />
+                            <Button x:Name="RequestsButton" Classes="tool" Content="Requests…"
+                                    ToolTip.Tip="Listeners' requests: take one (a song from the library, who it is for, their message), and put those waiting on air next" />
+                            <Button x:Name="PresenterButton" Classes="tool" Content="Presenter view"
+                                    ToolTip.Tip="A large, simple screen for a live show: what is on air and next, countdowns, notes and requests" />
                             <Button x:Name="OpenListButton" Classes="tool" Content="Open…" ToolTip.Tip="Open a playlist (M3U)" />
                             <Button x:Name="SaveListButton" Classes="tool" Content="Save…" ToolTip.Tip="Save the playlist (M3U, Ctrl/Cmd+S)" />
                             <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />
                             <Button x:Name="DownButton" Classes="tool" Content="▼" ToolTip.Tip="Move down" />
                             <Button x:Name="RemoveButton" Classes="tool" Content="Remove" />
                             <Button x:Name="ClearButton" Classes="tool" Content="Clear" />
-                        </StackPanel>
+                        </WrapPanel>
                     </Grid>
 
                     <Grid DockPanel.Dock="Top" ColumnDefinitions="10,36,28,*,70,70" Margin="8,0,8,4">

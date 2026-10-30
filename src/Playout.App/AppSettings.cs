@@ -75,6 +75,8 @@ public sealed class AppSettings
     public bool CheckForUpdates { get; set; } = true;
     public Dictionary<string, string> Shortcuts { get; set; } = global::Playout.App.Shortcuts.Defaults();
     public bool AutoAdvance { get; set; } = true;
+    /// <summary>ASSISTED because a live show was on: AUTO again when the app finds no show on (it was closed during it).</summary>
+    public bool AssistedForShow { get; set; }
     public List<PlaylistEntry> PlaylistItems { get; set; } = new();
 
     /// <summary>

@@ -24,6 +24,9 @@ public partial class ScheduleWindow
     /// <summary>Yesterday's booked adverts that didn't go on air, client by client (read every 10 minutes).</summary>
     List<(string Client, int Missed)> _missedYesterday = new();
     DateTime _nextMissedCheck;
+    List<string> _breakWarnings = new();
+    DateTime _nextBreakCheck;
+    readonly Dictionary<string, double> _fileLengths = new(StringComparer.Ordinal); // for the breaks' lengths, off the UI thread (seconds)
     /// <summary>Who is working here (null: no login, e.g. the manual's screenshots: everything is open).</summary>
     SintonizaUser? _user;
 
@@ -39,6 +42,7 @@ public partial class ScheduleWindow
             (NavTemplates, ToolTemplates, MenuTemplates, (TabItem)Tabs.Items[3]!, L.T("Programming ›"), L.T("Hour templates")),
             (NavDaily, ToolDaily, MenuDaily, DailyTab, L.T("Programming ›"), L.T("Daily playlists")),
             (NavEvents, null, MenuEvents, (TabItem)Tabs.Items[0]!, L.T("Programming ›"), L.T("Events")),
+            (NavShows, null, MenuShows, ShowsTab, L.T("Programming ›"), L.T("Shows")),
             (NavErc, null, MenuErc, ErcTab, L.T("Programming ›"), L.T("ERC quotas")),
             (NavBreaks, ToolBreaks, MenuBreaks, (TabItem)Tabs.Items[1]!, L.T("Traffic ›"), L.T("Ad breaks")),
             (NavClients, null, MenuClients, (TabItem)Tabs.Items[2]!, L.T("Traffic ›"), L.T("Clients and campaigns")),
@@ -148,7 +152,7 @@ public partial class ScheduleWindow
     {
         _figuresBusy = true;
         _nextFigures = now.AddSeconds(15);
-        var data = _data;
+        var data = _data.Clone(); // read off the UI thread while the schedule may be edited: a copy
         try
         {
             var f = await Task.Run(() =>
@@ -175,6 +179,11 @@ public partial class ScheduleWindow
                         .Where(m => m.Item2 > 0).ToList();
                     _nextMissedCheck = DateTime.UtcNow.AddMinutes(10);
                 }
+                if (DateTime.UtcNow >= _nextBreakCheck)
+                {
+                    _breakWarnings = BreakWarnings(db, data, now);
+                    _nextBreakCheck = DateTime.UtcNow.AddMinutes(2);
+                }
                 var studios = db.IsMySql ? db.Studios(StationStore.Station) : null;
                 return (stats, categories.Count, last, hours, items, station, studios);
             });
@@ -190,6 +199,56 @@ public partial class ScheduleWindow
         {
             _figuresBusy = false;
         }
+    }
+
+    /// <summary>
+    /// Today's breaks still to come: those the adverts booked make longer than their longest, and those where two
+    /// clients of the same sector (or one client) follow each other because there aren't enough other adverts to go
+    /// between them.
+    /// </summary>
+    List<string> BreakWarnings(LibraryDb db, ScheduleData data, DateTime now)
+    {
+        var warnings = new List<string>();
+        double Length(string path)
+        {
+            lock (_fileLengths)
+                if (_fileLengths.TryGetValue(path, out var known)) return known;
+            double seconds = db.GetByPath(path)?.Duration is > 0 and var d ? d : AudioProbe.Duration(path) ?? 0;
+            lock (_fileLengths) _fileLengths[path] = seconds;
+            return seconds;
+        }
+        foreach (var b in data.Breaks.Where(b => b.Enabled))
+        {
+            var longer = new List<string>();
+            var clashes = new Dictionary<string, List<DateTime>>();
+            foreach (var at in b.TimesOn(now.Date).Where(t => t > now))
+            {
+                if (data.InBreak(b, at).Count == 0) continue;
+                var items = ScheduleItems.For(data, b, at, null);
+                if (b.MaxSeconds > 0)
+                {
+                    double seconds = items.Where(i => i.StreamName == null).Sum(i => Length(i.Path));
+                    if (seconds > b.MaxSeconds) longer.Add(L.F("{0:HH:mm} ({1})", at, Format.Duration(seconds)));
+                }
+                // Adverts that play one straight after the other (a jingle between them keeps them apart).
+                AdClient? Client(ScheduledItem i) => i.Kind == TrackKind.Commercial && i.Advertiser is { } name
+                    ? data.Clients.FirstOrDefault(c => c.Enabled && c.Name.Trim() == name) : null;
+                for (int i = 1; i < items.Count; i++)
+                    if (Client(items[i - 1]) is { } a && Client(items[i]) is { } c && c.Clashes(a))
+                    {
+                        string pair = a == c ? L.F("{0} twice in a row", ClientName(a)) : L.F("{0} and {1} ({2})", ClientName(a), ClientName(c), a.Sector.Trim());
+                        if (!clashes.TryGetValue(pair, out var times)) clashes[pair] = times = new();
+                        times.Add(at);
+                    }
+            }
+            if (longer.Count > 0)
+                warnings.Add(L.F("€ {0}: longer than its {1} at {2} — fewer adverts, or a longer limit (Ad breaks)", EntryName(b), Format.Duration(b.MaxSeconds),
+                    string.Join(", ", longer.Take(4)) + (longer.Count > 4 ? " …" : "")));
+            foreach (var (pair, times) in clashes)
+                warnings.Add(L.F("€ {0} at {1}: {2} back to back — not enough other adverts to go between them", EntryName(b),
+                    string.Join(", ", times.Take(4).Select(t => t.ToString("HH:mm"))) + (times.Count > 4 ? " …" : ""), pair));
+        }
+        return warnings;
     }
 
     void ShowFigures(ScheduleData data, DateTime now, LibraryStats stats, int categories, (string Title, string Artist, DateTime At)? last,
@@ -238,6 +297,7 @@ public partial class ScheduleWindow
         foreach (var c in data.Clients.Where(c => c.Enabled))
             foreach (var k in c.Campaigns.Where(k => k.Enabled && k.To is { } to && to.Date >= now.Date && to.Date <= now.Date.AddDays(7)))
                 warnings.Add(L.F("€ {0}: campaign {1} ends {2:dd/MM}", c.Name, k.Name, k.To!.Value));
+        warnings.AddRange(_breakWarnings);
         foreach (var (client, missed) in _missedYesterday)
             warnings.Add(L.F("€ {0}: {1} booked adverts didn't go on air yesterday (Clients → Certificate…)", client, missed));
         foreach (var (c, k, places) in Unplaced())
@@ -336,7 +396,7 @@ public partial class ScheduleWindow
             tab == HomeTab ? true
             : tab == SongsTab || tab == CategoriesTab || tab == ImportTab ? May(Permission.Library)
             : tab == DailyTab ? May(Permission.Programming) || May(Permission.Voice)
-            : tab == Tabs.Items[3] || tab == Tabs.Items[0] ? May(Permission.Programming)
+            : tab == Tabs.Items[3] || tab == Tabs.Items[0] || tab == ShowsTab ? May(Permission.Programming)
             : tab == Tabs.Items[1] || tab == Tabs.Items[2] ? May(Permission.Traffic)
             : tab == StationSettingsTab || tab == CartwallsTab ? May(Permission.Station)
             : tab == UsersTab ? May(Permission.Users)

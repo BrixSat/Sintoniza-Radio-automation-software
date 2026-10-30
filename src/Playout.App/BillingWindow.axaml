@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.BillingWindow"
+        Icon="/Assets/schedule.ico"
+        Title="Adverts to invoice"
+        Width="980" Height="620" MinWidth="720" MinHeight="400"
+        WindowStartupLocation="CenterOwner">
+    <Window.Styles>
+        <Style Selector="TextBlock.label">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style Selector="TextBlock.head">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+    </Window.Styles>
+    <DockPanel Margin="20">
+        <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,10">
+            <TextBlock Text="Every client's spots, campaign by campaign: booked, on air and not, counted as on the broadcast certificates." TextWrapping="Wrap" />
+            <WrapPanel ItemSpacing="8" LineSpacing="8">
+                <StackPanel>
+                    <TextBlock Classes="label" Text="From" />
+                    <CalendarDatePicker x:Name="FromBox" Width="150" SelectedDateFormat="Short" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Classes="label" Text="To" />
+                    <CalendarDatePicker x:Name="ToBox" Width="150" SelectedDateFormat="Short" />
+                </StackPanel>
+                <Button x:Name="LastMonthButton" Content="Last month" VerticalAlignment="Bottom" />
+                <Button x:Name="ThisMonthButton" Content="This month" VerticalAlignment="Bottom" />
+            </WrapPanel>
+            <TextBlock x:Name="SummaryText" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <Grid ColumnDefinitions="2*,*,2*,70,70,80,90,90" Margin="12,6,12,0">
+                <TextBlock Classes="head" Text="Client" />
+                <TextBlock Grid.Column="1" Classes="head" Text="Sector" />
+                <TextBlock Grid.Column="2" Classes="head" Text="Campaign" />
+                <TextBlock Grid.Column="3" Classes="head" Text="Booked" />
+                <TextBlock Grid.Column="4" Classes="head" Text="On air" />
+                <TextBlock Grid.Column="5" Classes="head" Text="Not on air" />
+                <TextBlock Grid.Column="6" Classes="head" Text="Not booked" />
+                <TextBlock Grid.Column="7" Classes="head" Text="Time on air" />
+            </Grid>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+            <Button x:Name="CsvButton" Content="CSV…" ToolTip.Tip="For the accounts program or a spreadsheet" />
+            <Button x:Name="HtmlButton" Content="To print…" Classes="accent" />
+            <Button x:Name="CloseButton" Content="Close" IsCancel="True" />
+        </StackPanel>
+
+        <ListBox x:Name="LineList" Background="#13161C">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="app:BillingRow">
+                    <Grid ColumnDefinitions="2*,*,2*,70,70,80,90,90">
+                        <TextBlock Text="{Binding Client}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="1" Text="{Binding Sector}" Foreground="{StaticResource TextMuted}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="2" Text="{Binding Campaign}" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
+                        <TextBlock Grid.Column="3" Text="{Binding Booked}" />
+                        <TextBlock Grid.Column="4" Text="{Binding Aired}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="5" Text="{Binding Missed}" Foreground="{Binding MissedBrush}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="6" Text="{Binding NotBooked}" />
+                        <TextBlock Grid.Column="7" Text="{Binding Time}" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</Window>

@@ -196,6 +196,8 @@ public partial class MainWindow : Window
 
         AddStreamButton.Click += async (_, _) => await AddStream();
         AddPauseButton.Click += async (_, _) => await AddPause();
+        RequestsButton.Click += (_, _) => OpenRequests();
+        PresenterButton.Click += (_, _) => OpenPresenterView();
         OpenListButton.Click += async (_, _) => await OpenPlaylist();
         SaveListButton.Click += async (_, _) => await SavePlaylist();
         RemoveButton.Click += (_, _) => RemoveSelected();
@@ -336,6 +338,7 @@ public partial class MainWindow : Window
         {
             // Nothing keeps running for a closed window.
             _fastTimer.Stop();
+            _presenter?.Close(); // its own window (another screen), not one this one owns
             _screenWatch?.Dispose();
             _saveTimer.Stop();
             _updateTimer?.Stop();
@@ -553,7 +556,7 @@ public partial class MainWindow : Window
             return;
         }
         // Each part on its own: one that fails (a file, a platform quirk) doesn't stop the rest of the deck.
-        Part("rds", () => _rds?.Update(st.State == PlayerState.Stopped ? null : st.Current));
+        Part("rds", () => _rds?.Update(st.State == PlayerState.Stopped ? null : st.Current, ShowNow));
         Part("meters", () =>
         {
             MeterL.Push(st.LevelLeft);
@@ -628,8 +631,9 @@ public partial class MainWindow : Window
         // In AUTO, playing or not: an empty playlist gets what is planned, ready to start (it never starts by itself).
         Part("daily playlist", () => _plan?.Check(_playlistEnds, _engine.AutoAdvance, _order));
         Part("station", () => UpdateStationInfo(now));
+        Part("show", () => FollowShow(now));
         Part("station settings", () => SyncStationSettings(now));
-        Part("website", () => _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem()));
+        Part("website", () => _web?.Update(st.State == PlayerState.Stopped ? null : st.Current, NextItem(), ShowNow));
     }
 
     double _lastPosition = -1;
