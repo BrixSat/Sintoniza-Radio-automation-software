@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Playout.App.ListenersView">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#1A1D24" />
+            <Setter Property="BorderBrush" Value="#2A2F3A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,12" />
+        </Style>
+        <Style Selector="TextBlock.cardtitle">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="#7D8594" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="Border.bar">
+            <Setter Property="Background" Value="#4C8DFF" />
+            <Setter Property="CornerRadius" Value="4,4,0,0" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+        </Style>
+        <Style Selector="Border.bar.chosen">
+            <Setter Property="Background" Value="#8DB6FF" />
+        </Style>
+        <Style Selector="Panel.hour:pointerover > Border.bar">
+            <Setter Property="Background" Value="#6EA3FF" />
+        </Style>
+    </UserControl.Styles>
+
+    <DockPanel>
+        <!-- The day -->
+        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="8" Margin="0,0,0,12">
+            <Button x:Name="BackButton" Content="◀" ToolTip.Tip="The day before" />
+            <CalendarDatePicker x:Name="DayBox" Width="160" SelectedDateFormat="Short" />
+            <Button x:Name="ForwardButton" Content="▶" ToolTip.Tip="The day after" />
+            <Button x:Name="TodayButton" Content="Today" />
+            <Button x:Name="ReloadButton" Content="Refresh" />
+            <TextBlock x:Name="StatusText" Classes="note" VerticalAlignment="Center" MaxWidth="560" />
+        </WrapPanel>
+
+        <!-- Hour by hour -->
+        <Border DockPanel.Dock="Top" Classes="card">
+            <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="cardtitle" Text="LISTENERS HOUR BY HOUR (AVERAGE)" />
+                    <TextBlock Grid.Column="1" x:Name="ScaleText" Classes="note" />
+                </Grid>
+                <Grid x:Name="Chart" Height="150" />
+                <Grid x:Name="HourLabels" Margin="0,4,0,0" />
+                <TextBlock Classes="note" Margin="0,8,0,0"
+                           Text="Click an hour for what played in it. The computer on air reads the listeners from the stream server every minute (Station settings → Streaming); an hour without a bar wasn't counted." />
+            </StackPanel>
+        </Border>
+
+        <!-- What played in the hour -->
+        <Border Classes="card" Margin="0,12,0,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" x:Name="HourTitle" Classes="cardtitle" Text="WHAT PLAYED" />
+                <ListBox x:Name="PlayedList" Background="Transparent" FontFamily="monospace" FontSize="12" />
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</UserControl>

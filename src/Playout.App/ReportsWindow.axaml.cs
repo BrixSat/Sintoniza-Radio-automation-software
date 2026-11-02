@@ -14,6 +14,7 @@ public partial class ReportsWindow : Window
     readonly string _folder;
     readonly string _station;
     List<AsRunEntry> _entries = new();
+    List<ListenerSample> _listeners = new();
     Report? _report;
     int _loadVersion;
 
@@ -52,9 +53,11 @@ public partial class ReportsWindow : Window
         if (to < from) (from, to) = (to, from);
         int version = ++_loadVersion;
         SummaryText.Text = L.T("Reading…");
-        var entries = await Task.Run(() => AsRunDb.ReadAll(Database(), _folder, from, to));
+        var db = Database();
+        var (entries, listeners) = await Task.Run(() => (AsRunDb.ReadAll(db, _folder, from, to), ReadListeners(db, from, to)));
         if (version != _loadVersion) return;
         _entries = entries;
+        _listeners = listeners;
 
         var advertisers = entries.Where(e => e.Type == "Advert" && e.Advertiser.Length > 0).Select(e => e.Advertiser)
             .Distinct().Order(StringComparer.CurrentCultureIgnoreCase).ToList();
@@ -65,12 +68,23 @@ public partial class ReportsWindow : Window
         ShowReport();
     }
 
+    static List<ListenerSample> ReadListeners(LibraryDb? db, DateTime from, DateTime to)
+    {
+        if (db == null) return new();
+        try { return ListenersDb.Read(db, from, to); }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Listeners not read from the database: {ex.Message}");
+            return new();
+        }
+    }
+
     void ShowReport()
     {
         if (FromBox.SelectedDate is not { } from || ToBox.SelectedDate is not { } to) return;
         if (to < from) (from, to) = (to, from);
         string? advertiser = Kind == ReportKind.Adverts && AdvertiserBox.SelectedItem is string a && a != AllAdvertisers ? a : null;
-        _report = Report.Build(Kind, _entries, from, to, _station, advertiser);
+        _report = Report.Build(Kind, _entries, from, to, _station, advertiser, _listeners);
         SummaryText.Text = L.F("{0}: {1}", _report.Period, _report.Summary);
         PreviewText.Text = _report.Rows.Count == 0 ? L.T("Nothing went on air in these days (or nothing of this kind).") : Table(_report);
         CsvButton.IsEnabled = HtmlButton.IsEnabled = _report.Rows.Count > 0;
@@ -98,6 +112,7 @@ public partial class ReportsWindow : Window
             ReportKind.MusicPlays => "music",
             ReportKind.MusicTotals => "music-totals",
             ReportKind.Adverts => "adverts",
+            ReportKind.Listeners => "listeners",
             _ => "as-run",
         };
         if (Kind == ReportKind.Adverts && AdvertiserBox.SelectedItem is string a && a != AllAdvertisers) name += "-" + string.Concat(a.Split(Path.GetInvalidFileNameChars()));

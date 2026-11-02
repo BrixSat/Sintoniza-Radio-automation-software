@@ -196,6 +196,8 @@ public sealed class AppSettings
     public int StreamFormat { get; set; }
     public int StreamBitrateIndex { get; set; } = 2;
     public bool Shoutcast { get; set; }
+    /// <summary>The station's listener counts (see <see cref="ListenerSettings"/>).</summary>
+    public ListenerSettings Listeners { get; set; } = new();
 
     static string DefaultMusicFolder()
     {
@@ -263,6 +265,7 @@ public sealed class AppSettings
         Silence ??= new();
         Rds ??= new();
         WebNowPlaying ??= new();
+        Listeners ??= new();
         Screen ??= new();
         Screen.HiddenLamps ??= new();
         Loudness ??= new();

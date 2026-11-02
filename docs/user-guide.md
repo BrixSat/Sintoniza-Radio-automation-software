@@ -180,7 +180,7 @@ is open. Hold to talk, or press on / press off (Settings → Microphone). With *
 ### Reports
 
 **Reports** (bottom left): *Music played (royalties)*, *Music totals per song*, *Adverts (proof of broadcast)* (per
-advertiser) and *Everything (as-run log)*, for a range of days. Save as CSV (commas or semicolons) or as a page to
+advertiser), *Everything (as-run log)* (with a *Listeners* column once listeners are counted) and *Listeners per hour*, for a range of days. Save as CSV (commas or semicolons) or as a page to
 print / save as PDF.
 
 ### Settings at a glance
@@ -350,6 +350,18 @@ with the log-in until someone logs in (or **Close**). Each user has a name, a pa
 → **Save user**; to change a password type a new one (empty keeps it). Untick *May log in* to stop someone without
 deleting them. You can't delete or lock out yourself, nor take away your own *Users*. Passwords are kept only as a
 secure hash (PBKDF2): a forgotten one is set again by another user with *Users*.
+
+### Listeners
+
+Station settings → **Streaming** → *Count the listeners*: every minute the computer on air (never a standby one) reads
+how many listen from the Icecast (`status-json.xsl`) or Shoutcast (`statistics?json=1`, `7.html`) server's public
+statistics, no password needed, and keeps it in the database. *Statistics from*: empty for the stream server above, or
+another server's address (a stream from another encoder). *Mount points counted*: empty for the stream's, several
+added up (`/live, /live.aac`), `*` for every mount of the server. The **LISTENERS** lamp in Emi's status bar shows the
+number now (point at it for the server, or why it can't be read).
+
+**Station → Listeners** shows a day hour by hour (the bar is the average; point at it for the most and fewest), and for
+the hour clicked what played in it with the listeners when each item started. Home shows the listeners now.
 
 ### ERC quotas (Portuguese music)
 

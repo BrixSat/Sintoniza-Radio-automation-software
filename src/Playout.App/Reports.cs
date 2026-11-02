@@ -14,13 +14,18 @@ public enum ReportKind
     Adverts,
     /// <summary>The whole as-run log.</summary>
     Everything,
+    /// <summary>The listeners hour by hour (the average, the most and the fewest).</summary>
+    Listeners,
 }
 
 /// <summary>A report as a table: column names and rows of text, ready for a CSV file or a printable page.</summary>
 public sealed record Report(string Title, string Period, IReadOnlyList<string> Columns, IReadOnlyList<IReadOnlyList<string>> Rows, string Summary)
 {
-    public static Report Build(ReportKind kind, IReadOnlyList<AsRunEntry> entries, DateTime from, DateTime to, string station, string? advertiser = null)
+    /// <param name="listeners">The listener counts of the period, in time order (the as-run log gets a column with them).</param>
+    public static Report Build(ReportKind kind, IReadOnlyList<AsRunEntry> entries, DateTime from, DateTime to, string station, string? advertiser = null,
+        IReadOnlyList<ListenerSample>? listeners = null)
     {
+        listeners ??= [];
         string period = from.Date == to.Date ? $"{from:yyyy-MM-dd}" : L.F("{0:yyyy-MM-dd} to {1:yyyy-MM-dd}", from, to);
         string name = string.IsNullOrWhiteSpace(station) ? AppInfo.Name : station.Trim();
         var music = entries.Where(e => e.Type == "Music").ToList();
@@ -54,11 +59,30 @@ public sealed record Report(string Title, string Period, IReadOnlyList<string> C
                         Duration(e.Seconds), e.Advertiser, AdvertName(e), e.Event)).ToList(),
                     L.F("{0} broadcast", Plural(ads.Count, "{0} advert", "{0} adverts")) + (ads.Count > 0 ? L.F(", {0} in all", Duration(ads.Sum(e => e.Seconds ?? 0))) : ""));
 
+            case ReportKind.Listeners:
+                var hours = ListenersDb.Hours(listeners);
+                return new Report(L.F("{0}: listeners", name), period,
+                    Names("Date", "Hour", "Average", "Most", "Fewest", "Counts"),
+                    hours.Select(h => Row(h.Hour.ToString("yyyy-MM-dd"), h.Hour.ToString("HH:00"), h.Average.ToString("0.0", CultureInfo.CurrentCulture),
+                        h.Peak.ToString(CultureInfo.InvariantCulture), h.Low.ToString(CultureInfo.InvariantCulture), h.Counts.ToString(CultureInfo.InvariantCulture))).ToList(),
+                    listeners.Count == 0 ? L.T("no listener counts")
+                        : L.F("on average {0:0.#}, most {1} at {2:yyyy-MM-dd HH:mm}", listeners.Average(l => l.Listeners), listeners.MaxBy(l => l.Listeners).Listeners,
+                            listeners.MaxBy(l => l.Listeners).At));
+
             default:
+                // With listener counts, the listeners when each item started.
+                bool counted = listeners.Count > 0;
+                var columns = new List<string> { "Date", "Start", "End", "Duration", "Type", "Source", "Event", "Advertiser", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "File" };
+                if (counted) columns.Add("Listeners");
                 return new Report(L.F("{0}: as-run log", name), period,
-                    Names("Date", "Start", "End", "Duration", "Type", "Source", "Event", "Advertiser", "Artist", "Title", "Album", "Composer", "Label", "ISRC", "Year", "File"),
-                    entries.Select(e => Row(e.Start.ToString("yyyy-MM-dd"), e.Start.ToString("HH:mm:ss"), e.End?.ToString("HH:mm:ss") ?? "",
-                        Duration(e.Seconds), L.T(e.Type), L.T(e.Source), e.Event, e.Advertiser, e.Artist, e.Title, e.Album, e.Composer, e.Label, e.Isrc, e.Year, e.File)).ToList(),
+                    Names(columns.ToArray()),
+                    entries.Select(e =>
+                    {
+                        var row = new List<string> { e.Start.ToString("yyyy-MM-dd"), e.Start.ToString("HH:mm:ss"), e.End?.ToString("HH:mm:ss") ?? "",
+                            Duration(e.Seconds), L.T(e.Type), L.T(e.Source), e.Event, e.Advertiser, e.Artist, e.Title, e.Album, e.Composer, e.Label, e.Isrc, e.Year, e.File };
+                        if (counted) row.Add(ListenersDb.At(listeners, e.Start)?.ToString(CultureInfo.InvariantCulture) ?? "");
+                        return (IReadOnlyList<string>)row;
+                    }).ToList(),
                     Plural(entries.Count, "{0} item", "{0} items"));
         }
     }

@@ -268,7 +268,7 @@ CHAPTERS = [
     ("p", "Aqui muda o título, o artista, o álbum, o género, o ano, o número da faixa, o comentário e a capa, que ficam gravados no próprio ficheiro. Um ficheiro que está no ar só pode ser alterado depois de acabar."),
     ("h2", "Relatórios"),
     ("fig", "reports-adverts", "Relatórios", [
-        ("KindBox", "Escolha o relatório: <b>Música emitida</b> para os direitos de autor, <b>Totais de música por canção</b>, <b>Anúncios</b> para o comprovativo de emissão, ou <b>Tudo</b>, o registo de emissão completo."),
+        ("KindBox", "Escolha o relatório: <b>Música emitida</b> para os direitos de autor, <b>Totais de música por canção</b>, <b>Anúncios</b> para o comprovativo de emissão, <b>Tudo</b>, o registo de emissão completo (com os ouvintes quando cada item começou, se forem contados), ou <b>Ouvintes por hora</b>."),
         ("AdvertiserBox", "Para o comprovativo de emissão, um anunciante ou todos."),
         ("HtmlButton", "<b>Guardar como página para imprimir…</b> serve para imprimir ou guardar em PDF. Ao lado, <b>Guardar como CSV…</b> dá uma folha de cálculo."),
     ]),
@@ -364,7 +364,7 @@ CHAPTERS = [
         ["Takes", "A pasta dos takes da hora e da temperatura, e onde fica a estação"],
         ["Segurança", "A deteção de silêncio e a música de enchimento"],
         ["Biblioteca", "Outras pastas de música, para músicas sem categoria"],
-        ["Streaming", "O servidor Icecast ou Shoutcast, o formato e o bitrate"],
+        ["Streaming", "O servidor Icecast ou Shoutcast, o formato e o bitrate, e a contagem de ouvintes"],
         ["RDS", "O PS, o radiotexto e o RT+"],
         ["Site", "O que está a tocar, enviado para o site da estação"],
         ["Alertas", "Avisos por Telegram, e-mail ou web: silêncio, stream em baixo, falhas, disco cheio, relógio, cópias"],
@@ -535,6 +535,19 @@ CHAPTERS = [
           "cumprir as três quotas por si só. Entra uma música portuguesa mais ou menos uma vez em cada três quando há poucas, "
           "e entre elas dá-se preferência às cantadas em português por intérpretes da UE e às recentes, onde fazem falta. As "
           "escolhas saem das músicas classificadas da categoria de cada linha, dentro das regras de descanso."),
+    ("h2", "Ouvintes"),
+    ("p", "Quantas pessoas estão a ouvir o stream? O Sintoniza pode contá-las. Ligue <b>Contar os ouvintes</b> em "
+          "<b>Definições da estação → Streaming</b>. A cada minuto, o computador no ar pergunta ao servidor Icecast ou Shoutcast "
+          "quantos estão a ouvir e guarda o número na base de dados. Bastam as estatísticas públicas do servidor, sem palavra-passe."),
+    ("p", "Se o stream sai de outro codificador e não do Sintoniza, escreva o endereço do servidor em <b>Estatísticas de</b>, "
+          "por exemplo <code>http://stream.example.com:8000</code>. Com mais de um ponto de montagem, um stream MP3 e outro AAC, "
+          "por exemplo, escreva-os todos: <code>/live, /live.aac</code>. São somados, e <code>*</code> conta todos os do servidor."),
+    ("p", "No estúdio, a luz <b>OUVINTES</b> na barra de estado mostra o número de agora. No Sintoniza Pro, <b>Estação → "
+          "Ouvintes</b> mostra um dia hora a hora: cada barra é a média da hora, e com o rato por cima vê o máximo e o mínimo. "
+          "Clique numa hora para ver o que passou nela e quantos estavam a ouvir quando cada música começou. Assim percebe que "
+          "programas e que músicas seguram os ouvintes. A página Início também mostra os ouvintes de agora."),
+    ("tip", "Um computador de reserva não conta, para os mesmos ouvintes nunca serem contados duas vezes. Se o computador no ar "
+            "parar, o que fica no ar passa a contar."),
     ("h2", "Restrições das músicas"),
     ("p", "As restrições dizem quando uma música pode ser escolhida automaticamente. Uma canção de Natal só em dezembro, uma "
           "música mais pesada só à noite. Abra-as em <b>Músicas</b>, com o botão direito e <b>Restrições…</b>."),

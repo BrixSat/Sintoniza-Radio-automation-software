@@ -150,6 +150,7 @@ public partial class MainWindow : Window
             ApplySafety();
         }
         ApplyWebNowPlaying();
+        ApplyListeners();
         ApplyRemote();
         ApplyScreen(); // with or without sound: the lamps, the counters and the sign as this computer has them
         StartBackups();
@@ -345,6 +346,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => _rds?.Dispose();
         Closed += (_, _) => StopGpio();
         Closed += (_, _) => _web?.Dispose();
+        Closed += (_, _) => _listeners?.Dispose();
         Closed += (_, _) =>
         {
             // Nothing keeps running for a closed window.
@@ -2352,6 +2354,24 @@ public partial class MainWindow : Window
             LastLog.Text = message;
         });
         _web = web;
+    }
+
+    ListenerCounter? _listeners;
+    string? _listenersKey;
+
+    /// <summary>Starts (or restarts, with new settings) counting the listeners; only the computer on air counts them.</summary>
+    void ApplyListeners()
+    {
+        var s = _settings;
+        // Not with another station's settings still here (the station was just changed): its counts would be kept as this one's.
+        string key = IsStandby || !s.Listeners.Enabled || !StationCopyIsOurs ? ""
+            : $"{CurrentStation.Id}|{s.Listeners.Server}|{s.Listeners.Mounts}|{s.StreamHost}|{s.StreamPort}|{s.StreamMount}|{s.Shoutcast}";
+        if (key == _listenersKey) return;
+        _listenersKey = key;
+        _listeners?.Dispose();
+        _listeners = null;
+        if (key.Length == 0) return;
+        _listeners = new ListenerCounter(s.Listeners, s.StreamHost, s.StreamPort, s.StreamMount, s.Shoutcast, () => _library.Db);
     }
 
     /// <summary>Loudness levelling from the settings; the carts are measured ahead (the playlist is measured by the engine).</summary>

@@ -58,6 +58,8 @@ public sealed class StationSettings
     public int StreamFormat { get; set; }
     public int StreamBitrateIndex { get; set; } = 2;
     public bool Shoutcast { get; set; }
+    /// <summary>How many listen to the stream, read from the server every minute.</summary>
+    public ListenerSettings Listeners { get; set; } = new();
 
     /// <summary>The cartwalls every studio has (the host picks one and fires its carts).</summary>
     public List<CartwallPage> Cartwalls { get; set; } = new();
@@ -101,7 +103,7 @@ public sealed class StationSettings
             RdsRtPlus = s.Rds.RtPlus,
             WebNowPlaying = s.WebNowPlaying, Alerts = s.Alerts,
             StreamHost = s.StreamHost, StreamPort = s.StreamPort, StreamMount = s.StreamMount, StreamPassword = s.StreamPassword,
-            StreamFormat = s.StreamFormat, StreamBitrateIndex = s.StreamBitrateIndex, Shoutcast = s.Shoutcast,
+            StreamFormat = s.StreamFormat, StreamBitrateIndex = s.StreamBitrateIndex, Shoutcast = s.Shoutcast, Listeners = s.Listeners.Clone(),
             Cartwalls = s.Cartwalls, LibraryFolders = s.Library.Folders.ToList(), VoiceTrackFolder = s.VoiceTrackFolder, Takes = s.Takes, FillerGapSeconds = s.FillerGapSeconds,
         };
     }
@@ -121,6 +123,7 @@ public sealed class StationSettings
         s.WebNowPlaying = WebNowPlaying ?? new(); s.Alerts = Alerts ?? new();
         s.StreamHost = StreamHost; s.StreamPort = StreamPort; s.StreamMount = StreamMount; s.StreamPassword = StreamPassword;
         s.StreamFormat = StreamFormat; s.StreamBitrateIndex = StreamBitrateIndex; s.Shoutcast = Shoutcast;
+        s.Listeners = Listeners?.Clone() ?? new();
         s.Cartwalls = Cartwalls is { Count: > 0 } pages ? pages : s.Cartwalls;
         if (s.ActiveCartwall is { } active && s.Cartwalls.All(c => c.Name != active)) s.ActiveCartwall = s.Cartwalls.FirstOrDefault()?.Name;
         s.Library.Folders = LibraryFolders?.ToList() ?? new();
@@ -206,7 +209,7 @@ public sealed class StationStore(LibraryDb db)
     /// <summary>
     /// A new station in the library, with a copy of this one's settings under its own name and nothing in its schedule
     /// yet; its number. What goes out of the station is left blank (the stream server, the RDS encoder's PS, now playing
-    /// for the website), so it never streams, sends RDS or posts as this one before those are set for it.
+    /// for the website, the listener counts), so it never streams, sends RDS or posts as this one before those are set for it.
     /// </summary>
     public long AddStation(string name)
     {
@@ -219,6 +222,7 @@ public sealed class StationStore(LibraryDb db)
             settings.StreamPassword = "";
             settings.RdsPs = "";
             settings.WebNowPlaying = new();
+            settings.Listeners = new();
             return settings.ToJson();
         });
     }

@@ -284,7 +284,7 @@ CHAPTERS = [
     ("p", "Everything that goes on air is logged. Reports turns that log into the documents a station is asked for: the music "
           "list for the collecting society, and proof of broadcast for advertisers."),
     ("fig", "reports-adverts", "Reports", [
-        ("KindBox", "Which report: <b>Music played</b> for royalties, <b>Music totals per song</b>, <b>Adverts</b> as proof of broadcast, or <b>Everything</b>, the full as-run log."),
+        ("KindBox", "Which report: <b>Music played</b> for royalties, <b>Music totals per song</b>, <b>Adverts</b> as proof of broadcast, <b>Everything</b>, the full as-run log (with the listeners when each item started, once they are counted), or <b>Listeners per hour</b>."),
         ("AdvertiserBox", "For proof of broadcast, one advertiser or all of them."),
         ("HtmlButton", "<b>Save as a page to print…</b>, which you can also print to PDF. Next to it, <b>Save as CSV…</b> gives you a spreadsheet."),
     ]),
@@ -411,7 +411,7 @@ CHAPTERS = [
         ["Takes", "The folder of takes for the time and temperature, and where the station is"],
         ["Safety", "Silence detection and fill music"],
         ["Library", "Other music folders, and the voice tracks folder"],
-        ["Streaming", "The Icecast or Shoutcast server, format and bitrate"],
+        ["Streaming", "The Icecast or Shoutcast server, format and bitrate, and counting the listeners"],
         ["RDS", "PS, radio text and RT+"],
         ["Website", "Now playing for the station's website, as JSON, files or FTP"],
         ["Alerts", "Telegram, e-mail or web alerts for silence, a stream down, a crash, a full disk, the clock or backups"],
@@ -599,6 +599,19 @@ CHAPTERS = [
           "quotas on its own. When there are too few Portuguese songs, about every third song is Portuguese, favouring songs in "
           "Portuguese by EU performers and recent ones where those fall short. The songs still come from each line's category "
           "and follow the other rules."),
+    ("h2", "Listeners"),
+    ("p", "How many people listen to the stream? Sintoniza can count them. Tick <b>Count the listeners</b> in "
+          "<b>Station settings → Streaming</b>. Every minute, the computer on air asks the Icecast or Shoutcast server how many "
+          "are listening and keeps the number in the database. The server's public statistics are enough, no password needed."),
+    ("p", "If your stream comes from another encoder, not from Sintoniza, type the server's address under <b>Statistics from</b>, "
+          "for example <code>http://stream.example.com:8000</code>. With more than one mount point, say an MP3 and an AAC stream, "
+          "list them: <code>/live, /live.aac</code>. They are added up, and <code>*</code> counts every mount on the server."),
+    ("p", "In the studio, the <b>LISTENERS</b> lamp in the status bar shows the number now. In Sintoniza Pro, <b>Station → "
+          "Listeners</b> shows a day hour by hour: each bar is the hour's average, and pointing at it gives the most and the "
+          "fewest. Click an hour to see what played in it, with how many were listening when each song started. So you can see "
+          "which shows and which songs keep people listening. The Home page shows the listeners now too."),
+    ("tip", "A standby computer doesn't count, so the same listeners are never counted twice. If the computer on air stops, the "
+            "one that takes over starts counting."),
     ("h2", "Song restrictions"),
     ("p", "Restrictions say when a song may be picked automatically. A Christmas song only in December, say, or a song with "
           "strong lyrics only after 22:00. In <b>Songs</b>, right-click and choose <b>Restrictions…</b>."),

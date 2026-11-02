@@ -42,7 +42,7 @@ public partial class MainWindow
             var (station, version) = t.Result;
             _stationVersion = version;
             _settings.StationSettingsStation = CurrentStation.Id; // the copy is this station's now
-            if (station == null) { StartHeldStream(); return; }
+            if (station == null) { StartHeldStream(); ApplyListeners(); return; }
             bool first = known < 0;
             station.ApplyTo(_settings);
             _settings.Save(); // this computer's copy, for when the database can't be reached
@@ -94,6 +94,7 @@ public partial class MainWindow
             ApplyLoudness();
         }
         ApplyWebNowPlaying();
+        ApplyListeners();
         ApplyAutoScan();
         ApplyStationBranding();
         ShowStationType();

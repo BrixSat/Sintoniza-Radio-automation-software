@@ -18,7 +18,7 @@ engine for decoding, mixing and streaming.
 
 - **On-air deck**: title and artist, the album cover (when the file has one), a scrolling waveform with a playhead, a full-track overview with the
   crossfade zone marked, elapsed/remaining time (turns red in the last 10 s), and the next item.
-- **Status lamps and the ON AIR sign**: in the status bar, a lamp for the studio, stream, RDS, website, Sintoniza Rec,
+- **Status lamps and the ON AIR sign**: in the status bar, a lamp for the studio, stream, listeners (with their number), RDS, website, Sintoniza Rec,
   library, today's daily playlists, dead air, the mic, GPIO and alerts (point at one for what it is doing, click it for
   its settings; or a panel under the deck that says it); a red **MIC LIVE / ON AIR** sign above the meters while the
   mic is open (the MIC button or the desk's mic fader by GPIO) or a live show or input is on air, also on a GPIO output
@@ -248,6 +248,11 @@ engine for decoding, mixing and streaming.
   hear it. Songs marked **Not on the website** in the library (right-click) are never sent: the website keeps what it
   had. [docs/now-playing](docs/now-playing) has the format and a PHP page that keeps it in `nowplaying.txt` and
   `nowplaying.json`, and takes the uploaded files.
+- **Listener counts** (Sintoniza Pro → Station settings → Streaming → *Count the listeners*): every minute the computer on
+  air reads how many listen from the Icecast or Shoutcast server's public statistics (several mount points added up, also
+  for a stream from another encoder) and keeps it in the database; the status bar shows the number now, and Sintoniza
+  Pro → Station → **Listeners** shows a day hour by hour (average, most, fewest) with what played in each hour and the
+  listeners when each item started. Reports has *Listeners per hour*, and the as-run log a listeners column.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
   Click the STREAM button to start and stop (also while it is still connecting), or right-click it for Start / Stop;
   after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.

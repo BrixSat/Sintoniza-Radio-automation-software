@@ -1059,6 +1059,113 @@ Console.WriteLine("Release notes in the update window");
     Check(text == "• Mixer: level < 0 dB now warns\n• Website: \"Send now\" fixed\n• Cart -> next; List<string> kept", $"…a < or > in a note is text, not a tag ({text.Replace("\n", " | ")})");
 }
 
+// ───────────────────────── Listener counts ─────────────────────────
+
+Console.WriteLine("Listener counts (Icecast and Shoutcast statistics, every minute, hour by hour)");
+{
+    const string one = """{"icestats":{"admin":"x","source":{"listenurl":"http://s.example:8000/live","listeners":12,"title":"A \"B\""}}}""";
+    const string two = """{"icestats":{"source":[{"listenurl":"http://s.example:8000/live","listeners":12},{"listenurl":"http://s.example:8000/live.aac","listeners":"5"},{"listenurl":"http://s.example:8000/other","listeners":40}]}}""";
+    Check(ListenerStats.Parse(one, ListenerStats.MountList("", "/live"))?.Count == 12, "Icecast: the stream's mount point (one source: an object, not a list)");
+    Check(ListenerStats.Parse(two, ListenerStats.MountList("/live, live.aac", "/live"))?.Count == 17 && ListenerStats.Parse(two, ListenerStats.MountList("*", "/live"))?.Count == 57,
+        "…several mount points added up (\"live.aac\" without the slash too), * counts them all, another station's mount isn't counted");
+    var gone = ListenerStats.Parse(two, ListenerStats.MountList("", "/gone"));
+    Check(gone is { Count: null } && gone.Problem!.Contains("/live.aac") && ListenerStats.Parse("""{"icestats":{"admin":"x"}}""", ["/live"])?.Count == 0,
+        $"…a mount point the server doesn't have: no count, and what it has (not 0 for ever: {gone?.Problem}); nothing on air: 0");
+    Check(ListenerStats.Parse("""{"icestats":{"source":{"listenurl":"http://h:8000/r%C3%A1dio","listeners":3}}}""", ListenerStats.MountList("/Rádio", ""))?.Count == 3,
+        "…a mount point with an accent, or in other capitals");
+    const string several = """{"currentlisteners":30,"streams":[{"id":1,"streampath":"/stream","currentlisteners":10},{"id":2,"streampath":"/two","currentlisteners":20}]}""";
+    Check(ListenerStats.Parse(several, ListenerStats.MountList("/two", ""))?.Count == 20 && ListenerStats.Parse(several, ListenerStats.MountList("*", ""))?.Count == 30,
+        "Shoutcast 2 with several stations on the server: only this one's stream");
+    Check(ListenerStats.Parse("""{"totalstreams":1,"currentlisteners":33,"peaklisteners":50}""", [])?.Count == 33
+          && ListenerStats.Parse("<HTML><meta http-equiv=\"Pragma\"><body>21,1,44,500,19,128,Song</body></html>", [])?.Count == 21,
+        "Shoutcast 2 (statistics?json=1) and Shoutcast 1 (7.html)");
+    Check(ListenerStats.Parse("<html>404</html>", []) == null && ListenerStats.Parse("{broken", []) == null, "…a page that isn't statistics: no count (not 0)");
+    var pages = ListenerStats.Pages("stream.example:8000", shoutcast: false);
+    Check(pages.Count == 3 && pages[0].ToString() == "http://stream.example:8000/status-json.xsl" && ListenerStats.Pages("stream.example:8000", true)[0].AbsolutePath == "/statistics",
+        "the server's address: Icecast's page first (Shoutcast's first for a Shoutcast stream), the others if it doesn't answer");
+    Check(ListenerStats.Pages("https://host/stats?sid=1&json=1", false) is [var only] && only.Query == "?sid=1&json=1" && ListenerStats.Pages("", false).Count == 0,
+        "…a statistics page of its own: only that one");
+    var pasted = ListenerStats.Pages("http://stream.example:8000/stream", false);
+    Check(pasted.Count == 6 && pasted[0].AbsolutePath == "/stream/status-json.xsl" && pasted[3].AbsolutePath == "/status-json.xsl" && ListenerStats.MountIn("http://stream.example:8000/stream") == "/stream"
+          && ListenerStats.MountIn("stream.example:8000") == null,
+        "…the stream's address pasted (…:8000/stream): the server's pages (under it, then at the root), counting that mount point");
+
+    // A server that answers, and the counts kept in the library.
+    var port = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    port.Start();
+    int free = ((System.Net.IPEndPoint)port.LocalEndpoint).Port;
+    port.Stop();
+    using var server = new System.Net.HttpListener();
+    server.Prefixes.Add($"http://127.0.0.1:{free}/");
+    server.Start();
+    var asked = new List<string>();
+    _ = Task.Run(async () =>
+    {
+        while (server.IsListening)
+        {
+            System.Net.HttpListenerContext ctx;
+            try { ctx = await server.GetContextAsync(); } catch { break; }
+            lock (asked) asked.Add(ctx.Request.Url!.PathAndQuery);
+            // An Icecast server: no Shoutcast statistics.
+            string path = ctx.Request.Url!.AbsolutePath;
+            byte[] body = System.Text.Encoding.UTF8.GetBytes(path == "/status-json.xsl" ? two : path == "/audio/7.html" ? "ID3 not statistics" : "not here");
+            ctx.Response.StatusCode = path is "/status-json.xsl" or "/audio/7.html" ? 200 : 404;
+            if (path == "/audio/7.html") ctx.Response.ContentType = "audio/mpeg";
+            ctx.Response.OutputStream.Write(body);
+            ctx.Response.Close();
+        }
+    });
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    long station = CurrentStation.Id;
+    using (var counter = new ListenerCounter(new ListenerSettings { Enabled = true, Mounts = "/live,/live.aac" }, "127.0.0.1", free, "/live", shoutcast: true, () => db))
+    {
+        Check(Wait(() => counter.Count != null, 10) && counter.Count == 17 && counter.Error == null,
+            $"the computer on air reads the listeners from the stream server ({counter.Count}, {counter.Error ?? "ok"})");
+        lock (asked) Check(asked.Count == 3 && asked[0].StartsWith("/statistics") && asked[1] == "/7.html" && asked[2] == "/status-json.xsl", $"…a Shoutcast stream on an Icecast server: Shoutcast's pages, then Icecast's ({string.Join(", ", asked)})");
+    }
+    var now = ListenersDb.Now(db, DateTime.Now);
+    Check(now is { Listeners: 17 } && ListenersDb.Read(db, DateTime.Today, DateTime.Today).Any(l => l.Listeners == 17), "…and keeps the count in the library, for Sintoniza Pro");
+    Check(ListenersDb.Now(db, DateTime.Now, station + 1) == null, "…for its own station only");
+    using (var down = new ListenerCounter(new ListenerSettings { Enabled = true, Server = $"http://127.0.0.1:{free}/nothing" }, "", 0, "/live", false, () => db))
+        Check(Wait(() => down.Error != null, 10) && down.Count == null, $"a server that doesn't give statistics: an error, no count ({down.Error})");
+    using (var pastedMount = new ListenerCounter(new ListenerSettings { Enabled = true, Server = $"127.0.0.1:{free}/live.aac" }, "", 0, "/live", false, () => null))
+        Check(Wait(() => pastedMount.Count != null, 10) && pastedMount.Count == 5, $"the stream's address in Statistics from: that mount point counted ({pastedMount.Count}, {pastedMount.Error ?? "ok"})");
+    using (var audio = new ListenerCounter(new ListenerSettings { Enabled = true, Server = $"http://127.0.0.1:{free}/audio/7.html" }, "", 0, "/live", false, () => null))
+        Check(Wait(() => audio.Error != null, 10) && audio.Count == null && audio.Error!.Contains("http://host:port"), $"…audio where statistics should be: not read, and said so ({audio.Error})");
+    server.Stop();
+
+    // A day of counts: hour by hour, and the listeners when something started.
+    var day = DateTime.Today.AddDays(-3);
+    foreach (var (m, n) in new[] { (8 * 60 + 0, 10), (8 * 60 + 1, 20), (8 * 60 + 59, 30), (9 * 60 + 30, 5) }) ListenersDb.Add(db, station, day.AddMinutes(m), n);
+    ListenersDb.Add(db, station, day.AddMinutes(8 * 60 + 1), 24); // the same minute again: replaced
+    var samples = ListenersDb.Read(db, day, day);
+    var hours = ListenersDb.Hours(samples);
+    Check(samples.Count == 4 && hours.Count == 2 && hours[0] is { Peak: 30, Low: 10, Counts: 3 } && Math.Abs(hours[0].Average - 64 / 3.0) < 0.01 && hours[1].Peak == 5,
+        $"hour by hour: the average, the most and the fewest ({string.Join("; ", hours.Select(h => $"{h.Hour:HH} {h.Average:0.0}/{h.Peak}/{h.Low}"))})");
+    Check(ListenersDb.At(samples, day.AddHours(8).AddSeconds(90)) == 24 && ListenersDb.At(samples, day.AddHours(9).AddMinutes(34)) == 5
+          && ListenersDb.At(samples, day.AddHours(9).AddMinutes(40)) == null && ListenersDb.At(samples, day.AddHours(7)) == null,
+        "the listeners when something started: its minute's count, else the one before (up to 5 minutes)");
+    var entries = new List<AsRunEntry> { new(day.AddHours(8).AddMinutes(1).AddSeconds(30), null, "Music", "playlist", "", "", "Check 1", "Tone 1", "", "", "", "", "", songs[0]) };
+    var everything = Report.Build(ReportKind.Everything, entries, day, day, "Rádio Check", listeners: samples);
+    var perHour = Report.Build(ReportKind.Listeners, entries, day, day, "Rádio Check", listeners: samples);
+    Check(everything.Columns[^1] == L.T("Listeners") && everything.Rows[0][^1] == "24" && Report.Build(ReportKind.Everything, entries, day, day, "x").Columns.Count == 16,
+        "the as-run report: the listeners beside each item (no column without counts)");
+    Check(perHour.Rows.Count == 2 && perHour.Rows[0][1] == "08:00" && perHour.Rows[0][3] == "30", "the listeners report: one row per hour");
+
+    // Sintoniza Pro: the day's chart and what played in an hour.
+    AsRunDb.Add(db, entries);
+    var view = new ListenersView(db);
+    var holder = new Window { Content = view, Width = 900, Height = 600 };
+    holder.Show();
+    view.DayBox.SelectedDate = day;
+    Check(WaitUi(() => view.Chart.Children.OfType<Panel>().Count(c => c.Children.Count > 0) == 2, 5), "Sintoniza Pro → Listeners: a bar for each hour counted");
+    view.ShowHour(8);
+    Check(view.PlayedList.ItemsSource is IEnumerable<object> rows && rows.Cast<string>().Any(r => r.Contains("24") && r.Contains("Check 1 - Tone 1")),
+        "…and for an hour, what played with the listeners when it started");
+    holder.Close();
+}
+
 // ───────────────────────── Several stations in one library ─────────────────────────
 
 Console.WriteLine("Stations");

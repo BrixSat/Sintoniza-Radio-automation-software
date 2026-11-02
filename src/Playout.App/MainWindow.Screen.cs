@@ -33,7 +33,7 @@ public partial class MainWindow
     /// <summary>Every lamp, in the order shown, with its name (for Settings → Screen).</summary>
     public static IReadOnlyList<(string Id, string Name)> LampIds =>
     [
-        ("studio", L.T("STUDIO")), ("stream", L.T("STREAM")), ("rds", "RDS"), ("website", L.T("WEBSITE")), ("rec", "REC"),
+        ("studio", L.T("STUDIO")), ("stream", L.T("STREAM")), ("listeners", L.T("LISTENERS")), ("rds", "RDS"), ("website", L.T("WEBSITE")), ("rec", "REC"),
         ("library", L.T("LIBRARY")), ("plan", L.T("TODAY'S PLAYLIST")), ("deadair", L.T("DEAD AIR")), ("mic", "MIC"),
         ("gpio", "GPIO"), ("alerts", L.T("ALERTS")),
     ];
@@ -93,11 +93,20 @@ public partial class MainWindow
             }
             else
             {
+                var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { dot, name } };
+                // The listeners' lamp shows their number in the status bar too.
+                if (lamp.Id == "listeners")
+                {
+                    state.Opacity = 1;
+                    state.FontWeight = FontWeight.SemiBold;
+                    state.VerticalAlignment = VerticalAlignment.Center;
+                    line.Children.Add(state);
+                }
                 box = new Border
                 {
                     Padding = new Thickness(7, 2), CornerRadius = new CornerRadius(9), Background = new SolidColorBrush(Color.Parse("#1B1F27")),
                     Cursor = new Cursor(StandardCursorType.Hand),
-                    Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { dot, name } },
+                    Child = line,
                 };
                 Lights.Children.Add(box);
             }
@@ -159,6 +168,8 @@ public partial class MainWindow
                     StreamState.Failed => L.T("The stream can't connect"),
                     _ => L.T("Stream off"),
                 }));
+
+        Show(ListenersLamp());
 
         Show(_rds == null
             ? new Lamp("rds", "RDS", LampState.Off, IsStandby ? L.T("Standby") : L.T("Off"),
@@ -225,6 +236,24 @@ public partial class MainWindow
             problems.Count > 0 ? string.Join("\n", problems) : alerts.Enabled && alerts.HasChannel ? L.T("Alerts on: nothing wrong") : L.T("Alerts off (Settings)")));
 
         ScreenStrip.IsVisible = _settings.Screen.LampsAsPanel && _lamps.Values.Any(l => l.Box.IsVisible);
+    }
+
+    /// <summary>How many listen to the stream now (the computer on air reads them every minute).</summary>
+    Lamp ListenersLamp()
+    {
+        if (_listeners is not { } counter)
+            return new Lamp("listeners", L.T("LISTENERS"), LampState.Off, IsStandby ? L.T("Standby") : L.T("Off"),
+                IsStandby ? L.T("The computer on air counts the listeners")
+                    : L.T("Listeners aren't counted (Sintoniza Pro → Station settings → Streaming)"));
+        // A count that is minutes old: the counting stopped (the log says why).
+        if (counter.Count != null && DateTime.Now - counter.CountedAt > TimeSpan.FromMinutes(3))
+            return new Lamp("listeners", L.T("LISTENERS"), LampState.Warn, "?", L.F("Listeners: not counted since {0:HH:mm}", counter.CountedAt));
+        if (counter.Count is { } count)
+            return new Lamp("listeners", L.T("LISTENERS"), LampState.Ok, count.ToString(System.Globalization.CultureInfo.CurrentCulture),
+                L.F("{0} listening to the stream at {1:HH:mm} ({2}); Sintoniza Pro shows them hour by hour", count, counter.CountedAt, counter.Where));
+        return counter.Error is { } error
+            ? new Lamp("listeners", L.T("LISTENERS"), LampState.Warn, "?", L.F("Listeners: can't read them from {0} ({1})", counter.Where, error))
+            : new Lamp("listeners", L.T("LISTENERS"), LampState.Off, "…", L.F("Listeners: asking {0}…", counter.Where));
     }
 
     /// <summary>Today's daily playlists: the hours left today that have an hour template should have one made.</summary>

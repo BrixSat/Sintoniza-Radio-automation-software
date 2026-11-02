@@ -28,6 +28,7 @@
                     <ComboBoxItem Content="Music totals per song (royalties)" />
                     <ComboBoxItem Content="Adverts (proof of broadcast)" />
                     <ComboBoxItem Content="Everything (as-run log)" />
+                    <ComboBoxItem Content="Listeners per hour" />
                 </ComboBox>
             </StackPanel>
             <StackPanel>

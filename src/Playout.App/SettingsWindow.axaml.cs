@@ -303,6 +303,12 @@ public partial class SettingsWindow : PageWindow
         BitrateBox.SelectedIndex = settings.StreamBitrateIndex;
         MountPanel.IsEnabled = !settings.Shoutcast;
         ServerTypeBox.SelectionChanged += (_, _) => MountPanel.IsEnabled = ServerTypeBox.SelectedIndex == 0;
+        var listeners = settings.Listeners ?? new();
+        ListenersBox.IsChecked = listeners.Enabled;
+        ListenersServerBox.Text = listeners.Server;
+        ListenersMountsBox.Text = listeners.Mounts;
+        ListenersPanel.IsEnabled = listeners.Enabled;
+        ListenersBox.IsCheckedChanged += (_, _) => ListenersPanel.IsEnabled = ListenersBox.IsChecked == true;
 
         RemoteBox.IsChecked = settings.Remote.Enabled;
         RemotePortBox.Value = settings.Remote.Port;
@@ -1004,6 +1010,10 @@ public partial class SettingsWindow : PageWindow
         _settings.StreamPassword = PasswordBox.Text ?? "";
         _settings.StreamFormat = Math.Max(0, FormatBox.SelectedIndex);
         _settings.StreamBitrateIndex = Math.Max(0, BitrateBox.SelectedIndex);
+        _settings.Listeners = new ListenerSettings
+        {
+            Enabled = ListenersBox.IsChecked == true, Server = ListenersServerBox.Text?.Trim() ?? "", Mounts = ListenersMountsBox.Text?.Trim() ?? "",
+        };
 
         if (_scope == SettingsScope.Station)
         {

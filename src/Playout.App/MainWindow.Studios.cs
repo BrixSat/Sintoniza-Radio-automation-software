@@ -37,6 +37,7 @@ public partial class MainWindow
         if (_scheduler != null) _scheduler.Standby = standby;
         ApplyRds();
         ApplyWebNowPlaying();
+        ApplyListeners();
         ShowRowButtons();
     }
 

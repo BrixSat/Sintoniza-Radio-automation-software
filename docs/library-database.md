@@ -200,11 +200,23 @@ advertisers) are made from. Each studio also keeps its own CSV files and puts in
 | `artist`, `title`, `album`, `composer`, `label`, `isrc`, `year` | text | from the file's tags |
 | `file` | text | the file played; `station_id`, `started_at` and `file` together are unique |
 
+### `listeners`
+
+How many listened to the stream, minute by minute (schema 25): the studio on air reads it from the Icecast or
+Shoutcast server's public statistics every minute, when Sintoniza Pro → Station settings → Streaming → Count the
+listeners is on. Sintoniza Pro shows them hour by hour beside what played.
+
+| Column | Type | |
+| --- | --- | --- |
+| `station_id` | integer | → `stations.id` |
+| `minute` | text | local time, `yyyy-MM-ddTHH:mm`; with `station_id`, the key |
+| `listeners` | integer | the listeners then (several mount points added up) |
+
 ## The station's settings
 
 `station_settings` (one row per station): `settings` is a JSON object with what every studio shares — station name,
 logo (base64), crossfades, loudness, silence detection, fill music, time signal, RDS texts, website now playing,
-alerts, streaming server, cartwalls, the library's other folders, and for the ERC its `ErcAlias` (the programme
+alerts, streaming server, `Listeners` (`Enabled`, `Server`, `Mounts`), cartwalls, the library's other folders, and for the ERC its `ErcAlias` (the programme
 service's name in the ERC's file), `ErcCountries` (`Name`, `Code` — the ERC's code — and `Eu`) and `ErcPlan` (the daily
 playlists are made to meet the quotas), and the `Takes` (`Folder`, `Latitude`, `Longitude`) — saved by Sintoniza Pro; `version` goes up
 by one on every save and the playouts read it again; `updated_at` (UTC) and `updated_by`. What belongs to one

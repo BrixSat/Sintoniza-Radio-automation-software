@@ -25,6 +25,8 @@ public partial class ScheduleWindow
     List<(string Client, int Missed)> _missedYesterday = new();
     DateTime _nextMissedCheck;
     List<string> _breakWarnings = new();
+    /// <summary>The listeners now (counted by the computer on air); null: not counted.</summary>
+    ListenerSample? _listening;
     DateTime _nextBreakCheck;
     readonly Dictionary<string, double> _fileLengths = new(StringComparer.Ordinal); // for the breaks' lengths, off the UI thread (seconds)
     /// <summary>Who is working here (null: no login, e.g. the manual's screenshots: everything is open).</summary>
@@ -51,6 +53,7 @@ public partial class ScheduleWindow
             (NavStationSettings, StationSettingsButton, MenuStationSettings, StationSettingsTab, L.T("Station ›"), L.T("Station settings")),
             (NavCartwalls, CartwallsButton, MenuCartwalls, CartwallsTab, L.T("Station ›"), L.T("Cartwalls")),
             (NavUsers, null, MenuUsers, UsersTab, L.T("Station ›"), L.T("Users")),
+            (NavListeners, null, MenuListeners, ListenersTab, L.T("Station ›"), L.T("Listeners")),
         };
         _gates = pages.Select(p => (p.Nav, p.Tool, p.Menu, p.Tab)).ToList();
         foreach (var (nav, tool, menu, tab, _, _) in pages)
@@ -185,9 +188,11 @@ public partial class ScheduleWindow
                     _nextBreakCheck = DateTime.UtcNow.AddMinutes(2);
                 }
                 var studios = db.IsMySql ? db.Studios(StationStore.Station) : null;
-                return (stats, categories.Count, last, hours, items, station, studios);
+                var listening = ListenersDb.Now(db, now);
+                return (stats, categories.Count, last, hours, items, station, studios, listening);
             });
             _station = f.station;
+            _listening = f.listening;
             ShowFigures(data, now, f.stats, f.Item2, f.last, f.hours, f.items);
             ShowStudios(f.studios);
         }
@@ -271,7 +276,8 @@ public partial class ScheduleWindow
         NowArtistText.Text = HomeNowArtist.Text = artist;
         NowAtText.Text = recent ? last!.Value.At.ToLocalTime().ToString("HH:mm") : "";
         NowTemplateText.Text = L.F("{0:HH}:00 · {1}", hour, Template(hour));
-        HomeNowHour.Text = L.F("This hour: {0}", Template(hour)) + "\n" + L.F("Next hour: {0}", Template(hour.AddHours(1)));
+        HomeNowHour.Text = L.F("This hour: {0}", Template(hour)) + "\n" + L.F("Next hour: {0}", Template(hour.AddHours(1)))
+            + (_listening is { } listening ? "\n" + L.F("📈 {0} listening to the stream (Listeners)", listening.Listeners) : "");
 
         // Today.
         int made = hours.Count, edited = hours.Values.Count(h => h.Edited);
@@ -401,6 +407,7 @@ public partial class ScheduleWindow
             : tab == StationSettingsTab || tab == CartwallsTab ? May(Permission.Station)
             : tab == UsersTab ? May(Permission.Users)
             : tab == ErcTab ? May(Permission.Programming) && _store != null
+            : tab == ListenersTab ? _store != null
             : true;
         foreach (var (nav, tool, menu, tab) in _gates)
         {

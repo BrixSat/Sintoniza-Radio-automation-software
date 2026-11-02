@@ -563,6 +563,18 @@
                         </StackPanel>
                     </Grid>
                     <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. On FM, the button shows once a source password is set. Changes here apply the next time the stream starts." />
+                    <CheckBox x:Name="ListenersBox" Content="Count the listeners (asked of the server every minute)" FontWeight="SemiBold" Margin="0,8,0,0" />
+                    <Grid x:Name="ListenersPanel" ColumnDefinitions="*,12,*">
+                        <StackPanel>
+                            <TextBlock Classes="label" Text="Statistics from" />
+                            <TextBox x:Name="ListenersServerBox" PlaceholderText="Empty: the server above" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Classes="label" Text="Mount points counted (Icecast)" />
+                            <TextBox x:Name="ListenersMountsBox" PlaceholderText="Empty: the mount point above" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Classes="note" Text="The computer on air reads the server's public statistics (no password needed), also when the stream comes from another encoder: give its address, e.g. http://stream.example.com:8000. Several mount points are added up: /live, /live.aac (* counts them all). The status bar shows the listeners now; Sintoniza Pro shows them hour by hour, beside what played." />
                 </StackPanel>
             </TabItem>
             <!-- ───────── RDS ───────── -->
