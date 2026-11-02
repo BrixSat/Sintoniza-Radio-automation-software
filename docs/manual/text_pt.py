@@ -150,12 +150,36 @@ CHAPTERS = [
     ("h2", "As luzes de estado e o sinal NO AR"),
     ("p", "Num relance, o locutor ou o técnico deve conseguir saber se está tudo bem. Para isso servem as luzes de estado na "
           "barra de baixo e o sinal vermelho no painel da estação."),
-    ("p", "Cada luz diz respeito a uma parte da emissão. <b>ESTÚDIO</b> mostra se este computador está no ar e quais estão "
-          "de reserva. <b>STREAM</b>, <b>RDS</b> e <b>SITE</b> mostram se a música está a chegar a cada um deles. <b>REC</b> "
-          "segue o Sintoniza Rec neste computador: verde a gravar, âmbar se está a gravar silêncio, vermelho se está aberto "
-          "mas não grava. <b>BIBLIOTECA</b> diz se a base de dados responde. <b>PLAYLIST DE HOJE</b> fica vermelha quando "
-          "uma hora que vem aí tem modelo mas ainda não tem playlist diária. Há ainda <b>SILÊNCIO</b>, <b>MIC</b>, <b>GPIO</b> "
-          "e <b>ALERTAS</b>, que fica vermelha enquanto houver um problema por resolver."),
+    ("p", "Cada luz diz respeito a uma parte da emissão. As cores são sempre as mesmas: <b>verde</b> está a funcionar, "
+          "<b>âmbar</b> é um aviso, <b>vermelho</b> é um problema e <b>cinzento</b> quer dizer que essa parte está desligada ou "
+          "não é usada neste computador. Eis o que cada uma vigia:"),
+    ("table", ["Luz", "O que é", "O que as cores dizem"], [
+        ["ESTÚDIO", "Só aparece quando há mais de um computador para a estação: qual deles está no ar.",
+         "Verde: este computador está no ar (e diz quantos estão de reserva). Âmbar: este está de reserva, outro está no ar."],
+        ["STREAM", "O stream da rádio na internet, que este computador envia para o servidor Icecast ou Shoutcast.",
+         "Verde: a enviar, com há quanto tempo. Âmbar: a ligar ao servidor. Vermelho: não consegue ligar. Cinzento: desligado ou não configurado."],
+        ["OUVINTES", "Quantas pessoas estão a ouvir o stream, lido do servidor a cada minuto. O número aparece ao lado da luz.",
+         "Verde: o número de agora. Âmbar (?): não consegue ler o servidor, ou deixou de contar. Cinzento: a contagem está desligada."],
+        ["RDS", "O texto que aparece nos rádios FM (o nome da estação e a música), enviado para o codificador RDS.",
+         "Verde: a enviar. Vermelho: o codificador não responde. Cinzento: o RDS está desligado, ou este computador é de reserva."],
+        ["SITE", "O \"a tocar agora\" do site da estação: a música no ar enviada para o site, para ficheiros ou por FTP.",
+         "Verde: enviado. Vermelho: não consegue enviar (o site ou o servidor FTP não responde). Cinzento: desligado, ou de reserva."],
+        ["REC", "O Sintoniza Rec, o programa que grava a emissão (a gravação que a lei pede), neste computador.",
+         "Verde: a gravar. Âmbar: está a gravar silêncio. Vermelho: está aberto mas NÃO grava. Cinzento: não está a correr."],
+        ["BIBLIOTECA", "A ligação à base de dados com as músicas, as playlists e as definições da estação.",
+         "Verde: aberta. Vermelho: não responde (a emissão continua com o que já tem). Cinzento: não há biblioteca."],
+        ["PLAYLIST DE HOJE", "As playlists diárias das horas que faltam hoje, feitas no Sintoniza Pro.",
+         "Verde: todas feitas. Âmbar: falta alguma mais tarde. Vermelho: falta a desta hora ou da próxima. Cinzento: não há modelos de hora."],
+        ["SILÊNCIO", "A deteção de silêncio: o ar sem som durante demasiado tempo.",
+         "Verde: a vigiar. Vermelho: há silêncio no ar (em AUTO passa ao item seguinte). Cinzento: a deteção está desligada."],
+        ["MIC", "O microfone, pelo botão MIC ou pelo fader do micro da mesa (por GPIO).",
+         "Vermelho: o microfone está aberto, no ar. Cinzento: fechado."],
+        ["GPIO", "A ligação à mesa de mistura: os faders que põem a tocar e as luzes da mesa.",
+         "Verde: pronta. Vermelho: alguma ligação não abre (o registo diz porquê). Cinzento: não há GPIO configurado."],
+        ["ALERTAS", "Os avisos por Telegram, e-mail ou web quando algo corre mal (silêncio, stream em baixo, disco cheio…).",
+         "Verde: ligados, está tudo bem. Vermelho: há um problema por resolver (aponte para ver qual). Cinzento: desligados."],
+    ]),
+    ("p", "Aponte para uma luz para ler, por extenso, o que se passa. Clique nela para ir direto às suas definições."),
     ("p", "O <b>sinal NO AR</b> acende-se a vermelho no painel da estação, entre o relógio e os medidores de nível. Diz "
           "<b>MIC LIVE</b> enquanto o microfone está aberto, seja pelo botão MIC, seja pelo fader do micro da mesa através do "
           "GPIO. Durante um programa em direto diz <b>NO AR · </b> seguido do nome do programa, e enquanto toca uma entrada em "
@@ -171,7 +195,7 @@ CHAPTERS = [
           "maior, com texto, e outro preferir o ecrã mais limpo."),
     ("fig", "settings-screen", "Definições → Ecrã", [
         ("StatusPanelBox", "<b>Luzes de estado num painel por baixo do leitor</b>: em vez das luzes pequenas na barra, cada luz aparece por baixo do leitor com o que está a fazer, por extenso."),
-        ("LampBoxes", "<b>Luzes mostradas</b>: desmarque as que não interessam neste estúdio, como o RDS numa rádio web."),
+        ("LampBoxes", "<b>Luzes mostradas</b>: desmarque as que não interessam neste estúdio, como o RDS numa rádio web. O que cada luz quer dizer está na tabela das luzes de estado, acima."),
         ("BigCountersBox", "<b>Contadores grandes</b>: o tempo que falta, os pontos de cue, o próximo evento e a hora certa em números grandes."),
         ("OnAirSignBox", "O <b>sinal NO AR</b>. Desmarque-o para nunca o mostrar neste computador."),
     ]),
