@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 
 namespace Playout.App;
 
@@ -27,6 +28,8 @@ static class DragHelper
             press = null;
             if (!e.GetCurrentPoint(source).Properties.IsLeftButtonPressed) return;
             if ((e.Source as Control)?.DataContext is not T item) return; // scrollbars, empty space
+            // A button on the row (ASSISTED's ▶ and fade-out): a click, never the start of a drag.
+            if (e.Source is Avalonia.Visual v && (v is Button || v.FindAncestorOfType<Button>() != null)) return;
             press = e;
             start = e.GetPosition(source);
             pressed = item;

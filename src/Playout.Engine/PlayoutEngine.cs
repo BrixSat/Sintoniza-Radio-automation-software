@@ -831,6 +831,14 @@ public sealed class PlayoutEngine : IDisposable
         BreaksStillDue();
     });
 
+    /// <summary>Fades what is on air out over <paramref name="seconds"/>, then the player is stopped (ASSISTED: the next waits).</summary>
+    public void FadeOut(double seconds = 3) => Post(() =>
+    {
+        CutShort(L.T("faded it out"));
+        StopInternal(seconds);
+        BreaksStillDue();
+    });
+
     /// <summary>
     /// Stopped or paused while an ad break that is already due waits for the item on air to end: it is still due now,
     /// so it goes on air after the warning (<see cref="BreakWhileStopped"/>).
@@ -1534,7 +1542,7 @@ public sealed class PlayoutEngine : IDisposable
         _playingOut.Clear();
     }
 
-    void StopInternal()
+    void StopInternal(double fade = StopFadeSeconds)
     {
         _resumeAfterSignal = false;
         _breakThenStop = null;
@@ -1542,8 +1550,8 @@ public sealed class PlayoutEngine : IDisposable
         _connectAttempt++;
         _connecting = null;
         DropConnection();
-        FadePlayingOut(StopFadeSeconds);
-        if (_current is { } deck) FadeOutAndFree(deck.Handle, State == PlayerState.Paused ? 0 : StopFadeSeconds);
+        FadePlayingOut(fade);
+        if (_current is { } deck) FadeOutAndFree(deck.Handle, State == PlayerState.Paused ? 0 : fade);
         SetCurrent(null);
         _state = (int)PlayerState.Stopped;
         PlaylistUpdated();

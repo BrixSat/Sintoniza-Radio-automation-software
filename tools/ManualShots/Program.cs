@@ -269,6 +269,15 @@ main.FindControl<TextBlock>("NoteNextText")!.IsVisible = false;
 main.FindControl<Border>("NoteBox")!.IsVisible = true;
 Pump(10);
 Shot(main, "main", deck);
+// ASSISTED: a ▶ on each song, the fade-out on the one on air
+{
+    var auto = main.FindControl<Avalonia.Controls.Primitives.ToggleButton>("AutoSwitch")!;
+    auto.IsChecked = false;
+    Pump(10);
+    Shot(main, "main-assisted", "AutoSwitch", "Playlist");
+    auto.IsChecked = true;
+    Pump(5);
+}
 // The ON AIR sign (the desk's mic fader up, by GPIO) and big counters
 {
     var own = Field<AppSettings>(main, "_settings");

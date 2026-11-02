@@ -118,9 +118,54 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     bool _isPlaying, _isNext, _isPlayed, _isEmptyBreak;
     /// <summary>A break shown ahead with no adverts booked: nothing will play.</summary>
     public bool IsEmptyBreak { get => _isEmptyBreak; set => Set(ref _isEmptyBreak, value); }
-    public bool IsPlaying { get => _isPlaying; set => Set(ref _isPlaying, value); }
+    public bool IsPlaying
+    {
+        get => _isPlaying;
+        set
+        {
+            if (_isPlaying == value) return;
+            Set(ref _isPlaying, value);
+            ButtonsChanged();
+        }
+    }
+
+    bool _assisted;
+    /// <summary>The player is in ASSISTED: a song's row has ▶ to put it on air now, and the song on air a fade-out.</summary>
+    public bool Assisted
+    {
+        get => _assisted;
+        set
+        {
+            if (_assisted == value) return;
+            _assisted = value;
+            ButtonsChanged();
+        }
+    }
+
+    /// <summary>ASSISTED: ▶ on a song not on air (nor a scheduled preview, not yet in the playlist).</summary>
+    public bool ShowPlayButton => _assisted && IsMusic && !_isPlaying && !_isPlayed && !IsPreview;
+    /// <summary>ASSISTED: the song on air fades out.</summary>
+    public bool ShowFadeButton => _assisted && IsMusic && _isPlaying;
+    /// <summary>The music icon, where neither button is.</summary>
+    public bool ShowMusicIcon => IsMusic && !ShowPlayButton && !ShowFadeButton;
+
+    void ButtonsChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowPlayButton)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowFadeButton)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowMusicIcon)));
+    }
     public bool IsNext { get => _isNext; set => Set(ref _isNext, value); }
-    public bool IsPlayed { get => _isPlayed; set => Set(ref _isPlayed, value); }
+    public bool IsPlayed
+    {
+        get => _isPlayed;
+        set
+        {
+            if (_isPlayed == value) return;
+            Set(ref _isPlayed, value);
+            ButtonsChanged();
+        }
+    }
 
     string _startTime = "";
     public string StartTime { get => _startTime; set => Set(ref _startTime, value); }

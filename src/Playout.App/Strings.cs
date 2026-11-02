@@ -4,6 +4,8 @@ namespace Playout.App;
 public static class Strings
 {
     public static string Music => L.T("Music");
+    public static string PlayThisNow => L.T("On air now (Play)");
+    public static string FadeItOut => L.T("Fade it out (the next waits for Play)");
     public static string Jingle => L.T("Jingle");
     public static string Advert => L.T("Advert");
     public static string InternetStream => L.T("Internet stream");

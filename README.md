@@ -27,7 +27,9 @@ engine for decoding, mixing and streaming.
   and Next flashes on every track change. **Adverts are protected**: while one is on air, Next, Pause and Stop
   (and putting another item on air) ask first, and only a click on the button in that question does it, so a paid
   spot isn't cut by accident but still can be in an emergency. The mode button switches between **AUTO**
-  (runs through the playlist) and **ASSISTED** (stops after each item until you start the next).
+  (runs through the playlist) and **ASSISTED** (stops after each item until you start the next). In ASSISTED each
+  song in the playlist has a **▶** that puts it on air straight away, and the song on air a **fade-out** button
+  (it fades out over 3 seconds and the next waits).
 - **Playlist**: drag and drop from the built-in music browser or your file manager, drag rows to reorder,
   estimated start time for each item, played/on-air/next markers, a type icon (music, jingle, commercial, stream,
   programme), a tag on items put there by a scheduled event or ad break, and an on-air row that fills from left

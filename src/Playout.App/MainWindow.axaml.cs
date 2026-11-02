@@ -199,6 +199,7 @@ public partial class MainWindow : Window
         {
             _settings.AutoAdvance = AutoSwitch.IsChecked == true;
             if (_engine != null) _engine.AutoAdvance = _settings.AutoAdvance;
+            ShowRowButtons();
             ShowAutomationMode();
         };
 
@@ -215,6 +216,8 @@ public partial class MainWindow : Window
 
         Playlist.DoubleTapped += (_, e) =>
         {
+            // On a row's own button (ASSISTED's ▶ or fade-out) the button did it: a double-click isn't Play now again.
+            if (e.Source is Visual v && (v is Button || v.FindAncestorOfType<Button>() != null)) return;
             if ((e.Source as Control)?.DataContext is PlaylistRow row) _ = PlayNow(row);
         };
         var editCues = new MenuItem { Header = L.T("Edit cue points…"), InputGesture = new KeyGesture(Key.E, CommandModifiers) };
@@ -499,6 +502,44 @@ public partial class MainWindow : Window
     async Task StopPressed()
     {
         if (await MayCutAdvert(L.T("Stop"), L.T("Stop it anyway?"))) _engine?.Stop();
+    }
+
+    /// <summary>
+    /// The last press of a row's button: a second one within a moment is the rest of a double-click (▶ turns into
+    /// fade-out where it was, so it would fade the song it just started).
+    /// </summary>
+    long _lastRowButton;
+
+    bool RowButtonPressedAgain()
+    {
+        long now = Environment.TickCount64;
+        bool again = now - _lastRowButton < 600;
+        _lastRowButton = now;
+        return again;
+    }
+
+    /// <summary>ASSISTED: a song's ▶ in the playlist puts it on air now.</summary>
+    async void RowPlay_Click(object? sender, RoutedEventArgs e)
+    {
+        if (RowButtonPressedAgain()) return;
+        if ((sender as Control)?.DataContext is PlaylistRow row) await PlayNow(row);
+    }
+
+    /// <summary>ASSISTED: the song on air fades out (a few seconds); the next waits for Play.</summary>
+    async void RowFade_Click(object? sender, RoutedEventArgs e)
+    {
+        if (RowButtonPressedAgain()) return;
+        if (await MayCutAdvert(L.T("Fade out"), L.T("Fade it out anyway?"))) _engine?.FadeOut();
+    }
+
+    /// <summary>ASSISTED here: the rows' ▶ and fade-out (not on a standby computer: it plays nothing).</summary>
+    bool RowButtonsOn => _engine?.AutoAdvance == false && !IsStandby;
+
+    /// <summary>The playlist rows' ▶ and fade-out buttons follow AUTO / ASSISTED, and on air / standby.</summary>
+    void ShowRowButtons()
+    {
+        bool on = RowButtonsOn;
+        foreach (var row in _rowsById.Values) row.Assisted = on;
     }
 
     async Task PlayNow(PlaylistRow row)
@@ -1277,7 +1318,7 @@ public partial class MainWindow : Window
         {
             var t = snap.Items[i];
             alive.Add(t.Id);
-            if (!_rowsById.TryGetValue(t.Id, out var row)) _rowsById[t.Id] = row = new PlaylistRow(t);
+            if (!_rowsById.TryGetValue(t.Id, out var row)) _rowsById[t.Id] = row = new PlaylistRow(t) { Assisted = RowButtonsOn };
             row.Track = t;
             row.Number = i + 1;
             row.IsPlaying = t.Id == snap.CurrentId;

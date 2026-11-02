@@ -135,7 +135,7 @@ CHAPTERS = [
         ("NextButton", "<b>Next</b> (F7) crossfades to the next item straight away."),
         ("StopButton", "<b>Stop</b> (F8)."),
         ("Remaining", "The time left of the item on air. It turns red in the last 10 seconds."),
-        ("AutoSwitch", "<b>AUTO</b> runs through the playlist by itself. <b>ASSISTED</b> stops after each item and waits for you to start the next."),
+        ("AutoSwitch", "<b>AUTO</b> runs through the playlist by itself. <b>ASSISTED</b> stops after each item and waits for you to start the next. In ASSISTED every song in the playlist gets a green <b>▶</b> to put it on air at once, and the song on air an orange <b>fade-out</b> button. Played songs have none (a double-click still plays one again)."),
         ("Clock", "The clock, with the station's name and logo."),
         ("TopOfHourText", "How long until the top of the hour."),
         ("PlaylistEndsText", "When the playlist will run out."),

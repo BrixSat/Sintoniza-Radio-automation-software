@@ -8,8 +8,46 @@
         Width="1480" Height="920" MinWidth="1200" MinHeight="740"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Styles>
+        <Style Selector="Button.row-play, Button.row-fade">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <!-- Their colour under the mouse and pressed too (the theme's grey otherwise) -->
+        <Style Selector="Button.row-play">
+            <Setter Property="Background" Value="#2E7D5B" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.row-play:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#3A9B71" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.row-play:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2E7D5B" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+        <Style Selector="Button.row-fade">
+            <Setter Property="Background" Value="#F5A524" />
+            <Setter Property="Foreground" Value="#1B1F27" />
+        </Style>
+        <Style Selector="Button.row-fade:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FFBC4A" />
+            <Setter Property="Foreground" Value="#1B1F27" />
+        </Style>
+        <Style Selector="Button.row-fade:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#F5A524" />
+            <Setter Property="Foreground" Value="#1B1F27" />
+        </Style>
+    </Window.Styles>
+
     <Window.Resources>
         <StreamGeometry x:Key="IconPlay">M0,0 L11,7 L0,14 Z</StreamGeometry>
+        <StreamGeometry x:Key="IconFadeOut">M0,0 L12,8 L12,12 L0,12 Z</StreamGeometry>
         <StreamGeometry x:Key="IconPause">M0,0 H4 V14 H0 Z M7,0 H11 V14 H7 Z</StreamGeometry>
         <StreamGeometry x:Key="IconNext">M0,0 L8,7 L0,14 Z M9,0 H12 V14 H9 Z</StreamGeometry>
         <StreamGeometry x:Key="IconStop">M0,0 H12 V12 H0 Z</StreamGeometry>
@@ -343,7 +381,14 @@
                                         <Border Classes="row-marker" HorizontalAlignment="Left" />
                                         <TextBlock Grid.Column="1" Classes="muted digits" Text="{Binding NumberText}" VerticalAlignment="Center" />
                                         <Panel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                            <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding IsMusic}" ToolTip.Tip="{x:Static app:Strings.Music}" />
+                                            <PathIcon Classes="kind music" Data="{StaticResource IconMusic}" IsVisible="{Binding ShowMusicIcon}" ToolTip.Tip="{x:Static app:Strings.Music}" />
+                                            <!-- ASSISTED: put this song on air now; the song on air fades out -->
+                                            <Button Classes="row-play" Focusable="False" IsVisible="{Binding ShowPlayButton}" Click="RowPlay_Click" ToolTip.Tip="{x:Static app:Strings.PlayThisNow}">
+                                                <PathIcon Width="9" Height="10" Data="{StaticResource IconPlay}" />
+                                            </Button>
+                                            <Button Classes="row-fade" Focusable="False" IsVisible="{Binding ShowFadeButton}" Click="RowFade_Click" ToolTip.Tip="{x:Static app:Strings.FadeItOut}">
+                                                <PathIcon Width="11" Height="10" Data="{StaticResource IconFadeOut}" />
+                                            </Button>
                                             <PathIcon Classes="kind jingle" Data="{StaticResource IconJingle}" IsVisible="{Binding IsJingle}" ToolTip.Tip="{x:Static app:Strings.Jingle}" />
                                             <TextBlock Classes="kind-currency" Text="{Binding CurrencySign}" IsVisible="{Binding IsCommercial}" ToolTip.Tip="{x:Static app:Strings.Advert}" />
                                             <PathIcon Classes="kind stream" Data="{StaticResource IconStream}" IsVisible="{Binding IsStream}" ToolTip.Tip="{x:Static app:Strings.InternetStream}" />

@@ -2335,5 +2335,10 @@
  "{0} may not work on this station.": "{0} ne peut pas travailler sur cette station.",
  "Its name. It starts with a copy of this station's settings, without its stream server, RDS name or website, and an empty schedule; the music library is shared.": "Son nom. Elle démarre avec une copie des réglages de cette station, sans son serveur de stream, son nom RDS ni son site, et une programmation vide ; la bibliothèque musicale est partagée.",
  "You may only give the stations you work on yourself.": "Vous ne pouvez donner que les stations sur lesquelles vous travaillez.",
- "{0} works on another station: Sintoniza Pro opens again on it.": "{0} travaille sur une autre station : Sintoniza Pro se rouvre dessus."
+ "{0} works on another station: Sintoniza Pro opens again on it.": "{0} travaille sur une autre station : Sintoniza Pro se rouvre dessus.",
+ "Fade out": "Fondu de sortie",
+ "Fade it out anyway?": "Le faire disparaître quand même ?",
+ "On air now (Play)": "À l'antenne maintenant (Lecture)",
+ "Fade it out (the next waits for Play)": "Le faire disparaître (le suivant attend Lecture)",
+ "faded it out": "l'a fait disparaître"
 }

@@ -64,7 +64,9 @@ they are changed in Pro only.
   (talk over the intro), **OUTRO** and **MIX** points, and **NEXT**. The badge shows *ON AIR*, *STOPPED*, *SILENCE*
   (nothing heard although something plays) or *BREAK IN mm:ss* before an ad break.
 - **Transport:** **Play** (F5), **Pause** (F6), **Next** (F7: crossfades to the next item now), **Stop** (F8).
-  **AUTO** runs through the playlist; **ASSISTED** stops after each item until you start the next.
+  **AUTO** runs through the playlist; **ASSISTED** stops after each item until you start the next. In ASSISTED,
+  each song in the playlist has a green **▶** that puts it on air at once, and the song on air an orange **fade-out**
+  button: it fades out over 3 seconds, and the next item waits for you.
 - **Notes for the presenter** (from the daily playlists, Pro): under **NEXT**, the note of the item on air and of the
   next one — what to announce, the sponsor to mention; an hour's note comes with its first item.
 - **Top right — the station.** Clock, *TOP OF HOUR* countdown, *PLAYLIST ENDS*, *PLAYED TODAY*, **NEXT EVENT** — the

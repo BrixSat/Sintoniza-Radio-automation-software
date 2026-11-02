@@ -132,7 +132,7 @@ CHAPTERS = [
         ("NextButton", "<b>Seguinte</b>, ou F7, faz já o crossfade para o próximo item."),
         ("StopButton", "<b>Parar</b>, ou F8."),
         ("Remaining", "O tempo que falta ao que está no ar."),
-        ("AutoSwitch", "Em <b>AUTO</b> o programa segue a playlist sozinho. Em <b>ASSISTIDO</b> para no fim de cada item e espera que o locutor lance o seguinte."),
+        ("AutoSwitch", "Em <b>AUTO</b> o programa segue a playlist sozinho. Em <b>ASSISTIDO</b> para no fim de cada item e espera que o locutor lance o seguinte. Em ASSISTIDO cada música da playlist tem um <b>▶</b> verde para a pôr logo no ar, e a música no ar um botão cor de laranja para a <b>desvanecer</b>. As já tocadas não têm (um duplo clique continua a tocá-las de novo)."),
         ("Clock", "O relógio, com o nome e o logótipo da estação."),
         ("TopOfHourText", "A contagem para a hora certa."),
         ("PlaylistEndsText", "A hora a que a playlist acaba."),

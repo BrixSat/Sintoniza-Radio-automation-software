@@ -380,6 +380,27 @@ Console.WriteLine("The on-air program (a library of its own)");
     }
     Check(WaitUi(Ended, 3), "the show is over: AUTO again");
     Check(Ended() && !sign.IsVisible, "…and the ON AIR sign goes out");
+    // ASSISTED: a song's ▶ puts it on air now; the song on air fades out with its button.
+    autoSwitch.IsChecked = false;
+    Pump(3);
+    engine.AddFiles([songs[1], songs[2]]);
+    var rowsById = (Dictionary<Guid, PlaylistRow>)Field("_rowsById")!;
+    PlaylistRow? target = null;
+    WaitUi(() => (target = rowsById.Values.FirstOrDefault(r => r.IsMusic && !r.IsPlaying && !r.IsPreview && r.Track.Path == songs[2])) != null, 5);
+    Check(target is { ShowPlayButton: true, ShowFadeButton: false }, "ASSISTED: a song in the playlist has a ▶");
+    var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+    typeof(MainWindow).GetMethod("RowPlay_Click", flags)!.Invoke(win, [new Button { DataContext = target }, new RoutedEventArgs()]);
+    Check(WaitUi(() => engine.GetStatus().Current?.Path == songs[2], 5), "…which puts it on air now");
+    Check(WaitUi(() => target!.ShowFadeButton && !target.ShowPlayButton, 3), "…and on air it has the fade-out instead");
+    typeof(MainWindow).GetMethod("RowFade_Click", flags)!.Invoke(win, [new Button { DataContext = target }, new RoutedEventArgs()]);
+    Pump(5);
+    Check(engine.State == PlayerState.Playing, "a double-click on ▶ doesn't fade out the song it just started (the second click is ignored)");
+    Thread.Sleep(700); // not the second click of a double-click on ▶ (that is ignored: ▶ turns into fade-out there)
+    typeof(MainWindow).GetMethod("RowFade_Click", flags)!.Invoke(win, [new Button { DataContext = target }, new RoutedEventArgs()]);
+    Check(WaitUi(() => engine.State == PlayerState.Stopped, 8), "…which fades it out, and the player waits");
+    autoSwitch.IsChecked = true;
+    Pump(3);
+    Check(!target!.ShowPlayButton && !target.ShowFadeButton, "AUTO: no buttons on the rows");
     win.Close();
     Pump(10);
 }
