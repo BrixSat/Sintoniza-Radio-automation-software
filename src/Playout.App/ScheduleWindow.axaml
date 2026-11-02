@@ -127,6 +127,9 @@
                 <MenuItem x:Name="MenuClients" Header="Clients and campaigns" />
             </MenuItem>
             <MenuItem Header="_Station">
+                <MenuItem x:Name="MenuWorkOn" Header="Work on" />
+                <MenuItem x:Name="MenuNewStation" Header="New station…" />
+                <Separator />
                 <MenuItem x:Name="MenuStationSettings" Header="Station settings" />
                 <MenuItem x:Name="MenuCartwalls" Header="Cartwalls" />
                 <MenuItem x:Name="MenuUsers" Header="Users" />

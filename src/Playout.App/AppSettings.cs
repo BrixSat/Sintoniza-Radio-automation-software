@@ -87,6 +87,21 @@ public sealed class AppSettings
     /// </summary>
     public long Station { get; set; } = 1;
 
+    /// <summary>
+    /// The station Sintoniza Pro works on, on this computer (0: the same as <see cref="Station"/>). Its own, so choosing
+    /// another station in Pro never moves the studio's on-air program to it.
+    /// </summary>
+    public long ProStation { get; set; }
+
+    /// <summary>The station whose settings this computer's copy of them is (stream, RDS…; 0: station 1, from before).</summary>
+    public long StationSettingsStation { get; set; }
+
+    /// <summary>The station whose playlist <see cref="PlaylistItems"/> is (0: from before stations could be chosen).</summary>
+    public long PlaylistStation { get; set; }
+
+    /// <summary>This process is Sintoniza Pro: <see cref="ProStation"/> is its station.</summary>
+    public static bool ForPro { get; set; }
+
     /// <summary>The music library database and the folders scanned into it (radio-import reads this too).</summary>
     public LibrarySettings Library { get; set; } = new();
 
@@ -192,6 +207,18 @@ public sealed class AppSettings
     /// Where the app keeps its files (settings, cue points, logs). The system folder is created if missing: otherwise
     /// .NET returns "" and the files would land in whatever folder the app was started from.
     /// </summary>
+    /// <summary>
+    /// A file (or folder) of this computer's that belongs to the station it works for: station 1 keeps the name it
+    /// always had; another gets its number ("schedule-cache-2.json", "as-run-2"), so switching station mixes nothing.
+    /// </summary>
+    public static string StationFile(string name)
+    {
+        long station = CurrentStation.Id;
+        if (station <= 1) return Path.Combine(DataFolder, name);
+        string ext = Path.GetExtension(name);
+        return Path.Combine(DataFolder, $"{Path.GetFileNameWithoutExtension(name)}-{station}{ext}");
+    }
+
     public static string DataFolder =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create), "RadioPlayout");
 
@@ -205,7 +232,9 @@ public sealed class AppSettings
         var s = SafeFile.Read(FilePath, json => JsonSerializer.Deserialize<AppSettings>(json)) ?? new();
         s.SavedAtUtc = File.Exists(RunningFile) ? File.GetLastWriteTimeUtc(RunningFile) : File.Exists(FilePath) ? File.GetLastWriteTimeUtc(FilePath) : null;
         s.Normalize();
-        CurrentStation.Id = s.Station; // every program on this computer works for this station
+        // Every program on this computer works for its station. Sintoniza Pro's is set once, when it starts: settings
+        // read again later (another window, a new login) never move it to another station halfway.
+        if (!ForPro) CurrentStation.Id = s.Station;
         s._saved = JsonSerializer.Serialize(s, Json);
         return s;
     }
@@ -270,6 +299,13 @@ public sealed class AppSettings
     {
         try
         {
+            // Sintoniza Pro's station is Pro's, the on-air program's is the on-air program's: each takes the other's as
+            // the file has it now, so neither puts back an old one (Emi writes the file every few seconds).
+            if (File.Exists(FilePath) && SafeFile.Read(FilePath, j => JsonSerializer.Deserialize<AppSettings>(j)) is { } onDisk)
+            {
+                if (ForPro) Station = onDisk.Station;
+                else ProStation = onDisk.ProStation;
+            }
             string json = JsonSerializer.Serialize(this, Json);
             if (json == _saved) return;
             SafeFile.WriteAllText(FilePath, json);

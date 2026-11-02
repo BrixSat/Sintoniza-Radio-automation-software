@@ -106,9 +106,11 @@ sealed class Backups : IDisposable
                 {
                     if (database != null) archive.CreateEntryFromFile(database, Path.GetFileName(database), CompressionLevel.Optimal);
                     foreach (var file in DataFiles) Add(archive, Path.Combine(AppSettings.DataFolder, file), file);
-                    string asRun = Path.Combine(AppSettings.DataFolder, "as-run");
-                    if (Directory.Exists(asRun))
-                        foreach (var file in Directory.GetFiles(asRun, "*.csv")) Add(archive, file, "as-run/" + Path.GetFileName(file));
+                    // Every station's as-run folder (as-run, as-run-2…) and local copies.
+                    foreach (var asRun in Directory.Exists(AppSettings.DataFolder) ? Directory.GetDirectories(AppSettings.DataFolder, "as-run*") : [])
+                        foreach (var file in Directory.GetFiles(asRun, "*.csv")) Add(archive, file, Path.GetFileName(asRun) + "/" + Path.GetFileName(file));
+                    foreach (var copy in Directory.Exists(AppSettings.DataFolder) ? Directory.GetFiles(AppSettings.DataFolder, "schedule-cache-*.json") : [])
+                        Add(archive, copy, Path.GetFileName(copy));
                 }
                 File.Move(part, zip, true);
             }

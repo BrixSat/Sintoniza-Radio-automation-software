@@ -1055,6 +1055,49 @@ Console.WriteLine("Stations");
     db.RecordPlay(songs[1], "Check 2", "Tone 2", DateTime.UtcNow, "playlist");
     CurrentStation.Id = first;
     Check(db.PlaysSince(since).Count == 1 && db.LastStarted(songs[0]) != null, $"…and this station only its own ({db.PlaysSince(since).Count} plays since, last {db.LastStarted(songs[0])})");
+
+    // A second station: made with a copy of the first one's settings under its own name.
+    var stationStore = new StationStore(db);
+    var mine = stationStore.Load().Settings;
+    long second = stationStore.AddStation("Rádio Dois");
+    var list = db.Stations();
+    Check(list.Count >= 2 && list.Any(st => st.Id == second && st.Name == "Rádio Dois"), "a new station in the library's list");
+    CurrentStation.Id = second;
+    var copied = stationStore.Load().Settings;
+    Check(mine == null || copied?.StationName == "Rádio Dois" && copied.StreamHost == "" && copied.StreamPassword == "" && !copied.WebNowPlaying.Enabled,
+        "…with a copy of the first one's settings, under its own name, and nothing going out (stream, website) until set for it");
+    var source = new ScheduleSource(() => db);
+    long? emptyVersion = null;
+    string? openError = null;
+    try { emptyVersion = source.Version(); } catch (Exception ex) { openError = ex.Message; }
+    Check(openError == null && emptyVersion == 0 && ScheduleSource.LoadLocal().Events.Count == 0,
+        $"…it opens empty: no other station's schedule imported into it ({openError ?? "ok"})");
+    Check(db.AddStation("Rádio Dois") is var third && db.Stations().First(st => st.Id == third).Name == "Rádio Dois (2)", "…a name already taken gets a number");
+    CurrentStation.Id = first;
+
+    // Rights per station: a user only for the second one may not work on the first.
+    var users = new UserStore(db);
+    long id = users.Save(new SintonizaUser { Name = "only-two", Permissions = Permission.Presenter.ToHashSet(), Stations = [second] }, "pw");
+    var back = users.All().First(u => u.Id == id);
+    Check(back.Stations.SetEquals([second]) && back.MayUse(second) && !back.MayUse(first) && users.All().First(u => u.Name == "admin").MayUse(first),
+        "a user limited to some stations (the others, everywhere)");
+    users.Delete(id);
+
+    // Sintoniza Pro on another station than this computer's on-air program: each keeps its own when saving.
+    var emiCopy = AppSettings.Load(); // the on-air program's settings, read before Pro chose its station
+    AppSettings.ForPro = true;
+    AppSettings.Change(x => x.ProStation = second);
+    AppSettings.ForPro = false;
+    emiCopy.LastUser = "on air " + Guid.NewGuid().ToString("N"); // the on-air program saves (as it does every few seconds)
+    emiCopy.Save();
+    var computer = AppSettings.Load();
+    Check(computer.ProStation == second && CurrentStation.Id == first, $"Sintoniza Pro's station stays when the on-air program saves; this computer's stays the on-air one's ({computer.ProStation}, {CurrentStation.Id})");
+    Check(AppSettings.StationFile("as-run").EndsWith("as-run") && (CurrentStation.Id = second) == second && AppSettings.StationFile("as-run").EndsWith("as-run-" + second),
+        "the as-run log and local copies are each station's own (as-run, as-run-2…)");
+    CurrentStation.Id = first;
+    computer.ProStation = 0;
+    computer.Save();
+    CurrentStation.Id = first;
 }
 
 Console.WriteLine(fails == 0 ? $"All {passes} checks passed." : $"{fails} of {passes + fails} checks FAILED.");

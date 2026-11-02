@@ -85,6 +85,12 @@
                                           ToolTip.Tip="The language of the windows and messages. Applies the next time the app starts." />
                                 <Button x:Name="TranslationsButton" Content="Add a language…" Margin="0,6,0,0"
                                         ToolTip.Tip="Opens the translations folder: a translation file put there (de.json, es.json…) adds its language to this list, with no new version" />
+                                <StackPanel x:Name="StationChoicePanel" IsVisible="False" Margin="0,12,0,0">
+                                    <TextBlock Classes="label" Text="Station" />
+                                    <ComboBox x:Name="StationBox" MinWidth="200"
+                                              ToolTip.Tip="The station this computer puts on air, when the library has several (Sintoniza Pro → Station → New station). Applies the next time the app starts." />
+                                    <TextBlock x:Name="StationNote" Classes="note" MaxWidth="260" TextWrapping="Wrap" />
+                                </StackPanel>
                             </StackPanel>
                             <StackPanel Classes="station">
                                 <TextBlock Classes="label" Text="Station type" />

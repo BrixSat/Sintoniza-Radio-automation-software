@@ -18,6 +18,8 @@ public partial class LoginPanel : UserControl
 
     /// <summary>Only users with it get in (null: any user).</summary>
     public string? Permission { get; set; }
+    /// <summary>The program works on the whole library, not a station (Sintoniza Import): any station's user may log in.</summary>
+    public bool AnyStation { get; set; }
 
     /// <summary>Who logged in.</summary>
     public event Action<SintonizaUser>? LoggedIn;
@@ -102,6 +104,24 @@ public partial class LoginPanel : UserControl
             return;
         }
         LoginButton.IsEnabled = true;
+        if (!AnyStation && !user.MayUse(CurrentStation.Id))
+        {
+            // Sintoniza Pro, on a station this user may not work on: it opens again on one they may.
+            if (AppSettings.ForPro && user.Stations.Count > 0)
+            {
+                long to = user.Stations.Min();
+                AppSettings.Change(s => s.ProStation = to);
+                AppLog.Write($"Sintoniza Pro: {user.Name} may not work on station {CurrentStation.Id}; opening on station {to}");
+                if (ScheduleWindow.RestartPro() == null)
+                {
+                    Show(L.F("{0} works on another station: Sintoniza Pro opens again on it.", user.Name));
+                    (Avalonia.Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+                    return;
+                }
+            }
+            Show(L.F("{0} may not work on this station.", user.Name));
+            return;
+        }
         if (Permission != null && !user.Can(Permission))
         {
             Show(L.F("{0} may not do this here.", user.Name));

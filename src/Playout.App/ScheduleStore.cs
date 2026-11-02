@@ -408,12 +408,13 @@ sealed class ScheduleSource(Func<LibraryDb?> db)
     /// <summary>The library, if it can be reached (parts of a break taken from a category).</summary>
     public LibraryDb? Db => db();
 
-    static string CacheFile => Path.Combine(AppSettings.DataFolder, "schedule-cache.json");
+    static string CacheFile => AppSettings.StationFile("schedule-cache.json"); // the station's own
     readonly object _lock = new();
     bool _importTried;
 
     /// <summary>What to start with: the local copy, else the old files, else nothing.</summary>
-    public static ScheduleData LoadLocal() => ScheduleData.ReadFile(CacheFile) ?? ScheduleData.LoadLegacy() ?? new ScheduleData();
+    public static ScheduleData LoadLocal() =>
+        ScheduleData.ReadFile(CacheFile) ?? (CurrentStation.Id <= 1 ? ScheduleData.LoadLegacy() : null) ?? new ScheduleData(); // the old file: station 1's
 
     /// <summary>The schedule's version in the database (importing the old files the first time); null without the database.</summary>
     public long? Version()
@@ -421,7 +422,8 @@ sealed class ScheduleSource(Func<LibraryDb?> db)
         if (db() is not { } library) return null;
         var store = new ScheduleStore(library);
         long version = store.Version();
-        if (version == 0 && !_importTried)
+        // The old files and the local copy from before stations were stored are station 1's: another station starts empty.
+        if (version == 0 && !_importTried && CurrentStation.Id <= 1)
         {
             _importTried = true;
             version = Import(store);

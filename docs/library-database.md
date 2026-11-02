@@ -210,6 +210,15 @@ playlists are made to meet the quotas), and the `Takes` (`Folder`, `Latitude`, `
 by one on every save and the playouts read it again; `updated_at` (UTC) and `updated_by`. What belongs to one
 computer (sound cards, microphone, the database login, keys) stays in that computer's settings file.
 
+## Stations
+
+`stations`: the stations in the library (`id`, `name`, `time_zone`, `active`). The music (tracks, categories, folders)
+and the users are shared; everything else is the station's own, by `station_id`: its schedule and seasons, daily
+playlists, settings and cartwalls (`station_settings`), studios, play history and as-run log. Each computer's on-air
+program works for one station (its Settings → General → Station; 1 by default), and Sintoniza Pro for the one chosen
+in it (Station → Work on). A new station (Station → New station…) starts with a copy of the station's settings it
+was made from (its stream server, RDS PS and website upload blank) and an empty schedule. The name follows the station name in its settings.
+
 ## Users
 
 `users`: who may log in to the on-air program, Sintoniza Pro, Sintoniza Import, a playout's Settings and the web remote — the same in
@@ -222,6 +231,7 @@ every studio.
 | `password_hash` | text | `iterations$salt$hash`: PBKDF2-HMAC-SHA256, salt and hash in base64 (16 and 32 bytes) |
 | `permissions` | text | comma-separated: `onair`, `library`, `programming`, `voice`, `traffic`, `station`, `users`, `computer`, `remote` |
 | `enabled` | bool | 0: can't log in |
+| `stations` | text | the station ids it may work on, comma-separated (from schema 24); `''` = every station. A program for another station refuses its login |
 | `last_login`, `created_at` | text | UTC |
 
 When the table is empty the app adds **admin** (password `admin`, every permission) and **dj** (password `dj`,

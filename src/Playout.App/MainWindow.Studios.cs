@@ -69,7 +69,7 @@ public partial class MainWindow
             // At start the saved playlist is being put back: that carries on (CarryOn), not this.
             if (_restored) _ = GoOnAir(_tookOnAir);
             _tookOnAir = false;
-            if (_settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)
+            if (_settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost) && MayStream()
                 && engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming();
         }
         ShowStudios();

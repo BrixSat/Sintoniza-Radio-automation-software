@@ -21,6 +21,11 @@ public partial class App : Application
             // the daily playlists. Not part of the on-air screen. --playlists opens it on the daily playlists.
             bool playlists = desktop.Args?.Contains(AppInfo.PlaylistsArg) == true;
             bool schedule = playlists || desktop.Args?.Contains(AppInfo.ScheduleArg) == true;
+            if (schedule)
+            {
+                AppSettings.ForPro = true;
+                CurrentStation.Id = settings.ProStation > 0 ? settings.ProStation : settings.Station;
+            }
             // The import program (its own menu entry): folders of audio into the library, in categories.
             bool import = !schedule && desktop.Args?.Contains(AppInfo.ImportArg) == true;
             // The recorder (its own program, Sintoniza Rec): the station's sound, kept as the law asks.
@@ -30,6 +35,8 @@ public partial class App : Application
             // One of each per computer: a second start says so instead of opening another (two playouts would fight
             // over the sound card and the playlist).
             bool locked = SingleInstance.Acquire(lockName);
+            // Started again by itself (Sintoniza Pro on another station): the copy that started it is closing.
+            if (!locked && desktop.Args?.Contains(AppInfo.RestartedArg) == true) locked = SingleInstance.Wait(lockName, 20);
             if (!locked && desktop.Args?.Contains(Watchdog.ChildArg) == true)
             {
                 // Started again by the watchdog while the copy it stopped is still letting go: wait for it, and if it
@@ -85,6 +92,7 @@ public partial class App : Application
         try { station = new StationStore(db).Load().Settings?.StationName ?? ""; } catch { /* no name */ }
         LoginWindow.LastUser = settings.LastUser;
         var login = new LoginWindow(db, program, permission, null, station);
+        if (program == AppInfo.ImportName) login.AnyStation = true; // the music library is every station's
         login.LoggedIn += user =>
         {
             settings.LastUser = user.Name;

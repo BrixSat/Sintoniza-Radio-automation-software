@@ -100,6 +100,7 @@ public partial class SettingsWindow : PageWindow
             _languages.Add((chosen, chosen));
         LanguageBox.ItemsSource = _languages.Select(l => l.Code == "" ? L.T(l.Name) : l.Name).ToList();
         LanguageBox.SelectedIndex = Math.Max(0, _languages.FindIndex(l => l.Code.Equals(settings.Language, StringComparison.OrdinalIgnoreCase)));
+        _ = LoadStations(settings.Station);
         TranslationsButton.Click += (_, _) => OpenTranslations();
         CurrencyBox.PlaceholderText = PlaylistRow.SystemCurrency;
         SetLogo(settings.LogoPath);
@@ -937,6 +938,8 @@ public partial class SettingsWindow : PageWindow
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
         _settings.CurrencySign = CurrencyBox.Text?.Trim() ?? "";
         _settings.Language = _languages[Math.Max(0, LanguageBox.SelectedIndex)].Code;
+        if (_stations.Count > 1 && StationBox.SelectedIndex >= 0 && _scope == SettingsScope.Computer)
+            _settings.Station = _stations[StationBox.SelectedIndex].Id;
         _settings.LogoPath = _logoPath;
 
         _settings.StationType = StationTypeBox.SelectedIndex == 1 ? StationType.Web : StationType.Fm;
@@ -1041,6 +1044,23 @@ public partial class SettingsWindow : PageWindow
         OnAirSign = OnAirSignBox.IsChecked == true,
         HiddenLamps = _lampBoxes.Where(b => b.Value.IsChecked != true).Select(b => b.Key).ToList(),
     };
+
+    List<StationInfo> _stations = new();
+
+    /// <summary>The stations in the library, to choose this computer's (shown only when there are several).</summary>
+    async Task LoadStations(long current)
+    {
+        if (_main?.MusicLibrary.Db is not { } db) return;
+        try { _stations = await Task.Run(db.Stations); }
+        catch { return; }
+        if (_stations.Count < 2) return;
+        StationBox.ItemsSource = _stations.Select(s => s.Name).ToList();
+        StationBox.SelectedIndex = Math.Max(0, _stations.FindIndex(s => s.Id == current));
+        StationChoicePanel.IsVisible = _scope == SettingsScope.Computer;
+        StationBox.SelectionChanged += (_, _) => StationNote.Text = StationBox.SelectedIndex >= 0 && _stations[StationBox.SelectedIndex].Id != current
+            ? L.T("This computer goes on air for that station the next time Sintoniza Emi starts: its schedule, daily playlists and settings.")
+            : "";
+    }
 
     /// <summary>Opens at a tab, by its English name ("RDS", "GPIO"…), if it is shown here.</summary>
     public void ShowTab(string english)

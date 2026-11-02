@@ -60,7 +60,7 @@ sealed class AsRunLog
         });
     }
 
-    public static string DefaultFolder => Path.Combine(AppSettings.DataFolder, "as-run");
+    public static string DefaultFolder => AppSettings.StationFile("as-run"); // the station's own
 
     string PendingFile => Path.Combine(_folder, "on-air.json");
 

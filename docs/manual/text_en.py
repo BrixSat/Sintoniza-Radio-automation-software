@@ -491,6 +491,15 @@ CHAPTERS = [
         ("SaveButton", "<b>Save</b>. Every studio gets the change within a minute."),
     ]),
     ("tip", "As with the music, use files that every studio can reach, in a shared folder."),
+    ("h2", "Several stations in one library"),
+    ("p", "One library can hold several stations, for example a music station and a news station of the same group. "
+          "They share the music and the users. Each keeps its own schedule, daily playlists, settings, cartwalls and history."),
+    ("list", [
+        "<b>Station → New station…</b> in Sintoniza Pro makes one. It starts with a copy of the current station's settings and an empty schedule. Its stream server, RDS name and website upload start blank, so it never goes out as the other station.",
+        "<b>Station → Work on</b> switches Pro to another station. Pro starts again on it. The studio's on-air program on the same computer keeps its own station.",
+        "In each studio, <b>Settings → General → Station</b> chooses the station it puts on air. It applies the next time Sintoniza Emi starts.",
+        "In <b>Users</b>, a user can be limited to some stations. Logging in to another station is then refused.",
+    ]),
     ("h2", "Users and permissions"),
     ("p", "Every program asks for a <b>user and password</b>: the on-air program, Sintoniza Pro, Sintoniza Import, the on-air "
           "program's Settings and the web remote. They are the station's users, the same in every studio."),

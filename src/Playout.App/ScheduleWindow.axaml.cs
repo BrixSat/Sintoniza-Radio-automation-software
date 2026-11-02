@@ -125,6 +125,7 @@ public partial class ScheduleWindow : Window
         WireClients();
         SaveButton.Click += (_, _) => Save();
         WireStation(store);
+        WireStations(store?.Db);
         WirePro(store);
         // The daily playlists: made when the tab is first opened (it reads the database), only with one to read.
         DailyTab.IsVisible = store != null && library != null && settings != null;

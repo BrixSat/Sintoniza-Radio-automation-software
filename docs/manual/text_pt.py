@@ -460,6 +460,15 @@ CHAPTERS = [
     ("tip", "Há músicas que não quer anunciar no site, como uma faixa de fundo ou uma versão sem direitos para a internet. Na "
             "biblioteca, clique nelas com o botão direito e escolha <b>Fora do site</b>. Essas músicas nunca são enviadas, e "
             "o site continua a mostrar o que tinha antes."),
+    ("h2", "Várias estações numa biblioteca"),
+    ("p", "Uma biblioteca pode ter várias estações, por exemplo uma rádio de música e uma de informação do mesmo grupo. "
+          "Partilham a música e os utilizadores. Cada uma tem a sua programação, playlists diárias, definições, cartwalls e histórico."),
+    ("list", [
+        "<b>Estação → Nova estação…</b> no Sintoniza Pro cria uma. Começa com uma cópia das definições da estação atual e uma programação vazia. O servidor de stream, o nome RDS e o envio para o site começam em branco, para nunca sair para o ar como a outra estação.",
+        "<b>Estação → Trabalhar em</b> passa o Pro para outra estação. O Pro abre de novo nela. O programa de emissão do estúdio no mesmo computador fica com a sua estação.",
+        "Em cada estúdio, <b>Definições → Geral → Estação</b> escolhe a estação que ele põe no ar. Vale a partir da próxima vez que o Sintoniza Emi abrir.",
+        "Em <b>Utilizadores</b>, um utilizador pode ficar limitado a algumas estações. Entrar noutra estação é então recusado.",
+    ]),
     ("h2", "Utilizadores e permissões"),
     ("p", "O programa de emissão, a Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto "
           "web pedem um <b>utilizador e uma palavra-passe</b>. São os utilizadores da estação, os mesmos em todos os estúdios."),

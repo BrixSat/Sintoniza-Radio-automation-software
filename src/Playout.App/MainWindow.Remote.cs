@@ -233,7 +233,7 @@ public partial class MainWindow : IRemoteHandler
 
     /// <summary>A Sintoniza user with the web remote permission.</summary>
     public Task<string?> LogIn(string user, string password) => Task.Run(() =>
-        _library.Db is { } db && new UserStore(db).LogIn(user, password) is { } u && u.Can(Permission.Remote) ? u.Name : null);
+        _library.Db is { } db && new UserStore(db).LogIn(user, password) is { } u && u.Can(Permission.Remote) && u.MayUse(CurrentStation.Id) ? u.Name : null);
 
     public Task<object> Search(string text) => Task.Run<object>(() =>
     {

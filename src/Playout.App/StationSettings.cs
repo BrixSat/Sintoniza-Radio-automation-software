@@ -197,6 +197,29 @@ public sealed class StationStore(LibraryDb db)
                 : "UPDATE station_settings SET settings = @json, version = @version, updated_at = @now, updated_by = @by WHERE station_id = @Station",
             new { Station, json = settings.ToJson(), version, now, by }, tx);
         tx.Commit();
+        // The stations list (the station pickers) goes by the name in its settings.
+        try { db.RenameStation(Station, settings.StationName); }
+        catch (Exception) { /* a name another station has: the list keeps the one it had */ }
         return version;
+    }
+
+    /// <summary>
+    /// A new station in the library, with a copy of this one's settings under its own name and nothing in its schedule
+    /// yet; its number. What goes out of the station is left blank (the stream server, the RDS encoder's PS, now playing
+    /// for the website), so it never streams, sends RDS or posts as this one before those are set for it.
+    /// </summary>
+    public long AddStation(string name)
+    {
+        var (settings, _) = Load();
+        return db.AddStation(name, settings == null ? null : (_, unique) =>
+        {
+            settings.StationName = unique;
+            settings.StreamHost = "";
+            settings.StreamMount = "/live";
+            settings.StreamPassword = "";
+            settings.RdsPs = "";
+            settings.WebNowPlaying = new();
+            return settings.ToJson();
+        });
     }
 }

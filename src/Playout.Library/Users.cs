@@ -41,6 +41,12 @@ public sealed class SintonizaUser
     public DateTime? LastLogin { get; set; }
 
     public bool Can(string permission) => Permissions.Contains(permission);
+
+    /// <summary>The stations it may work on (their ids); empty: every station of the library.</summary>
+    public HashSet<long> Stations { get; set; } = new();
+
+    /// <summary>Whether it may work on <paramref name="station"/> (log in to a program working for it).</summary>
+    public bool MayUse(long station) => Stations.Count == 0 || Stations.Contains(station);
 }
 
 /// <summary>
@@ -51,6 +57,8 @@ public sealed class UserStore(LibraryDb db)
 {
     const int Iterations = 100_000;
 
+    public LibraryDb Db => db;
+
     sealed class Row
     {
         public long Id { get; set; }
@@ -59,6 +67,7 @@ public sealed class UserStore(LibraryDb db)
         public string Permissions { get; set; } = "";
         public long Enabled { get; set; }
         public string? LastLogin { get; set; }
+        public string Stations { get; set; } = "";
     }
 
     static SintonizaUser From(Row r) => new()
@@ -67,9 +76,11 @@ public sealed class UserStore(LibraryDb db)
         Permissions = r.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(),
         LastLogin = DateTime.TryParse(r.LastLogin, System.Globalization.CultureInfo.InvariantCulture,
             System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var at) ? at : null,
+        Stations = (r.Stations ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => long.TryParse(x, out var id) ? id : 0).Where(id => id > 0).ToHashSet(),
     };
 
-    const string Columns = "id AS Id, name AS Name, password_hash AS PasswordHash, permissions AS Permissions, enabled AS Enabled, last_login AS LastLogin";
+    const string Columns = "id AS Id, name AS Name, password_hash AS PasswordHash, permissions AS Permissions, enabled AS Enabled, last_login AS LastLogin, stations AS Stations";
 
     public List<SintonizaUser> All()
     {
@@ -113,14 +124,17 @@ public sealed class UserStore(LibraryDb db)
         if (string.IsNullOrWhiteSpace(user.Name)) throw new InvalidOperationException("A user needs a name.");
         using var c = db.Connect();
         string permissions = string.Join(',', user.Permissions.Where(Permission.All.Contains));
+        string stations = string.Join(',', user.Stations.Order());
         if (user.Id == 0)
         {
             if (string.IsNullOrEmpty(password)) throw new InvalidOperationException("A new user needs a password.");
             Add(c, user.Name.Trim(), password, user.Permissions);
-            return c.ExecuteScalar<long>("SELECT id FROM users WHERE name = @name", new { name = user.Name.Trim() });
+            long id = c.ExecuteScalar<long>("SELECT id FROM users WHERE name = @name", new { name = user.Name.Trim() });
+            c.Execute("UPDATE users SET stations = @stations WHERE id = @id", new { stations, id });
+            return id;
         }
-        c.Execute("UPDATE users SET name = @name, permissions = @permissions, enabled = @enabled WHERE id = @Id",
-            new { name = user.Name.Trim(), permissions, enabled = user.Enabled ? 1 : 0, user.Id });
+        c.Execute("UPDATE users SET name = @name, permissions = @permissions, enabled = @enabled, stations = @stations WHERE id = @Id",
+            new { name = user.Name.Trim(), permissions, enabled = user.Enabled ? 1 : 0, stations, user.Id });
         if (!string.IsNullOrEmpty(password)) c.Execute("UPDATE users SET password_hash = @hash WHERE id = @Id", new { hash = Hash(password), user.Id });
         return user.Id;
     }

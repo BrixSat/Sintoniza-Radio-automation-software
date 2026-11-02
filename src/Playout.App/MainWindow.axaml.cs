@@ -117,6 +117,13 @@ public partial class MainWindow : Window
             ApplyRds();
             ApplyGpio();
             ApplyLoudness();
+            // Saved while this computer was on air for another station (it was changed in Settings): not this one's.
+            if (_settings.PlaylistStation > 0 && _settings.PlaylistStation != CurrentStation.Id)
+            {
+                AppLog.Write($"The playlist saved was station {_settings.PlaylistStation}'s; this computer is now on air for station {CurrentStation.Id}: not put back");
+                _settings.PlaylistItems = new();
+                _settings.OnAirIndex = -1;
+            }
             FillPlayedTimes(_settings.PlaylistItems, _settings.OnAirIndex);
             LeaveOutOldItems();
             AddEntries(_settings.PlaylistItems);
@@ -1294,7 +1301,11 @@ public partial class MainWindow : Window
         ShowNotes(snap);
 
         // Not while the saved playlist is still being added: a save then would lose the rest of it.
-        if (_restored) _settings.PlaylistItems = snap.Items.Select(PlaylistEntry.From).ToList();
+        if (_restored)
+        {
+            _settings.PlaylistItems = snap.Items.Select(PlaylistEntry.From).ToList();
+            _settings.PlaylistStation = CurrentStation.Id;
+        }
     }
 
     /// <summary>The presenter's notes: the one of the item on air, and the next item's (to prepare).</summary>
@@ -2113,7 +2124,7 @@ public partial class MainWindow : Window
         await _engine!.Resume(index, play || _playWhenRestored);
         _restored = true;
         if (!IsStandby && _settings.ResumeOnStart && _settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)
-            && _engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming(); // (not if going on air started it)
+            && _engine.GetStatus().Stream is StreamState.Off or StreamState.Failed && MayStream()) ToggleStreaming(); // (not if going on air started it)
     }
 
     /// <summary>Dead air detection and fill music, from the settings.</summary>

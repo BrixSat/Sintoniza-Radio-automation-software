@@ -43,6 +43,11 @@
                         </StackPanel>
                     </Grid>
                     <StackPanel x:Name="PermissionPanel" Spacing="8" />
+                    <StackPanel x:Name="StationsPanel" Spacing="6" Margin="0,10,0,0" IsVisible="False">
+                        <TextBlock Classes="label" Text="Stations it may work on" />
+                        <CheckBox x:Name="AllStationsBox" Content="All stations" />
+                        <WrapPanel x:Name="StationBoxes" ItemSpacing="14" LineSpacing="6" />
+                    </StackPanel>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                     <Button x:Name="SaveUserButton" Content="Save user" Classes="accent" />

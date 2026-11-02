@@ -227,6 +227,13 @@ of the file manager; on Windows a mapped drive or `\\server\share`; on a Mac it 
 
 ### Several computers on air: one on air, the others standby
 
+**Several stations in one library.** One library can hold several stations: the music and the users are shared,
+and each station has its own schedule, daily playlists, settings, cartwalls and history. In Sintoniza Pro,
+**Station → New station…** makes one (it starts with a copy of the current station's settings, without its stream
+server, RDS name or website upload, and an empty schedule) and **Station → Work on** switches Pro to another (it starts again on it). Each studio's on-air program
+chooses its station in **Settings → General → Station**; it applies the next time it starts, and the playlist saved for
+the old station isn't put back. In **Users**, a user can be limited to some stations.
+
 With a shared MySQL library every computer running Sintoniza Emi for the station knows the others. **One is on
 air**; the others are **standby**: ready and silent — no playlist, no time signal, no stream, nothing in the play
 history — with an amber **STANDBY** bar at the top saying which computer is on air and what it is playing. The

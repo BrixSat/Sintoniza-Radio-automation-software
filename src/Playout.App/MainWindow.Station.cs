@@ -1,4 +1,6 @@
 using Avalonia.Threading;
+using Playout.Engine;
+using Playout.Library;
 
 namespace Playout.App;
 
@@ -39,13 +41,41 @@ public partial class MainWindow
             }
             var (station, version) = t.Result;
             _stationVersion = version;
-            if (station == null) return;
+            _settings.StationSettingsStation = CurrentStation.Id; // the copy is this station's now
+            if (station == null) { StartHeldStream(); return; }
             bool first = known < 0;
             station.ApplyTo(_settings);
             _settings.Save(); // this computer's copy, for when the database can't be reached
             ApplyStationSettings();
             if (!first) LastLog.Text = L.T("The station's settings changed (Sintoniza Pro)");
+            StartHeldStream();
         }));
+    }
+
+    /// <summary>
+    /// This computer's copy of the station's settings is this station's (not the one it was on air for before the
+    /// station was changed in Settings): only then does the stream start with them, never to another station's server.
+    /// </summary>
+    bool StationCopyIsOurs => _settings.StationSettingsStation == CurrentStation.Id || _settings.StationSettingsStation == 0 && CurrentStation.Id <= 1;
+
+    /// <summary>The stream waits for this station's settings (just switched station, the database away at start).</summary>
+    bool _streamHeld;
+
+    void StartHeldStream()
+    {
+        if (!_streamHeld || !StationCopyIsOurs || IsStandby || _engine is not { } engine) return;
+        _streamHeld = false;
+        if (_settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost)
+            && engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming();
+    }
+
+    /// <summary>Whether the stream may start now; if not (the settings copy is another station's), it waits for them.</summary>
+    bool MayStream()
+    {
+        if (StationCopyIsOurs) return true;
+        if (!_streamHeld) AppLog.Write("Stream: waiting for this station's settings (the copy here is another station's)");
+        _streamHeld = true;
+        return false;
     }
 
     /// <summary>Applies what the station's settings change (after Pro saved them, or this computer's Settings).</summary>

@@ -14,6 +14,8 @@ public static class AppInfo
     public const string ScheduleName = "Sintoniza Pro";
     /// <summary>Starts the app as the schedule program.</summary>
     public const string ScheduleArg = "--schedule";
+    /// <summary>The program started again by itself (to work on another station): it waits for the closing copy's lock.</summary>
+    public const string RestartedArg = "--restarted";
     /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
     public const string ScheduleWmClass = "SintonizaPro";
     /// <summary>The import program: folders of audio into the library, in categories.</summary>

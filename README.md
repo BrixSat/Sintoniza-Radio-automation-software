@@ -121,6 +121,11 @@ engine for decoding, mixing and streaming.
   can't be edited until it has finished playing.
 - **Cartwall**: 12 instant buttons that play over the music, with their length, and a countdown and a progress fill
   while playing. The station's cartwalls are made in Sintoniza Pro; the host picks one and fires its carts.
+- **Several stations in one library**: the music and the users are shared; each station has its own schedule,
+  daily playlists, settings, cartwalls, studios and history. Sintoniza Pro makes stations (Station → New station…,
+  starting from a copy of the settings, without the stream server, RDS name or website upload) and works on one at a time (Station → Work on), without moving a studio's
+  on-air program; each studio chooses the station it puts on air (Settings → General → Station). A user can be
+  limited to some stations (Users).
 - **Users and permissions**: the on-air program, Sintoniza Pro, Sintoniza Import, the playout's Settings and the web
   remote log in with the station's users (kept in the library, the same in every studio; passwords only as a salted PBKDF2 hash). Each user
   gets what they may do — on air, library, programming, voice tracks, traffic, station, users, this computer's settings, web
@@ -547,7 +552,6 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 
 - Auto cue (silence trimming) for files without cue points
 - News and network programmes fetched by FTP/HTTP before air time, checked to be new, with a fallback
-- Several stations in one database and library
 
 ## Support
 

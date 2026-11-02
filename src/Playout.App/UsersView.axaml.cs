@@ -24,6 +24,8 @@ public partial class UsersView : UserControl
     readonly UserStore? _store;
     readonly string _me = "";
     readonly Dictionary<string, CheckBox> _boxes = new();
+    readonly Dictionary<long, CheckBox> _stationBoxes = new();
+    bool _stationsRead;
     List<SintonizaUser> _users = new();
 
     // Parameterless constructor for the XAML previewer.
@@ -60,6 +62,7 @@ public partial class UsersView : UserControl
         SaveUserButton.Click += async (_, _) => await SaveUser();
         AdminPresetButton.Click += (_, _) => { foreach (var (k, b) in _boxes) b.IsChecked = true; };
         PresenterPresetButton.Click += (_, _) => { foreach (var (k, b) in _boxes) b.IsChecked = Permission.Presenter.Contains(k); };
+        AllStationsBox.IsCheckedChanged += (_, _) => StationBoxes.IsEnabled = AllStationsBox.IsChecked != true;
         AttachedToVisualTree += async (_, _) => await Load(null);
     }
 
@@ -70,6 +73,20 @@ public partial class UsersView : UserControl
         if (_store is not { } store) return;
         try { _users = await Task.Run(store.All); }
         catch (Exception ex) { MessageText.Text = ex.Message; return; }
+        // Several stations in the library: which each user may work on.
+        if (_stationBoxes.Count == 0)
+        {
+            List<StationInfo> stations;
+            try { stations = await Task.Run(store.Db.Stations); _stationsRead = true; }
+            catch { stations = new(); }
+            foreach (var station in stations)
+            {
+                var box = new CheckBox { Content = station.Name };
+                _stationBoxes[station.Id] = box;
+                StationBoxes.Children.Add(box);
+            }
+            StationsPanel.IsVisible = stations.Count > 1;
+        }
         UserList.ItemsSource = _users.Select(u => u.Enabled ? u.Name : $"{u.Name}  ({L.T("can't log in")})").ToList();
         int i = _users.FindIndex(u => u.Name == (select ?? _editing?.Name ?? _me));
         UserList.SelectedIndex = Math.Max(0, i);
@@ -89,6 +106,13 @@ public partial class UsersView : UserControl
         EnabledBox.IsEnabled = user.Name != _me;
         foreach (var (key, box) in _boxes) box.IsChecked = user.Can(key);
         _boxes[Permission.Users].IsEnabled = user.Name != _me; // nobody locks themselves out
+        AllStationsBox.IsChecked = user.Stations.Count == 0;
+        foreach (var (id, box) in _stationBoxes) box.IsChecked = user.Stations.Count == 0 || user.Stations.Contains(id);
+        // Nobody shuts themselves out of a station; and whoever may work only on some gives only those.
+        var mine = _users.FirstOrDefault(u => u.Name == _me)?.Stations ?? new();
+        AllStationsBox.IsEnabled = user.Name != _me && mine.Count == 0;
+        StationBoxes.IsEnabled = user.Stations.Count > 0 && user.Name != _me;
+        foreach (var (id, box) in _stationBoxes) box.IsEnabled = mine.Count == 0 || mine.Contains(id);
     }
 
     async Task SaveUser()
@@ -103,7 +127,24 @@ public partial class UsersView : UserControl
         {
             Id = user.Id, Name = name, Enabled = EnabledBox.IsChecked == true,
             Permissions = _boxes.Where(kv => kv.Value.IsChecked == true).Select(kv => kv.Key).ToHashSet(),
+            // The stations list couldn't be read: as they were. Otherwise all, or those ticked.
+            Stations = !_stationsRead ? user.Stations.ToHashSet()
+                : !StationsPanel.IsVisible || AllStationsBox.IsChecked == true ? new()
+                : _stationBoxes.Where(kv => kv.Value.IsChecked == true).Select(kv => kv.Key).ToHashSet(),
         };
+        var mine = _users.FirstOrDefault(u => u.Name == _me)?.Stations ?? new();
+        // Only when the stations change: a password or a name can always be saved.
+        if (mine.Count > 0 && user.Name != _me && !changed.Stations.SetEquals(user.Stations)
+            && (changed.Stations.Count == 0 || !changed.Stations.Except(user.Stations).All(mine.Contains)))
+        {
+            MessageText.Text = L.T("You may only give the stations you work on yourself.");
+            return;
+        }
+        if (StationsPanel.IsVisible && AllStationsBox.IsChecked != true && changed.Stations.Count == 0)
+        {
+            MessageText.Text = L.T("Tick at least one station, or All stations.");
+            return;
+        }
         try
         {
             await Task.Run(() => store.Save(changed, password));

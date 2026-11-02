@@ -9,6 +9,9 @@ namespace Playout.App;
 /// </summary>
 public partial class LoginWindow : Window
 {
+    /// <summary>Any station's user may log in (Sintoniza Import works on the shared library).</summary>
+    public bool AnyStation { get => Panel.AnyStation; set => Panel.AnyStation = value; }
+
     /// <summary>The last user who logged in here (filled in next time).</summary>
     public static string LastUser
     {

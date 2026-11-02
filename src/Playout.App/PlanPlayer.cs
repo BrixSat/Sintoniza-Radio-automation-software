@@ -471,7 +471,7 @@ static class PlanMaker
 /// </summary>
 static class PlanCache
 {
-    static string File => Path.Combine(AppSettings.DataFolder, "plan-cache.json");
+    static string File => AppSettings.StationFile("plan-cache.json");
 
     public static void Save(PlanStore store, DateTime from, DateTime to)
     {
