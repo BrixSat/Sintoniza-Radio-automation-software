@@ -123,6 +123,8 @@ public sealed partial class LibraryDb
         """;
 
     readonly string _connectionString;
+    /// <summary>Its own connections for the studios' few-second check: never waits behind the rest of the program's.</summary>
+    readonly string _studiosConnectionString;
     readonly bool _mySql;
 
     /// <summary>Where the library is, for messages: the file, or user@server/database.</summary>
@@ -157,6 +159,16 @@ public sealed partial class LibraryDb
                 DefaultTimeout = 30, // waits this long for a writer in another program
                 Pooling = true,
             }.ToString();
+        // A connection string of its own is a pool of its own; short timeouts, so a check that can't get through
+        // fails (and says so) well before another studio would take over.
+        _studiosConnectionString = _mySql
+            // A command that hangs gives up in 3 s and closes its connection at once (no second connection to cancel
+            // it first); keepalive finds a dead one sooner. Worst case well inside the take-over time.
+            ? new MySqlConnectionStringBuilder(_connectionString)
+            {
+                ApplicationName = "Sintoniza studios", ConnectionTimeout = 4, DefaultCommandTimeout = 3, CancellationTimeout = -1, Keepalive = 5,
+            }.ToString()
+            : _connectionString;
     }
 
     /// <summary>Opens an SQLite library file.</summary>
@@ -272,9 +284,14 @@ public sealed partial class LibraryDb
     public string ForUpdate => _mySql ? " FOR UPDATE" : "";
 
     /// <summary>A connection to the library, open (for the app's own tables: schedule, as-run).</summary>
-    public DbConnection Connect()
+    public DbConnection Connect() => OpenConnection(_connectionString);
+
+    /// <summary>A connection for the studios' check (which computer is on air), from its own pool.</summary>
+    internal DbConnection ConnectStudios() => OpenConnection(_studiosConnectionString);
+
+    DbConnection OpenConnection(string connectionString)
     {
-        DbConnection c = _mySql ? new MySqlConnection(_connectionString) : new SqliteConnection(_connectionString);
+        DbConnection c = _mySql ? new MySqlConnection(connectionString) : new SqliteConnection(connectionString);
         c.Open();
         return c;
     }

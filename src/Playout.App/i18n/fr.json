@@ -2284,5 +2284,10 @@
  "Not saved: the hour was made again meanwhile. Open the mix editor again.": "Non enregistré : l'heure a été refaite entre-temps. Rouvrez l'éditeur de mixage.",
  "Close without saving the changes to this hour?": "Fermer sans enregistrer les modifications de cette heure ?",
  "From the schedule (an ad break or an event): it doesn't move here, and on air it goes in at its own time, so its place here is close, not exact.": "De la programmation (une pub ou un événement) : il ne bouge pas ici, et à l'antenne il passe à son heure, donc sa place ici est approximative.",
- "A voice track: where it starts over its song is set in Voice track….": "Un voice track : où il commence sur son titre se règle dans Voice track…."
+ "A voice track: where it starts over its song is set in Voice track….": "Un voice track : où il commence sur son titre se règle dans Voice track….",
+ "Studios: the database knows this computer is running again (it hadn't heard from it for {0:0} s)": "Studios : la base de données sait de nouveau que cet ordinateur fonctionne (sans nouvelles depuis {0:0} s)",
+ "Studios: telling the database this computer is running took {0:0.0} s": "Studios : signaler à la base de données que cet ordinateur fonctionne a pris {0:0.0} s",
+ "Studios: can't tell the database this computer is running ({0}); {1:0} s since it last could": "Studios : impossible de signaler à la base de données que cet ordinateur fonctionne ({0}) ; {1:0} s depuis la dernière fois",
+ "Standby: {0} took over; this computer hadn't reached the database for {1:0} s": "En réserve : {0} a pris l'antenne ; cet ordinateur n'atteignait plus la base de données depuis {1:0} s",
+ "Standby: {0} was put on air": "En réserve : {0} a été mis à l'antenne"
 }

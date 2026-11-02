@@ -22,7 +22,7 @@ public sealed partial class LibraryDb
     /// </summary>
     public void StudioSeen(long station, string computer, string playing, string version)
     {
-        using var c = Connect();
+        using var c = ConnectStudios();
         c.Execute(_mySql
             ? $"""
               INSERT INTO studios (station_id, computer, seen_at, playing, version) VALUES (@station, @computer, {NowSql}, @playing, @version)
@@ -39,7 +39,7 @@ public sealed partial class LibraryDb
 
     public StudioList Studios(long station)
     {
-        using var c = Connect();
+        using var c = ConnectStudios();
         string now = c.ExecuteScalar<string>($"SELECT {NowSql}")!;
         var rows = c.Query<(string Computer, string SeenAt, long OnAir, string? Since, string Playing, string Version)>(
                 "SELECT computer, seen_at, on_air, since, playing, version FROM studios WHERE station_id = @station ORDER BY computer", new { station })
@@ -55,7 +55,7 @@ public sealed partial class LibraryDb
     /// </summary>
     public bool TakeOnAir(long station, string computer, TimeSpan? unlessAnswering = null)
     {
-        using var c = Connect();
+        using var c = ConnectStudios();
         using var tx = c.BeginTransaction();
         // MySQL: the station's rows are locked until the end, so another studio taking over at the same moment waits
         // and then finds this one on air. SQLite: one writer at a time anyway.

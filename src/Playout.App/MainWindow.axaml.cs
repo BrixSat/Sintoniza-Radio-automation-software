@@ -621,6 +621,7 @@ public partial class MainWindow : Window
         Part("break countdown", () => UpdateBreakCountdown(now));
         Part("stream", () => UpdateStreamStatus(st));
         Part("on-air sign", () => UpdateOnAirSign(st));
+        _playingText = st.State == PlayerState.Playing && st.Current is { } playing ? playing.Display : "";
         Part("gpio", () => ShowGpio(st));
 
         // Once a second is plenty for the date, ETA column and station info.

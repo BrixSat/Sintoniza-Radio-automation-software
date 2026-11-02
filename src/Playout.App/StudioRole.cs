@@ -16,7 +16,14 @@ sealed class StudioRole : IDisposable
     readonly LibraryService _library;
     readonly Func<string> _playing;
     readonly Func<(bool Auto, int Seconds)> _takeOver;
-    Timer? _timer;
+    Thread? _thread;
+    volatile bool _stopped;
+    /// <summary>When this computer last told the database it is running (for the log when that was held up).</summary>
+    DateTime? _lastSeen;
+    DateTime _lastProblemLogged;
+    string? _problem;
+    /// <summary>How long it had been, at this check, since the one before got through.</summary>
+    TimeSpan _gap;
     readonly object _gate = new(); // one look at the database, or one Take on air, at a time
     readonly TaskCompletionSource _known = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -28,8 +35,48 @@ sealed class StudioRole : IDisposable
         _takeOver = takeOver;
     }
 
-    /// <summary>Starts looking (once <see cref="Changed"/> has its handler, so the first answer isn't missed).</summary>
-    public void Start() => _timer ??= new Timer(_ => Check(), null, TimeSpan.Zero, Every);
+    /// <summary>
+    /// Starts looking (once <see cref="Changed"/> has its handler, so the first answer isn't missed). On a thread of its
+    /// own, not the shared pool: nothing else the program does can hold it up long enough for a standby computer to
+    /// think this one stopped answering.
+    /// </summary>
+    public void Start()
+    {
+        if (_thread != null) return;
+        _thread = new Thread(() =>
+        {
+            while (!_stopped)
+            {
+                var started = DateTime.UtcNow;
+                Check();
+                var wait = Every - (DateTime.UtcNow - started);
+                if (wait > TimeSpan.Zero) Thread.Sleep(wait);
+            }
+        })
+        { IsBackground = true, Name = "Studios", Priority = ThreadPriority.AboveNormal };
+        _thread.Start();
+    }
+
+    /// <summary>For the log: how a check went (slow, failing, or back), at most every 30 s while it lasts.</summary>
+    void Note(string? problem, TimeSpan took)
+    {
+        var now = DateTime.UtcNow;
+        if (problem == null)
+        {
+            // The first after starting has nothing to compare with.
+            var silent = _gap = _lastSeen is { } last ? now - last : TimeSpan.Zero;
+            _lastSeen = now;
+            if (_problem != null || silent > TimeSpan.FromSeconds(6))
+                AppLog.Write(L.F("Studios: the database knows this computer is running again (it hadn't heard from it for {0:0} s)", silent.TotalSeconds));
+            if (took > TimeSpan.FromSeconds(4)) AppLog.Write(L.F("Studios: telling the database this computer is running took {0:0.0} s", took.TotalSeconds));
+            _problem = null;
+            return;
+        }
+        if (problem == _problem && now - _lastProblemLogged < TimeSpan.FromSeconds(30)) return;
+        _problem = problem;
+        _lastProblemLogged = now;
+        AppLog.Write(L.F("Studios: can't tell the database this computer is running ({0}); {1:0} s since it last could", problem, (now - (_lastSeen ?? now)).TotalSeconds));
+    }
 
     /// <summary>Done once this computer knows whether it is on air: read from the database, or a library of its own.</summary>
     public Task Known => _known.Task;
@@ -80,7 +127,14 @@ sealed class StudioRole : IDisposable
                 }
                 return;
             }
-            db.StudioSeen(StationStore.Station, Me, _playing(), Updates.CurrentText);
+            var started = DateTime.UtcNow;
+            try { db.StudioSeen(StationStore.Station, Me, _playing(), Updates.CurrentText); }
+            catch (Exception ex)
+            {
+                Note(ex.Message, DateTime.UtcNow - started);
+                throw;
+            }
+            Note(null, DateTime.UtcNow - started);
             var list = Read(db);
             var onAir = list.OnAir;
             var (auto, seconds) = _takeOver();
@@ -95,7 +149,14 @@ sealed class StudioRole : IDisposable
                 if (db.TakeOnAir(StationStore.Station, Me, TimeSpan.FromSeconds(Math.Max(5, seconds))))
                     Set(false, L.F("On air: {0} stopped answering {1:0} s ago", onAir.Computer, list.Silent(onAir).TotalSeconds));
             }
-            else Set(true, L.F("Standby: {0} is on air", onAir.Computer));
+            else
+            {
+                // Put standby here by another computer while this one was on air: say how long this one had been silent.
+                // A long gap: it took over because this one went silent. Otherwise someone put it on air there.
+                Set(true, Standby ? L.F("Standby: {0} is on air", onAir.Computer)
+                    : _gap > TimeSpan.FromSeconds(6) ? L.F("Standby: {0} took over; this computer hadn't reached the database for {1:0} s", onAir.Computer, _gap.TotalSeconds)
+                    : L.F("Standby: {0} was put on air", onAir.Computer));
+            }
             Read(db);
             _known.TrySetResult();
         }
@@ -124,5 +185,5 @@ sealed class StudioRole : IDisposable
         Changed?.Invoke(standby, why);
     }
 
-    public void Dispose() => _timer?.Dispose();
+    public void Dispose() => _stopped = true;
 }

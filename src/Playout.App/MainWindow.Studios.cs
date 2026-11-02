@@ -7,6 +7,8 @@ namespace Playout.App;
 public partial class MainWindow
 {
     StudioRole? _role;
+    /// <summary>What is on air, for the studios' check (written by the screen, read on the check's thread).</summary>
+    volatile string _playingText = "";
     bool _tookOnAir; // Take on air was pressed here: the playlist made here is kept
 
     /// <summary>Another computer is on air: nothing goes on air from this one.</summary>
@@ -17,7 +19,7 @@ public partial class MainWindow
     {
         if (_engine is not { } engine) return;
         _role = new StudioRole(_library, _settings.WasStandby && _settings.Library.IsMySql,
-            () => engine.GetStatus().Current is { } t && engine.State == PlayerState.Playing ? t.Display : "",
+            () => _playingText, // kept by the screen each second: the check never waits on the engine
             () => (_settings.TakeOver, _settings.TakeOverSeconds));
         SetStandby(_role.Standby);
         _role.Changed += (standby, why) => Dispatcher.UIThread.Post(() => ApplyRole(standby, why));
