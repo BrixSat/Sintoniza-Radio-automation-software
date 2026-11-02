@@ -659,9 +659,15 @@
                             <Grid ColumnDefinitions="Auto,12,*">
                                 <CheckBox x:Name="RdsRtPlusBox" Content="Send RT+ (title and artist tags)" VerticalAlignment="Center" />
                                 <TextBox Grid.Column="2" x:Name="RdsRtPlusCommandBox" FontFamily="monospace" />
+                                <StackPanel Grid.Column="2" x:Name="RdsRtPlusGroupPanel" Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="in group" VerticalAlignment="Center" />
+                                    <ComboBox x:Name="RdsRtPlusGroupBox" Width="100" />
+                                </StackPanel>
                             </Grid>
-                            <TextBlock Classes="note"
+                            <TextBlock Classes="note" x:Name="RdsRtPlusAsciiNote"
                                        Text="RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent after the radio text: {type1},{start1},{len1} and {type2},{start2},{len2} are the content type (1 title, 4 artist), first character (from 0) and length marker (characters − 1) of each tag. Check the command in the encoder's manual; some need RT+ switched on in their setup too." />
+                            <TextBlock Classes="note" x:Name="RdsRtPlusUecpNote"
+                                       Text="RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent with the radio text as an RT+ application (ODA, AID 4BD7) in the group chosen here, announced in type 3A groups. In the encoder, put 3A and that group (usually 11A) in its group sequence, or they won't go out." />
                         </StackPanel>
 
                         <Grid x:Name="RdsUecpPanel" ColumnDefinitions="*,12,*">

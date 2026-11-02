@@ -899,6 +899,54 @@ Console.WriteLine("Now playing for the website (templates, files, the delay, son
     held.ForEach(c => c.Dispose());
 }
 
+// ───────────────────────── RDS: RT+ over UECP ─────────────────────────
+
+Console.WriteLine("RDS: RT+ over UECP (as an encoder reads the frames)");
+{
+    var rds = new RdsSettings { Protocol = RdsProtocol.Uecp, RtPlus = true, RtPlusGroup = 11, SiteAddress = 1, EncoderAddress = 2 };
+    var song = new Track(Guid.NewGuid(), songs[0], "Dulce Pontes", "Canção do Mar", 200);
+    var (ps, rt) = RdsText.Compose(rds, song, "Rádio Check");
+    var tags = RdsText.RtPlusTags(rds, song, rt);
+    byte[] bytes = RdsText.Uecp(rds, ps, rt, true, tags, toggle: true);
+
+    // The frames: FE … FF, with FD 00/01/02 standing for FD/FE/FF; address, sequence, length, message, CRC.
+    var messages = new List<byte[]>();
+    bool crcOk = true;
+    for (int i = 0; i < bytes.Length; i++)
+    {
+        if (bytes[i] != 0xFE) continue;
+        var body = new List<byte>();
+        for (i++; bytes[i] != 0xFF; i++) body.Add(bytes[i] == 0xFD ? (byte)(0xFD + bytes[++i]) : bytes[i]);
+        ushort crc = (ushort)(body[^2] << 8 | body[^1]);
+        crcOk &= RdsText.Crc(body.Take(body.Count - 2)) == crc && body[0] == 0x00 && body[1] == 0x42 && body[3] == body.Count - 6;
+        messages.Add(body.Skip(4).Take(body[3]).ToArray());
+    }
+    Check(crcOk && messages.Count == 6, $"PS, RT and four RT+ messages, each in a frame with its address and a good CRC ({messages.Count})");
+    var config = messages.Where(m => m[0] == 0x40).ToList();
+    Check(config.Count == 2 && config[0].SequenceEqual(new byte[] { 0x40, 0x16, 0x4B, 0xD7, 0x03, 0, 0, 0 }) && config[1].SequenceEqual(new byte[] { 0x40, 0x16, 0x4B, 0xD7, 0x02, 0, 0, 3 }),
+        "the RT+ application (AID 4BD7) announced in group 11A, replacing what the encoder had (silent for 3 minutes: the encoder says so)");
+    Check(RdsText.RtPlusUecp(rds, tags, false, announce: false).All(m => m[0] == 0x42), "…announced once per connection: after that, only the tags");
+    var group = messages.Last(m => m[0] == 0x42);
+    ulong bits = (ulong)(group[3] & 0x1F) << 32 | (ulong)group[4] << 24 | (ulong)group[5] << 16 | (ulong)group[6] << 8 | group[7];
+    int Field(int from, int width) => (int)(bits >> (37 - from - width) & ((1UL << width) - 1));
+    string Tagged(int start, int len) => rt.Substring(start, len + 1);
+    Check(group[1] == 0x16 && group[2] == 0x02 && Field(0, 1) == 1 && Field(1, 1) == 1, "the tags in a free-format group 11A, item toggle and item running set");
+    Check(Field(2, 6) == RdsText.RtPlusTitle && Tagged(Field(8, 6), Field(14, 6)) == "Canção do Mar"
+          && Field(20, 6) == RdsText.RtPlusArtist && Tagged(Field(26, 6), Field(32, 5)) == "Dulce Pontes",
+        $"…which mark the title and the artist in the radio text ({rt})");
+
+    // The item toggle changes with each new song, even when its tags fall in the same places as the last one's.
+    using var output = new RdsOutput(rds.Clone(), "Rádio Check");
+    bool Toggle() => (bool)typeof(RdsOutput).GetField("_toggle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(output)!;
+    output.Update(song);
+    bool first = Toggle();
+    var next = new Track(Guid.NewGuid(), songs[1], "Dulce Pontez", "Canção do Mal", 200); // the same lengths
+    output.Update(next);
+    bool second = Toggle();
+    output.Update(next, new ShowInfo("Manhãs", "Rita", "")); // the same song, the show's name changed
+    Check(second != first && Toggle() == second, $"RT+ item toggle: changed for a new song with equally long names, not for the same song ({first}, {second}, {Toggle()})");
+}
+
 // ───────────────────────── Release notes ─────────────────────────
 
 Console.WriteLine("Release notes in the update window");

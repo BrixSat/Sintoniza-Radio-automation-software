@@ -296,8 +296,9 @@ engine for decoding, mixing and streaming.
   live show on air (empty when none is); the PS is fixed. It is sent when
   the item changes and again every minute, so a restarted encoder catches up. Encoders are reached by TCP, UDP or
   a serial port, with **ASCII commands** (`RT=` / `PS=` by default, editable: PIRA32, P232, MRDS, DEVA and most
-  others) or **UECP**; or the text is written to a file. *Send now* tests the connection. With ASCII commands it
-  can also send **RT+** tags (where the title and the artist are in the radio text), with an editable command.
+  others) or **UECP**; or the text is written to a file. *Send now* tests the connection. It can also send
+  **RT+** tags (where the title and the artist are in the radio text): with an editable command over
+  ASCII, or over UECP as the RT+ application (ODA, AID 4BD7) in group 11A or another, announced in type 3A groups.
 - Remembers the playlist, carts and settings between runs.
 - **Never off air** (Settings → Safety):
   - **Silence detection**: if nothing is heard for a set time (default 15 s under -45 dB) while an item plays, AUTO
@@ -546,7 +547,6 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 - Auto cue (silence trimming) for files without cue points
 - News and network programmes fetched by FTP/HTTP before air time, checked to be new, with a fallback
 - Several stations in one database and library
-- RT+ over UECP (it is sent with ASCII commands now)
 
 ## Support
 

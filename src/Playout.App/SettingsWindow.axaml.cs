@@ -536,6 +536,8 @@ public partial class SettingsWindow : PageWindow
         RdsRtCommandBox.Text = rds.RtCommand;
         RdsCharsetBox.SelectedIndex = (int)rds.Charset;
         RdsRtPlusBox.IsChecked = rds.RtPlus;
+        RdsRtPlusGroupBox.ItemsSource = RdsText.RtPlusGroups.Select(g => $"{g}A").ToList();
+        RdsRtPlusGroupBox.SelectedIndex = Math.Max(0, Array.IndexOf(RdsText.RtPlusGroups, rds.RtPlusGroup) is var at and >= 0 ? at : Array.IndexOf(RdsText.RtPlusGroups, 11));
         RdsRtPlusCommandBox.Text = rds.RtPlusCommand;
         RdsRtPlusBox.IsCheckedChanged += (_, _) => ShowRds();
         RdsSiteBox.Value = rds.SiteAddress;
@@ -566,8 +568,10 @@ public partial class SettingsWindow : PageWindow
         RdsSerialPanel.IsVisible = !file && connection == RdsConnection.Serial;
         RdsFilePanel.IsVisible = file;
         RdsAsciiPanel.IsVisible = protocol == RdsProtocol.Ascii;
-        RdsRtPlusPanel.IsVisible = protocol == RdsProtocol.Ascii;
-        RdsRtPlusCommandBox.IsEnabled = RdsRtPlusBox.IsChecked == true;
+        RdsRtPlusPanel.IsVisible = protocol is RdsProtocol.Ascii or RdsProtocol.Uecp;
+        RdsRtPlusCommandBox.IsVisible = RdsRtPlusAsciiNote.IsVisible = protocol == RdsProtocol.Ascii;
+        RdsRtPlusGroupPanel.IsVisible = RdsRtPlusUecpNote.IsVisible = protocol == RdsProtocol.Uecp;
+        RdsRtPlusCommandBox.IsEnabled = RdsRtPlusGroupPanel.IsEnabled = RdsRtPlusBox.IsChecked == true;
         RdsUecpPanel.IsVisible = protocol == RdsProtocol.Uecp;
         RdsFileText.Text = _rdsFile.Length > 0 ? _rdsFile : L.T("No file chosen");
         ToolTip.SetTip(RdsFileText, _rdsFile.Length > 0 ? _rdsFile : null);
@@ -590,6 +594,7 @@ public partial class SettingsWindow : PageWindow
         PsCommand = RdsPsCommandBox.Text ?? "",
         RtCommand = RdsRtCommandBox.Text ?? "",
         RtPlus = RdsRtPlusBox.IsChecked == true,
+        RtPlusGroup = RdsText.RtPlusGroups[Math.Clamp(RdsRtPlusGroupBox.SelectedIndex, 0, RdsText.RtPlusGroups.Length - 1)],
         RtPlusCommand = RdsRtPlusCommandBox.Text?.Trim() is { Length: > 0 } rtPlus ? rtPlus : new RdsSettings().RtPlusCommand,
         Charset = (RdsCharset)Math.Max(0, RdsCharsetBox.SelectedIndex),
         SiteAddress = (int)(RdsSiteBox.Value ?? 0),

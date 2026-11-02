@@ -58,10 +58,12 @@ public sealed class RdsSettings
     public string PsCommand { get; set; } = "PS={ps}";
     public string RtCommand { get; set; } = "RT={rt}";
     /// <summary>
-    /// RT+ (ASCII commands only): tells radios which part of the radio text is the title and which the artist, so
-    /// they can show them apart. Sent after the radio text with <see cref="RtPlusCommand"/>.
+    /// RT+: tells radios which part of the radio text is the title and which the artist, so they can show them apart.
+    /// ASCII: sent after the radio text with <see cref="RtPlusCommand"/>; UECP: as RT+ ODA groups (<see cref="RtPlusGroup"/>).
     /// </summary>
     public bool RtPlus { get; set; }
+    /// <summary>UECP: the group type RT+ is sent in (version A), announced in type 3A groups; 11 = 11A, the usual one.</summary>
+    public int RtPlusGroup { get; set; } = 11;
     /// <summary>{type1},{start1},{len1},{type2},{start2},{len2}: content type (1 title, 4 artist, 0 none), first character (from 0) and length marker (characters − 1), as in the RT+ standard.</summary>
     public string RtPlusCommand { get; set; } = "RTP={type1},{start1},{len1},{type2},{start2},{len2}";
     [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -238,8 +240,14 @@ public static class RdsText
 
     // ───────────────────────── UECP ─────────────────────────
 
-    /// <summary>UECP frames that set the PS and the RT; <paramref name="newText"/> tells radios to clear the old text first.</summary>
-    public static byte[] Uecp(RdsSettings s, string ps, string rt, bool newText)
+    /// <summary>
+    /// UECP frames that set the PS and the RT; <paramref name="newText"/> tells radios to clear the old text first.
+    /// With RT+ on: the RT+ application announced (ODA, MEC 40) and its tags (ODA free-format group, MEC 42), each
+    /// replacing what the encoder had, so nothing piles up when it is sent again; <paramref name="toggle"/> is the RT+
+    /// item toggle, changed for each new item.
+    /// </summary>
+    public static byte[] Uecp(RdsSettings s, string ps, string rt, bool newText, (RtPlusTag First, RtPlusTag Second)? rtPlus = null, bool toggle = false,
+        bool announce = true)
     {
         var psMessage = new List<byte> { 0x02, 0x00, 0x00 }; // MEC PS, data set: current, programme service: 0
         psMessage.AddRange(ps.Select(RdsByte));
@@ -249,8 +257,54 @@ public static class RdsText
         rtMessage.Add((byte)(newText ? 0x01 : 0x00)); // toggle the A/B flag (radios clear the old text); repeat until replaced
         rtMessage.AddRange(rtText);
 
-        return [.. Frame(s, psMessage), .. Frame(s, rtMessage)];
+        var frames = new List<byte>();
+        frames.AddRange(Frame(s, psMessage));
+        frames.AddRange(Frame(s, rtMessage));
+        if (s.RtPlus && rtPlus is { } tags)
+            foreach (var message in RtPlusUecp(s, tags, toggle, announce)) frames.AddRange(Frame(s, message));
+        return frames.ToArray();
     }
+
+    /// <summary>The RT+ application's identifier (AID).</summary>
+    public const ushort RtPlusAid = 0x4BD7;
+
+    /// <summary>
+    /// The UECP messages for RT+ (SPB 490): the type 3A announcement of AID 4BD7 in the chosen group type, and the
+    /// tags as a free-format group of that type: 37 bits, item toggle, item running, then each tag's content type,
+    /// start and length marker (the second tag's length in 5 bits). No song (no tags): item running off.
+    /// </summary>
+    /// <param name="announce">With the announcement (configuration: after connecting, not each time the tags change).</param>
+    public static List<List<byte>> RtPlusUecp(RdsSettings s, (RtPlusTag First, RtPlusTag Second) tags, bool toggle, bool announce = true)
+    {
+        byte group = (byte)((RtPlusGroups.Contains(s.RtPlusGroup) ? s.RtPlusGroup : 11) << 1); // bits 4..1 the group type, bit 0 version A
+        // If the playout stops sending, the encoder says so (3A with group code 1F) after this many minutes.
+        byte timeout = (byte)Math.Clamp((int)Math.Ceiling(Math.Max(5, s.ResendSeconds) / 60.0) + 2, 1, 255);
+        var (a, b) = tags;
+        bool running = a.Type != 0 || b.Type != 0;
+        ulong bits = 0;
+        void Put(int value, int width) => bits = (bits << width) | ((ulong)value & ((1UL << width) - 1));
+        Put(toggle ? 1 : 0, 1);
+        Put(running ? 1 : 0, 1);
+        Put(a.Type, 6); Put(a.Start, 6); Put(a.Length, 6);
+        Put(b.Type, 6); Put(b.Start, 6); Put(b.Length, 5);
+        byte block2 = (byte)(bits >> 32 & 0x1F);
+        ushort block3 = (ushort)(bits >> 16), block4 = (ushort)bits;
+        var messages = new List<List<byte>>();
+        if (announce)
+        {
+            // ODA configuration: remove this group type's 3A groups, then add AID 4BD7 for cyclic transmission
+            // (message bits 0: RT+ with no template), with the data input timeout.
+            messages.Add([0x40, group, RtPlusAid >> 8, RtPlusAid & 0xFF, 0x03, 0x00, 0x00, 0x00]);
+            messages.Add([0x40, group, RtPlusAid >> 8, RtPlusAid & 0xFF, 0x02, 0x00, 0x00, timeout]);
+        }
+        // ODA free-format group: clear the buffer, then the tags for cyclic transmission (normal priority and mode).
+        messages.Add([0x42, group, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00]);
+        messages.Add([0x42, group, 0x02, block2, (byte)(block3 >> 8), (byte)block3, (byte)(block4 >> 8), (byte)block4]);
+        return messages;
+    }
+
+    /// <summary>The group types RT+ is offered in over UECP (version A): those RT+ usually uses, free of other services.</summary>
+    public static readonly int[] RtPlusGroups = [11, 12];
 
     static byte[] Frame(RdsSettings s, List<byte> message)
     {
@@ -300,6 +354,11 @@ public sealed class RdsOutput : IDisposable
     (string Ps, string Rt) _text;
     (RdsText.RtPlusTag, RdsText.RtPlusTag) _tags;
     bool _newText = true;
+    /// <summary>RT+ item toggle: changed for each new song, so radios know a new title and artist started.</summary>
+    bool _toggle;
+    Guid? _toggledFor;
+    /// <summary>When the RT+ announcement (configuration) was last sent on this connection (null: not yet).</summary>
+    DateTime? _announced;
     string? _key;
     TcpClient? _tcp;
     UdpClient? _udp;
@@ -331,6 +390,12 @@ public sealed class RdsOutput : IDisposable
         {
             if (text == _text && tags == _tags) return;
             _text = text;
+            // A new song on air (not the tags moving because the show's name in the text changed).
+            if (tags.Item1.Type != 0 && onAir is { } song && song.Id != _toggledFor)
+            {
+                _toggle = !_toggle;
+                _toggledFor = song.Id;
+            }
             _tags = tags;
             _newText = true;
         }
@@ -368,11 +433,12 @@ public sealed class RdsOutput : IDisposable
         {
             (string Ps, string Rt) text;
             (RdsText.RtPlusTag, RdsText.RtPlusTag) tags;
-            bool newText;
+            bool newText, toggle;
             lock (_lock)
             {
                 text = _text;
                 tags = _tags;
+                toggle = _toggle;
                 newText = _newText;
                 _newText = false;
             }
@@ -380,7 +446,15 @@ public sealed class RdsOutput : IDisposable
             try
             {
                 if (_s.Protocol == RdsProtocol.TextFile) WriteFile(text.Rt);
-                else Write(_s.Protocol == RdsProtocol.Uecp ? RdsText.Uecp(_s, text.Ps, text.Rt, newText) : RdsText.Ascii(_s, text.Ps, text.Rt, tags));
+                else if (_s.Protocol == RdsProtocol.Uecp)
+                {
+                    // After connecting, and every 10 minutes for an encoder that restarted without the connection
+                    // noticing (UDP, a serial line).
+                    bool announce = _announced is not { } at || DateTime.UtcNow - at > TimeSpan.FromMinutes(10);
+                    Write(RdsText.Uecp(_s, text.Ps, text.Rt, newText, tags, toggle, announce));
+                    if (announce) _announced = DateTime.UtcNow;
+                }
+                else Write(RdsText.Ascii(_s, text.Ps, text.Rt, tags));
             }
             catch (Exception ex)
             {
@@ -457,6 +531,7 @@ public sealed class RdsOutput : IDisposable
         _tcp = null;
         _udp = null;
         _serial = null;
+        _announced = null; // a new connection: the RT+ announcement goes again
     }
 
     public void Dispose()

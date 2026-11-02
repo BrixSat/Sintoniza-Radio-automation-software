@@ -2289,5 +2289,7 @@
  "Studios: telling the database this computer is running took {0:0.0} s": "Studios : signaler à la base de données que cet ordinateur fonctionne a pris {0:0.0} s",
  "Studios: can't tell the database this computer is running ({0}); {1:0} s since it last could": "Studios : impossible de signaler à la base de données que cet ordinateur fonctionne ({0}) ; {1:0} s depuis la dernière fois",
  "Standby: {0} took over; this computer hadn't reached the database for {1:0} s": "En réserve : {0} a pris l'antenne ; cet ordinateur n'atteignait plus la base de données depuis {1:0} s",
- "Standby: {0} was put on air": "En réserve : {0} a été mis à l'antenne"
+ "Standby: {0} was put on air": "En réserve : {0} a été mis à l'antenne",
+ "in group": "dans le groupe",
+ "RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent with the radio text as an RT+ application (ODA, AID 4BD7) in the group chosen here, announced in type 3A groups. In the encoder, put 3A and that group (usually 11A) in its group sequence, or they won't go out.": "Le RT+ indique aux récepteurs quelle partie du radiotexte est le titre et laquelle l'artiste, pour les afficher et les garder à part. Envoyé avec le radiotexte comme application RT+ (ODA, AID 4BD7) dans le groupe choisi ici, annoncée dans des groupes 3A. Dans le codeur, mettez 3A et ce groupe (en général 11A) dans sa séquence de groupes, sinon ils ne partent pas."
 }
