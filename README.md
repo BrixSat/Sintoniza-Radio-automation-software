@@ -206,8 +206,8 @@ engine for decoding, mixing and streaming.
     less than 10 minutes away, a **BREAK IN mm:ss** countdown shows on the deck with how it starts, red in its
     last minute.
   - Each starts in one of three ways:
-    - **soft**: after the item on air ends, optionally at most N minutes late (then what is on air fades out). A
-      window such as "between :48 and :55" is a soft break at :48, at most 7 minutes late;
+    - **soft**: after the item on air ends, optionally at most N minutes late (then what is on air fades out) and
+      from N minutes early: a window such as "between :48 and :55", where it takes the first song end;
     - **hard**: on the second, fading out what is on air;
     - **ends at its time** (backtimed): for a break that has to finish before the news, e.g. at 59:55. It goes into
       the playlist 15 minutes before, where it will fit best, and the songs before it are adjusted as the hour goes

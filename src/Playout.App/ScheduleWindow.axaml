@@ -319,11 +319,16 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="EventSoftBox" GroupName="EventStart" Content="Soft: after the item on air ends" />
-                                <WrapPanel x:Name="EventDelayPanel" ItemSpacing="6" LineSpacing="4" Margin="28,0,0,6">
-                                    <TextBlock Text="at most" VerticalAlignment="Center" />
-                                    <NumericUpDown x:Name="EventDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
-                                    <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
-                                </WrapPanel>
+                                <StackPanel x:Name="EventDelayPanel" Spacing="4" Margin="28,0,0,6">
+                                    <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                        <TextBlock Text="may start" VerticalAlignment="Center" />
+                                        <NumericUpDown x:Name="EventEarlyBox" Minimum="0" Maximum="30" Increment="1" FormatString="0" Width="100" />
+                                        <TextBlock Text="min early, at most" VerticalAlignment="Center" />
+                                        <NumericUpDown x:Name="EventDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
+                                        <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
+                                    </WrapPanel>
+                                    <TextBlock x:Name="EventWindowText" Classes="note" TextWrapping="Wrap" />
+                                </StackPanel>
                                 <RadioButton x:Name="EventHardBox" GroupName="EventStart" Content="Hard: on the second" />
                                 <RadioButton x:Name="EventEndBox" GroupName="EventStart" Content="Ends at its time (songs adjusted)" />
                             </StackPanel>
@@ -396,11 +401,16 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Start" />
                                 <RadioButton x:Name="BreakSoftBox" GroupName="BreakStart" Content="Soft: after the item on air ends" />
-                                <WrapPanel x:Name="BreakDelayPanel" ItemSpacing="6" LineSpacing="4" Margin="28,0,0,6">
-                                    <TextBlock Text="at most" VerticalAlignment="Center" />
-                                    <NumericUpDown x:Name="BreakDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
-                                    <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
-                                </WrapPanel>
+                                <StackPanel x:Name="BreakDelayPanel" Spacing="4" Margin="28,0,0,6">
+                                    <WrapPanel ItemSpacing="6" LineSpacing="4">
+                                        <TextBlock Text="may start" VerticalAlignment="Center" />
+                                        <NumericUpDown x:Name="BreakEarlyBox" Minimum="0" Maximum="30" Increment="1" FormatString="0" Width="100" />
+                                        <TextBlock Text="min early, at most" VerticalAlignment="Center" />
+                                        <NumericUpDown x:Name="BreakDelayBox" Minimum="0" Maximum="60" Increment="1" FormatString="0" Width="100" />
+                                        <TextBlock Text="min late (0 = no limit)" VerticalAlignment="Center" />
+                                    </WrapPanel>
+                                    <TextBlock x:Name="BreakWindowText" Classes="note" TextWrapping="Wrap" />
+                                </StackPanel>
                                 <RadioButton x:Name="BreakHardBox" GroupName="BreakStart" Content="Hard: on the second" />
                                 <RadioButton x:Name="BreakEndBox" GroupName="BreakStart" Content="Ends at its time (songs adjusted)" />
                             </StackPanel>

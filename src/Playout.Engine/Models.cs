@@ -55,6 +55,11 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
     /// </summary>
     public bool Backtime { get; init; }
 
+    /// <summary>
+    /// The time a scheduled break that went in early is for (UTC): with the player stopped it doesn't go on air before.
+    /// </summary>
+    public DateTime? NotBefore { get; init; }
+
     /// <summary>When it went on air (UTC); null while it hasn't.</summary>
     public DateTime? PlayedAt { get; init; }
 
@@ -151,7 +156,9 @@ public enum ItemLock
 /// </summary>
 public enum EventStart { Soft, Hard, EndAt }
 
-public sealed record EventTiming(EventStart Start, TimeSpan? MaxDelay = null, DateTime? EndsAt = null)
+/// <param name="NotBefore">The time it is for (UTC), when it goes in early (a soft one with a window): with the player
+/// stopped, a break waits for it rather than going on air at once.</param>
+public sealed record EventTiming(EventStart Start, TimeSpan? MaxDelay = null, DateTime? EndsAt = null, DateTime? NotBefore = null)
 {
     public static readonly EventTiming Soft = new(EventStart.Soft);
     public static readonly EventTiming Hard = new(EventStart.Hard);

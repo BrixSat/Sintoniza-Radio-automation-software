@@ -648,7 +648,7 @@ CHAPTERS = [
     ]),
     ("p", "Then choose how it starts:"),
     ("list", [
-        "<b>Soft</b> waits for the item on air to end. You can set how late it may be at most.",
+        "<b>Soft</b> waits for the item on air to end. You can let it start a few minutes <b>early</b> and set how <b>late</b> it may be at most: a window, such as the traffic report between 8:05 and 8:20, that takes the first song end in it. If no song ends in time, what is on air fades out at the end of the window. A window never opens before its own hour starts, so a 10:00 break stays in the 10 o'clock hour.",
         "<b>Hard</b> starts on the second, and what is on air fades out.",
         "<b>Ends at its time</b> finishes exactly at the time you give, never later. Use it for whatever has to end just before the news.",
     ]),

@@ -213,7 +213,7 @@ public partial class ScheduleWindow : Window
         EventInputButton.Click += (_, _) => InputMenu(EventInputButton, path => EventPathBox.Text = path);
         EventMaxAgeBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.MaxAgeMinutes = (int)(EventMaxAgeBox.Value ?? 0));
         EventStreamMinutesBox.ValueChanged += (_, _) => Edit<ScheduledEvent>(EventList, e => e.StreamMinutes = (double)(EventStreamMinutesBox.Value ?? 0));
-        WireStart(EventList, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel);
+        WireStart(EventList, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel, EventEarlyBox, EventWindowText);
         WireSeries();
     }
 
@@ -227,7 +227,7 @@ public partial class ScheduleWindow : Window
         EventPathBox.Text = e?.Path ?? "";
         EventMaxAgeBox.Value = e?.MaxAgeMinutes ?? 0;
         EventStreamMinutesBox.Value = (decimal)(e?.StreamMinutes ?? 0);
-        ShowStart(e, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel);
+        ShowStart(e, EventSoftBox, EventHardBox, EventEndBox, EventDelayBox, EventLockBox, EventDelayPanel, EventEarlyBox, EventWindowText);
         _loading = false;
         ShowEventPathKind();
         ShowSeries(e);
@@ -627,7 +627,7 @@ public partial class ScheduleWindow : Window
         BreakNameBox.TextChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Name = BreakNameBox.Text?.Trim() ?? "");
         BreakEnabledBox.IsCheckedChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.Enabled = BreakEnabledBox.IsChecked == true);
         BreakMaxBox.ValueChanged += (_, _) => Edit<AdBreak>(BreakList, b => b.MaxSeconds = (double)(BreakMaxBox.Value ?? 0));
-        WireStart(BreakList, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
+        WireStart(BreakList, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel, BreakEarlyBox, BreakWindowText);
 
         // The running order.
         PartList.SelectionChanged += (_, _) => ShowPart();
@@ -776,7 +776,7 @@ public partial class ScheduleWindow : Window
         BreakNameBox.Text = b?.Name ?? "";
         BreakEnabledBox.IsChecked = b?.Enabled ?? true;
         BreakMaxBox.Value = (decimal)(b?.MaxSeconds ?? 0);
-        ShowStart(b, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel);
+        ShowStart(b, BreakSoftBox, BreakHardBox, BreakEndBox, BreakDelayBox, BreakLockBox, BreakDelayPanel, BreakEarlyBox, BreakWindowText);
         _loading = false;
         ShowParts(0);
         ShowBooked();
@@ -1254,7 +1254,8 @@ public partial class ScheduleWindow : Window
     // ───────────────────────── Shared ─────────────────────────
 
     /// <summary>The start choices and the lock of an event or break, wired to the selected one.</summary>
-    void WireStart(ListBox list, RadioButton soft, RadioButton hard, RadioButton end, NumericUpDown delay, ComboBox lockBox, Control delayPanel)
+    void WireStart(ListBox list, RadioButton soft, RadioButton hard, RadioButton end, NumericUpDown delay, ComboBox lockBox, Control delayPanel,
+        NumericUpDown early, TextBlock window)
     {
         void Changed()
         {
@@ -1262,17 +1263,29 @@ public partial class ScheduleWindow : Window
             {
                 e.Start = hard.IsChecked == true ? EventStart.Hard : end.IsChecked == true ? EventStart.EndAt : EventStart.Soft;
                 e.MaxDelayMinutes = (double)(delay.Value ?? 0);
+                e.MaxEarlyMinutes = (double)(early.Value ?? 0);
                 e.Lock = (ItemLock)Math.Max(0, lockBox.SelectedIndex);
             });
             delayPanel.IsEnabled = soft.IsChecked == true;
+            window.Text = WindowText((double)(early.Value ?? 0), (double)(delay.Value ?? 0));
         }
         foreach (var r in new[] { soft, hard, end }) r.IsCheckedChanged += (_, _) => Changed();
         delay.ValueChanged += (_, _) => Changed();
+        early.ValueChanged += (_, _) => Changed();
         lockBox.SelectionChanged += (_, _) => Changed();
     }
 
-    static void ShowStart(ScheduleEntry? e, RadioButton soft, RadioButton hard, RadioButton end, NumericUpDown delay, ComboBox lockBox, Control delayPanel)
+    /// <summary>The soft start as a window, in words: "Between 5 min before its time and 10 min after: …".</summary>
+    static string WindowText(double early, double late) =>
+        early <= 0 && late <= 0 ? L.T("It waits for the item on air to end, however long that is.")
+        : late <= 0 ? L.F("From {0:0} min before its time, at the first item's end (it waits for that, however long).", early)
+        : L.F("At the first item's end between {0:0} min before its time and {1:0} min after; if none ends by then, what is on air fades.", early, late);
+
+    static void ShowStart(ScheduleEntry? e, RadioButton soft, RadioButton hard, RadioButton end, NumericUpDown delay, ComboBox lockBox, Control delayPanel,
+        NumericUpDown early, TextBlock window)
     {
+        early.Value = (decimal)(e?.MaxEarlyMinutes ?? 0);
+        window.Text = WindowText(e?.MaxEarlyMinutes ?? 0, e?.MaxDelayMinutes ?? 0);
         var start = e?.Start ?? EventStart.Soft;
         soft.IsChecked = start == EventStart.Soft;
         hard.IsChecked = start == EventStart.Hard;
@@ -1286,7 +1299,9 @@ public partial class ScheduleWindow : Window
     {
         EventStart.Hard => L.T("hard"),
         EventStart.EndAt => L.T("ends at its time"),
-        _ => e.MaxDelayMinutes > 0 ? L.F("soft, ≤ {0:0} min late", e.MaxDelayMinutes) : L.T("soft"),
+        _ => e.MaxEarlyMinutes > 0 && e.MaxDelayMinutes > 0 ? L.F("soft, −{0:0} to +{1:0} min", e.MaxEarlyMinutes, e.MaxDelayMinutes)
+            : e.MaxEarlyMinutes > 0 ? L.F("soft, from {0:0} min early", e.MaxEarlyMinutes)
+            : e.MaxDelayMinutes > 0 ? L.F("soft, ≤ {0:0} min late", e.MaxDelayMinutes) : L.T("soft"),
     }) + e.Lock switch
     {
         ItemLock.Locked => L.T(" · locked"),

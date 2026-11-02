@@ -42,6 +42,7 @@ sealed class ScheduleStore(LibraryDb db)
         public long Enabled { get; set; }
         public string StartMode { get; set; } = "";
         public double MaxDelayMinutes { get; set; }
+        public double MaxEarlyMinutes { get; set; }
         public string LockLevel { get; set; } = "";
         public string Path { get; set; } = "";
         public double StreamMinutes { get; set; }
@@ -153,7 +154,7 @@ sealed class ScheduleStore(LibraryDb db)
         long version = c.ExecuteScalar<long?>("SELECT version FROM schedule_versions WHERE station_id = @Station", p, tx) ?? 0;
         var entries = c.Query<EntryRow>(
             """
-            SELECT id AS Id, type AS Type, name AS Name, enabled AS Enabled, start_mode AS StartMode, max_delay_minutes AS MaxDelayMinutes,
+            SELECT id AS Id, type AS Type, name AS Name, enabled AS Enabled, start_mode AS StartMode, max_delay_minutes AS MaxDelayMinutes, max_early_minutes AS MaxEarlyMinutes,
                    lock_level AS LockLevel, path AS Path, stream_minutes AS StreamMinutes, max_age_minutes AS MaxAgeMinutes,
                    artist_hours AS ArtistHours, album_hours AS AlbumHours, max_slow_in_row AS MaxSlowInRow, max_seconds AS MaxSeconds,
                    presenter AS Presenter, show_minutes AS ShowMinutes, notes AS Notes, season_id AS SeasonId
@@ -236,6 +237,7 @@ sealed class ScheduleStore(LibraryDb db)
             entry.Enabled = e.Enabled != 0;
             entry.Start = Enum.TryParse<EventStart>(e.StartMode, out var start) ? start : EventStart.Soft;
             entry.MaxDelayMinutes = e.MaxDelayMinutes;
+            entry.MaxEarlyMinutes = e.MaxEarlyMinutes;
             entry.Lock = Enum.TryParse<ItemLock>(e.LockLevel, out var l) ? l : ItemLock.Free;
             entry.Slots = slots[e.Id].Select(r => new WeekTime { Day = (DayOfWeek)r.Weekday, Time = r.Time }).ToList();
             entry.Dates = dates[e.Id].Select(r => DateTime.TryParseExact(r.At, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out var at) ? at : (DateTime?)null)
@@ -301,14 +303,14 @@ sealed class ScheduleStore(LibraryDb db)
             c.Execute(
                 """
                 INSERT INTO schedule_entries (id, station_id, type, position, name, enabled, start_mode, max_delay_minutes, lock_level, path, stream_minutes, max_age_minutes,
-                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, notes, season_id)
+                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, notes, season_id, max_early_minutes)
                 VALUES (@id, @Station, @type, @position, @name, @enabled, @start, @delay, @lock, @path, @stream, @age, @artistHours, @albumHours, @slow, @maxSeconds,
-                        @presenter, @showMinutes, @notes, @season)
+                        @presenter, @showMinutes, @notes, @season, @early)
                 """,
                 new
                 {
                     id, Station, type, position, name = entry.Name, enabled = entry.Enabled ? 1 : 0, start = entry.Start.ToString(),
-                    delay = entry.MaxDelayMinutes, @lock = entry.Lock.ToString(), path = ev?.Path ?? "", stream = ev?.StreamMinutes ?? 0, age = ev?.MaxAgeMinutes ?? 0,
+                    delay = entry.MaxDelayMinutes, early = entry.MaxEarlyMinutes, @lock = entry.Lock.ToString(), path = ev?.Path ?? "", stream = ev?.StreamMinutes ?? 0, age = ev?.MaxAgeMinutes ?? 0,
                     artistHours = (entry as PlaylistTemplate)?.ArtistHours ?? 0, albumHours = (entry as PlaylistTemplate)?.AlbumHours ?? 0,
                     slow = (entry as PlaylistTemplate)?.MaxSlowInRow ?? 0, maxSeconds = (entry as AdBreak)?.MaxSeconds ?? 0,
                     presenter = (entry as LiveShow)?.Presenter ?? "", showMinutes = (entry as LiveShow)?.Minutes ?? 0, notes = (entry as LiveShow)?.Notes ?? "",

@@ -449,7 +449,10 @@ event's stream time and folder age apply to the series' streams and folders too.
 
 Choose how it starts:
 
-- **Soft:** after the item on air ends (at most N minutes late).
+- **Soft:** after the item on air ends. **May start N min early, at most N min late** makes it a window: it takes the
+  first song end between those times (the playlist shows "between 8:05 and 8:20"); if none ends by the end of it, what
+  is on air fades out. A traffic report "between 8:05 and 8:20" lands at a natural break instead of always after 8:10. A window never
+  opens before its own hour (a 10:00 break stays in the 10 o'clock hour), and with the player stopped it waits for its time.
 - **Hard:** on the second (what is on air fades out).
 - **Ends at its time:** it ends exactly then, to the second — never later. The songs before it are adjusted; if the
   music would still run over, what is on air is faded at the moment the break has to start; if it would get there early,

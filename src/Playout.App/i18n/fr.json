@@ -2308,5 +2308,13 @@
  "Show the week": "Afficher la semaine",
  "until (season)": "au",
  "Delete this season (its templates are switched off)": "Supprimer cette saison (ses modèles sont désactivés)",
- "Switched off, their season deleted: {0}. Give them another season, or switch them on to play all year.": "Désactivés, leur saison a été supprimée : {0}. Donnez-leur une autre saison, ou activez-les pour toute l'année."
+ "Switched off, their season deleted: {0}. Give them another season, or switch them on to play all year.": "Désactivés, leur saison a été supprimée : {0}. Donnez-leur une autre saison, ou activez-les pour toute l'année.",
+ "may start": "peut commencer",
+ "min early, at most": "min plus tôt, au plus",
+ "between {0:HH:mm} and {1:HH:mm}": "entre {0:HH:mm} et {1:HH:mm}",
+ "It waits for the item on air to end, however long that is.": "Il attend la fin de l'élément à l'antenne, quelle qu'en soit la durée.",
+ "From {0:0} min before its time, at the first item's end (it waits for that, however long).": "À partir de {0:0} min avant son heure, à la fin du premier élément (il l'attend, quelle qu'en soit la durée).",
+ "At the first item's end between {0:0} min before its time and {1:0} min after; if none ends by then, what is on air fades.": "À la fin du premier élément entre {0:0} min avant son heure et {1:0} min après ; si aucun ne finit d'ici là, ce qui est à l'antenne s'efface.",
+ "soft, −{0:0} to +{1:0} min": "souple, −{0:0} à +{1:0} min",
+ "soft, from {0:0} min early": "souple, dès {0:0} min plus tôt"
 }

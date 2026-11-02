@@ -575,7 +575,7 @@ CHAPTERS = [
           "do estúdio</b> em direto, com <b>Entrada…</b>, durante N minutos."),
     ("p", "Também escolhe como o evento começa:"),
     ("list", [
-        "<b>Flexível</b>: espera que acabe o que está no ar, com um atraso máximo de N minutos.",
+        "<b>Flexível</b>: espera que acabe o que está no ar. Pode deixá-lo começar uns minutos <b>mais cedo</b> e dar-lhe um atraso <b>máximo</b>: uma janela, como o trânsito entre as 8:05 e as 8:20, que apanha o primeiro fim de música dentro dela. Se nenhuma acabar a tempo, o que está no ar desvanece no fim da janela. Uma janela nunca abre antes do início da sua hora, por isso um bloco das 10:00 fica na hora das 10.",
         "<b>Rígido</b>: começa ao segundo, e o que está no ar desvanece.",
         "<b>Acaba à sua hora</b>: acaba exatamente a essa hora, nunca depois. As músicas antes dele são ajustadas, e o que "
         "estiver no ar desvanece se fosse passar da hora. Um evento que acaba às 10:00 é o último da hora das 09:00. Se o "

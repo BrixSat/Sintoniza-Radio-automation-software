@@ -270,16 +270,40 @@ public abstract class ScheduleEntry
     /// <summary>Soft: if the item on air hasn't ended this many minutes after the time, it fades out (0 = no limit).</summary>
     public double MaxDelayMinutes { get; set; }
 
+    /// <summary>
+    /// Soft: it may start this many minutes before its time, at a song's end (0: not before). With
+    /// <see cref="MaxDelayMinutes"/> a window: it plays at the first song end from this early to that late.
+    /// </summary>
+    public double MaxEarlyMinutes { get; set; }
+
+    /// <summary>
+    /// When it may start for its time <paramref name="at"/>: early by <see cref="MaxEarlyMinutes"/> when soft, but never
+    /// before its hour starts (a 10:00 break stays in the 10 o'clock hour, where the daily playlists have it).
+    /// </summary>
+    public DateTime Opens(DateTime at)
+    {
+        if (Start != EventStart.Soft || MaxEarlyMinutes <= 0) return at;
+        var early = at.AddMinutes(-MaxEarlyMinutes);
+        var hour = at.Date.AddHours(at.Hour);
+        return early < hour ? hour : early;
+    }
+
     /// <summary>What the operator may do with its items in the playlist.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ItemLock Lock { get; set; }
 
-    /// <summary>How it starts, for the engine; <paramref name="at"/> is the time it is for (local).</summary>
-    public EventTiming Timing(DateTime at) => Start switch
+    /// <summary>
+    /// How it starts, for the engine; <paramref name="at"/> is the time it is for (local), <paramref name="now"/> when
+    /// it goes in (early, for one that may start early: its latest start is still measured from its time).
+    /// </summary>
+    public EventTiming Timing(DateTime at, DateTime? now = null) => Start switch
     {
         EventStart.Hard => EventTiming.Hard,
         EventStart.EndAt => new EventTiming(EventStart.EndAt, EndsAt: at.ToUniversalTime()),
-        _ => new EventTiming(EventStart.Soft, MaxDelayMinutes > 0 ? TimeSpan.FromMinutes(MaxDelayMinutes) : null),
+        // Gone in late (the app restarted): at least a moment for the song on air before it fades.
+        _ => new EventTiming(EventStart.Soft, MaxDelayMinutes > 0
+            ? TimeSpan.FromMinutes(MaxDelayMinutes) + (at - (now ?? at)) is var wait && wait > TimeSpan.FromSeconds(15) ? wait : TimeSpan.FromSeconds(15)
+            : null, NotBefore: now is { } n && n < at ? at.ToUniversalTime() : null),
     };
 
     /// <summary>Turns <see cref="Times"/> and <see cref="Days"/> into slots.</summary>
@@ -689,14 +713,15 @@ public static class ScheduleTimes
 /// <param name="Empty">A break with no adverts booked: shown, so it can be seen, but nothing will play.</param>
 /// <param name="Items">What it plays, each item with its length: shown one by one in the playlist.</param>
 public sealed record UpcomingEvent(Guid EntryId, string Label, string What, DateTime Start, DateTime Due, EventStart Timing, double Seconds, bool IsBreak,
-    double MaxDelayMinutes = 0, bool Empty = false, IReadOnlyList<UpcomingItem>? Items = null)
+    double MaxDelayMinutes = 0, bool Empty = false, IReadOnlyList<UpcomingItem>? Items = null, double MaxEarlyMinutes = 0)
 {
     /// <summary>How it starts, for the playlist and the countdown: "hard start at 12:20:00", "can wait 5 min"…</summary>
     public string How => Timing switch
     {
         EventStart.Hard => L.F("hard start at {0:HH:mm:ss}", Due),
         EventStart.EndAt => L.F("ends at {0:HH:mm:ss}", Due),
-        _ => MaxDelayMinutes > 0 ? L.F("from {0:HH:mm}, can wait {1:0} min", Due, MaxDelayMinutes) : L.F("from {0:HH:mm}, waits for the song", Due),
+        _ => MaxDelayMinutes > 0 ? L.F("between {0:HH:mm} and {1:HH:mm}", Due.AddMinutes(-MaxEarlyMinutes), Due.AddMinutes(MaxDelayMinutes))
+            : L.F("from {0:HH:mm}, waits for the song", Due.AddMinutes(-MaxEarlyMinutes)),
     };
 }
 
@@ -775,7 +800,8 @@ sealed class Scheduler : IDisposable
                 DateTime? known = _data.LastStarted.TryGetValue(entry.Id, out var k) ? k : null;
                 if (stored != null || (known != null && !Changed(entry)))
                     copy.LastStarted[entry.Id] = new[] { stored, known != null && !Changed(entry) ? known : null }.Max()!.Value;
-                else copy.LastStarted[entry.Id] = now;
+                // Changed: not started again for a time already past, nor for one that went in early and is still to come.
+                else copy.LastStarted[entry.Id] = known is { } k2 && k2 > now ? k2 : now;
             }
             foreach (var id in copy.LastStarted.Keys.Where(id => Entries(copy).All(e => e.Id != id)).ToList()) copy.LastStarted.Remove(id);
             _data = copy;
@@ -833,7 +859,7 @@ sealed class Scheduler : IDisposable
             {
                 // A break with no adverts is shown all the same (greyed): so it is seen that nothing is booked there.
                 if (entry is AdBreak)
-                    list.Add(new UpcomingEvent(entry.Id, Label(entry, at), L.T("no adverts booked: it will be skipped"), at, at, entry.Start, 0, true, entry.MaxDelayMinutes, Empty: true));
+                    list.Add(new UpcomingEvent(entry.Id, Label(entry, at), L.T("no adverts booked: it will be skipped"), entry.Opens(at), at, entry.Start, 0, true, entry.MaxDelayMinutes, Empty: true, MaxEarlyMinutes: entry.Start == EventStart.Soft ? entry.MaxEarlyMinutes : 0));
                 continue; // a missing file: nothing will play
             }
             var parts = items.Select(i => i.StreamName != null
@@ -845,8 +871,9 @@ sealed class Scheduler : IDisposable
                 AdBreak => items.Count(i => i.Kind == TrackKind.Commercial) is var n && n == 1 ? L.T("1 advert") : L.F("{0} adverts", n),
                 _ => items[0].StreamName != null ? L.T("stream") : System.IO.Path.GetFileNameWithoutExtension(items[0].Path),
             };
-            var start = entry.Start == EventStart.EndAt ? at.AddSeconds(-seconds) : at;
-            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak, entry.MaxDelayMinutes, Items: parts));
+            var start = entry.Start == EventStart.EndAt ? at.AddSeconds(-seconds) : entry.Opens(at); // one that may start early: from then
+            list.Add(new UpcomingEvent(entry.Id, Label(entry, at), what, start, at, entry.Start, seconds, entry is AdBreak, entry.MaxDelayMinutes, Items: parts,
+                MaxEarlyMinutes: entry.Start == EventStart.Soft ? entry.MaxEarlyMinutes : 0));
         }
         return list;
     }
@@ -932,21 +959,24 @@ sealed class Scheduler : IDisposable
                 var last = _data.LastStarted.GetValueOrDefault(entry.Id, DateTime.MinValue);
                 // Today's and (around midnight) yesterday's and tomorrow's times that are due and not started yet: the
                 // latest one. What ends at a time is due EndAtLead before it.
-                var lead = entry.Start == EventStart.EndAt ? EndAtLead : TimeSpan.Zero;
-                var at = entry.TimesOn(now.Date.AddDays(-1)).Concat(entry.TimesOn(now.Date)).Concat(entry.TimesOn(now.Date.AddDays(1)))
-                    .Where(t => t - lead <= now && t > last).DefaultIfEmpty(DateTime.MinValue).Max();
-                if (at == DateTime.MinValue) continue;
-                _data.LastStarted[entry.Id] = at;
-                bool missed = entry.Start == EventStart.EndAt ? now > at : now - at > Grace;
-                if (missed) Say(L.F("{0}: missed (it was due {1:0} minutes ago)", Label(entry, at), (now - at).TotalMinutes));
-                else due.Add((entry, at));
+                // What ends at a time goes in EndAtLead before it; a soft one with a window when the window opens.
+                DateTime GoesIn(DateTime t) => entry.Start == EventStart.EndAt ? t - EndAtLead : entry.Opens(t);
+                var times = entry.TimesOn(now.Date.AddDays(-1)).Concat(entry.TimesOn(now.Date)).Concat(entry.TimesOn(now.Date.AddDays(1)))
+                    .Where(t => GoesIn(t) <= now && t > last).Order().ToList();
+                if (times.Count == 0) continue;
+                _data.LastStarted[entry.Id] = times[^1];
+                bool Missed(DateTime t) => entry.Start == EventStart.EndAt ? now > t : now - t > Grace;
+                // Each still in time (two can be, after a restart, with a window); else the latest is said to be missed.
+                var live = times.Where(t => !Missed(t)).ToList();
+                if (live.Count == 0) Say(L.F("{0}: missed (it was due {1:0} minutes ago)", Label(entry, times[^1]), (now - times[^1]).TotalMinutes));
+                foreach (var t in live) due.Add((entry, t));
             }
             if (now - _prepared > TimeSpan.FromMinutes(1)) PrepareSoon(now);
             if (due.Count > 0) SaveState();
         }
         // Breaks first when several are due at once: they are booked to the second, events can wait.
         foreach (var (entry, at) in due.OrderBy(d => d.At).ThenBy(d => d.Entry is AdBreak ? 0 : 1))
-            Start(entry, at);
+            Start(entry, at, now);
     }
 
     /// <summary>
@@ -960,8 +990,8 @@ sealed class Scheduler : IDisposable
         var expected = new List<DateTime>();
         foreach (var entry in Entries(_data).Where(e => e.Enabled && e.Start != EventStart.EndAt))
             foreach (var at in entry.TimesOn(now.Date).Concat(entry.TimesOn(now.Date.AddDays(1)))
-                         .Where(t => t > now && t - now <= Expect && t > _data.LastStarted.GetValueOrDefault(entry.Id, DateTime.MinValue)))
-                if (entry is not AdBreak b || _data.InBreak(b, at).Count > 0) expected.Add(at.ToUniversalTime());
+                         .Where(t => entry.Opens(t) > now && entry.Opens(t) - now <= Expect && t > _data.LastStarted.GetValueOrDefault(entry.Id, DateTime.MinValue)))
+                if (entry is not AdBreak b || _data.InBreak(b, at).Count > 0) expected.Add(entry.Opens(at).ToUniversalTime()); // a window: when it opens
         _engine.ExpectedEvents = expected;
         var files = new List<string>();
         foreach (var entry in Entries(_data).Where(e => e.Enabled))
@@ -973,14 +1003,14 @@ sealed class Scheduler : IDisposable
     /// <summary>Another computer is on air: its breaks and events are its own, none is put in this playlist.</summary>
     public bool Standby { get; set; }
 
-    void Start(ScheduleEntry entry, DateTime at)
+    void Start(ScheduleEntry entry, DateTime at, DateTime now)
     {
         if (Standby) return;
         try
         {
             var items = Items(entry, at, quiet: false);
             if (items.Count == 0) return;
-            _engine.InsertEvent(Label(entry, at), items.Select(i => i with { Lock = entry.Lock }).ToList(), entry.Timing(at));
+            _engine.InsertEvent(Label(entry, at), items.Select(i => i with { Lock = entry.Lock }).ToList(), entry.Timing(at, now));
         }
         catch (Exception ex)
         {

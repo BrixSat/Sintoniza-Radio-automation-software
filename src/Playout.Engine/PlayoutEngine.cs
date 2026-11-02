@@ -504,11 +504,14 @@ public sealed class PlayoutEngine : IDisposable
 
         bool hard = timing.Start == EventStart.Hard;
         bool isBreak = IsBreak(tracks[0]);
+        // Gone in early (a window): not before its time while no song is ending to start it.
+        var notBefore = timing.NotBefore is { } nb && nb > DateTime.UtcNow ? nb : (DateTime?)null;
+        if (notBefore != null) tracks[0] = tracks[0] with { NotBefore = notBefore };
         if (!hard && timing.MaxDelay is { } delay && delay > TimeSpan.Zero)
             tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow + delay };
         // A hard one waiting while the player is stopped is due now: started at Play soon after, left out if much later.
-        // An ad break too, and it goes on air by itself after a warning (BreakWhileStopped).
-        if ((hard || isBreak) && !playing) tracks[0] = tracks[0] with { StartBy = DateTime.UtcNow };
+        // An ad break too, and it goes on air by itself after a warning (BreakWhileStopped) — at its time, if it came early.
+        if ((hard || isBreak) && !playing) tracks[0] = tracks[0] with { StartBy = notBefore ?? DateTime.UtcNow };
         InsertAfterOnAir(tracks, afterWaiting: !hard);
         // A filler on air was only there to reach it: it fades and the event starts now.
         bool afterFiller = _current?.Track.Tag == FillerTag;
@@ -838,7 +841,8 @@ public sealed class PlayoutEngine : IDisposable
         {
             var t = _playlist[i];
             bool first = i == 0 || _playlist[i - 1].Event != t.Event; // not the rest of a break the operator stopped
-            if (IsBreak(t) && first && t.StartBy == null && !_played.Contains(t.Id)) _playlist[i] = t with { StartBy = DateTime.UtcNow };
+            if (IsBreak(t) && first && t.StartBy == null && !_played.Contains(t.Id))
+                _playlist[i] = t with { StartBy = t.NotBefore is { } nb && nb > DateTime.UtcNow ? nb : DateTime.UtcNow }; // came early: at its time
         }
         _nextTimedCheck = DateTime.MinValue;
     }

@@ -668,7 +668,8 @@ public partial class DailyPlaylistsView : UserControl
         return L.F("▶ On air now: {0} (planned {1:HH:mm}), {2}", onAir.HasArtist ? $"{onAir.Artist} - {onAir.Title}" : onAir.Title, onAir.Start, drift);
     }
 
-    static DateTime Due(PlannedEntry e) => e.Entry.Start == EventStart.EndAt ? e.At.AddSeconds(-e.Seconds) : e.At;
+    /// <summary>When it goes in: an EndAt one its length before its time; a soft one that may start early, that early.</summary>
+    static DateTime Due(PlannedEntry e) => e.Entry.Start == EventStart.EndAt ? e.At.AddSeconds(-e.Seconds) : e.Entry.Opens(e.At);
 
     string Source(PlanItem item, DateTime hour)
     {

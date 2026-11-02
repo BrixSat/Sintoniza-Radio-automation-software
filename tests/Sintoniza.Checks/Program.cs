@@ -688,6 +688,43 @@ Console.WriteLine("Categories (the eight fixed ones, and the station's own at th
     Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");
 }
 
+// ───────────────────────── A time window for soft events ─────────────────────────
+
+Console.WriteLine("A window: a soft event or break may start early, and at most so late");
+{
+    var traffic = new ScheduledEvent { Name = "Traffic", Start = EventStart.Soft, MaxEarlyMinutes = 5, MaxDelayMinutes = 10 };
+    var at = DateTime.Today.AddHours(8).AddMinutes(10);
+    Check(traffic.Opens(at) == at.AddMinutes(-5) && traffic.Timing(at, at.AddMinutes(-5)).MaxDelay == TimeSpan.FromMinutes(15),
+        "it goes in 5 min before its time, and its latest start is still 10 min after its time");
+    Check(new ScheduledEvent { Start = EventStart.Hard, MaxEarlyMinutes = 5 }.Opens(at) == at, "…only a soft one: a hard one is on the second");
+    var topOfHour = DateTime.Today.AddHours(10);
+    Check(new AdBreak { Start = EventStart.Soft, MaxEarlyMinutes = 5 }.Opens(topOfHour) == topOfHour
+          && new AdBreak { Start = EventStart.Soft, MaxEarlyMinutes = 10 }.Opens(topOfHour.AddMinutes(5)) == topOfHour,
+        "…never before its own hour starts (a 10:00 break stays in the 10 o'clock hour)");
+    // The player stopped: a break that went in early waits for its time instead of going on air after the warning.
+    var e = NewEngine();
+    e.AddFiles([songs[0]]);
+    Thread.Sleep(200);
+    e.InsertEvent("Ad break early", [new ScheduledItem(songs[3], TrackKind.Commercial, InBreak: true)],
+        new EventTiming(EventStart.Soft, NotBefore: DateTime.UtcNow.AddSeconds(25)));
+    Thread.Sleep(14000);
+    Check(e.GetStatus().Current == null, "the player stopped: a break that went in early doesn't go on air before its time");
+    e.Dispose();
+    var upcoming = new UpcomingEvent(traffic.Id, "Traffic 08:10", "", at, at, EventStart.Soft, 60, false, 10, MaxEarlyMinutes: 5);
+    Check(upcoming.How == L.F("between {0:HH:mm} and {1:HH:mm}", at.AddMinutes(-5), at.AddMinutes(10)), $"the playlist shows the window ({upcoming.How})");
+
+    var db = LibraryDb.Open(AppSettings.Load().Library);
+    var store = new ScheduleStore(db);
+    var (data, version) = store.Load();
+    traffic.Slots = [new WeekTime { Day = DayOfWeek.Monday, Time = "08:10:00" }];
+    data.Events.Add(traffic);
+    store.Save(data, version, "checks");
+    var (back, v2) = store.Load();
+    Check(back.Events.First(e => e.Id == traffic.Id).MaxEarlyMinutes == 5, "kept in the library");
+    back.Events.RemoveAll(e => e.Id == traffic.Id);
+    store.Save(back, v2, "checks");
+}
+
 // ───────────────────────── Seasons ─────────────────────────
 
 Console.WriteLine("Seasons (summer, Christmas: their hour templates instead of the all-year ones)");

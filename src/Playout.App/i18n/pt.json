@@ -2308,5 +2308,13 @@
  "Show the week": "Mostrar a semana",
  "until (season)": "até",
  "Delete this season (its templates are switched off)": "Apagar esta época (os seus modelos são desligados)",
- "Switched off, their season deleted: {0}. Give them another season, or switch them on to play all year.": "Desligados, a sua época foi apagada: {0}. Dê-lhes outra época, ou ligue-os para tocarem todo o ano."
+ "Switched off, their season deleted: {0}. Give them another season, or switch them on to play all year.": "Desligados, a sua época foi apagada: {0}. Dê-lhes outra época, ou ligue-os para tocarem todo o ano.",
+ "may start": "pode começar",
+ "min early, at most": "min mais cedo, no máximo",
+ "between {0:HH:mm} and {1:HH:mm}": "entre as {0:HH:mm} e as {1:HH:mm}",
+ "It waits for the item on air to end, however long that is.": "Espera que o item no ar acabe, demore o que demorar.",
+ "From {0:0} min before its time, at the first item's end (it waits for that, however long).": "A partir de {0:0} min antes da sua hora, no fim do primeiro item (espera por ele, demore o que demorar).",
+ "At the first item's end between {0:0} min before its time and {1:0} min after; if none ends by then, what is on air fades.": "No fim do primeiro item entre {0:0} min antes da sua hora e {1:0} min depois; se nenhum acabar até lá, o que está no ar desvanece.",
+ "soft, −{0:0} to +{1:0} min": "flexível, −{0:0} a +{1:0} min",
+ "soft, from {0:0} min early": "flexível, a partir de {0:0} min antes"
 }
