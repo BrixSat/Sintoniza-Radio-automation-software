@@ -369,12 +369,17 @@ Console.WriteLine("The on-air program (a library of its own)");
     serial.Dispose();
 
     // The show ends: AUTO again (as the screen sees it a second after the end).
-    follow.Invoke(win, [showStart.AddMinutes(60).AddSeconds(1)]);
-    Pump(5);
-    Check(autoSwitch.IsChecked == true && engine.AutoAdvance, "the show is over: AUTO again");
-    // Only the sign (a whole screen update would follow the show again by the real clock, where it is still on).
-    typeof(MainWindow).GetMethod("UpdateOnAirSign", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(win, [null]);
-    Check(!sign.IsVisible, "…and the ON AIR sign goes out");
+    // The screen's own once-a-second update follows the show by the real clock, where it is still on: so the end is
+    // shown again each time it is looked at, and the sign updated on its own.
+    var signUpdate = typeof(MainWindow).GetMethod("UpdateOnAirSign", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    bool Ended()
+    {
+        follow.Invoke(win, [showStart.AddMinutes(60).AddSeconds(1)]);
+        signUpdate.Invoke(win, [null]);
+        return autoSwitch.IsChecked == true && engine.AutoAdvance;
+    }
+    Check(WaitUi(Ended, 3), "the show is over: AUTO again");
+    Check(Ended() && !sign.IsVisible, "…and the ON AIR sign goes out");
     win.Close();
     Pump(10);
 }
@@ -821,6 +826,8 @@ Console.WriteLine("Release notes in the update window");
     string plain = Updates.PlainNotes(body);
     Check(plain == "What's new\n• Website: files by FTP\n• See the manual", $"plain text: no downloads table, links or Markdown ({plain.Replace("\n", " | ")})");
     Check(Updates.PlainNotes("**Full Changelog**: https://x\n\n<!-- downloads -->\n<table></table>\n<!-- /downloads -->") == "", "…nothing else: empty (\"No release notes.\")");
+    string text = Updates.PlainNotes("- Mixer: level < 0 dB now warns\n- Website: \\\"Send now\\\" fixed\n- Cart -> next; List<string> kept");
+    Check(text == "• Mixer: level < 0 dB now warns\n• Website: \"Send now\" fixed\n• Cart -> next; List<string> kept", $"…a < or > in a note is text, not a tag ({text.Replace("\n", " | ")})");
 }
 
 // ───────────────────────── Several stations in one library ─────────────────────────

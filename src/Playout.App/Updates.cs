@@ -97,10 +97,18 @@ static class Updates
     public static string PlainNotes(string? notes)
     {
         if (string.IsNullOrWhiteSpace(notes)) return "";
-        string text = notes.Replace("\r\n", "\n");
-        text = Regex.Replace(text, @"<!-- downloads -->.*?(<!-- /downloads -->|$)", "", RegexOptions.Singleline);
-        text = Regex.Replace(text, @"<!--.*?-->", "", RegexOptions.Singleline);
-        text = Regex.Replace(text, @"<[^>]+>", "");
+        // Our own release's notes, but kept short and bounded all the same: this runs as the window opens.
+        string text = (notes.Length > 20000 ? notes[..20000] : notes).Replace("\r\n", "\n");
+        var limit = TimeSpan.FromMilliseconds(200);
+        try
+        {
+            text = Regex.Replace(text, @"<!-- downloads -->.*?(<!-- /downloads -->|$)", "", RegexOptions.Singleline, limit);
+            text = Regex.Replace(text, @"<!--.*?-->", "", RegexOptions.Singleline, limit);
+            // The HTML tags release notes use, on one line: "level < 0 dB" and "List<string>" in a note are text.
+            text = Regex.Replace(text, @"</?(table|thead|tbody|tr|td|th|a|br|p|b|i|em|strong|code|pre|img|ul|ol|li|div|span|details|summary|sub|sup|h[1-6])\b[^<>\n]*>",
+                "", RegexOptions.IgnoreCase, limit);
+        }
+        catch (RegexMatchTimeoutException) { /* odd text: shown as it is */ }
         var lines = new List<string>();
         foreach (var raw in text.Split('\n'))
         {

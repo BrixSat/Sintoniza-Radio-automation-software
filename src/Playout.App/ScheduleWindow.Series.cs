@@ -97,7 +97,9 @@ public partial class ScheduleWindow
         file.Click += async (_, _) => { if (await PickFile(L.F("Series: file for {0}", label)) is { } p) box.Text = p; };
         var folder = new MenuItem { Header = L.T("Folder…") };
         folder.Click += async (_, _) => { if (await PickFolder(L.F("Series: folder whose newest file plays on {0}", label)) is { } p) box.Text = p; };
-        choose.Click += (_, _) => new ContextMenu { Items = { file, folder } }.Open(choose);
+        // One menu for the row, opened on each click (its items can only ever be in one menu).
+        var menu = new ContextMenu { Items = { file, folder } };
+        choose.Click += (_, _) => menu.Open(choose);
         box.TextChanged += (_, _) => ToolTip.SetTip(box, box.Text is { Length: > 0 } t ? t : null);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Avalonia.Thickness(6, 0, 0, 0) };
         buttons.Children.Add(choose);
@@ -110,9 +112,10 @@ public partial class ScheduleWindow
         }
         var name = new TextBlock
         {
-            Text = past ? L.F("{0} (past)", label) : label, MinWidth = 86, Margin = new Avalonia.Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center,
+            Text = past ? L.F("{0} (past)", label) : label, Width = 100, Margin = new Avalonia.Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis, Opacity = past ? 0.55 : 1,
         };
+        ToolTip.SetTip(name, name.Text); // the whole day or date when it is cut
         var row = new DockPanel();
         DockPanel.SetDock(name, Dock.Left);
         DockPanel.SetDock(buttons, Dock.Right);

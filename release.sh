@@ -47,7 +47,7 @@ git tag -a "$tag" -m "Sintoniza $tag"
 git push -q origin "$tag"
 # What's new: the commit messages since the version before (the app's update window shows them).
 previous=$(git describe --tags --abbrev=0 "$tag^" 2>/dev/null || true)
-news=$(git log --no-merges --format='%s' ${previous:+"$previous..$tag"} | sed 's/^[[:space:]]*//; s/[[:space:]]\{2,\}/ /g; s/^/- /')
+news=$(git log --no-merges --format='%s' "${previous:+$previous..}$tag" | sed 's/^[[:space:]]*//; s/[[:space:]]\{2,\}/ /g; s/^/- /')
 gh release create "$tag" "${files[@]}" --verify-tag --title "Sintoniza $tag" --notes "## What's new
 $news" --generate-notes
 "$ROOT/scripts/release-downloads.sh" "$version"
