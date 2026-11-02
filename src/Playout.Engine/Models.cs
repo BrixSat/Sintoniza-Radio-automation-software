@@ -102,6 +102,19 @@ public sealed record Track(Guid Id, string Path, string Artist, string Title, do
         if (Cues?.Mix is { } mix) return Math.Clamp(mix, Start, End);
         return crossfade > 0 && PlayLength > crossfade * 2 ? End - crossfade : End;
     }
+
+    /// <summary>
+    /// The seconds this starts over the end of <paramref name="before"/> (0: none). A voice track always does, over
+    /// its song; another item only over the one before it in the same planned hour (the hour mix editor), never over
+    /// an ad break, an event or a song that took another's place.
+    /// </summary>
+    public double OverlapOver(Track? before)
+    {
+        if (Overlap <= 0 || before == null) return 0;
+        if (FollowsPrevious) return Overlap;
+        static string? Hour(string? tag) => tag != null && tag.EndsWith(":opt", StringComparison.Ordinal) ? tag[..^4] : tag;
+        return Tag != null && Hour(Tag) == Hour(before.Tag) && !before.InBreak && before.Kind != TrackKind.Commercial ? Overlap : 0;
+    }
 }
 
 /// <summary>

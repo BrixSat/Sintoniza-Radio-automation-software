@@ -95,6 +95,8 @@
                                     ToolTip.Tip="Record your talk after the selected song, hearing its end and the start of the next" />
                             <Button x:Name="SegueButton" Classes="tool" Content="Segue…"
                                     ToolTip.Tip="How the selected item goes into the next: hear the join and move it" />
+                            <Button x:Name="MixButton" Classes="tool" Content="Mix editor…"
+                                    ToolTip.Tip="The whole hour on a time line: where each item starts over the one before, and hear it through" />
                             <Button x:Name="TagsButton" Classes="tool" Content="Edit tags…" ToolTip.Tip="Title, artist, album… written in the file (ID3 for MP3)" />
                             <Button x:Name="ReplaceButton" Classes="tool" Content="Another song" ToolTip.Tip="Another song from the same template line" />
                             <Button x:Name="UpButton" Classes="tool" Content="▲" ToolTip.Tip="Move up" />

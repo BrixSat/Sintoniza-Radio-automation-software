@@ -443,7 +443,8 @@ public sealed class PlaylistGenerator
         if (mix is > 0 && mix < length) return mix.Value;
         bool songToSong = kind == TrackKind.Music && next.TrackKind is null or TrackKind.Music;
         double fade = songToSong ? _options.Crossfade : _options.OtherCrossfade;
-        return Math.Max(1, length - Math.Min(fade, length / 2));
+        // As the playout: the crossfade only when it is shorter than half the item (a short sting plays to its end).
+        return Math.Max(1, fade > 0 && length > fade * 2 ? length - fade : length);
     }
 }
 

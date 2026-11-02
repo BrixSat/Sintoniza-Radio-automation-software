@@ -90,6 +90,9 @@ engine for decoding, mixing and streaming.
   ▲ ▼ and Remove change the order; double-click a song in the library beside it to put it in. **Listen** (▶, a
   double-click, or Space) plays the selected item or a library song (right-click → Listen) on the **Preview** output
   only (Settings → Audio): the manager never opens the on-air cards, and warns if Preview is set to the on-air one.
+  The **mix editor** (Mix editor…) shows the whole hour on a time line with each item's waveform where it starts:
+  drag an item to start it earlier over the end of the one before (this hour only), hear the hour from anywhere
+  through every join on the Preview output, and double-click a join for the segue editor.
   **Edit tags…** (or right-click a library song) writes title, artist, album… in the file; the library and the planned
   hours follow, and a song that is on air right now is refused until it has finished. An hour changed by
   hand (✎) is never made again by itself; **Make this hour again** / **Make the day again** do it on purpose.

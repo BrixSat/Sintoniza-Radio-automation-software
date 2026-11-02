@@ -544,6 +544,14 @@ The hours as they will play, made from the templates:
   **Takes**, and goes right after the song, shown 🗣. A voice track belongs to its song: removing or replacing the
   song takes it too, moving the song moves it, and on air it is skipped if the song can't play.
 - **Segue…**: the segue editor for the selected item and the next (see the playlist above); the planned times follow.
+- **Mix editor…**: the whole hour on one time line, each item on one of two lanes where it starts, the top of the hour
+  as a red line and whether the hour ends early or runs over. Drag an item (or nudge it by a second or a tenth) to start
+  it earlier over the end of the one before — this hour only; the one before plays on to its end, as under a voice
+  track — or back to **Automatic**. Click to put the cursor and **Play from the cursor** to hear the hour from there
+  through every join, on the Preview output. A double-click opens that join in the segue editor (cue points, for every
+  time those songs play). Ad breaks and events from the schedule show but don't move here; on air an overlap counts only
+  over the item it was set against, never over an ad break or event that ends up in between. **Save** keeps it as an
+  edit of the hour.
 - **Edit tags…** of the selected item (or right-click a library song): title, artist, album… written in the file. A
   song on air right now can't be edited until it ends.
 

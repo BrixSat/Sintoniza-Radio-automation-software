@@ -666,7 +666,7 @@ CHAPTERS = [
         ("HourList", "As 24 horas do dia, com o modelo e a duração de cada uma. ✎ quer dizer alterada à mão; ↻ quer dizer que o modelo mudou entretanto."),
         ("OnAirText", "O que está no ar agora, e quanto vai adiantado ou atrasado em relação ao plano."),
         ("ItemList", "A hora: músicas, jingles, os anúncios do bloco com o cliente, e os eventos, cada um com a hora de início e de onde veio. ✓ já tocou, ▶ está no ar, OPCIONAL só toca se houver tempo."),
-        ("SegueButton", "<b>Transição…</b> mostra como a música selecionada passa para a seguinte, como em Transições."),
+        ("SegueButton", "<b>Transição…</b> mostra como a música selecionada passa para a seguinte, como em Transições; o <b>Editor de mistura…</b>, ao lado, mostra a hora inteira (mais abaixo)."),
         ("StreamButton", "<b>Stream…</b> põe o stream de outra rádio nesta hora, a uma hora certa ou depois do item no ar. Remover tira-o."),
         ("TagsButton", "<b>Editar etiquetas…</b> da música selecionada."),
         ("ReplaceButton", "<b>Outra música</b> troca-a por outra da mesma linha do modelo. ▲ ▼ mudam a ordem e <b>Remover</b> tira."),
@@ -677,6 +677,28 @@ CHAPTERS = [
         ("ListenButton", "<b>Ouvir</b> o item selecionado, também com duplo clique ou a barra de espaços, sempre na pré-escuta."),
         ("TotalText", "O total da hora: músicas e jingles, blocos e eventos, e o que é opcional."),
     ]),
+    ("h3", "O editor de mistura: a hora inteira de uma vista"),
+    ("p", "O <b>Editor de mistura…</b> mostra a hora selecionada numa só linha do tempo, cada item onde começa, para ver e ouvir "
+          "como a hora corre. As músicas ficam em duas faixas, uma a seguir à outra, para se ver onde cada uma começa por "
+          "cima do fim da anterior. A linha vermelha é a hora certa, e a linha por cima diz se a hora acaba mais cedo ou "
+          "se passa da hora."),
+    ("fig", "schedule-mix", "O editor de mistura", [
+        ("Timeline", "A hora. <b>Arraste</b> um item para a esquerda para o começar mais cedo, por cima do fim do anterior; tudo o que vem depois anda com ele. O ✋ marca um item que pôs à mão. A roda desloca e Ctrl + roda aproxima."),
+        ("EndsText", "Quando acaba a hora, e a que distância fica da hora certa."),
+        ("SelectedText", "O que acontece no início do item selecionado, por palavras simples."),
+        ("MovePanel", "Ajuste-o um segundo ou uma décima, ou volte ao crossfade <b>Automático</b>."),
+        ("SegueButton", "<b>Transição…</b> abre a passagem no editor de transições. Um duplo clique no item faz o mesmo."),
+        ("PlayButton", "Clique em qualquer ponto da linha do tempo para pôr o cursor e depois em <b>Tocar a partir do cursor</b> para ouvir a hora dali em diante, por todas as passagens, tal como vai soar no ar, na pré-escuta (Espaço)."),
+        ("ZoomAllButton", "<b>Hora inteira</b> cabe a hora na janela; − e + afastam e aproximam."),
+    ]),
+    ("p", "Mover um item aqui muda <b>só esta hora</b>. O item anterior toca até ao fim, ao volume normal, como debaixo de um voice "
+          "track, o que é mesmo o que se quer para um jingle por cima do final de uma música. Nunca começa mais tarde do que o "
+          "crossfade automático, nem mais de 30 segundos por cima do anterior. Os blocos publicitários e os eventos da "
+          "programação aparecem, mas não se movem aqui. No ar, a sobreposição só conta por cima do item para que foi definida: "
+          "se um bloco publicitário ou um evento ficar pelo meio, o item começa depois dele como de costume, e nunca se toca "
+          "por cima de um anúncio."),
+    ("tip", "Para mudar como duas músicas passam sempre uma para a outra, onde quer que toquem, use antes <b>Transição…</b>: os "
+            "pontos de cue ficam guardados com as músicas. O editor de mistura serve para afinar uma hora em particular."),
     ("list", [
         "<b>Pode construir a hora música a música</b> com Outra música, ▲ ▼, Remover e a biblioteca. Cada alteração fica gravada logo, e a hora fica marcada com ✎. Uma hora assim nunca é refeita sozinha.",
         "<b>Ou pode deixar as regras trabalhar.</b> Hoje e os dias seguintes estão sempre feitos, e uma hora cujo modelo mude é refeita em poucos minutos, a não ser que tenha sido alterada à mão ou esteja prestes a tocar.",

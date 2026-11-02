@@ -385,6 +385,31 @@ var segue = new SegueEditorWindow(segueHost, new SegueItem(song, Display(song), 
 segue.Show();
 Pump(40);
 Shot(segue, "segue", "Join", "MixText", "OutText", "InText", "PlayButton", "SummaryText");
+
+// The hour mix editor: next hour's daily playlist on a time line, the third item started earlier by hand
+{
+    var mixHour = nowHour.AddHours(1);
+    double at = 0;
+    var mixBlocks = planStore.Items(mixHour).Select(i =>
+    {
+        var block = new MixBlock { Item = i, Path = i.Path, Title = i.Display, Kind = i.Kind, Start = at, Seconds = i.Seconds };
+        at += i.Seconds;
+        return block;
+    }).ToList();
+    var mixWindow = new HourMixWindow(segueHost, mixHour, mixBlocks, f => db.GetByPath(f)?.Duration ?? AudioProbe.Duration(f) ?? 0, _ => Task.FromResult(true))
+        { Width = 1280, Height = 640 };
+    mixWindow.Show();
+    var mixTimeline = mixWindow.FindControl<Playout.App.Controls.HourMixView>("Timeline")!;
+    WaitFor(() => mixWindow.FindControl<StackPanel>("MovePanel")!.IsEnabled, 20);
+    Pump(40); // the waveforms
+    mixTimeline.Zoom(6, 0);
+    mixTimeline.ScrollTo(0);
+    mixTimeline.Select(2);
+    for (int i = 0; i < 3; i++) mixWindow.FindControl<Button>("Earlier1")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Pump(15);
+    Shot(mixWindow, "schedule-mix", "Timeline", "EndsText", "SelectedText", "MovePanel", "SegueButton", "PlayButton", "ZoomAllButton");
+    mixWindow.Close();
+}
 segue.Close();
 var tags = new TagEditorWindow(engine, song);
 tags.Show();

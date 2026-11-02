@@ -796,8 +796,8 @@ public partial class MainWindow : Window
         // The crossfade is song to song; with a jingle or advert on either side, the other one.
         double Fade(Track t, Track? next) => _engine?.CrossfadeBetween(t, next) ?? 0;
         // Where the next starts: the mix point, or earlier for a voice track over the ending.
-        double MixOf(Track t, Track? next) => next?.Overlap is > 0
-            ? Math.Max(t.Start, Math.Min(t.MixPoint(Fade(t, next)), t.End - next.Overlap))
+        double MixOf(Track t, Track? next) => next?.OverlapOver(t) is > 0 and var overlap
+            ? Math.Max(t.Start, Math.Min(t.MixPoint(Fade(t, next)), t.End - overlap))
             : t.MixPoint(Fade(t, next));
         double Tail(Track t, Track? next) => t.End - MixOf(t, next);
         var nextUp = startFrom >= 0 ? items[startFrom] : null;

@@ -1492,11 +1492,12 @@ public sealed class PlayoutEngine : IDisposable
         if (_current is not { } deck || deck.Track.IsStream) return;
         var next = NextTrack();
         // A Mix marker stays, unless the next item starts over this one's end earlier (a voice track).
-        if (deck.Track.Cues?.Mix != null && next?.Overlap is not > 0) return;
+        double overlap = next?.OverlapOver(deck.Track) ?? 0;
+        if (deck.Track.Cues?.Mix != null && overlap <= 0) return;
         double end = Math.Min(deck.Track.End, deck.Length);
         double mixAt = Math.Min(deck.Track.MixPoint(CrossfadeBetween(deck.Track, next)), end);
-        bool over = next?.Overlap is > 0;
-        if (over) mixAt = Math.Max(deck.Track.Start, Math.Min(mixAt, end - next!.Overlap));
+        bool over = overlap > 0;
+        if (over) mixAt = Math.Max(deck.Track.Start, Math.Min(mixAt, end - overlap));
         if (Math.Abs(mixAt - deck.MixAt) < 0.01 && (deck.MixFade == null) == (over || deck.Track.Cues?.Mix != null)) return;
         double position = Bass.ChannelBytes2Seconds(deck.Handle, Math.Max(0, BassMix.ChannelGetPosition(deck.Handle, PositionFlags.Bytes)));
         if (position >= Math.Min(mixAt, deck.MixAt) - 0.05) return; // too late to move it
@@ -2018,7 +2019,13 @@ public sealed class PlayoutEngine : IDisposable
     }
 
     /// <summary>How long after an item starts the next one does (in AUTO): its play length less its overlap with the next.</summary>
-    double Step(Track t, Track? next = null) => t.PlayLength - (t.End - t.MixPoint(CrossfadeBetween(t, next)));
+    double Step(Track t, Track? next = null)
+    {
+        double mix = t.MixPoint(CrossfadeBetween(t, next));
+        // A voice track, or an item started earlier in the hour mix editor, starts over its end.
+        if (next?.OverlapOver(t) is > 0 and var overlap) mix = Math.Max(t.Start, Math.Min(mix, t.End - overlap));
+        return mix - t.Start;
+    }
 
     /// <summary>
     /// When each item after the one on air will start (seconds from now) if nothing changes, as the playlist's start

@@ -688,6 +688,88 @@ Console.WriteLine("Categories (the eight fixed ones, and the station's own at th
     Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");
 }
 
+// ───────────────────────── The hour mix editor ─────────────────────────
+
+Console.WriteLine("The hour mix editor (an item starting over the end of the one before, this hour only)");
+{
+    // Three 4-second tones, a 1-second crossfade: each plays 3 s before the next starts.
+    MixBlock Block(int n, double start) => new()
+    {
+        Item = new PlanItem { Path = songs[n], Title = $"Tone {n + 1}", Seconds = 3 }, Path = songs[n], Title = $"Tone {n + 1}",
+        Start = start, Seconds = 3, FileLength = 4,
+    };
+    var blocks = new List<MixBlock> { Block(0, 0), Block(1, 3), Block(2, 6) };
+    var mix = new HourMix(blocks, (_, _) => 1);
+    Check(mix.Movable(1) && !mix.Movable(0) && Math.Abs(mix.Automatic(1) - 3) < 0.01, "the automatic join: the crossfade before the end");
+    mix.Move(1, -1.5);
+    Check(Math.Abs(blocks[1].Start - 1.5) < 0.01 && Math.Abs(blocks[2].Start - 4.5) < 0.01, "an item moved earlier, and everything after it with it");
+    Check(Math.Abs(blocks[0].Item!.Seconds - 1.5) < 0.01 && Math.Abs(blocks[1].Item!.Overlap - 2.5) < 0.01 && mix.ByHand(1),
+        $"…saved as the hour's overlap: the one before plays 1.5 s, the next starts 2.5 s before its end ({blocks[1].Item!.Overlap})");
+    mix.Move(1, 10);
+    Check(Math.Abs(blocks[1].Start - 3) < 0.01 && blocks[1].Item!.Overlap == 0 && !mix.ByHand(1), "…never later than the automatic join (and then nothing is saved for it)");
+    mix.Move(1, -100);
+    Check(blocks[0].Item!.Seconds >= 1, "…nor before the start of the one before");
+    blocks.Insert(2, new MixBlock { Path = songs[3], Title = "Ad break", Kind = TrackKind.Commercial, Start = 6, Seconds = 3, FileLength = 4 });
+    Check(!mix.Movable(2) && !mix.Movable(3), "what the schedule puts in the hour (an ad break) doesn't move, nor what follows it");
+
+    // Opening: lengths written before (out of date) give way to where the playout really starts each item.
+    var stale = new List<MixBlock> { Block(0, 0), Block(1, 2.5), Block(2, 5.5) };
+    stale[0].Seconds = stale[0].Item!.Seconds = 2.5;
+    var staleMix = new HourMix(stale, (_, _) => 1);
+    staleMix.Normalize();
+    Check(Math.Abs(stale[1].Start - 3) < 0.01 && Math.Abs(stale[2].Start - 6) < 0.01 && !staleMix.ByHand(1), "opened: each item where the playout starts it (an old length put right)");
+    // An overlap past the limit (set before it) doesn't jump when nudged; a voice track isn't moved here.
+    var far = new List<MixBlock> { new() { Item = new PlanItem { Seconds = 155 }, Path = songs[0], Title = "Song", Seconds = 155, FileLength = 200 },
+        new() { Item = new PlanItem { Overlap = 45 }, Path = songs[1], Title = "Next", Start = 155, Seconds = 3, FileLength = 4 } };
+    var farMix = new HourMix(far, (_, _) => 1);
+    double later = farMix.Move(1, 0.1), back = farMix.Move(1, -0.1), further = farMix.Move(1, -0.1);
+    Check(Math.Abs(later - 0.1) < 0.01 && Math.Abs(back + 0.1) < 0.01 && further == 0 && Math.Abs(far[1].Item!.Overlap - 45) < 0.01,
+        $"an overlap already past the limit nudges by 0.1 s, back to where it was, not further (no jump: {later:0.00}, {back:0.00}, {further:0.00})");
+    far[1].Item!.FollowsPrevious = true;
+    Check(!farMix.Movable(1), "a voice track isn't moved in the mix editor (Voice track… does it)");
+    // The hour's end leaves out what is optional; listening from inside an overlap starts the earlier item.
+    var overAdvert = new List<MixBlock> { Block(0, 0), Block(1, 3) };
+    overAdvert[0] = new MixBlock { Item = new PlanItem { Kind = TrackKind.Commercial, Seconds = 3 }, Path = songs[0], Title = "Advert", Kind = TrackKind.Commercial, Seconds = 3, FileLength = 4 };
+    Check(!new HourMix(overAdvert, (_, _) => 1).Movable(1), "nothing is moved over a planned advert (on air it never starts over one)");
+    var ends = new List<MixBlock> { Block(0, 0), Block(1, 3) };
+    ends[1].Item!.Optional = true;
+    var endsMix = new HourMix(ends, (_, _) => 1);
+    Check(Math.Abs(endsMix.Ends - 3) < 0.01 && endsMix.At(3.5) == 0 && endsMix.At(4.5) == 1, "the hour's end without its optional items; listening in an overlap starts the earlier item");
+
+    // On air: an overlap set in the mix editor only over the item before it in the same hour, never over an advert.
+    var song = new Track(Guid.NewGuid(), songs[0], "", "Song", 4) { Tag = "plan:2026-11-02T10" };
+    var after = new Track(Guid.NewGuid(), songs[1], "", "Next", 4) { Tag = "plan:2026-11-02T10:opt", Overlap = 2 };
+    var advert = new Track(Guid.NewGuid(), songs[2], "", "Advert", 4, TrackKind.Commercial) { InBreak = true };
+    var voice = new Track(Guid.NewGuid(), songs[3], "", "Talk", 4, TrackKind.Voice) { Overlap = 2, FollowsPrevious = true };
+    Check(after.OverlapOver(song) == 2 && after.OverlapOver(advert) == 0 && after.OverlapOver(song with { Tag = "plan:2026-11-02T11" }) == 0
+          && voice.OverlapOver(song) == 2, "on air an hour's overlap counts only over the item before it in that hour (a voice track's always)");
+
+    // The window, with the no-sound engine: it reads the files, an item is moved and played through, and saved.
+    var engine = NewEngine();
+    engine.CrossfadeSeconds = engine.OtherCrossfadeSeconds = 1;
+    var items = new List<MixBlock> { Block(0, 0), Block(1, 3), Block(2, 6) };
+    IReadOnlyList<PlanItem>? saved = null;
+    var window = new HourMixWindow(SegueHost.For(engine), DateTime.Today.AddHours(9), items, _ => 4, edited => { saved = edited; return Task.FromResult(true); });
+    window.Show();
+    var timeline = window.FindControl<Playout.App.Controls.HourMixView>("Timeline")!;
+    Check(WaitUi(() => timeline.SelectedIndex == 1 && window.FindControl<StackPanel>("MovePanel")!.IsEnabled, 10), "the mix editor opens with the hour on its time line");
+    window.FindControl<Button>("Earlier1")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Pump(3);
+    Check(Math.Abs(items[1].Start - 2) < 0.01 && Math.Abs(items[1].Item!.Overlap - 2) < 0.01,
+        $"−1 s starts it a second earlier ({window.FindControl<TextBlock>("SelectedText")!.Text})");
+    window.FindControl<Button>("PlayButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    // Its timer, by hand (headless, a window's timer comes round rarely).
+    var mixTick = typeof(HourMixWindow).GetMethod("Tick", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    bool Heard(double at) { mixTick.Invoke(window, null); return timeline.PlayheadAt > at; }
+    Check(WaitUi(() => Heard(0.3), 5), "Play from the cursor: heard through the joins (the playhead moves)");
+    Check(WaitUi(() => Heard(2.5), 6), $"…into the next item ({timeline.PlayheadAt:0.0} s)");
+    window.FindControl<Button>("SaveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Check(WaitUi(() => saved != null, 5) && saved!.Count == 3 && Math.Abs(saved[1].Overlap - 2) < 0.01 && Math.Abs(saved[0].Seconds - 2) < 0.01,
+        "Save gives the hour's items with the new overlap");
+    Pump(5);
+    engine.Dispose();
+}
+
 // ───────────────────────── Series ─────────────────────────
 
 Console.WriteLine("Series (a file for each weekday and for a date)");

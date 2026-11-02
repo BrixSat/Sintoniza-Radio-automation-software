@@ -750,7 +750,7 @@ CHAPTERS = [
         ("OnAirText", "What is on air now, and how far ahead of or behind the plan the studio is."),
         ("ItemList", "The hour: songs, jingles, the ad break's adverts with their clients, and events, each with its start time and where it came from. ✓ has played, ▶ is on air, and OPTIONAL plays only if there is time."),
         ("StreamButton", "<b>Stream…</b> puts another station's stream in this hour at a set time, on the dot or after the item on air."),
-        ("SegueButton", "<b>Segue…</b> shapes how the selected song runs into the next."),
+        ("SegueButton", "<b>Segue…</b> shapes how the selected song runs into the next; <b>Mix editor…</b>, next to it, shows the whole hour (below)."),
         ("TagsButton", "<b>Edit tags…</b> of the selected song."),
         ("ReplaceButton", "<b>Another song</b> picks a different song from the same template line."),
         ("RemoveButton", "<b>Remove</b> takes the selected item out. ▲ ▼ move it."),
@@ -761,6 +761,27 @@ CHAPTERS = [
         ("ListenButton", "<b>Listen</b> to the selected item, on the Preview output only. A double-click or Space does the same."),
         ("TotalText", "The hour's total: songs and jingles, ad breaks and events, and what is optional."),
     ]),
+    ("h3", "The mix editor: a whole hour at a glance"),
+    ("p", "<b>Mix editor…</b> shows the selected hour on one time line, every item where it starts, so you can see and hear how "
+          "the hour flows. Songs sit on two lanes, one after the other, so you can see where each starts over the end of the "
+          "one before. The red line is the top of the hour, and the line above the time line tells you whether the hour "
+          "ends early or runs over."),
+    ("fig", "schedule-mix", "The mix editor", [
+        ("Timeline", "The hour. <b>Drag</b> an item to the left to start it earlier, over the end of the one before; everything after it moves with it. A ✋ marks an item you placed by hand. The wheel scrolls and Ctrl + wheel zooms."),
+        ("EndsText", "When the hour ends, and how far that is from the top of the hour."),
+        ("SelectedText", "What happens at the selected item's start, in plain words."),
+        ("MovePanel", "Nudge it by a second or a tenth, or put it back to the <b>Automatic</b> crossfade."),
+        ("SegueButton", "<b>Segue…</b> opens the join in the segue editor. A double-click on the item does the same."),
+        ("PlayButton", "Click anywhere on the time line to put the cursor, then <b>Play from the cursor</b> to hear the hour from there, through every join, as it will sound on air, on the Preview output (Space)."),
+        ("ZoomAllButton", "<b>Whole hour</b> fits the hour in the window; − and + zoom out and in."),
+    ]),
+    ("p", "Moving an item here changes <b>this hour only</b>. The item before it plays on to its end at full level, as it does under a "
+          "voice track, which is just right for a jingle over a song's outro. It never starts later than the automatic crossfade, "
+          "and at most 30 seconds over the item before. Ad breaks and events from the schedule are shown, but don't move here. "
+          "On air the overlap only counts over the item it was set against: if an ad break or event ends up in between, the "
+          "item simply starts after it as usual, so an advert is never talked or played over."),
+    ("tip", "To change how two songs always run into each other, wherever they play, use <b>Segue…</b> instead: its cue points "
+            "are saved with the songs. The mix editor is for shaping one particular hour."),
     ("p", "You can work in two ways, and mix them freely."),
     ("list", [
         "<b>Build an hour song by song</b> with Another song, ▲ ▼, Remove and the library. Each change is saved at once, and the hour is marked ✎ so it is never remade by itself.",

@@ -34,7 +34,7 @@ public partial class DailyPlaylistsView : UserControl
         set
         {
             _voiceOnly = value;
-            foreach (var c in new Control[] { StreamButton, SegueButton, TagsButton, ReplaceButton, UpButton, DownButton, RemoveButton, GenerateHourButton, GenerateDayButton })
+            foreach (var c in new Control[] { StreamButton, SegueButton, MixButton, TagsButton, ReplaceButton, UpButton, DownButton, RemoveButton, GenerateHourButton, GenerateDayButton })
                 c.IsVisible = !value;
             LibraryPanel.IsVisible = LibrarySplitter.IsVisible = !value; // nothing to put in from the library
             if (LibraryPanel.Parent is Grid grid && grid.ColumnDefinitions.Count == 5)
@@ -104,6 +104,7 @@ public partial class DailyPlaylistsView : UserControl
         ItemList.SelectionChanged += (_, _) => ShowButtons();
         ItemList.DoubleTapped += (_, e) => { if ((e.Source as Control)?.DataContext is PlanRow row) ListenTo(row); };
         SegueButton.Click += async (_, _) => await EditSegue();
+        MixButton.Click += async (_, _) => await EditMix();
         VoiceButton.Click += async (_, _) => await RecordVoiceTrack();
         TagsButton.Click += async (_, _) => { if (SelectedRow() is { Path.Length: > 0 } row) await EditTags(row.Path); };
         Listening.Settings = _settings;
@@ -333,33 +334,83 @@ public partial class DailyPlaylistsView : UserControl
             StatusText.Text = L.F("Can't listen: {0}", ex.Message);
             return;
         }
-        var host = new SegueHost
-        {
-            Open = deck.Open,
-            GetCues = db.GetCues,
-            SaveCues = (path, cues) => Task.Run(() =>
-            {
-                // A file outside the library is added to it, so its cue points are kept (and shared).
-                if (!db.SetCues(path, cues) && !cues.IsEmpty)
-                {
-                    db.Refresh(path);
-                    db.SetCues(path, cues);
-                }
-                // The planned hours from now on: how long it plays before the next item.
-                double length = db.GetByPath(path)?.Duration is > 0 and var d ? d : AudioProbe.Duration(path) ?? 0;
-                var kind = path == first.Path ? first.Kind : next.Kind;
-                if (length > 0) new PlanStore(db).UpdateSeconds(path, Plays(cues, length, kind), Hour(DateTime.Now));
-            }),
-            LoadWaveform = Waveforms.LoadAsync,
-            Crossfade = CrossfadeBetween,
-            PreviewIsOnAir = deck.PreviewIsOnAir,
-        };
+        var host = Host(db, deck, path => path == first.Path ? first.Kind : next.Kind);
         if (await new SegueEditorWindow(host, new SegueItem(first.Path, Display(first), first.Kind), new SegueItem(next.Path, Display(next), next.Kind))
                 .ShowDialog<bool>(owner))
         {
             StatusText.Text = L.T("Segue saved. The playout takes it within a minute.");
             if (_hour is { } hour) await ShowHour(hour);
         }
+    }
+
+    /// <summary>
+    /// What the segue and mix editors need: the Preview output, and cue points saved to the library (the playout takes
+    /// them within a minute), with the planned hours from now on told how long the file now plays.
+    /// </summary>
+    SegueHost Host(LibraryDb db, PreviewDeck deck, Func<string, TrackKind> kindOf) => new()
+    {
+        Open = deck.Open,
+        GetCues = db.GetCues,
+        SaveCues = (path, cues) => Task.Run(() =>
+        {
+            // A file outside the library is added to it, so its cue points are kept (and shared).
+            if (!db.SetCues(path, cues) && !cues.IsEmpty)
+            {
+                db.Refresh(path);
+                db.SetCues(path, cues);
+            }
+            double length = FileLength(db, path);
+            if (length > 0) new PlanStore(db).UpdateSeconds(path, Plays(cues, length, kindOf(path)), Hour(DateTime.Now));
+        }),
+        LoadWaveform = Waveforms.LoadAsync,
+        Crossfade = CrossfadeBetween,
+        PreviewIsOnAir = deck.PreviewIsOnAir,
+    };
+
+    static double FileLength(LibraryDb db, string path) => db.GetByPath(path)?.Duration is > 0 and var d ? d : AudioProbe.Duration(path) ?? 0;
+
+    /// <summary>The hour mix editor for the hour on screen; what it changes is saved as an edit of the hour.</summary>
+    async Task EditMix()
+    {
+        if (_db is not { } db || _hour is not { } hour || Owner is not { } owner || ItemList.ItemsSource is not List<PlanRow> rows || rows.Count < 2) return;
+        StopListening();
+        PreviewDeck deck;
+        try { deck = Listening.Deck(); }
+        catch (Exception ex)
+        {
+            StatusText.Text = L.F("Can't listen: {0}", ex.Message);
+            return;
+        }
+        // Copies: the hour on screen stays as it is until the editor saves.
+        static PlanItem Copy(PlanItem i) => System.Text.Json.JsonSerializer.Deserialize<PlanItem>(System.Text.Json.JsonSerializer.Serialize(i))!;
+        var blocks = rows.Select(r => new MixBlock
+        {
+            Item = r.Item is { } item ? Copy(item) : null, Path = r.Path, Title = Display(r), Kind = r.Kind,
+            Start = (r.Start - hour).TotalSeconds, Seconds = r.Seconds,
+        }).ToList();
+        var kinds = blocks.GroupBy(b => b.Path).ToDictionary(g => g.Key, g => g.First().Kind);
+        var window = new HourMixWindow(Host(db, deck, path => kinds.GetValueOrDefault(path)), hour, blocks, path => FileLength(db, path),
+            edited =>
+            {
+                // Made again meanwhile (another studio, or the template changed): its items aren't these any more.
+                if (_hour != hour || edited.Any(e => _items.All(i => i.Id != e.Id)))
+                {
+                    StatusText.Text = L.T("Not saved: the hour was made again meanwhile. Open the mix editor again.");
+                    return Task.FromResult(false);
+                }
+                return EditNow(db, hour, items =>
+            {
+                var byId = edited.ToDictionary(e => e.Id);
+                foreach (var item in items)
+                    if (byId.TryGetValue(item.Id, out var e))
+                    {
+                        item.Seconds = e.Seconds;
+                        item.Overlap = e.Overlap;
+                    }
+            });
+            });
+        if (await window.ShowDialog<bool>(owner)) StatusText.Text = L.T("The hour's mix is saved.");
+        else if (_hour == hour) await ShowHour(hour); // cue points may have changed in the segue editor
     }
 
     /// <summary>How long an item plays before the next starts, from its cue points (as the daily playlists count it).</summary>
@@ -371,7 +422,8 @@ public partial class DailyPlaylistsView : UserControl
         double start = cues.CueIn ?? 0, end = Math.Min(cues.CueOut ?? length, length);
         if (cues.Mix is { } mix && mix > start && mix < end) return mix - start;
         double plays = end - start;
-        return Math.Max(1, plays - Math.Min(fade, plays / 2));
+        // As the playout: the crossfade only when it is shorter than half the item (a short sting plays to its end).
+        return Math.Max(1, fade > 0 && plays > fade * 2 ? plays - fade : plays);
     }
 
     // ───────────────────────── Tags ─────────────────────────
@@ -651,6 +703,7 @@ public partial class DailyPlaylistsView : UserControl
         ReplaceButton.IsEnabled = open && selected.Count == 1 && selected[0].Line is >= 0;
         TagsButton.IsEnabled = SelectedRow() is { Path.Length: > 0 };
         SegueButton.IsEnabled = SegueRows() != null;
+        MixButton.IsEnabled = _hour != null && _items.Count > 1;
         VoiceButton.IsEnabled = open && VoiceRows() != null;
         GenerateHourButton.IsEnabled = open;
         GenerateDayButton.IsEnabled = _db != null && _day.AddDays(1) > DateTime.Now;
@@ -792,7 +845,7 @@ public partial class DailyPlaylistsView : UserControl
             return new PlanItem
             {
                 Kind = kind, Path = p, Title = t?.Title is { Length: > 0 } title ? title : Path.GetFileNameWithoutExtension(p), Artist = t?.Artist ?? "",
-                TrackId = t?.Id, CategoryId = t?.CategoryId, Seconds = Math.Max(1, length - Math.Min(fade, length / 2)),
+                TrackId = t?.Id, CategoryId = t?.CategoryId, Seconds = Plays(CuePoints.None, length, fade),
             };
         }).Where(i => i.Seconds > 1).ToList());
         if (added.Count == 0)
