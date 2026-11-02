@@ -834,7 +834,7 @@
             <TabItem Header="Screen" Classes="computer">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Spacing="14" Margin="0,12,16,0">
-                        <CheckBox x:Name="StatusPanelBox" Content="Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar)" />
+                        <CheckBox x:Name="StatusPanelBox" Content="Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar, as usual)" />
                         <StackPanel>
                             <TextBlock Classes="label" Text="Lamps shown" />
                             <WrapPanel x:Name="LampBoxes" ItemSpacing="14" LineSpacing="6" />

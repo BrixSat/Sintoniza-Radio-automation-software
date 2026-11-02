@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sintoniza: radio automation for FM and web radio</title>
+<meta name="description" content="Free radio automation for FM and web radio stations on air 24/7: on-air playout, production, music import and the broadcast recorder. Windows, macOS and Linux.">
+<meta name="theme-color" content="#0d0f13">
+<meta property="og:title" content="Sintoniza: radio automation for FM and web radio">
+<meta property="og:description" content="On air 24/7: daily playlists, ad breaks and billing, RDS, streaming, website now playing and the broadcast recorder. Free, for Windows, macOS and Linux.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://brixsat.github.io/Sintoniza-Radio-automation-software/img/en/main.webp">
+<link rel="icon" href="img/icon-emi.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Set the language before the page is drawn, so it doesn't flash in English.
+  (function () { var l = null; try { l = localStorage.getItem("sintoniza-lang"); } catch (e) {} if (l === "pt") { document.documentElement.setAttribute("data-lang", "pt"); document.documentElement.lang = "pt-PT"; } })();
+</script>
+<script src="site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main"><span lang="en">Skip to content</span><span lang="pt">Saltar para o conteúdo</span></a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Sintoniza">
+      <img src="img/icon-emi.svg" alt="" width="32" height="32"><span>Sintoniza</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#programs"><span lang="en">Programs</span><span lang="pt">Programas</span></a>
+      <a href="#features"><span lang="en">Features</span><span lang="pt">Funcionalidades</span></a>
+      <a href="#screenshots"><span lang="en">Screenshots</span><span lang="pt">Imagens</span></a>
+      <a href="#start"><span lang="en">Get started</span><span lang="pt">Começar</span></a>
+      <a href="#download"><span lang="en">Download</span><span lang="pt">Transferir</span></a>
+    </nav>
+    <div class="langs" role="group" aria-label="Language / Idioma">
+      <button type="button" data-set-lang="en" aria-pressed="true" title="English">EN</button>
+      <button type="button" data-set-lang="pt" aria-pressed="false" title="Português">PT</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ================= HERO ================= -->
+<div class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">
+        <span class="onair"><span class="dot" aria-hidden="true"></span>ON AIR</span>
+        <span lang="en">Radio automation · FM &amp; web radio</span>
+        <span lang="pt">Automação de rádio · FM e web rádio</span>
+      </div>
+      <h1>
+        <span lang="en">Keeps your station <em>on air</em>, around the clock.</span>
+        <span lang="pt">Mantém a sua rádio <em>no ar</em>, a qualquer hora.</span>
+      </h1>
+      <p class="lede" lang="en">Sintoniza plays your station 24/7: each hour's playlist made ahead from your rules, ad breaks at their time, RDS, the stream and the website in step with what is on air, and everything that goes out recorded. Four programs, one database. Free, for Windows, macOS and Linux.</p>
+      <p class="lede" lang="pt">O Sintoniza põe a sua rádio a tocar 24 horas por dia: a playlist de cada hora feita com antecedência a partir das suas regras, os blocos publicitários à hora certa, o RDS, o stream e o site sempre a par do que está no ar, e tudo o que sai gravado. Quatro programas, uma base de dados. Gratuito, para Windows, macOS e Linux.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+          <span lang="en">Download</span><span lang="pt">Transferir</span> <small>v1.2.18</small>
+        </a>
+        <a class="btn btn-ghost" lang="en" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/raw/main/docs/manual/Sintoniza-Manual.pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 21a2 2 0 0 1 2-2h12v2H6"/></svg>
+          User manual <small>PDF</small>
+        </a>
+        <a class="btn btn-ghost" lang="pt" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/raw/main/docs/manual/Sintoniza-Manual-PT.pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2V5Z"/><path d="M4 21a2 2 0 0 1 2-2h12v2H6"/></svg>
+          Manual do utilizador <small>PDF</small>
+        </a>
+      </div>
+      <ul class="meta">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Windows · macOS · Linux</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span lang="en">Free</span><span lang="pt">Gratuito</span></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg><span lang="en">English, Português, Français</span><span lang="pt">Português, English, Français</span></li>
+      </ul>
+    </div>
+
+    <div class="hero-visual">
+      <div class="screen">
+        <div class="screen-bar" aria-hidden="true"><i></i><i></i><i></i><span>Sintoniza Emi</span></div>
+        <img data-shot="main" src="img/en/main.webp" width="1400" height="870"
+             alt="Sintoniza Emi on air: the deck with the waveform and countdowns, the station clock, the playlist and the cartwall"
+             data-alt-en="Sintoniza Emi on air: the deck with the waveform and countdowns, the station clock, the playlist and the cartwall"
+             data-alt-pt="Sintoniza Emi no ar: o deck com a forma de onda e as contagens, o relógio da estação, a playlist e a cartwall"
+             fetchpriority="high">
+      </div>
+      <div class="chip chip-1" aria-hidden="true"><span class="lamp g"></span><div>STREAM<small lang="en">Connected · 128 kbps</small><small lang="pt">Ligado · 128 kbps</small></div></div>
+      <div class="chip chip-2" aria-hidden="true"><span class="lamp a"></span><div>BREAK IN 04:12<small lang="en">Next ad break, soft start</small><small lang="pt">Próximo bloco publicitário</small></div></div>
+    </div>
+  </div>
+
+  <div class="lamps">
+    <ul class="wrap">
+      <li><span class="lamp g" aria-hidden="true"></span><span lang="en">Never silent</span><span lang="pt">Nunca em silêncio</span></li>
+      <li><span class="lamp g" aria-hidden="true"></span><span lang="en">Daily playlists</span><span lang="pt">Playlists diárias</span></li>
+      <li><span class="lamp a" aria-hidden="true"></span><span lang="en">Ads &amp; billing</span><span lang="pt">Publicidade</span></li>
+      <li><span class="lamp g" aria-hidden="true"></span><span>RDS · Stream · Web</span></li>
+      <li><span class="lamp r" aria-hidden="true"></span><span lang="en">Records 24/7</span><span lang="pt">Grava 24 horas</span></li>
+      <li><span class="lamp g" aria-hidden="true"></span><span lang="en">ERC quotas</span><span lang="pt">Quotas da ERC</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ================= PROGRAMS ================= -->
+<section id="programs">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker"><span lang="en">Four programs, one database</span><span lang="pt">Quatro programas, uma base de dados</span></span>
+      <h2><span lang="en">Each job in the station has its program</span><span lang="pt">Cada trabalho da rádio tem o seu programa</span></h2>
+      <p lang="en">The music, the categories, the schedule, the daily playlists and the play history live in one library database. With a shared MySQL / MariaDB server, the studio, the commercial department and the music office each work on their own computer, and see each other's changes within seconds.</p>
+      <p lang="pt">A música, as categorias, a grelha, as playlists diárias e o histórico de emissão estão numa só base de dados. Com um servidor MySQL / MariaDB partilhado, o estúdio, o departamento comercial e quem trata da música trabalham cada um no seu computador e veem as alterações dos outros em segundos.</p>
+    </div>
+    <div class="programs">
+      <article class="program">
+        <img src="img/icon-emi.svg" alt="" width="60" height="60">
+        <h3>Sintoniza Emi</h3>
+        <div class="who"><span lang="en">On air · the studio</span><span lang="pt">Emissão · o estúdio</span></div>
+        <p lang="en">What goes on air: the deck with its waveform and countdowns, the playlist, the cartwall, the microphone, streaming and the presenter view. Runs the schedule by itself in AUTO.</p>
+        <p lang="pt">O que vai para o ar: o deck com a forma de onda e as contagens, a playlist, a cartwall, o microfone, o stream e o ecrã do locutor. Em AUTO cumpre a grelha sozinho.</p>
+      </article>
+      <article class="program">
+        <img src="img/icon-pro.svg" alt="" width="60" height="60">
+        <h3>Sintoniza Pro</h3>
+        <div class="who"><span lang="en">Production · programming &amp; sales</span><span lang="pt">Produção · programação e comercial</span></div>
+        <p lang="en">The station's settings, categories and cartwalls; events, ad breaks, clients and campaigns, hour templates and the daily playlists song by song; voice tracks, billing, users and the ERC quotas.</p>
+        <p lang="pt">As definições da estação, as categorias e as cartwalls; eventos, blocos publicitários, clientes e campanhas, modelos de hora e as playlists diárias música a música; voice tracks, faturação, utilizadores e as quotas da ERC.</p>
+      </article>
+      <article class="program">
+        <img src="img/icon-import.svg" alt="" width="60" height="60">
+        <h3>Sintoniza Import</h3>
+        <div class="who"><span lang="en">Music · the library</span><span lang="pt">Música · a biblioteca</span></div>
+        <p lang="en">Brings a folder of music into the library, in categories, with its sub-folders as sub-categories. A preview shows what it will do before anything changes, and new songs put in those folders later are picked up by themselves.</p>
+        <p lang="pt">Traz uma pasta de música para a biblioteca, em categorias, com as subpastas como subcategorias. Uma pré-visualização mostra o que vai fazer antes de mudar o que quer que seja, e as músicas que forem lá postas depois entram sozinhas.</p>
+      </article>
+      <article class="program">
+        <img src="img/icon-rec.svg" alt="" width="60" height="60">
+        <h3>Sintoniza Rec</h3>
+        <div class="who"><span lang="en">Recorder · the technician</span><span lang="pt">Gravação · a técnica</span></div>
+        <p lang="en">Records what the station broadcasts, all day, every day, and keeps it for as long as you set (the law asks for 30 days). Exports any stretch, cut to the second, for the regulator, a client or a complaint.</p>
+        <p lang="pt">Grava o que a rádio emite, todo o dia, todos os dias, e guarda-o pelo tempo que escolher (a lei pede 30 dias). Exporta qualquer excerto, cortado ao segundo, para o regulador, um cliente ou uma reclamação.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section id="features" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker"><span lang="en">Features</span><span lang="pt">Funcionalidades</span></span>
+      <h2><span lang="en">Everything a station needs to run all day</span><span lang="pt">Tudo o que uma rádio precisa para estar sempre no ar</span></h2>
+      <p lang="en">Built for FM and web radio stations that broadcast 24/7, with or without someone in the studio.</p>
+      <p lang="pt">Feito para rádios FM e web que emitem 24 horas por dia, com ou sem alguém no estúdio.</p>
+    </div>
+
+    <div class="features">
+
+      <!-- On air and safety -->
+      <article class="feature f-red">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6l-8-3Z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg></div>
+        <div lang="en">
+          <h3>On air and never silent</h3>
+          <p class="intro">The station keeps playing whatever happens to the computer.</p>
+          <ul>
+            <li>Silence detection skips to the next item and warns; fill music from the library if the playlist ever runs out.</li>
+            <li>Crash-safe: after a crash, a power cut or a restart it carries on with the next item and turns the stream back on. A watchdog restarts it if the audio engine stops responding.</li>
+            <li>Adverts are protected: Next, Pause and Stop ask first while one is on air.</li>
+            <li>Status lamps for the studio, stream, RDS, website, recorder, library and alerts, and a red MIC LIVE / ON AIR sign, also on a GPIO output for the studio lamp.</li>
+            <li>Alerts by Telegram, email or a web address: silence, stream down, database, disk nearly full, the clock off, a failed backup.</li>
+            <li>Daily backups of the database and the station's files.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>No ar e nunca em silêncio</h3>
+          <p class="intro">A rádio continua a tocar aconteça o que acontecer ao computador.</p>
+          <ul>
+            <li>A deteção de silêncio passa ao item seguinte e avisa; música de enchimento da biblioteca se a playlist alguma vez acabar.</li>
+            <li>À prova de falhas: depois de um crash, de um corte de luz ou de um reinício, continua com o item seguinte e volta a ligar o stream. Um vigilante reinicia-o se o motor de áudio deixar de responder.</li>
+            <li>A publicidade está protegida: com um anúncio no ar, Seguinte, Pausa e Parar perguntam primeiro.</li>
+            <li>Luzes de estado do estúdio, stream, RDS, site, gravador, biblioteca e alertas, e um sinal vermelho MIC LIVE / ON AIR, também numa saída GPIO para a luz do estúdio.</li>
+            <li>Alertas por Telegram, e-mail ou um endereço web: silêncio, stream em baixo, base de dados, disco quase cheio, relógio errado, uma cópia de segurança que falhou.</li>
+            <li>Cópias de segurança diárias da base de dados e dos ficheiros da estação.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Music library and rotation -->
+      <article class="feature f-amber">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg></div>
+        <div lang="en">
+          <h3>Music library and rotation</h3>
+          <p class="intro">A database of the station's music, on one computer (SQLite) or shared by every studio (MySQL / MariaDB).</p>
+          <ul>
+            <li>Search as you type, ignoring case and accents; a category tree (<i>Music › 80s › Rock</i>), and a song can be in several categories.</li>
+            <li>Folders are scanned and watched; moved or renamed files keep their category, cue points and history.</li>
+            <li>Music rules: tempo and energy per template line, the same artist or album not again within N hours, at most N slow songs in a row.</li>
+            <li>Song restrictions: only between two dates, on some days or hours, at most N times a day or a week.</li>
+            <li>Cue points (Cue In, Intro, Outro, Mix, Cue Out), a segue editor to shape each join, and a tag editor.</li>
+            <li>Loudness levelling (EBU R128): every item at the same perceived loudness, without changing the files.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Biblioteca musical e rotação</h3>
+          <p class="intro">Uma base de dados com a música da rádio, num só computador (SQLite) ou partilhada por todos os estúdios (MySQL / MariaDB).</p>
+          <ul>
+            <li>Pesquisa à medida que escreve, sem olhar a maiúsculas nem acentos; uma árvore de categorias (<i>Música › Anos 80 › Rock</i>), e uma música pode estar em várias.</li>
+            <li>As pastas são lidas e vigiadas; ficheiros movidos ou com outro nome mantêm a categoria, os pontos de cue e o histórico.</li>
+            <li>Regras de música: tempo e energia por linha do modelo, o mesmo artista ou álbum não antes de N horas, no máximo N músicas lentas seguidas.</li>
+            <li>Restrições por música: só entre duas datas, em certos dias ou horas, no máximo N vezes por dia ou por semana.</li>
+            <li>Pontos de cue (Cue In, Intro, Outro, Mix, Cue Out), um editor de segues para acertar cada passagem, e um editor de tags.</li>
+            <li>Nivelamento de volume (EBU R128): tudo com o mesmo volume aparente, sem mexer nos ficheiros.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Scheduling and daily playlists -->
+      <article class="feature f-green">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h3M8 17h6"/></svg></div>
+        <div lang="en">
+          <h3>Scheduling and daily playlists</h3>
+          <p class="intro">Each hour is made ahead of time from the hour template placed on the week calendar.</p>
+          <ul>
+            <li>Today and the next days always ready; change any hour song by song, or let the rules make it again.</li>
+            <li>Keeps time on air: near the end of each hour it drops an optional item or adds a song, so the next hour starts on time.</li>
+            <li>Events: a file, the newest file in a folder (the news), or another station's stream; a series plays a different file each weekday or on given dates.</li>
+            <li>Soft, hard or backtimed starts (a break that has to end at 59:55).</li>
+            <li>Voice tracks: record your talk over the end of a song, as if you were live.</li>
+            <li>Notes for the presenter, the top-of-hour time signal with hour announcements, and time and temperature takes.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Grelha e playlists diárias</h3>
+          <p class="intro">Cada hora é feita com antecedência a partir do modelo de hora posto no calendário da semana.</p>
+          <ul>
+            <li>Hoje e os dias seguintes sempre prontos; mude qualquer hora música a música, ou deixe as regras fazê-la de novo.</li>
+            <li>Acerta o tempo no ar: perto do fim de cada hora tira um item opcional ou junta uma música, para a hora seguinte começar a horas.</li>
+            <li>Eventos: um ficheiro, o ficheiro mais recente de uma pasta (o noticiário) ou o stream de outra rádio; uma série toca outro ficheiro em cada dia da semana ou em datas marcadas.</li>
+            <li>Início suave, fixo ou a acabar à sua hora (um bloco que tem de terminar às 59:55).</li>
+            <li>Voice tracks: grave a sua locução por cima do fim de uma música, como se estivesse em direto.</li>
+            <li>Notas para o locutor, o sinal horário com a hora falada, e takes de hora e temperatura.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Advertising and billing -->
+      <article class="feature f-green">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg></div>
+        <div lang="en">
+          <h3>Advertising and billing</h3>
+          <p class="intro">Clients, campaigns and ad breaks, from booking to proof of broadcast.</p>
+          <ul>
+            <li>Breaks with a running order: jingles and advert sections, an opener that plays only when its section has adverts; empty breaks are skipped.</li>
+            <li>Campaigns with dates, rotating audio files, a section and a position (first, last, automatic).</li>
+            <li>Sectors kept apart: the same client, or two banks, never back to back where that can be helped.</li>
+            <li>Warnings when a break runs longer than its limit; a BREAK IN countdown on the deck; a break plays even with the player stopped.</li>
+            <li>Proof of broadcast and monthly billing per campaign: booked, aired, not aired, as CSV or to print.</li>
+            <li>With Sintoniza Rec, listen to an advert as it went out and save it as MP3 for the client.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Publicidade e faturação</h3>
+          <p class="intro">Clientes, campanhas e blocos publicitários, da marcação ao comprovativo de emissão.</p>
+          <ul>
+            <li>Blocos com alinhamento: jingles e secções de publicidade, um separador que só toca se a sua secção tiver anúncios; blocos vazios são saltados.</li>
+            <li>Campanhas com datas, vários spots que vão alternando, uma secção e uma posição (primeiro, último, automática).</li>
+            <li>Setores separados: o mesmo cliente, ou dois bancos, nunca seguidos sempre que se possa evitar.</li>
+            <li>Avisos quando um bloco passa do seu limite; contagem BREAK IN no deck; o bloco toca mesmo com o leitor parado.</li>
+            <li>Comprovativo de emissão e faturação mensal por campanha: marcados, emitidos, não emitidos, em CSV ou para imprimir.</li>
+            <li>Com o Sintoniza Rec, ouça um anúncio tal como foi para o ar e guarde-o em MP3 para o cliente.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Live shows and presenter -->
+      <article class="feature f-red">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg></div>
+        <div lang="en">
+          <h3>Live shows and the presenter</h3>
+          <p class="intro">For the hours someone is in the studio.</p>
+          <ul>
+            <li>Live shows: the program waits for the presenter's Play, the show and presenter go to RDS and the website, and AUTO comes back when it ends.</li>
+            <li>Presenter view: a large, simple screen with TALK UP to the vocals, the next items, notes, countdowns and big buttons.</li>
+            <li>Listener requests, taken by phone or message and put on next with their dedication.</li>
+            <li>Web remote for a phone or computer on the station's network, with a password.</li>
+            <li>A 12-button cartwall, pauses with talking points, a live input (the desk, a satellite feed, a remote studio), and the microphone with music ducking for web radio.</li>
+            <li>GPIO by serial port, network or MIDI: fader start, Next, a cart, and lights back on the desk.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Programas em direto e o locutor</h3>
+          <p class="intro">Para as horas em que há alguém no estúdio.</p>
+          <ul>
+            <li>Programas em direto: o programa espera pelo Play do locutor, o programa e o locutor vão para o RDS e o site, e volta a AUTO quando acaba.</li>
+            <li>Ecrã do locutor: grande e simples, com a contagem TALK UP até à voz, os itens seguintes, as notas, as contagens e botões grandes.</li>
+            <li>Pedidos dos ouvintes, recebidos por telefone ou mensagem e postos a seguir com a dedicatória.</li>
+            <li>Controlo remoto web num telemóvel ou computador da rede da rádio, com palavra-passe.</li>
+            <li>Uma cartwall de 12 botões, pausas com o tema a falar, uma entrada em direto (a mesa, um satélite, um estúdio remoto) e o microfone com a música a baixar na web rádio.</li>
+            <li>GPIO por porta série, rede ou MIDI: arranque pelo fader, Seguinte, uma cart, e luzes de volta na mesa.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- RDS, streaming, website -->
+      <article class="feature f-blue">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/></svg></div>
+        <div lang="en">
+          <h3>RDS, streaming and the website</h3>
+          <p class="intro">What is on air, everywhere listeners look.</p>
+          <ul>
+            <li>RDS radio text from your template, by TCP, UDP or serial port, with ASCII commands or UECP, and RT+ tags.</li>
+            <li>Streaming in MP3 or OGG to Icecast 2 or Shoutcast, with now-playing titles and automatic reconnect.</li>
+            <li>Now playing on the website: JSON to an address, files from templates, the cover picture, by FTP / FTPS or HTTP PUT.</li>
+            <li>Held back by the stream's delay, so the website changes when listeners hear it; songs marked "not on the website" are never sent.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>RDS, stream e o site</h3>
+          <p class="intro">O que está no ar, onde quer que os ouvintes olhem.</p>
+          <ul>
+            <li>Radiotexto RDS a partir do seu modelo, por TCP, UDP ou porta série, com comandos ASCII ou UECP, e etiquetas RT+.</li>
+            <li>Stream em MP3 ou OGG para Icecast 2 ou Shoutcast, com o título no ar e religação automática.</li>
+            <li>O que está a tocar no site: JSON para um endereço, ficheiros a partir de modelos, a capa, por FTP / FTPS ou HTTP PUT.</li>
+            <li>Atrasado o mesmo que o stream, para o site mudar quando os ouvintes ouvem; músicas marcadas "fora do site" nunca são enviadas.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Recording -->
+      <article class="feature f-red">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg></div>
+        <div lang="en">
+          <h3>Recording what goes out</h3>
+          <p class="intro">Sintoniza Rec, on the studio computer or any other.</p>
+          <ul>
+            <li>Records the desk's output or the station's stream, all day, every day; starts by itself after a restart.</li>
+            <li>A new file every 5 to 60 minutes with no gap, MP3 or WAV; old recordings deleted after the time you set, with an optional archive copy.</li>
+            <li>Export a stretch, cut to the second, from as many recordings as needed.</li>
+            <li>Alerts for silence, a dropped stream, a file that can't be written or a full disk.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Gravação da emissão</h3>
+          <p class="intro">O Sintoniza Rec, no computador do estúdio ou noutro qualquer.</p>
+          <ul>
+            <li>Grava a saída da mesa ou o stream da rádio, todo o dia, todos os dias; arranca sozinho depois de um reinício.</li>
+            <li>Um ficheiro novo a cada 5 a 60 minutos, sem falhas, em MP3 ou WAV; as gravações antigas apagam-se ao fim do tempo que escolher, com cópia de arquivo opcional.</li>
+            <li>Exporte um excerto, cortado ao segundo, de quantas gravações forem precisas.</li>
+            <li>Alertas de silêncio, stream em baixo, ficheiro que não se consegue gravar ou disco cheio.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Several studios -->
+      <article class="feature f-amber">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="9" height="7" rx="1.5"/><rect x="13" y="4" width="9" height="7" rx="1.5"/><path d="M6.5 11v3h11v-3M12 14v3"/><ellipse cx="12" cy="19.5" rx="4" ry="1.8"/></svg></div>
+        <div lang="en">
+          <h3>Several studios, one station</h3>
+          <p class="intro">Every computer sharing a MySQL / MariaDB library knows the others.</p>
+          <ul>
+            <li>One computer is on air, the others on standby, ready and silent; Take on air moves the station over.</li>
+            <li>If the computer on air stops answering for 15 seconds, a standby one takes over by itself.</li>
+            <li>Sintoniza Pro on another computer: the studio picks up a save within seconds.</li>
+            <li>Users and permissions for every program; the station's settings set once, for every studio.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Vários estúdios, uma rádio</h3>
+          <p class="intro">Cada computador que partilha uma biblioteca MySQL / MariaDB conhece os outros.</p>
+          <ul>
+            <li>Um computador está no ar, os outros em reserva, prontos e calados; Pôr no ar passa a emissão para outro.</li>
+            <li>Se o computador no ar deixar de responder durante 15 segundos, um em reserva entra no ar sozinho.</li>
+            <li>O Sintoniza Pro noutro computador: o estúdio apanha o que se guarda em segundos.</li>
+            <li>Utilizadores e permissões em todos os programas; as definições da estação feitas uma vez, para todos os estúdios.</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- ERC quotas -->
+      <article class="feature f-green">
+        <div class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+        <div lang="en">
+          <h3>Portuguese ERC quotas and reports</h3>
+          <p class="intro">For stations under Portugal's radio law (Lei da Rádio).</p>
+          <ul>
+            <li>The quotas for any period: Portuguese music, sung in Portuguese, and recent, over the month and weekdays 7–20h.</li>
+            <li>From what went on air and the daily playlists still to play, with the songs still to classify.</li>
+            <li>The daily playlists are made to meet the quotas hour by hour; the monthly XML file for the ERC's portal.</li>
+            <li>Music reports for the collecting societies, with album, composer, label and ISRC.</li>
+          </ul>
+        </div>
+        <div lang="pt">
+          <h3>Quotas da ERC e relatórios</h3>
+          <p class="intro">Para as rádios sujeitas à Lei da Rádio.</p>
+          <ul>
+            <li>As quotas de qualquer período: música portuguesa, cantada em português e recente, no mês e de segunda a sexta das 7h às 20h.</li>
+            <li>A partir do que foi para o ar e das playlists diárias ainda por tocar, com as músicas que falta classificar.</li>
+            <li>As playlists diárias são feitas para cumprir as quotas hora a hora; o ficheiro XML mensal para o portal da ERC.</li>
+            <li>Relatórios de música para as entidades de gestão de direitos, com álbum, compositor, editora e ISRC.</li>
+          </ul>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+<!-- ================= SCREENSHOTS ================= -->
+<section id="screenshots">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker"><span lang="en">Screenshots</span><span lang="pt">Imagens</span></span>
+      <h2><span lang="en">The same dark studio look on every computer</span><span lang="pt">O mesmo aspeto de estúdio em todos os computadores</span></h2>
+      <p lang="en">Windows, macOS and Linux look and work the same. Click a picture to see it full size.</p>
+      <p lang="pt">Windows, macOS e Linux têm o mesmo aspeto e funcionam da mesma maneira. Clique numa imagem para a ver em grande.</p>
+    </div>
+    <div class="shots">
+      <figure class="shot big">
+        <button type="button"><img data-shot="main-onair" src="img/en/main-onair.webp" loading="lazy" decoding="async" width="1400" height="870" alt="The on-air screen with the mic open: mic live in the station panel, status lights in the bottom bar" data-alt-en="The on-air screen with the mic open: mic live in the station panel, status lights in the bottom bar" data-alt-pt="O ecrã de emissão com o microfone aberto: mic live no painel da estação, luzes de estado na barra de baixo"></button>
+        <figcaption><span lang="en"><b>The on-air screen with the mic open</b>MIC LIVE in the station panel, status lights in the bottom bar</span><span lang="pt"><b>O ecrã de emissão com o microfone aberto</b>MIC LIVE no painel da estação, luzes de estado na barra de baixo</span></figcaption>
+      </figure>
+      <figure class="shot big">
+        <button type="button"><img data-shot="schedule-daily" src="img/en/schedule-daily.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Daily playlists: each hour song by song, with its ad breaks and events" data-alt-en="Daily playlists: each hour song by song, with its ad breaks and events" data-alt-pt="Playlists diárias: cada hora música a música, com os blocos e os eventos"></button>
+        <figcaption><span lang="en"><b>Daily playlists</b>Each hour song by song, with its ad breaks and events</span><span lang="pt"><b>Playlists diárias</b>Cada hora música a música, com os blocos e os eventos</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="schedule-rules" src="img/en/schedule-rules.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Hour templates and music rules: tempo, energy and artist separation per line" data-alt-en="Hour templates and music rules: tempo, energy and artist separation per line" data-alt-pt="Modelos de hora e regras de música: tempo, energia e separação de artistas por linha"></button>
+        <figcaption><span lang="en"><b>Hour templates and music rules</b>Tempo, energy and artist separation per line</span><span lang="pt"><b>Modelos de hora e regras de música</b>Tempo, energia e separação de artistas por linha</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="schedule-breaks" src="img/en/schedule-breaks.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Ad breaks: break times on the week and their running order" data-alt-en="Ad breaks: break times on the week and their running order" data-alt-pt="Blocos publicitários: as horas dos blocos na semana e o seu alinhamento"></button>
+        <figcaption><span lang="en"><b>Ad breaks</b>Break times on the week and their running order</span><span lang="pt"><b>Blocos publicitários</b>As horas dos blocos na semana e o seu alinhamento</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="schedule-clients" src="img/en/schedule-clients.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Clients and campaigns: adverts booked in every break of the week" data-alt-en="Clients and campaigns: adverts booked in every break of the week" data-alt-pt="Clientes e campanhas: os anúncios marcados em cada bloco da semana"></button>
+        <figcaption><span lang="en"><b>Clients and campaigns</b>Adverts booked in every break of the week</span><span lang="pt"><b>Clientes e campanhas</b>Os anúncios marcados em cada bloco da semana</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="schedule-series" src="img/en/schedule-series.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Events and series: a different file for each day of the week" data-alt-en="Events and series: a different file for each day of the week" data-alt-pt="Eventos e séries: um ficheiro diferente para cada dia da semana"></button>
+        <figcaption><span lang="en"><b>Events and series</b>A different file for each day of the week</span><span lang="pt"><b>Eventos e séries</b>Um ficheiro diferente para cada dia da semana</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="voicetrack" src="img/en/voicetrack.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Voice tracks: record your talk between two songs, as if live" data-alt-en="Voice tracks: record your talk between two songs, as if live" data-alt-pt="Voice tracks: grave a locução entre duas músicas, como em direto"></button>
+        <figcaption><span lang="en"><b>Voice tracks</b>Record your talk between two songs, as if live</span><span lang="pt"><b>Voice tracks</b>Grave a locução entre duas músicas, como em direto</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="segue" src="img/en/segue.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Segue editor: the end of one song over the start of the next" data-alt-en="Segue editor: the end of one song over the start of the next" data-alt-pt="Editor de segues: o fim de uma música por cima do início da seguinte"></button>
+        <figcaption><span lang="en"><b>Segue editor</b>The end of one song over the start of the next</span><span lang="pt"><b>Editor de segues</b>O fim de uma música por cima do início da seguinte</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="erc" src="img/en/erc.webp" loading="lazy" decoding="async" width="1400" height="870" alt="ERC quotas: portuguese music quotas and the monthly xml file" data-alt-en="ERC quotas: portuguese music quotas and the monthly xml file" data-alt-pt="Quotas da ERC: as quotas de música portuguesa e o xml mensal"></button>
+        <figcaption><span lang="en"><b>ERC quotas</b>Portuguese music quotas and the monthly XML file</span><span lang="pt"><b>Quotas da ERC</b>As quotas de música portuguesa e o XML mensal</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="rec" src="img/en/rec.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Sintoniza Rec: the recordings of a day and export a stretch" data-alt-en="Sintoniza Rec: the recordings of a day and export a stretch" data-alt-pt="Sintoniza Rec: as gravações de um dia e exportar um excerto"></button>
+        <figcaption><span lang="en"><b>Sintoniza Rec</b>The recordings of a day and Export a stretch</span><span lang="pt"><b>Sintoniza Rec</b>As gravações de um dia e Exportar um excerto</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <button type="button"><img data-shot="station-website" src="img/en/station-website.webp" loading="lazy" decoding="async" width="1400" height="870" alt="Now playing on the website: json, templates, ftp and the stream's delay" data-alt-en="Now playing on the website: json, templates, ftp and the stream's delay" data-alt-pt="O que está a tocar no site: json, modelos, ftp e o atraso do stream"></button>
+        <figcaption><span lang="en"><b>Now playing on the website</b>JSON, templates, FTP and the stream's delay</span><span lang="pt"><b>O que está a tocar no site</b>JSON, modelos, FTP e o atraso do stream</span></figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ================= GET STARTED ================= -->
+<section id="start" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker"><span lang="en">Get started</span><span lang="pt">Começar</span></span>
+      <h2><span lang="en">On air in an afternoon</span><span lang="pt">No ar numa tarde</span></h2>
+      <p lang="en">The user manual walks through each program step by step, with screenshots. In short:</p>
+      <p lang="pt">O manual do utilizador explica cada programa passo a passo, com imagens. Em resumo:</p>
+    </div>
+    <ol class="steps">
+      <li>
+        <div lang="en"><h3>Install</h3><p>Download the package for your system from the releases page and install it. Sintoniza Emi, Pro, Import and Rec each get their own entry in the menu.</p></div>
+        <div lang="pt"><h3>Instalar</h3><p>Transfira o pacote para o seu sistema da página de versões e instale-o. O Sintoniza Emi, Pro, Import e Rec ficam cada um com a sua entrada no menu.</p></div>
+      </li>
+      <li>
+        <div lang="en"><h3>Set up the studio</h3><p>In Sintoniza Emi's Settings: where the library lives (SQLite, or a MySQL / MariaDB server for several studios) and the sound cards for music, cartwall and preview.</p></div>
+        <div lang="pt"><h3>Preparar o estúdio</h3><p>Nas Definições do Sintoniza Emi: onde fica a biblioteca (SQLite, ou um servidor MySQL / MariaDB para vários estúdios) e as placas de som da música, da cartwall e da pré-escuta.</p></div>
+      </li>
+      <li>
+        <div lang="en"><h3>Set up the station</h3><p>Log in to Sintoniza Pro as <code>admin</code> / <code>admin</code> and change the password. Set the station's name, fill music, streaming and RDS, then bring in the music with Sintoniza Import.</p></div>
+        <div lang="pt"><h3>Preparar a rádio</h3><p>Entre no Sintoniza Pro com <code>admin</code> / <code>admin</code> e mude a palavra-passe. Defina o nome da rádio, a música de enchimento, o stream e o RDS, e traga a música com o Sintoniza Import.</p></div>
+      </li>
+      <li>
+        <div lang="en"><h3>Go on air</h3><p>Build the hour templates and ad breaks in Pro. Back in Sintoniza Emi, switch to AUTO and press Play: from then on it plays the daily playlists, breaks and events at their times.</p></div>
+        <div lang="pt"><h3>Ir para o ar</h3><p>Faça os modelos de hora e os blocos publicitários no Pro. De volta ao Sintoniza Emi, passe a AUTO e carregue em Play: a partir daí toca as playlists diárias, os blocos e os eventos à sua hora.</p></div>
+      </li>
+    </ol>
+    <p class="note">
+      <span lang="en">Manuals (PDF):</span><span lang="pt">Manuais (PDF):</span>
+      <a href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/raw/main/docs/manual/Sintoniza-Manual.pdf" hreflang="en">English</a> ·
+      <a href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/raw/main/docs/manual/Sintoniza-Manual-PT.pdf" hreflang="pt">Português</a>
+    </p>
+  </div>
+</section>
+
+<!-- ================= DOWNLOAD ================= -->
+<section id="download">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker"><span lang="en">Download</span><span lang="pt">Transferir</span></span>
+      <h2><span lang="en">Windows, macOS and Linux</span><span lang="pt">Windows, macOS e Linux</span></h2>
+      <p lang="en">Free to download. The latest version is v1.2.18; the program checks for updates by itself and installs them when you click.</p>
+      <p lang="pt">Gratuito. A versão mais recente é a v1.2.18; o programa procura atualizações sozinho e instala-as quando clica.</p>
+    </div>
+    <div class="downloads">
+      <div class="os">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13 7.5 1.1v-7H3v5.9Zm8.4 1.2L21 21v-8.4h-9.6v7.1Zm0-15.4v7.2H21V3l-9.6 1.3Z"/></svg>Windows</h3>
+        <ul>
+          <li><b>-setup.exe</b> <span lang="en">installer</span><span lang="pt">instalador</span></li>
+          <li><b>.zip</b> <span lang="en">portable copy</span><span lang="pt">cópia portátil</span></li>
+        </ul>
+      </div>
+      <div class="os">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.9-1.1-2.9-4.3ZM13.9 5.2c.7-.9 1.2-2 1-3.2-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.1 1.2.1 2.3-.6 3.1-1.5Z"/></svg>macOS</h3>
+        <ul>
+          <li><b>.dmg</b> <span lang="en">Apple Silicon and Intel</span><span lang="pt">Apple Silicon e Intel</span></li>
+          <li><span lang="en">Sintoniza Emi, Pro, Rec and Import apps</span><span lang="pt">As apps Sintoniza Emi, Pro, Rec e Import</span></li>
+        </ul>
+      </div>
+      <div class="os">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="m7 9 3 2-3 2M12 13h4M8 21h8"/></svg>Linux</h3>
+        <ul>
+          <li><b>.deb</b> Debian, Ubuntu, Mint…</li>
+          <li><b>.rpm</b> Fedora, RHEL, openSUSE…</li>
+          <li><b>.tar.gz</b> <span lang="en">portable copy</span><span lang="pt">cópia portátil</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="dl-row">
+      <a class="btn btn-primary" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/releases/latest">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16"/></svg>
+        <span lang="en">Download the latest version</span><span lang="pt">Transferir a versão mais recente</span>
+      </a>
+      <a class="btn btn-ghost" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/releases">
+        <span lang="en">All versions</span><span lang="pt">Todas as versões</span>
+      </a>
+    </div>
+    <p class="note" lang="en">Built in C# with Avalonia, with the BASS audio engine. On Linux, audio goes through ALSA, which works with PulseAudio and PipeWire.</p>
+    <p class="note" lang="pt">Feito em C# com Avalonia, com o motor de áudio BASS. No Linux, o som passa pela ALSA, que funciona com PulseAudio e PipeWire.</p>
+  </div>
+</section>
+
+<!-- ================= SOURCE AND SUPPORT ================= -->
+<section class="alt">
+  <div class="wrap">
+    <div class="cards3">
+      <div class="card">
+        <div lang="en"><h3>Source on GitHub</h3><p>The code, the releases, the user guide and the roadmap are all on GitHub.</p></div>
+        <div lang="pt"><h3>Código no GitHub</h3><p>O código, as versões, o guia do utilizador e o que vem a seguir estão todos no GitHub.</p></div>
+        <a class="btn btn-ghost" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.2 19.5c.5.1.7-.2.7-.5v-1.7c-2.8.6-3.4-1.3-3.4-1.3-.4-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.2-.3-4.6-1.1-4.6-5 0-1.1.4-2 1-2.7-.1-.3-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.6 9.6 0 0 1 5 0c1.9-1.3 2.8-1 2.8-1 .5 1.4.2 2.4.1 2.7.6.7 1 1.6 1 2.7 0 3.9-2.3 4.7-4.6 5 .4.3.7.9.7 1.9V21c0 .3.2.6.7.5A10 10 0 0 0 12 2Z"/></svg>
+          GitHub
+        </a>
+      </div>
+      <div class="card">
+        <div lang="en"><h3>Your language</h3><p>English, Português and Français are built in, with dates and day names to match. Add another language without a new version: drop a translation file in the translations folder.</p></div>
+        <div lang="pt"><h3>A sua língua</h3><p>Português, English e Français vêm incluídos, com as datas e os dias da semana a condizer. Junte outra língua sem esperar por uma versão nova: basta pôr um ficheiro de tradução na pasta das traduções.</p></div>
+        <a class="btn btn-ghost" href="https://github.com/BrixSat/Sintoniza-Radio-automation-software#features">
+          <span lang="en">Read the full feature list</span><span lang="pt">Ver todas as funcionalidades</span>
+        </a>
+      </div>
+      <div class="card support">
+        <div lang="en"><h3>Support Sintoniza</h3><p>If Sintoniza is useful to your station, you can support its development. Thank you!</p></div>
+        <div lang="pt"><h3>Apoiar o Sintoniza</h3><p>Se o Sintoniza é útil à sua rádio, pode apoiar o seu desenvolvimento. Obrigado!</p></div>
+        <a class="btn btn-primary" href="https://buymeacoffee.com/sintoniza">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8Z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 2v3M12 2v3"/></svg>
+          <span lang="en">Buy me a coffee</span><span lang="pt">Pagar um café</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <a class="brand" href="#top"><img src="img/icon-emi.svg" alt="" width="28" height="28"><span>Sintoniza</span></a>
+      <ul class="foot-links">
+        <li><a href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/releases"><span lang="en">Releases</span><span lang="pt">Versões</span></a></li>
+        <li><a href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/raw/main/docs/manual/Sintoniza-Manual.pdf">Manual (EN)</a></li>
+        <li><a href="https://github.com/BrixSat/Sintoniza-Radio-automation-software/raw/main/docs/manual/Sintoniza-Manual-PT.pdf">Manual (PT)</a></li>
+        <li><a href="https://github.com/BrixSat/Sintoniza-Radio-automation-software">GitHub</a></li>
+        <li><a href="https://buymeacoffee.com/sintoniza"><span lang="en">Support</span><span lang="pt">Apoiar</span></a></li>
+      </ul>
+    </div>
+    <p class="bass" lang="en">Sintoniza uses the <a href="https://www.un4seen.com/">BASS</a> audio library, which is free for non-commercial use. Commercial use, including running it at a commercial station, needs a licence from un4seen. Avalonia and ManagedBass are MIT licensed; TagLib# is LGPL 2.1.</p>
+    <p class="bass" lang="pt">O Sintoniza usa a biblioteca de áudio <a href="https://www.un4seen.com/">BASS</a>, gratuita para uso não comercial. O uso comercial, incluindo numa rádio comercial, precisa de uma licença da un4seen. O Avalonia e o ManagedBass têm licença MIT; o TagLib# tem licença LGPL 2.1.</p>
+    <p class="bass">© the Sintoniza project</p>
+  </div>
+</footer>
+
+<dialog class="lightbox" id="lightbox" aria-label="Screenshot">
+  <button class="close" type="button" aria-label="Close / Fechar">×</button>
+  <img src="data:," alt="">
+  <p></p>
+</dialog>
+</body>
+</html>

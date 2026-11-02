@@ -18,600 +18,815 @@ WORDS = {
 
 CHAPTERS = [
 ("O Sintoniza num relance", "intro", [
-    ("p", "O Sintoniza é automação de rádio para estações que estão no ar a toda a hora. São quatro programas. Três partilham "
-          "uma base de dados, a <b>biblioteca</b>: a música e as suas categorias, a programação, as playlists diárias e o "
-          "histórico de tudo o que foi para o ar."),
+    ("p", "O Sintoniza é um sistema de automação para rádios que estão no ar a toda a hora. Este capítulo apresenta os "
+          "quatro programas que o compõem e mostra, em quatro passos, como um dia de emissão é preparado e vai para o ar."),
+    ("p", "Três dos programas partilham uma base de dados a que chamamos <b>biblioteca</b>. É lá que vivem a música e as "
+          "suas categorias, a programação, as playlists diárias e o histórico de tudo o que foi emitido."),
     ("icons", [
-        ("radio-playout.png", "Sintoniza Emi", "O programa de emissão, no estúdio: a playlist, o cartwall, o microfone e o stream. É o que o locutor usa."),
-        ("radio-playout-schedule.png", "Sintoniza Pro", "O programa de produção da estação: as suas definições, categorias e cartwalls; eventos, blocos publicitários, clientes e campanhas, modelos de hora para os programas e as playlists diárias, música a música."),
-        ("radio-playout-import.png", "Sintoniza Importação", "Traz pastas de música para a biblioteca, em categorias."),
-        ("radio-playout-rec.png", "Sintoniza Rec", "Grava o que a estação emite e guarda-o os dias que a lei pede; exporta excertos. Trabalha sozinho, sem a biblioteca."),
+        ("radio-playout.png", "Sintoniza Emi", "O programa de emissão, no estúdio. É o que o locutor tem à frente: a playlist, o cartwall, o microfone e o stream."),
+        ("radio-playout-schedule.png", "Sintoniza Pro", "O programa de produção. Aqui se definem a estação, as categorias e as cartwalls, os eventos, a publicidade, os programas e as playlists de cada dia."),
+        ("radio-playout-import.png", "Sintoniza Import", "Traz pastas de música para a biblioteca, já arrumadas em categorias."),
+        ("radio-playout-rec.png", "Sintoniza Rec", "Grava tudo o que a estação emite e guarda as gravações durante o tempo que a lei pede. Trabalha sozinho, sem a biblioteca."),
     ]),
-    ("p", "Cada um tem a sua entrada no menu das aplicações (Linux), no menu Iniciar e no ambiente de trabalho (Windows) ou "
-          "em Aplicações (macOS), e só corre uma cópia de cada um por computador. Com uma biblioteca MySQL / MariaDB "
-          "partilhada, a Pro e a Importação podem correr noutros computadores (o departamento comercial, a "
-          "discoteca); o estúdio vê as alterações em poucos segundos."),
-    ("tip", "As <b>Definições</b> do programa de emissão só têm o que é desse computador: placas de som, microfone, a base "
-            "de dados, teclas. <b>Tudo o que é da estação</b> — nome e logótipo, crossfades, música de enchimento, sinal horário, "
-            "streaming, textos RDS, site, alertas, categorias, cartwalls — <b>define-se uma vez na Sintoniza Pro</b>, para todos os estúdios."),
+    ("p", "Cada programa tem a sua entrada no menu das aplicações em Linux, no menu Iniciar e no ambiente de trabalho em "
+          "Windows, e em Aplicações no macOS. Só corre uma cópia de cada programa por computador."),
+    ("p", "Com uma biblioteca MySQL ou MariaDB partilhada, a Pro e o Import podem trabalhar noutros computadores, por "
+          "exemplo no departamento comercial ou na discoteca. O estúdio vê as alterações em poucos segundos."),
+    ("tip", "As <b>Definições</b> do programa de emissão só guardam o que é desse computador: as placas de som, o microfone, "
+            "a base de dados e as teclas. <b>Tudo o que é da estação</b>, como o nome e o logótipo, os crossfades, a música de "
+            "enchimento, o sinal horário, o streaming, o RDS, o site, os alertas, as categorias e as cartwalls, <b>define-se uma "
+            "só vez na Sintoniza Pro</b> e chega a todos os estúdios."),
     ("h2", "Como o dia é planeado e emitido"),
     ("steps", [
-        "<b>Importe</b> a música em categorias, debaixo das oito da estação (Music › Atuais, Gold, Anos 80, Jingles, Spots…).",
-        "Na <b>Pro</b>, faça <b>modelos de hora</b> para os seus programas (que categorias tocam e por que ordem) e coloque-os na semana; marque os <b>blocos publicitários</b> e os seus <b>clientes</b>.",
-        "As <b>playlists diárias</b> são feitas a partir dos modelos para hoje e os próximos dias. Veja-as, troque músicas à mão ou deixe as regras preenchê-las.",
-        "O <b>programa de emissão</b> toca as playlists diárias, começa os blocos e os eventos às suas horas e mantém cada hora a horas.",
+        "<b>Importe</b> a música para categorias, debaixo das oito categorias da estação: Music › Atuais, Gold, Anos 80, Jingles, Spots e as que precisar.",
+        "Na <b>Pro</b>, crie <b>modelos de hora</b> para os seus programas, que dizem que categorias tocam e por que ordem, e coloque-os na semana. Marque também os <b>blocos publicitários</b> e os anúncios dos <b>clientes</b>.",
+        "A partir dos modelos são feitas as <b>playlists diárias</b> de hoje e dos dias seguintes. Pode revê-las e trocar músicas à mão, ou deixar que as regras as preencham.",
+        "O <b>programa de emissão</b> toca as playlists diárias, lança os blocos e os eventos à hora marcada e garante que cada hora começa a horas.",
     ]),
 ]),
 
 ("Primeira configuração", "setup", [
-    ("p", "Em <b>cada computador de estúdio</b>, no programa de emissão: clique em <b>Definições</b> (em baixo à esquerda, ou "
-          "Ctrl/Cmd + ,). Só lá está o que é desse computador. <b>Guardar</b> aplica as alterações. Com a biblioteca configurada, as "
-          "Definições pedem um utilizador que possa mudar as definições deste computador (no início: <b>admin</b>, palavra-passe <b>admin</b>)."),
-    ("fig", "settings-station", "Definições → Geral", [("LanguageBox", "O <b>idioma</b> dos ecrãs (English, Português, Français); aplica-se da próxima vez que o programa arrancar.")]),
+    ("p", "Este capítulo explica o que tem de configurar antes de ir para o ar: primeiro em cada computador de estúdio, "
+          "depois uma única vez para toda a estação."),
+    ("h2", "Em cada computador de estúdio"),
+    ("p", "No programa de emissão, clique em <b>Definições</b>, no canto inferior esquerdo, ou use Ctrl/Cmd + vírgula. "
+          "Aqui só está o que diz respeito a esse computador, e nada muda até carregar em <b>Guardar</b>."),
+    ("p", "Quando a biblioteca já está configurada, as Definições pedem um utilizador com permissão para mexer neste "
+          "computador. Numa instalação nova, entre com <b>admin</b> e a palavra-passe <b>admin</b>."),
+    ("fig", "settings-station", "Definições → Geral", [("LanguageBox", "O <b>idioma</b> dos ecrãs: English, Português ou Français. A mudança vale a partir da próxima vez que o programa arrancar.")]),
+    ("p", "<b>Outros idiomas.</b> Precisa do programa noutra língua, ou quer corrigir uma tradução? No mesmo separador, "
+          "<b>Adicionar um idioma…</b> abre a pasta das traduções. Um ficheiro posto lá com o nome da língua, como de.json "
+          "ou es.json, acrescenta esse idioma à lista, sem ser preciso uma nova versão do programa. Um ficheiro pt.json "
+          "corrige ou completa o português que já vem com o programa. Os textos que faltarem aparecem em inglês."),
     ("fig", "settings-audio", "Definições → Áudio", [
-        ("MusicDeviceBox", "A placa de som e o par de canais da <b>Música</b>; Cartwall e Pré-escuta por baixo. <b>Testar</b> toca um tom curto."),
-        ("PreviewDeviceBox", "A <b>Pré-escuta</b> serve para ouvir antes do ar: auscultadores ou o PFL/cue da mesa, nunca uma saída do ar.")]),
+        ("MusicDeviceBox", "A placa de som e o par de canais por onde sai a <b>Música</b>. Por baixo escolhe as saídas do Cartwall e da Pré-escuta. <b>Testar</b> toca um tom curto, para descobrir que fader da mesa é qual."),
+        ("PreviewDeviceBox", "A <b>Pré-escuta</b> serve para ouvir antes de ir para o ar. Ligue-a aos auscultadores ou ao PFL da mesa, nunca a uma saída que vá para o ar.")]),
     ("fig", "settings-library", "Definições → Biblioteca", [
-        ("LibraryTypeBox", "Onde fica a biblioteca: <i>SQLite</i> (um ficheiro neste computador) ou <i>MySQL / MariaDB</i> (um servidor partilhado por vários estúdios)."),
-        ("TestLibraryButton", "<b>Testar</b> abre-a (e cria as tabelas da primeira vez).")]),
-    ("p", "<b>Música partilhada em Windows, Mac e Linux.</b> Com uma biblioteca partilhada as músicas ficam com o caminho que vê o "
-          "computador que as analisou (<i>/mnt/radio/Pop/musica.mp3</i> num estúdio Linux). Um computador Windows ou Mac vê a mesma partilha "
-          "noutro sítio (<i>Z:\\</i>, <i>\\\\servidor\\radio</i>, <i>/Volumes/radio</i>): mais abaixo no separador Biblioteca, diga onde, uma vez."),
+        ("LibraryTypeBox", "Onde fica a biblioteca. <i>SQLite</i> é um ficheiro neste computador; <i>MySQL / MariaDB</i> é um servidor partilhado por vários estúdios."),
+        ("TestLibraryButton", "<b>Testar</b> abre a biblioteca. Da primeira vez, cria também as tabelas.")]),
+    ("p", "<b>Música partilhada entre Windows, Mac e Linux.</b> Numa biblioteca partilhada, cada música fica registada com o "
+          "caminho que o computador que a analisou vê, por exemplo <i>/mnt/radio/Pop/musica.mp3</i> num estúdio Linux. Um "
+          "computador Windows ou Mac vê a mesma partilha noutro sítio, como <i>Z:\\</i>, <i>\\\\servidor\\radio</i> ou "
+          "<i>/Volumes/radio</i>. Basta dizer-lho uma vez, mais abaixo no separador Biblioteca."),
     ("fig", "settings-paths", "Definições → Biblioteca → Caminhos deste computador", [
-        ("PathMapRows", "<b>Na biblioteca</b>, o início dos caminhos da biblioteca; <b>neste computador</b>, onde isso está aqui (ou <b>Pasta…</b> para o escolher)."),
-        ("AddPathMapButton", "<b>Adicionar</b> uma linha: sugere onde começam as músicas da biblioteca."),
+        ("PathMapRows", "Em <b>Na biblioteca</b> fica o início dos caminhos tal como estão na biblioteca. Em <b>neste computador</b> fica onde essa pasta está aqui. <b>Pasta…</b> ajuda a escolhê-la."),
+        ("AddPathMapButton", "<b>Adicionar</b> junta uma linha e sugere logo onde começam as músicas da biblioteca."),
         ("TestPathMapButton", "<b>Testar</b> procura algumas músicas da biblioteca neste computador…"),
-        ("PathMapNote", "…e diz quantas encontrou (e, de uma que não encontrou, onde procurou). Depois <b>Guardar</b>."),
+        ("PathMapNote", "…e diz quantas encontrou. Se alguma faltar, mostra onde a procurou. No fim, carregue em <b>Guardar</b>."),
     ], True),
-    ("tip", "A partir daí tudo nesse computador abre os ficheiros onde eles estão (tocar, ouvir, formas de onda, etiquetas, análises, "
-            "takes, voice tracks), e o que ele acrescenta fica com o caminho da biblioteca, para todos os estúdios o encontrarem. A Pro, "
-            "o Rec e o Import nesse computador usam a mesma definição. A partilha tem de ser uma pasta: uma unidade mapeada ou "
-            "<i>\\\\servidor\\partilha</i> no Windows, montada em /mnt no Linux (não um endereço <i>smb://</i> do gestor de ficheiros), /Volumes num Mac."),
+    ("tip", "A partir daí, esse computador abre cada ficheiro onde ele realmente está, seja para tocar, ouvir, desenhar formas de "
+            "onda, editar etiquetas ou gravar voice tracks. O que ele acrescentar fica guardado com o caminho da biblioteca, para "
+            "todos os estúdios o encontrarem. A Pro, o Rec e o Import desse computador usam a mesma definição. A partilha tem de "
+            "aparecer como uma pasta: no Windows, uma unidade mapeada ou <i>\\\\servidor\\partilha</i>; no Linux, montada em /mnt, "
+            "e não um endereço <i>smb://</i> do gestor de ficheiros; no Mac, em /Volumes."),
     ("fig", "settings-safety", "Definições → Segurança", [
-        ("ResumeBox", "<b>Continuar a tocar ao arrancar, se estiver em AUTO</b>, <b>Voltar a arrancar se falhar</b>, <b>Arrancar quando inicio sessão</b>: para uma estação que nunca sai do ar."),
-        ("BackupBox", "<b>Cópias de segurança</b>: todos os dias, da base de dados e dos ficheiros da estação.")]),
-    ("p", "Depois, <b>uma vez para toda a estação</b>, na <b>Sintoniza Pro → Definições da estação</b> (entre como <b>admin</b> / <b>admin</b>, e mude essa palavra-passe em Estação → Utilizadores):"),
-    ("fig", "station-station", "Definições da estação → Estação", [("StationNameBox", "<b>Nome da estação</b>, <b>logótipo</b>, género e site: aparecem ao lado do relógio e vão para o stream e o RDS. "
-        "<b>Tipo de estação</b>: <i>Rádio FM</i> (microfone pela mesa de mistura) ou <i>Rádio web</i> (pelo computador).")]),
-    ("fig", "station-audio", "Definições da estação → Áudio", [("CrossfadeBox", "Crossfade de música para música, em segundos."),
-        ("OtherCrossfadeBox", "Crossfade para dentro ou para fora de jingles, anúncios e programas (0 = corte limpo)."),
-        ("LoudnessBox", "Tudo ao mesmo volume percebido (EBU R128).")]),
+        ("ResumeBox", "Para uma estação que nunca sai do ar, ligue <b>Continuar a tocar ao arrancar, se estiver em AUTO</b>, <b>Voltar a arrancar se falhar</b> e <b>Arrancar quando inicio sessão</b>."),
+        ("BackupBox", "<b>Cópias de segurança</b> diárias da base de dados e dos ficheiros da estação.")]),
+    ("h2", "Uma vez para toda a estação"),
+    ("p", "O resto define-se na <b>Sintoniza Pro</b>, em <b>Definições da estação</b>. Entre como <b>admin</b> com a "
+          "palavra-passe <b>admin</b> e, antes de mais nada, mude essa palavra-passe em Estação → Utilizadores."),
+    ("fig", "station-station", "Definições da estação → Estação", [("StationNameBox", "O <b>nome da estação</b>, o <b>logótipo</b>, o género e o site. Aparecem ao lado do relógio e seguem para o stream e o RDS. "
+        "Em <b>Tipo de estação</b>, escolha <i>Rádio FM</i> se o microfone passa pela mesa de mistura, ou <i>Rádio web</i> se passa pelo computador.")]),
+    ("fig", "station-audio", "Definições da estação → Áudio", [("CrossfadeBox", "Quantos segundos uma música se cruza com a seguinte."),
+        ("OtherCrossfadeBox", "O crossfade à entrada e à saída de jingles, anúncios e programas. Com 0, a música acaba e o jingle entra limpo."),
+        ("LoudnessBox", "Põe tudo ao mesmo volume percebido, segundo a norma EBU R128.")]),
     ("fig", "station-safety", "Definições da estação → Segurança", [
-        ("SilenceBox", "<b>Detetar silêncio</b>: um alarme (e, em AUTO, um salto) quando não se ouve nada."),
-        ("FillBox", "<b>Música de enchimento</b>: o que toca se a playlist alguma vez acabar, e os tempos de descanso (uma música não volta antes de N horas, um artista antes de N minutos). As playlists diárias usam os mesmos tempos.")]),
-    ("p", "Os outros separadores: <b>Sinal horário</b>, <b>Biblioteca</b> (outras pastas de música), <b>Streaming</b>, <b>RDS</b> (os textos), "
-          "<b>Site</b>, <b>Alertas</b> e <b>Playlist</b> (dias feitos com antecedência, cores das linhas). Todos os estúdios recebem as "
-          "definições da estação até um minuto depois de guardar. O primeiro estúdio a arrancar depois de atualizar para esta versão publica as suas."),
-    ("tip", "Depois importe a música (capítulo 5), faça as cartwalls, os modelos e os blocos (capítulo 4), ponha o programa de emissão em <b>AUTO</b> e carregue em <b>Play</b>."),
+        ("SilenceBox", "<b>Detetar silêncio</b>: se nada se ouvir durante algum tempo, soa um alarme e, em AUTO, o programa salta para o item seguinte."),
+        ("FillBox", "A <b>música de enchimento</b> toca se a playlist alguma vez acabar. Aqui também se definem os tempos de descanso: quantas horas até a mesma música voltar e quantos minutos até o mesmo artista voltar. As playlists diárias respeitam os mesmos tempos.")]),
+    ("p", "Os restantes separadores são o <b>Sinal horário</b>, a <b>Biblioteca</b> com outras pastas de música, o "
+          "<b>Streaming</b>, os textos do <b>RDS</b>, o <b>Site</b>, que tem secção própria no capítulo da Sintoniza Pro, os "
+          "<b>Alertas</b> e a <b>Playlist</b>, com quantos dias de playlists se fazem com antecedência e as cores das linhas."),
+    ("p", "Depois de guardar, todos os estúdios recebem as definições da estação no espaço de um minuto. Depois de uma "
+          "atualização, o primeiro estúdio a arrancar com a nova versão publica as suas."),
+    ("tip", "A seguir, importe a música (capítulo 5), crie as cartwalls, os modelos de hora e os blocos (capítulo 4), ponha o programa de emissão em <b>AUTO</b> e carregue em <b>Play</b>."),
 ]),
 
 ("O programa de emissão", "onair", [
-    ("p", "O <b>Sintoniza Emi</b> é o programa com que o locutor trabalha. A metade de cima é o que está "
-          "no ar agora; a de baixo é o que vem a seguir (a playlist) e o que está à mão (cartwall, biblioteca, pastas)."),
+    ("p", "O <b>Sintoniza Emi</b> é o programa com que o locutor trabalha no estúdio. Este capítulo percorre o ecrã de "
+          "emissão, a playlist, o cartwall e a biblioteca, e depois o que liga o programa ao resto do estúdio: a mesa, o "
+          "controlo remoto e os computadores de reserva."),
+    ("p", "A metade de cima do ecrã mostra o que está no ar agora. A metade de baixo mostra o que vem a seguir, na playlist, "
+          "e o que está à mão: o cartwall, a biblioteca e as pastas."),
     ("h2", "Entrar"),
-    ("p", "O programa abre <b>bloqueado</b>: o ecrã de emissão vê-se por trás da entrada, mas não se pode clicar em nada e as teclas não fazem "
-          "nada até entrar um utilizador com a permissão <b>No ar</b>. Bloqueado ou não, a estação continua no ar: em <b>AUTO</b> começa "
-          "a tocar sozinho quando o programa arranca, a programação e os blocos de publicidade correm, e o controlo remoto web funciona."),
+    ("p", "O programa abre <b>bloqueado</b>. O ecrã de emissão vê-se por trás do quadro de entrada, mas nada responde a "
+          "cliques nem a teclas até entrar um utilizador com a permissão <b>No ar</b>."),
+    ("p", "Bloqueado ou não, a estação continua no ar. Em <b>AUTO</b> o programa começa a tocar sozinho quando arranca, a "
+          "programação e os blocos publicitários seguem o seu curso e o controlo remoto web funciona."),
     ("fig", "main-locked", "Bloqueado: entre para trabalhar no ar", [
-        ("UserBox", "O utilizador (o último já vem preenchido)…"),
+        ("UserBox", "O utilizador. O último a entrar já vem preenchido…"),
         ("PasswordBox", "…e a palavra-passe."),
-        ("LoginButton", "<b>Entrar</b> (ou Enter)."),
-        ("LockNote", "O que está no ar continua entretanto."),
+        ("LoginButton", "<b>Entrar</b>, ou a tecla Enter."),
+        ("LockNote", "Enquanto isso, o que está no ar continua a tocar."),
     ]),
-    ("tip", "<b>Sair</b> (em baixo à esquerda) volta a bloqueá-lo, p. ex. entre programas. Bloqueado, a janela não pode ser fechada. Se não for possível chegar à biblioteca não há utilizadores para verificar: o programa abre sem entrar, para a estação poder continuar a ser operada."),
+    ("tip", "<b>Sair</b>, em baixo à esquerda, volta a bloquear o ecrã, por exemplo entre dois programas. Bloqueada, a janela não se fecha. "
+            "Se a biblioteca não estiver acessível não há utilizadores para verificar, e o programa abre sem pedir entrada para a estação poder continuar a trabalhar."),
     ("h2", "O ecrã"),
     ("fig", "main", "O ecrã de emissão", [
-        ("OnAirBadge", "Estado: <b>NO AR</b>, <b>PARADO</b>, <b>SILÊNCIO</b> (não se ouve nada) ou a contagem para o próximo bloco."),
+        ("OnAirBadge", "O estado da emissão: <b>NO AR</b>, <b>PARADO</b>, <b>SILÊNCIO</b> quando nada se ouve, ou a contagem para o próximo bloco."),
         ("NowTitle", "O que está no ar, com o artista."),
-        ("WaveMain", "A forma de onda: a parte vermelha já tocou. A barra fina por baixo é a música inteira."),
-        ("Elapsed", "Tempo decorrido, e o <b>SEGUINTE</b> por baixo."),
-        ("NoteBox", "<b>Notas para o locutor</b> das playlists diárias: a do item no ar e a do seguinte (o que anunciar, o patrocinador a referir)."),
-        ("PlayButton", "<b>Play</b> (F5)."),
-        ("PauseButton", "<b>Pausa</b> / continuar (F6)."),
-        ("NextButton", "<b>Seguinte</b> (F7): crossfade para o próximo item já."),
-        ("StopButton", "<b>Parar</b> (F8)."),
-        ("Remaining", "Tempo que falta ao que está no ar."),
-        ("AutoSwitch", "<b>AUTO</b> segue a playlist; <b>ASSISTIDO</b> para depois de cada item até começar o seguinte."),
-        ("Clock", "O relógio, o nome e o logótipo da estação."),
-        ("TopOfHourText", "Contagem para a hora certa."),
-        ("PlaylistEndsText", "Quando acaba a playlist."),
-        ("NextEventPanel", "<b>PRÓXIMO EVENTO</b>: a próxima coisa com hora marcada (um evento, um bloco, um item com hora) e uma contagem grande, âmbar no último minuto, vermelha nos últimos 10 segundos."),
-        ("MeterL", "Níveis de saída, esquerdo e direito."),
-        ("Playlist", "A playlist (páginas seguintes)."),
-        ("CartwallTab", "Separadores <b>CARTWALL</b>, <b>BIBLIOTECA</b> e <b>PASTAS</b>."),
-        ("Cartwall", "O cartwall: jingles e sons à mão."),
-        ("SettingsButton", "<b>Definições</b> (Ctrl/Cmd + ,)."),
-        ("ReportsButton", "<b>Relatórios</b>: música emitida e comprovativo de emissão."),
-        ("LogoutButton", "<b>Sair</b>: volta a bloquear o ecrã (a emissão continua)."),
-        ("Lights", "Luzes de estado: <b>STREAM</b>, <b>RDS</b>, <b>REC</b> (o Sintoniza Rec neste computador), <b>BIBLIOTECA</b>, <b>ALERTAS</b> — verde a funcionar, vermelho um problema (aponte para ver qual), cinzento desligado."),
-        ("LastLog", "A última coisa que aconteceu (tudo fica no registo)."),
+        ("WaveMain", "A forma de onda. A parte vermelha já tocou. A barra fina por baixo mostra a música inteira."),
+        ("Elapsed", "O tempo decorrido e, por baixo, o que vem a <b>SEGUIR</b>."),
+        ("NoteBox", "As <b>notas para o locutor</b> que vêm das playlists diárias: a do item no ar e a do seguinte. Servem para lembrar o que anunciar ou o patrocinador a referir."),
+        ("PlayButton", "<b>Play</b>, ou F5."),
+        ("PauseButton", "<b>Pausa</b> e continuar, ou F6."),
+        ("NextButton", "<b>Seguinte</b>, ou F7, faz já o crossfade para o próximo item."),
+        ("StopButton", "<b>Parar</b>, ou F8."),
+        ("Remaining", "O tempo que falta ao que está no ar."),
+        ("AutoSwitch", "Em <b>AUTO</b> o programa segue a playlist sozinho. Em <b>ASSISTIDO</b> para no fim de cada item e espera que o locutor lance o seguinte."),
+        ("Clock", "O relógio, com o nome e o logótipo da estação."),
+        ("TopOfHourText", "A contagem para a hora certa."),
+        ("PlaylistEndsText", "A hora a que a playlist acaba."),
+        ("NextEventPanel", "O <b>PRÓXIMO EVENTO</b> é a próxima coisa com hora marcada, seja um evento, um bloco ou um item com hora. A contagem fica âmbar no último minuto e vermelha nos últimos 10 segundos."),
+        ("MeterL", "Os níveis de saída, esquerdo e direito."),
+        ("Playlist", "A playlist, explicada nas páginas seguintes."),
+        ("CartwallTab", "Os separadores <b>CARTWALL</b>, <b>BIBLIOTECA</b> e <b>PASTAS</b>."),
+        ("Cartwall", "O cartwall, com os jingles e sons à mão."),
+        ("SettingsButton", "<b>Definições</b>, ou Ctrl/Cmd + vírgula."),
+        ("ReportsButton", "<b>Relatórios</b>: a música emitida e o comprovativo de emissão."),
+        ("LogoutButton", "<b>Sair</b> volta a bloquear o ecrã, e a emissão continua."),
+        ("Lights", "As <b>luzes de estado</b>, cada uma com o seu nome. Verde quer dizer que está a funcionar, âmbar um aviso, vermelho um problema e cinzento desligado. Aponte para uma luz para saber o que se passa e clique nela para abrir as suas definições."),
+        ("LastLog", "A última coisa que aconteceu. Fica tudo registado no registo do dia."),
     ]),
+    ("h2", "As luzes de estado e o sinal NO AR"),
+    ("p", "Num relance, o locutor ou o técnico deve conseguir saber se está tudo bem. Para isso servem as luzes de estado na "
+          "barra de baixo e o sinal vermelho no painel da estação."),
+    ("p", "Cada luz diz respeito a uma parte da emissão. <b>ESTÚDIO</b> mostra se este computador está no ar e quais estão "
+          "de reserva. <b>STREAM</b>, <b>RDS</b> e <b>SITE</b> mostram se a música está a chegar a cada um deles. <b>REC</b> "
+          "segue o Sintoniza Rec neste computador: verde a gravar, âmbar se está a gravar silêncio, vermelho se está aberto "
+          "mas não grava. <b>BIBLIOTECA</b> diz se a base de dados responde. <b>PLAYLIST DE HOJE</b> fica vermelha quando "
+          "uma hora que vem aí tem modelo mas ainda não tem playlist diária. Há ainda <b>SILÊNCIO</b>, <b>MIC</b>, <b>GPIO</b> "
+          "e <b>ALERTAS</b>, que fica vermelha enquanto houver um problema por resolver."),
+    ("p", "O <b>sinal NO AR</b> acende-se a vermelho no painel da estação, entre o relógio e os medidores de nível. Diz "
+          "<b>MIC LIVE</b> enquanto o microfone está aberto, seja pelo botão MIC, seja pelo fader do micro da mesa através do "
+          "GPIO. Durante um programa em direto diz <b>NO AR · </b> seguido do nome do programa, e enquanto toca uma entrada em "
+          "direto diz <b>NO AR · ENTRADA EM DIRETO</b>. Ocupa um espaço que de outro modo fica vazio, por isso nada no ecrã "
+          "salta quando ele acende."),
+    ("fig", "main-onair", "O microfone aberto, com os contadores grandes", [
+        ("OnAirSign", "O sinal <b>MIC LIVE</b>: aqui, o fader do micro da mesa está em cima."),
+        ("Remaining", "Com os <b>contadores grandes</b>, o tempo que falta e os pontos de cue leem-se do outro lado do estúdio…"),
+        ("NextEventCountdown", "…tal como a contagem para o próximo evento e para a hora certa."),
+        ("Lights", "As luzes de estado, na barra de baixo, como vêm por omissão. O MIC está vermelho porque o microfone está aberto."),
+    ]),
+    ("p", "Cada computador escolhe o que mostra, em <b>Definições → Ecrã</b>. Um estúdio pode querer as luzes num painel "
+          "maior, com texto, e outro preferir o ecrã mais limpo."),
+    ("fig", "settings-screen", "Definições → Ecrã", [
+        ("StatusPanelBox", "<b>Luzes de estado num painel por baixo do leitor</b>: em vez das luzes pequenas na barra, cada luz aparece por baixo do leitor com o que está a fazer, por extenso."),
+        ("LampBoxes", "<b>Luzes mostradas</b>: desmarque as que não interessam neste estúdio, como o RDS numa rádio web."),
+        ("BigCountersBox", "<b>Contadores grandes</b>: o tempo que falta, os pontos de cue, o próximo evento e a hora certa em números grandes."),
+        ("OnAirSignBox", "O <b>sinal NO AR</b>. Desmarque-o para nunca o mostrar neste computador."),
+    ]),
+    ("tip", "Quer uma luz verdadeira por cima da porta do estúdio? Uma saída GPIO pode acender-se ao mesmo tempo que o sinal NO AR, e uma entrada GPIO pode dizer ao programa que o fader do micro da mesa subiu. Veja a secção sobre GPIO, mais à frente."),
     ("h2", "A playlist"),
-    ("p", "Cada linha mostra um ícone do tipo (♫ música, ✦ jingle, € anúncio, 🎙 programa, stream), o título e o artista, a "
-          "hora prevista de <b>início</b> e a <b>duração</b>. Tudo o que não é música tem a sua própria cor de fundo "
-          "(Definições → Playlist). O que está no ar enche-se de vermelho à medida que toca, e uma linha marca onde começa cada hora."),
+    ("p", "Cada linha mostra um ícone com o tipo de item: ♫ para música, ✦ para jingle, € para anúncio, 🎙 para programa, e "
+          "outro para streams. Vêm depois o título e o artista, a hora prevista de <b>início</b> e a <b>duração</b>."),
+    ("p", "Tudo o que não é música tem a sua cor de fundo, que se muda em Definições da estação → Playlist. O item no ar vai-se "
+          "enchendo de vermelho à medida que toca, e uma linha marca o início de cada hora."),
     ("fig", "main", "Botões da playlist", [
-        ("OnAirButton", "<b>No ar</b>: volta ao que está no ar (acende-se quando se sai dele)."),
-        ("HourViewButton", "<b>Esta hora</b>: a hora anterior, esta hora e os primeiros 30 minutos da seguinte. Desligado: tudo o que falta tocar."),
-        ("AddStreamButton", "<b>Stream…</b> de outra rádio, ou uma entrada deste computador em direto (a linha da mesa, um recetor de satélite, um estúdio remoto); ao lado <b>Abrir…</b> e <b>Guardar…</b> (playlists M3U) e ▲ ▼ para mover. As músicas vêm da Biblioteca à direita."),
-        ("RemoveButton", "<b>Remover</b> os itens selecionados."),
-        ("ClearButton", "<b>Limpar</b>: esvazia a playlist exceto o que está no ar e o que a programação bloqueou; o plano volta a enchê-la."),
+        ("OnAirButton", "<b>No ar</b> volta ao item que está a tocar. Acende-se quando se afasta dele."),
+        ("HourViewButton", "<b>Esta hora</b> mostra a hora anterior, a hora atual e a primeira meia hora da seguinte. Desligado, mostra tudo o que falta tocar."),
+        ("AddStreamButton", "<b>Stream…</b> junta o stream de outra rádio, ou uma entrada deste computador em direto: a linha da mesa, um recetor de satélite, um estúdio remoto. Ao lado ficam <b>Pausa…</b>, <b>Pedidos…</b>, <b>Vista do locutor</b>, <b>Abrir…</b> e <b>Guardar…</b> para playlists M3U, e ▲ ▼ para mover itens."),
+        ("RemoveButton", "<b>Remover</b> tira os itens selecionados."),
+        ("ClearButton", "<b>Limpar</b> esvazia a playlist, menos o que está no ar e o que a programação bloqueou. O plano volta a enchê-la."),
     ], True),
     ("list", [
-        "<b>Duplo clique</b> num item (ou Enter) para o pôr no ar já.",
-        "<b>Arraste</b> linhas para as mudar de ordem, ou largue músicas da biblioteca, do separador Pastas ou do gestor de ficheiros.",
-        "<b>Botão direito</b>: <i>Editar pontos de cue…</i> (Ctrl/Cmd+E), <i>Editar etiquetas…</i> (Ctrl/Cmd+T), <i>Remover</i>.",
-        "As linhas marcadas <b>PROGRAMADO</b> são blocos e eventos que vêm aí, mostrados onde vão tocar.",
+        "Para pôr um item no ar já, faça <b>duplo clique</b> nele ou carregue em Enter.",
+        "Para mudar a ordem, <b>arraste</b> as linhas. Também pode largar músicas vindas da biblioteca, do separador Pastas ou do gestor de ficheiros.",
+        "Com o <b>botão direito</b> num item tem <i>Editar pontos de cue…</i> (Ctrl/Cmd+E), <i>Editar etiquetas…</i> (Ctrl/Cmd+T) e <i>Remover</i>.",
+        "As linhas marcadas <b>PROGRAMADO</b> são blocos e eventos que aí vêm, mostrados no sítio onde vão tocar.",
+        "Uma música que só começaria depois de acabar a sua hora aparece como <b>NÃO TOCA</b>. Nos últimos minutos da hora fica de fora, para a hora seguinte começar a horas.",
     ]),
-    ("warn", "<b>Os anúncios estão protegidos.</b> Enquanto um anúncio está no ar, Seguinte, Pausa, Parar e pôr outro item no ar "
-             "perguntam primeiro. Só um clique no botão da pergunta o faz, para que um spot pago não seja cortado por engano."),
-    ("p", "<b>De onde vêm as músicas:</b> das playlists diárias (capítulo 4). Cerca de meia hora antes de cada hora, as suas "
-          "músicas entram na playlist. Perto do fim da hora o programa acerta o horário: se a hora seguinte fosse começar "
-          "tarde, um item <i>opcional</i> fica de fora; se fosse começar cedo, juntam-se músicas. Pode sempre alterar a playlist no ar."),
+    ("warn", "<b>Os anúncios estão protegidos.</b> Enquanto um anúncio está no ar, Seguinte, Pausa, Parar ou pôr outro item no ar "
+             "perguntam primeiro, e só um clique no botão da pergunta o faz. Assim um spot pago não é cortado por engano, mas "
+             "numa emergência ainda pode ser."),
+    ("p", "<b>De onde vêm as músicas?</b> Das playlists diárias, preparadas na Sintoniza Pro (capítulo 4). Cerca de meia hora "
+          "antes de cada hora, as músicas dessa hora entram na playlist."),
+    ("p", "Perto do fim da hora, o programa acerta o horário. Se a hora seguinte fosse começar atrasada, deixa de fora um item "
+          "marcado como <i>opcional</i>. Se fosse começar adiantada, junta músicas. O locutor pode sempre mexer na playlist "
+          "no ar; o plano fica como estava e o registo de emissão guarda o que tocou de facto."),
+    ("h2", "Pausas na playlist"),
+    ("p", "Às vezes o locutor precisa de falar sem música por baixo: uma entrevista curta, a leitura de um comunicado. "
+          "<b>Pausa…</b>, por cima da playlist, junta um item sem som, que dura um tempo marcado, por exemplo 1:30 para minuto "
+          "e meio, ou até carregar em <b>Seguinte</b>."),
+    ("p", "O título da pausa é o assunto da conversa. Aparece na playlist, no ar e nas notas quando a pausa é a seguinte, mas "
+          "nunca vai para o RDS, o site nem o stream. Não há crossfade a entrar nem a sair, e a deteção de silêncio deixa-a em "
+          "paz. Para a mudar antes de tocar, use o botão direito e <i>Editar pausa…</i>."),
+    ("h2", "Programas em direto e a vista do locutor"),
+    ("p", "Quando um programa em direto marcado na Pro começa (capítulo 4, Programas), a emissão passa para <b>ASSISTIDO</b>: "
+          "cada item espera que o locutor carregue em Play. O nome do programa e do locutor seguem para o RDS e para o site, e "
+          "abre-se a <b>vista do locutor</b>. Quando o programa acaba, a emissão volta a <b>AUTO</b> e, se nada estiver a tocar, "
+          "arranca a playlist. Os blocos publicitários e os eventos tocam como sempre."),
+    ("p", "A <b>vista do locutor</b> é um ecrã grande e simples, pensado para quem está a fazer o programa. Mostra quanto falta "
+          "para o programa acabar, o que está no ar com o tempo que falta e a contagem <b>FALAR ATÉ À VOZ</b> até ao fim da "
+          "introdução, os três itens seguintes, as notas, as contagens para o próximo bloco e para a hora certa, os pedidos à "
+          "espera, e botões grandes para PLAY, SEGUINTE e PARAR. Também se abre a qualquer momento com <b>Vista do locutor</b>, "
+          "por cima da playlist."),
+    ("h2", "Pedidos dos ouvintes"),
+    ("p", "Quem atende o telefone ou lê as mensagens regista os pedidos para o locutor. Em <b>Pedidos…</b>, por cima da "
+          "playlist, procure a música na biblioteca e escreva para quem é e a mensagem do ouvinte. No controlo remoto web, o "
+          "botão ♥ faz o mesmo a partir de um telemóvel."),
+    ("p", "O locutor vê os pedidos à espera e decide: põe cada um a tocar a seguir, e a dedicatória passa a ser a nota desse "
+          "item no ar, ou recusa-o. A lista é só do estúdio e nada fica aberto à internet."),
     ("h2", "Cartwall"),
     ("fig", "main", "O cartwall", [
-        ("Cartwall", "Os carts: nome, ícone e cor; o número é a tecla do cart (Definições → Atalhos)."),
-        ("CartwallPicker", "Que cartwall é mostrado."),
+        ("Cartwall", "Cada cart tem nome, ícone e cor. O número é a tecla do cart, definida em Definições → Atalhos."),
+        ("CartwallPicker", "A cartwall que está a ser mostrada."),
     ], True),
     ("list", [
-        "<b>Clique</b> num cart para o tocar, outra vez para o parar. Os carts tocam por cima da música, na saída Cartwall. Cada um mostra quanto dura; a tocar, o tempo que falta.",
-        "As cartwalls são da estação: fazem-se na Sintoniza Pro → <b>Cartwalls</b>, e todos os estúdios as recebem até um minuto depois.",
-        "Teclas para cada cart: Definições → Atalhos.",
+        "<b>Clique</b> num cart para o tocar e outra vez para o parar. Os carts tocam por cima da música, na saída do Cartwall. Cada um mostra quanto dura e, enquanto toca, quanto lhe falta.",
+        "As cartwalls são da estação. Fazem-se na Sintoniza Pro, em <b>Cartwalls</b>, e chegam a todos os estúdios no espaço de um minuto.",
+        "Pode dar uma tecla a cada cart em Definições → Atalhos.",
     ]),
     ("h2", "Biblioteca"),
     ("fig", "main-library", "O separador Biblioteca (Ctrl/Cmd + F)", [
-        ("SearchBox", "Pesquise em todas as músicas enquanto escreve: artista, título, álbum ou nome do ficheiro (maiúsculas e acentos não contam)."),
-        ("CategoryBox", "Só uma categoria (uma categoria inclui as que estão dentro dela)."),
-        ("EditCategoriesButton", "Editar as categorias."),
-        ("TrackList", "As músicas. <b>Duplo clique</b> ou Enter: para o fim da playlist. <b>Botão direito</b>: Tocar a seguir, Categoria, Também em, Andamento, Voz, Idioma, Editar etiquetas…, Editar pontos de cue…"),
-        ("ScanButton", "<b>Analisar</b>: pôr a biblioteca em dia com as pastas de música já."),
+        ("SearchBox", "Procure em todas as músicas enquanto escreve: artista, título, álbum ou nome do ficheiro. Maiúsculas e acentos não contam."),
+        ("CategoryBox", "Mostra só uma categoria, incluindo as que estão dentro dela. O botão ✎ ao lado edita as categorias."),
+        ("TrackList", "As músicas. Com <b>duplo clique</b> ou Enter, a música vai para o fim da playlist. O <b>botão direito</b> tem Tocar a seguir, Categoria, Também em, Andamento, Voz, Idioma, Fora do site, Editar etiquetas… e Editar pontos de cue…"),
+        ("ScanButton", "<b>Analisar</b> põe já a biblioteca em dia com as pastas de música."),
     ]),
-    ("fig", "main-folders", "O separador Pastas", [("Library", "As pastas de música no disco: arraste ficheiros ou pastas para a playlist. Botão direito numa pasta → <i>Categoria</i> põe todas as suas músicas (e as que lá forem postas depois) numa categoria.")]),
+    ("fig", "main-folders", "O separador Pastas", [("Library", "As pastas de música do disco. Arraste ficheiros ou pastas para a playlist. Com o botão direito numa pasta, <i>Categoria</i> põe todas as músicas dela numa categoria, e também as que lá forem postas mais tarde.")]),
     ("h2", "Pontos de cue"),
     ("fig", "cue-editor", "Editar pontos de cue…", []),
-    ("p", "Marque o <b>Cue In</b> (onde começa), a <b>Intro</b> (fim da introdução, para falar por cima), o <b>Outro</b>, o "
-          "<b>Mix</b> (onde começa o item seguinte) e o <b>Cue Out</b>. <i>Detetar</i> encontra o primeiro e o último som e "
-          "um bom ponto de Mix. Espaço toca e pausa na saída de pré-escuta; ← → avançam um segundo (Shift: 0,1 s); a roda do rato faz zoom."),
+    ("p", "Os pontos de cue dizem ao programa onde cada ficheiro começa, onde acaba e onde o locutor pode falar por cima. "
+          "Marque o <b>Cue In</b>, onde a música começa; a <b>Intro</b>, onde acaba a introdução; o <b>Outro</b>; o <b>Mix</b>, "
+          "onde entra o item seguinte; e o <b>Cue Out</b>, onde a música para."),
+    ("p", "<i>Detetar</i> encontra o primeiro e o último som e propõe um bom ponto de Mix. A barra de espaços toca e pausa na "
+          "saída de pré-escuta, as setas avançam um segundo, ou uma décima com Shift, e a roda do rato faz zoom."),
     ("h2", "Transições"),
-    ("p", "Como uma música passa para a seguinte: botão direito num item da playlist → <i>Transição para o seguinte…</i> (Ctrl/Cmd+G), ou <b>Transição…</b> nas Playlists diárias."),
+    ("p", "Uma transição é a forma como uma música passa para a seguinte. Abra-a com o botão direito num item da playlist e "
+          "<i>Transição para o seguinte…</i> (Ctrl/Cmd+G), ou com <b>Transição…</b> nas Playlists diárias."),
     ("fig", "segue", "Transição para o seguinte…", [
-        ("Join", "O fim da primeira música (em cima) e o início da seguinte (em baixo), unidas no 0. <b>Arraste</b> qualquer uma para mover a transição; a linha amarela é o nível da primeira (o seu fade)."),
-        ("MixText", "<b>Mix</b>: onde começa a música seguinte. Movê-lo cria um marcador Mix: a primeira música continua então no nível total até ao seu Cue Out. <i>Automático</i> volta ao crossfade habitual."),
-        ("OutText", "<b>Cue Out</b>: onde a primeira música para."),
-        ("InText", "<b>Cue In</b>: onde a música seguinte começa no seu ficheiro (não depois da Intro)."),
-        ("PlayButton", "<b>Ouvir a transição</b> desde uns segundos antes, tal como no ar, na saída de pré-escuta (Espaço). Mude algo enquanto toca e ouve logo de novo."),
-        ("SummaryText", "O que vai acontecer, por palavras."),
+        ("Join", "Em cima, o fim da primeira música; em baixo, o início da seguinte, unidas no zero. <b>Arraste</b> qualquer uma para mover a transição. A linha amarela é o nível da primeira, ou seja, o seu fade."),
+        ("MixText", "O <b>Mix</b> é onde começa a música seguinte. Se o mover, cria um marcador Mix e a primeira música continua no nível máximo até ao seu Cue Out. <i>Automático</i> volta ao crossfade habitual."),
+        ("OutText", "O <b>Cue Out</b> é onde a primeira música para."),
+        ("InText", "O <b>Cue In</b> é onde a música seguinte começa dentro do seu ficheiro, nunca depois da Intro."),
+        ("PlayButton", "<b>Ouvir a transição</b> toca-a desde uns segundos antes, tal como vai sair no ar, na pré-escuta. Também com a barra de espaços. Se mudar algo enquanto toca, ouve logo o resultado."),
+        ("SummaryText", "O que vai acontecer, dito por palavras."),
     ]),
-    ("p", "Guardado como pontos de cue das duas músicas: valem onde quer que toquem, em todos os estúdios que partilham a biblioteca."),
+    ("p", "A transição fica guardada nos pontos de cue das duas músicas, por isso vale onde quer que elas toquem e em todos os estúdios que partilham a biblioteca."),
     ("h2", "Etiquetas"),
     ("fig", "tag-editor", "Editar etiquetas…", []),
-    ("p", "Título, artista, álbum, género, ano, número da faixa, comentário e capa, gravados no ficheiro. Um ficheiro que está no ar só pode ser alterado depois de acabar."),
+    ("p", "Aqui muda o título, o artista, o álbum, o género, o ano, o número da faixa, o comentário e a capa, que ficam gravados no próprio ficheiro. Um ficheiro que está no ar só pode ser alterado depois de acabar."),
     ("h2", "Relatórios"),
     ("fig", "reports-adverts", "Relatórios", [
-        ("KindBox", "<b>Música emitida</b> (direitos de autor), <b>Totais de música por canção</b>, <b>Anúncios</b> (comprovativo de emissão) ou <b>Tudo</b> (registo de emissão)."),
-        ("AdvertiserBox", "Para o comprovativo de emissão: um anunciante ou todos."),
-        ("HtmlButton", "<b>Guardar como página para imprimir…</b> (ou em PDF); ao lado, <b>Guardar como CSV…</b> para uma folha de cálculo."),
+        ("KindBox", "Escolha o relatório: <b>Música emitida</b> para os direitos de autor, <b>Totais de música por canção</b>, <b>Anúncios</b> para o comprovativo de emissão, ou <b>Tudo</b>, o registo de emissão completo."),
+        ("AdvertiserBox", "Para o comprovativo de emissão, um anunciante ou todos."),
+        ("HtmlButton", "<b>Guardar como página para imprimir…</b> serve para imprimir ou guardar em PDF. Ao lado, <b>Guardar como CSV…</b> dá uma folha de cálculo."),
     ]),
     ("h2", "GPIO: os faders e as luzes da mesa"),
-    ("p", "Definições → <b>GPIO</b> usa as linhas de controlo de uma porta série (um adaptador série USB serve). As entradas <b>CTS</b> (pino 8), <b>DSR</b> (6) e "
-          "<b>DCD</b> (1) — um contacto entre a linha e DTR (4) ou RTS (7) — fazem uma coisa quando o contacto <b>fecha</b> e outra quando <b>abre</b>: "
-          "Tocar (arranque pelo fader), Seguinte, Parar, Pausa / continuar, um cart da cartwall no ecrã, ou nada. As saídas <b>DTR</b> e <b>RTS</b> ficam ligadas "
-          "enquanto algo toca, um anúncio está no ar, uma entrada em direto ou stream está no ar, ou há silêncio (uma não usada fica sempre ligada, como alimentação das entradas)."),
-    ("tip", "O arranque pelo fader habitual: CTS fecha → Tocar; abre (fader em baixo) → Seguinte ou nada. Um contacto que oscila conta uma vez; Seguinte, Parar e Pausa "
-            "não são feitos com um anúncio no ar. <b>Testar as entradas</b> mostra-as enquanto mexe nos faders."),
-    ("p", "<b>Rede</b>: uma caixa GPIO-rede ou uma mesa que envia textos, numa porta (TCP ou UDP). Cada <b>texto</b> faz uma coisa (FADER1_ON → Tocar), "
-          "e são <b>enviados</b> textos quando um sinal começa e acaba (ONAIR_ON / ONAIR_OFF), para todas as ligações TCP e, se indicado, por UDP. <b>Só de</b>: "
-          "os endereços permitidos — quem chegar à porta pode carregar em Play."),
-    ("p", "<b>MIDI</b> (Linux e Windows): uma mesa digital ou um controlador. Cada <b>nota</b> ou <b>controlador</b> (canal e número) faz uma coisa "
-          "ao <b>carregar</b> e ao <b>largar</b> (um fader: do meio para cima, uma vez em cada sentido); as <b>luzes</b> são notas enviadas ligadas e desligadas. "
-          "Nos dois, <b>Ouvir</b> mostra o que chega e <b>Juntar o último recebido</b> põe-no na lista. Série, rede e MIDI podem ser usados ao mesmo tempo."),
+    ("p", "Com GPIO, a mesa de mistura comanda o programa: subir o fader de um leitor põe-no a tocar, e as luzes da mesa "
+          "acendem-se com o que está no ar. O Sintoniza fala com a mesa de três maneiras, que podem ser usadas ao mesmo tempo: "
+          "por uma porta série, pela rede ou por MIDI. Tudo isto está em Definições → <b>GPIO</b>."),
+    ("p", "<b>Porta série.</b> Usa as linhas de controlo de uma porta série, e um adaptador USB serve. As entradas são "
+          "<b>CTS</b> no pino 8, <b>DSR</b> no 6 e <b>DCD</b> no 1. Cada uma é um contacto entre essa linha e DTR, no pino 4, "
+          "ou RTS, no pino 7."),
+    ("p", "Para cada entrada escolhe o que acontece quando o contacto <b>fecha</b> e quando <b>abre</b>: Tocar, que é o "
+          "arranque pelo fader; Seguinte; Parar; Pausa / continuar; um cart da cartwall no ecrã; <b>Fader do micro em cima "
+          "(MIC LIVE)</b>; <b>Fader do micro em baixo</b>; ou nada. Com as duas ações do micro, o fader do microfone da mesa "
+          "acende e apaga o sinal MIC LIVE no ecrã."),
+    ("p", "As saídas <b>DTR</b> e <b>RTS</b> ficam ligadas enquanto algo toca, enquanto um anúncio está no ar, enquanto uma "
+          "entrada em direto ou um stream está no ar, quando há silêncio, ou com <b>O sinal NO AR (micro aberto, programa ou "
+          "entrada em direto)</b>, que serve para acender uma lâmpada verdadeira à porta do estúdio. Uma saída que não use fica "
+          "sempre ligada, para alimentar os contactos das entradas."),
+    ("tip", "O arranque pelo fader mais habitual é este: quando CTS fecha, Tocar; quando abre, com o fader em baixo, Seguinte ou nada. "
+            "Um contacto que oscila conta só uma vez, e Seguinte, Parar e Pausa não atuam com um anúncio no ar. "
+            "<b>Testar as entradas</b> mostra-as a mudar enquanto mexe nos faders."),
+    ("p", "<b>Rede.</b> Serve para uma caixa de GPIO em rede ou para uma mesa que envia textos, numa porta TCP ou UDP. Cada "
+          "<b>texto</b> recebido faz uma coisa, por exemplo FADER1_ON para Tocar. O programa também <b>envia</b> textos quando "
+          "um sinal começa e acaba, como ONAIR_ON e ONAIR_OFF, para todas as ligações TCP e, se quiser, por UDP. Em <b>Só de</b> "
+          "ponha os endereços autorizados, porque quem chegar a essa porta pode carregar em Play."),
+    ("p", "<b>MIDI</b>, em Linux e Windows, serve para uma mesa digital ou um controlador. Cada <b>nota</b> ou <b>controlador</b>, "
+          "com o seu canal e número, faz uma coisa ao <b>carregar</b> e outra ao <b>largar</b>. Um fader conta uma vez em cada "
+          "sentido, ao passar o meio. As <b>luzes</b> são notas enviadas ligadas e desligadas."),
+    ("p", "Na rede e no MIDI, <b>Ouvir</b> mostra o que chega enquanto carrega num botão ou mexe num fader, e <b>Juntar o "
+          "último recebido</b> põe-no na lista. Assim não precisa de escrever nada."),
     ("h2", "Controlo remoto web"),
-    ("p", "Controle o playout a partir de um telemóvel ou de outro computador da rede da estação: uma página web, sem nada para instalar."),
+    ("p", "O controlo remoto permite comandar a emissão a partir de um telemóvel ou de outro computador na rede da estação. "
+          "É uma página web, sem nada para instalar."),
     ("fig", "settings-remote", "Definições → Remoto", [
-        ("RemoteBox", "Ligue-o (está desligado até o fazer)."),
-        ("RemotePortBox", "A porta (8090 por omissão). A página pede um utilizador da estação com a permissão <b>Controlo remoto web</b>, p. ex. <b>dj</b> (capítulo 4, Utilizadores)."),
-        ("RemoteAddressText", "O endereço a abrir no telemóvel, na mesma rede."),
+        ("RemoteBox", "Ligue-o aqui. Vem desligado."),
+        ("RemotePortBox", "A porta, 8090 por omissão. A página pede um utilizador da estação com a permissão <b>Controlo remoto web</b>, como o <b>dj</b> (capítulo 4, Utilizadores)."),
+        ("RemoteAddressText", "O endereço a abrir no telemóvel, ligado à mesma rede."),
     ]),
-    ("p", "A página está organizada como o ecrã de emissão: o deck com a forma de onda, o painel da estação com o relógio e os medidores de nível, a playlist, e a cartwall e a biblioteca."),
+    ("p", "A página está arrumada como o ecrã de emissão: o leitor com a forma de onda, o painel da estação com o relógio e os níveis, a playlist, e a cartwall e a biblioteca."),
     ("fig", "remote-desktop", "O controlo remoto num computador", []),
     ("list", [
-        "O que está no ar com a forma de onda, o tempo decorrido e o que falta, as contagens de locução e do bloco, o stream e o silêncio; o relógio, a hora certa, quando acaba a playlist, o próximo evento e os níveis.",
-        "<b>▶ ❚❚ ⏭ ■</b> e <b>AUTO</b>, como no ecrã. Um anúncio no ar só é cortado depois de uma pergunta.",
-        "<b>A playlist</b>, com as cores e etiquetas: toque num item para <i>▶ Já</i> (põe-no no ar) e <b>✕</b> (tira-o).",
-        "<b>CARTWALL</b>: os carts disparam com um toque; a lista ao lado dos separadores escolhe outra cartwall. <b>BIBLIOTECA</b>: pesquise na biblioteca e junte uma música a seguir ao item no ar.",
+        "Vê o que está no ar com a forma de onda, o tempo decorrido e o que falta, as contagens para falar e para o bloco, o stream e o silêncio, o relógio, a hora certa, o fim da playlist, o próximo evento e os níveis.",
+        "<b>▶ ❚❚ ⏭ ■</b> e <b>AUTO</b> funcionam como no ecrã. Um anúncio no ar só é cortado depois de confirmar.",
+        "Na <b>playlist</b>, com as mesmas cores, toque num item para <i>▶ Já</i>, que o põe no ar, ou <b>✕</b>, que o tira.",
+        "Em <b>CARTWALL</b>, um toque dispara o cart, e a lista ao lado dos separadores muda de cartwall. Em <b>BIBLIOTECA</b>, procure uma música e junte-a a seguir ao item no ar, ou registe um <b>pedido</b> com ♥.",
     ]),
-    ("fig", "remote-phone", "O controlo remoto num telemóvel: o mesmo, um painel debaixo do outro", []),
-    ("warn", "É HTTP simples, para a rede da própria estação. De fora, use-o só pela VPN da estação — nunca abra a porta no router. Cinco palavras-passe erradas bloqueiam a página um minuto."),
-    ("h2", "Vários computadores: um no ar, os outros em reserva"),
-    ("p", "Com uma biblioteca MySQL partilhada, cada computador com o Sintoniza Emi da estação conhece os outros. <b>Um está no ar</b>; "
-          "os outros estão <b>em reserva</b>: prontos e em silêncio — sem playlist, sem sinal horário, sem stream, nada no histórico. "
-          "O primeiro a arrancar vai para o ar. No que está no ar, a luz <b>NO AR</b> na barra de estado mostra os que estão em reserva; "
-          "a barra de estado da Sintoniza Pro também."),
-    ("fig", "main-standby", "Um computador em reserva", [
-        ("StandbyBanner", "<b>RESERVA</b>: outro computador está no ar…"),
-        ("StandbyText", "…qual, o que está a tocar, e se este vai para o ar sozinho."),
-        ("TakeOnAirButton", "<b>Ir para o ar</b> (ou Play): este computador vai para o ar, depois de perguntar; o outro para e fica em reserva. Em AUTO começa a hora atual a partir do item planeado para agora."),
+    ("fig", "remote-phone", "O controlo remoto num telemóvel: o mesmo, com um painel debaixo do outro", []),
+    ("warn", "A página usa HTTP simples e é para a rede da própria estação. De fora, use-a só através da VPN da estação e nunca abra a porta no router. Cinco palavras-passe erradas bloqueiam a página durante um minuto."),
+    ("h2", "Vários computadores: um no ar, os outros de reserva"),
+    ("p", "Com uma biblioteca MySQL partilhada, cada computador com o Sintoniza Emi da estação conhece os outros. <b>Um está "
+          "no ar</b> e os restantes ficam <b>de reserva</b>, prontos e calados: sem playlist, sem sinal horário, sem stream e "
+          "sem nada no histórico. O primeiro a arrancar vai para o ar."),
+    ("p", "No computador que está no ar, a luz <b>ESTÚDIO</b> mostra quais estão de reserva. A barra de estado da Sintoniza Pro mostra o mesmo."),
+    ("fig", "main-standby", "Um computador de reserva", [
+        ("StandbyBanner", "A barra <b>RESERVA</b> aparece no topo quando outro computador está no ar."),
+        ("StandbyText", "A primeira linha diz que computador está no ar e o que está a tocar. A segunda diz o que este fará: <i>Este computador vai para o ar automaticamente se o principal deixar de responder por 15 s</i>, ou que só vai para o ar quando carregar em Ir para o ar."),
+        ("TakeOnAirButton", "<b>Ir para o ar</b>, ou Play, põe este computador no ar depois de confirmar. O outro para e fica de reserva. Em AUTO, a hora atual começa a partir do item previsto para este momento."),
     ], True),
     ("fig", "settings-studios", "Definições → Segurança → Vários computadores no ar", [
-        ("TakeOverBox", "<b>Sozinho</b>: quando o computador no ar não responde há este tempo (falhou, foi desligado, perdeu a rede), este vai para o ar."),
-        ("TakeOverSecondsBox", "Quanto tempo, em segundos (15 de início). Desligado num computador que nunca deve ficar com o ar, p. ex. um computador de produção com o Emi aberto."),
+        ("TakeOverBox", "<b>Sozinho</b>: se o computador no ar deixar de responder durante este tempo, porque falhou, foi desligado ou perdeu a rede, este vai para o ar."),
+        ("TakeOverSecondsBox", "Quantos segundos esperar, 15 de início. Desligue esta opção num computador que nunca deve ficar com o ar, como um computador de produção com o Emi aberto."),
     ], True),
-    ("warn", "Um computador que perde a rede continua a tocar (não sabe que outro ficou com o ar): até voltar, tocam os dois; depois vê "
-             "o outro no ar e fica em reserva. Os carts continuam a tocar num computador em reserva, mas não entram no histórico. "
-             "Todos os estúdios têm de ter a mesma versão: o primeiro a arrancar uma nova atualiza a base de dados, e uma mais antiga deixa de a abrir."),
-    ("h2", "O microfone (rádio web)"),
-    ("p", "Com <i>Rádio web</i> escolhido (Pro → Definições da estação), o botão <b>MIC</b> (F9) abre o microfone e a música e os carts "
-          "baixam enquanto está aberto: manter premido para falar, ou premir para ligar e premir para desligar (Definições → "
-          "Microfone). Com <i>Rádio FM</i> o microfone passa pela mesa."),
+    ("warn", "Um computador que perde a rede continua a tocar, porque não sabe que outro ficou com o ar. Até a rede voltar, "
+             "tocam os dois; depois, ele vê o outro no ar e passa a reserva. Num computador de reserva os carts continuam a "
+             "tocar, mas não entram no histórico. Todos os estúdios têm de ter a mesma versão: o primeiro a arrancar uma versão "
+             "nova atualiza a base de dados, e uma versão mais antiga deixa de a conseguir abrir."),
+    ("h2", "O microfone numa rádio web"),
+    ("p", "Numa rádio web o microfone passa pelo computador. Com <i>Rádio web</i> escolhido em Pro → Definições da estação, "
+          "aparece o botão <b>MIC</b>, também na tecla F9. Enquanto o microfone está aberto, a música e os carts baixam."),
+    ("p", "Em Definições → Microfone escolhe se o botão funciona enquanto o mantém premido ou se carrega uma vez para abrir e "
+          "outra para fechar. Numa rádio FM o microfone passa pela mesa e este botão não aparece."),
     ("h2", "Todas as definições"),
-    ("p", "As deste computador, nas <b>Definições</b> do programa de emissão:"),
+    ("p", "As definições deste computador ficam nas <b>Definições</b> do programa de emissão:"),
     ("table", ["Separador", "Para que serve"], [
-        ["Geral", "O idioma dos ecrãs"],
-        ["Áudio", "Saídas da Música / Cartwall / Pré-escuta"],
-        ["Microfone", "(rádio web) entrada, níveis, quanto baixa a música"],
-        ["Segurança", "Arranque e falhas, vários computadores no ar (a reserva a ficar com o ar), o registo, cópias de segurança"],
-        ["Biblioteca", "A base de dados, análises automáticas, os caminhos deste computador (música partilhada noutro caminho)"],
-        ["Atalhos", "Teclas para Play, Pausa, Seguinte, Parar, MIC, o stream e cada cart"],
-        ["RDS", "Se este computador envia para o codificador RDS, e como chega a ele"],
+        ["Geral", "O idioma dos ecrãs e mais idiomas a partir da pasta das traduções"],
+        ["Áudio", "As saídas da Música, do Cartwall e da Pré-escuta"],
+        ["Microfone", "Numa rádio web: a entrada, os níveis e quanto baixa a música"],
+        ["Segurança", "O arranque e as falhas, vários computadores no ar, o registo e as cópias de segurança"],
+        ["Biblioteca", "A base de dados, as análises automáticas e os caminhos deste computador"],
+        ["Atalhos", "As teclas de Play, Pausa, Seguinte, Parar, MIC, do stream e de cada cart"],
+        ["RDS", "Se este computador envia para o codificador RDS, e como lá chega"],
         ["Playlist", "Quanto da hora seguinte a playlist mostra"],
-        ["Remoto", "O controlo remoto web: ligar/desligar, porta, o endereço (entra com os utilizadores da estação)"],
-        ["Acerca de", "Versão, atualizações e este manual"],
+        ["Ecrã", "As luzes de estado, os contadores grandes e o sinal NO AR"],
+        ["GPIO", "Os faders e as luzes da mesa, por porta série, rede ou MIDI"],
+        ["Remoto", "O controlo remoto web: ligar e desligar, a porta e o endereço"],
+        ["Acerca de", "A versão, as atualizações e este manual"],
     ]),
-    ("p", "As da estação, na <b>Sintoniza Pro → Definições da estação</b>:"),
+    ("p", "As da estação ficam na <b>Sintoniza Pro → Definições da estação</b>:"),
     ("table", ["Separador", "Para que serve"], [
         ["Estação", "Nome, logótipo, género, site, rádio FM ou web, símbolo da moeda"],
-        ["Áudio", "Crossfades, nivelamento de volume"],
-        ["Sinal horário", "Bips ou um ficheiro à hora certa; anúncios de hora (HRS05.mp3 às 05:00…)"],
-        ["Takes", "A pasta dos takes (a hora, a temperatura) e onde fica a estação"],
-        ["Segurança", "Deteção de silêncio, música de enchimento"],
-        ["Biblioteca", "Outras pastas de música (músicas sem categoria)"],
-        ["Streaming", "Servidor Icecast / Shoutcast, formato e bitrate"],
-        ["RDS", "PS, radiotexto, RT+"],
-        ["Site", "O que está no ar enviado para o site da estação"],
-        ["Alertas", "Alertas por Telegram, e-mail ou web: silêncio, stream em baixo, falhas, disco cheio, relógio, cópias"],
-        ["Playlist", "Quantos dias de playlists diárias são feitos com antecedência, cores das linhas"],
+        ["Áudio", "Os crossfades e o nivelamento de volume"],
+        ["Sinal horário", "Os bips ou um ficheiro à hora certa, e as horas faladas, como HRS05.mp3 às 05:00"],
+        ["Takes", "A pasta dos takes da hora e da temperatura, e onde fica a estação"],
+        ["Segurança", "A deteção de silêncio e a música de enchimento"],
+        ["Biblioteca", "Outras pastas de música, para músicas sem categoria"],
+        ["Streaming", "O servidor Icecast ou Shoutcast, o formato e o bitrate"],
+        ["RDS", "O PS, o radiotexto e o RT+"],
+        ["Site", "O que está a tocar, enviado para o site da estação"],
+        ["Alertas", "Avisos por Telegram, e-mail ou web: silêncio, stream em baixo, falhas, disco cheio, relógio, cópias"],
+        ["Playlist", "Quantos dias de playlists diárias se fazem com antecedência e as cores das linhas"],
     ]),
 ]),
 
 ("Sintoniza Pro", "schedule", [
-    ("p", "O programa de produção da estação: as suas definições, biblioteca, categorias, cartwalls, programação e publicidade. Abre no <b>Início</b>, com a estação num relance."),
+    ("p", "A Sintoniza Pro é o programa de produção da estação. Neste capítulo vê como se gerem as músicas, as categorias e "
+          "as cartwalls, os utilizadores, as quotas da ERC, o site, os eventos, os programas em direto, a publicidade, os "
+          "modelos de hora, as playlists diárias e os voice tracks."),
+    ("p", "O programa abre no <b>Início</b>, que mostra a estação num relance."),
     ("fig", "production", "Sintoniza Pro: Início", [
-        ("MainMenu", "O <b>menu</b>: Ficheiro, Biblioteca, Programação, Publicidade, Estação, Ajuda."),
-        ("SaveButton", "A <b>barra de ferramentas</b>: Guardar (Ctrl+S) e as ferramentas mais usadas."),
-        ("NavPanel", "As <b>ferramentas</b>: Início; Biblioteca (músicas, categorias, importar); Programação (modelos de hora, playlists diárias, eventos); Publicidade (blocos, clientes e campanhas); Estação (definições, cartwalls, utilizadores)."),
+        ("MainMenu", "O <b>menu</b>: Ficheiro, Biblioteca, Programação, Publicidade, Estação e Ajuda."),
+        ("SaveButton", "A <b>barra de ferramentas</b>, com Guardar (Ctrl+S) e as ferramentas mais usadas."),
+        ("NavPanel", "As <b>ferramentas</b>, por grupos: Início; Biblioteca, com músicas, categorias e importação; Programação, com modelos de hora, playlists diárias, eventos e programas; Publicidade, com blocos, clientes e campanhas; Estação, com definições, cartwalls e utilizadores."),
         ("HomeClock", "O relógio e a data."),
-        ("HomeToday", "<b>Hoje</b>: as horas planeadas, blocos e anúncios marcados, eventos, voice tracks."),
-        ("HomeWarnings", "<b>A verificar</b>: ficheiros em falta, músicas sem categoria, horas sem modelo, campanhas a acabar esta semana, alterações por guardar."),
-        ("HomeComputer", "<b>Este computador</b>: sistema, processador, memória, disco livre, há quanto tempo está ligado. Ao lado, a biblioteca e a base de dados."),
-        ("NowTitleText", "<b>A tocar</b> no ar (do histórico de todos os estúdios), e o modelo desta hora."),
+        ("HomeToday", "<b>Hoje</b>: as horas planeadas, os blocos e anúncios marcados, os eventos e os voice tracks."),
+        ("HomeWarnings", "<b>A verificar</b>: ficheiros em falta, músicas sem categoria, horas sem modelo, campanhas a acabar esta semana, blocos que ficam longos demais e alterações por guardar."),
+        ("HomeComputer", "<b>Este computador</b>: o sistema, o processador, a memória, o disco livre e há quanto tempo está ligado. Ao lado, a biblioteca e a base de dados."),
+        ("NowTitleText", "O que está <b>a tocar</b> no ar, segundo o histórico de todos os estúdios, e o modelo desta hora."),
         ("BoxStationText", "A estação, a base de dados e quem está a trabalhar aqui."),
-        ("StatusVersion", "A <b>barra de estado</b>: versão, estação, base de dados, utilizador, alterações por guardar…"),
+        ("StatusVersion", "A <b>barra de estado</b>: a versão, a estação, a base de dados, o utilizador e as alterações por guardar…"),
         ("StatusClock", "…e a data e a hora."),
     ]),
-    ("p", "Com uma biblioteca partilhada, a barra de estado diz também qual computador está no ar e quais estão em reserva (capítulo 3)."),
+    ("p", "Com uma biblioteca partilhada, a barra de estado também diz que computador está no ar e quais estão de reserva (capítulo 3)."),
     ("h2", "Músicas"),
-    ("p", "A biblioteca inteira: pesquisa, categorias, tempo e energia, etiquetas. Clique com o botão direito numa música para a categoria, as restrições, os dados da ERC, <b>Editar etiquetas…</b> e <b>Editar pontos de cue…</b>."),
+    ("p", "Aqui está a biblioteca inteira, com pesquisa, categorias, andamento e energia, e etiquetas. Com o botão direito "
+          "numa música chega à categoria, às restrições, aos dados da ERC, a <b>Fora do site</b>, a <b>Editar etiquetas…</b> "
+          "e a <b>Editar pontos de cue…</b>."),
     ("fig", "pro-songs", "Músicas: a ouvir uma música", [
-        ("SearchBox", "Pesquisar por título, artista ou álbum…"),
-        ("CategoryBox", "…numa categoria (com as categorias dentro dela)."),
-        ("TrackList", "<b>Duplo clique</b> numa música (ou selecione-a e carregue em Espaço) para a ouvir."),
-        ("ListenButton", "▶ / ❚❚ e ■: tocar, pausa, parar."),
-        ("ListenSlider", "Arraste para ir para outro momento."),
-        ("ListenTitle", "O que está a tocar. Ouve-se na saída de <b>Pré-escuta</b> deste computador (Definições → Áudio), nunca no ar."),
+        ("SearchBox", "Pesquise por título, artista ou álbum…"),
+        ("CategoryBox", "…dentro de uma categoria e das que estão dentro dela."),
+        ("TrackList", "Para ouvir uma música, faça <b>duplo clique</b> nela, ou selecione-a e carregue na barra de espaços."),
+        ("ListenButton", "▶ / ❚❚ e ■ tocam, pausam e param."),
+        ("ListenSlider", "Arraste para saltar para outro ponto da música."),
+        ("ListenTitle", "O que está a tocar. Ouve-se na saída de <b>Pré-escuta</b> deste computador, definida em Definições → Áudio, e nunca no ar."),
     ]),
-    ("tip", "<b>Editar pontos de cue…</b> abre o mesmo editor que na emissão (a forma de onda, Cue In, Intro, Outro, Mix, Cue Out): guardado na biblioteca para todos os estúdios, a emissão usa-os dentro de um minuto, e as playlists diárias contam a nova duração."),
+    ("tip", "<b>Editar pontos de cue…</b> abre o mesmo editor do programa de emissão. O que guardar fica na biblioteca para todos os estúdios, a emissão passa a usá-lo no espaço de um minuto e as playlists diárias contam já com a nova duração."),
     ("h2", "Categorias"),
-    ("p", "Todas as estações têm as mesmas oito categorias no topo, que não podem mudar de nome, de sítio nem ser apagadas: "
-          "<b>Music</b>, <b>Jingles</b>, <b>Promos</b>, <b>ProgAutor</b> (programas gravados fora), <b>Fillers</b>, <b>Redação</b> "
-          "(noticiário), <b>Spots</b> (anúncios) e <b>Takes</b> (inserções de voz: as horas, a temperatura… como se houvesse um "
-          "locutor). As suas ficam debaixo delas (<b>Nova dentro desta</b>) ou ao lado no topo (<b>Nova no topo</b>), e essas podem mudar de nome, de sítio e ser apagadas."),
+    ("p", "As categorias arrumam a biblioteca e são a base dos modelos de hora. Todas as estações têm as mesmas oito "
+          "categorias no topo, que não se podem renomear, mudar de sítio nem apagar: <b>Music</b>; <b>Jingles</b>; "
+          "<b>Promos</b>; <b>ProgAutor</b>, para programas gravados fora; <b>Fillers</b>; <b>Redação</b>, para o noticiário; "
+          "<b>Spots</b>, para os anúncios; e <b>Takes</b>, as inserções de voz com a hora ou a temperatura, como se houvesse "
+          "um locutor."),
+    ("p", "As suas categorias ficam debaixo destas, com <b>Nova dentro desta</b>, ou ao lado delas no topo, com <b>Nova no "
+          "topo</b>. Essas pode renomear, mudar de sítio e apagar à vontade."),
     ("fig", "categories-fixed", "Categorias: uma das oito da estação", [
-        ("CategoryList", "As categorias, em árvore; 🔒 = uma das oito da estação."),
-        ("FixedPanel", "Para que serve; só mudam a cor e as pastas."),
-        ("AddChildButton", "<b>Nova dentro desta</b>: uma categoria sua debaixo da selecionada (Music › Anos 80, Spots › Clientes…)."),
+        ("CategoryList", "As categorias, em árvore. O cadeado 🔒 marca as oito da estação."),
+        ("FixedPanel", "Para que serve a categoria. Nestas só se mudam a cor e as pastas."),
+        ("AddChildButton", "<b>Nova dentro desta</b> cria uma categoria sua debaixo da selecionada, como Music › Anos 80 ou Spots › Clientes."),
     ]),
     ("fig", "categories", "Categorias: uma categoria sua", [
-        ("ParentBox", "<b>Dentro de</b>: mudá-la para dentro de outra categoria."),
-        ("Swatches", "A sua cor nas listas."),
-        ("FolderList", "As suas <b>pastas</b>: as músicas delas estão nesta categoria, e as que lá forem postas depois também."),
+        ("ParentBox", "<b>Dentro de</b> muda-a para dentro de outra categoria."),
+        ("Swatches", "A cor com que aparece nas listas."),
+        ("FolderList", "As suas <b>pastas</b>. As músicas que lá estão pertencem a esta categoria, e as que lá forem postas depois também."),
         ("ApplyButton", "<b>Guardar alterações</b>."),
     ]),
     ("h2", "Cartwalls"),
     ("fig", "cartwalls", "Cartwalls", [
-        ("PageList", "As cartwalls: <b>Nova</b>, <b>Copiar</b>, <b>Mudar o nome…</b>, <b>Apagar</b>."),
-        ("CartGrid", "Os seus 12 carts, como o estúdio os vê: clique num para o alterar, ou largue um ficheiro nele."),
-        ("ChooseFileButton", "O som do cart: <b>Escolher ficheiro…</b>, <b>Ouvir</b> (saída de pré-escuta), <b>Limpar</b>."),
-        ("ColorPanel", "A sua cor…"),
+        ("PageList", "As cartwalls, com <b>Nova</b>, <b>Copiar</b>, <b>Mudar o nome…</b> e <b>Apagar</b>."),
+        ("CartGrid", "Os 12 carts, tal como o estúdio os vê. Clique num para o alterar, ou largue um ficheiro em cima dele."),
+        ("ChooseFileButton", "O som do cart: <b>Escolher ficheiro…</b>, <b>Ouvir</b> na pré-escuta e <b>Limpar</b>."),
+        ("ColorPanel", "A cor do cart…"),
         ("IconPanel", "…e o ícone."),
-        ("SaveButton", "<b>Guardar</b>: todos os estúdios recebem-nas até um minuto depois."),
+        ("SaveButton", "<b>Guardar</b>. Todos os estúdios recebem as cartwalls no espaço de um minuto."),
     ]),
-    ("tip", "Use ficheiros a que todos os estúdios cheguem (uma pasta partilhada), como para a música."),
+    ("tip", "Tal como para a música, use ficheiros que todos os estúdios consigam alcançar, numa pasta partilhada."),
+    ("h2", "O que está a tocar no site"),
+    ("p", "Os ouvintes gostam de ver no site a música que está a tocar, com a capa. Em <b>Definições da estação → Site</b>, "
+          "o Sintoniza envia essa informação sempre que muda o que está no ar."),
+    ("p", "Há duas maneiras de o fazer, que podem ser usadas juntas. A primeira é um envio em JSON para um endereço do site, "
+          "protegido por uma chave. A segunda são ficheiros feitos a partir de modelos, gravados numa pasta ou enviados por "
+          "FTP, que servem também para um codificador de streaming ou para um site que só aceita ficheiros."),
+    ("fig", "station-website", "Definições da estação → Site", [
+        ("WebUrlBox", "O <b>endereço</b> para onde é enviado o JSON. Se só quiser os ficheiros mais abaixo, deixe-o vazio. Por baixo fica a <b>chave</b>: a página só aceita envios que a tragam. Com <b>Só músicas</b>, durante jingles, anúncios e programas o site continua a mostrar a última música."),
+        ("WebCoverBox", "Envia também a <b>capa</b> da música, quando o ficheiro a tem."),
+        ("WebDelayBox", "<b>Atrasar cada mudança</b> estes segundos. Ponha aqui o atraso do stream, para o site mudar no momento em que os ouvintes ouvem a música, e não antes."),
+        ("WebOutputsPanel", "<b>FICHEIROS E FTP</b>: cada linha é um ficheiro a escrever. O destino pode ser um ficheiro neste computador ou numa partilha, um endereço ftp:// ou ftps://, ou um endereço http(s):// que recebe o ficheiro por HTTP PUT."),
+        ("AddWebTextButton", "<b>Juntar um texto</b>: uma linha simples, ou uma página XML ou HTML, feita a partir de um modelo."),
+        ("AddWebCoverButton", "<b>Juntar a capa</b>: a imagem da capa da música, ou o logótipo da estação quando a música não tem capa."),
+    ]),
+    ("p", "Num modelo de texto escreve o que quer e põe campos entre chavetas, que são substituídos na hora: {artist} e "
+          "{title} para o que está no ar, {next_artist} e {next_title} para o que vem a seguir, {station} para o nome da "
+          "estação, {show} e {presenter} durante um programa em direto, e ainda {type}, {duration} e {started}. Por exemplo, "
+          "<i>Agora: {artist} - {title}</i>. Quando não há nada no ar, {title} dá o nome da estação. Num ficheiro .xml, .html "
+          "ou .json, os campos são escritos de forma segura para esse formato."),
+    ("p", "Num destino FTP, preencha o <b>Utilizador FTP</b> e a palavra-passe. Num endereço web, a caixa da palavra-passe "
+          "leva a chave da página."),
+    ("p", "O projeto inclui uma página PHP de exemplo, na pasta docs/now-playing, que recebe o JSON e o guarda em "
+          "nowplaying.txt e nowplaying.json para o site mostrar. A mesma página aceita os ficheiros enviados por HTTP PUT, "
+          "como a capa."),
+    ("tip", "Há músicas que não quer anunciar no site, como uma faixa de fundo ou uma versão sem direitos para a internet. Na "
+            "biblioteca, clique nelas com o botão direito e escolha <b>Fora do site</b>. Essas músicas nunca são enviadas, e "
+            "o site continua a mostrar o que tinha antes."),
     ("h2", "Utilizadores e permissões"),
-    ("p", "O programa de emissão, o Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto web pedem um <b>utilizador e palavra-passe</b>: "
-          "os utilizadores da estação, os mesmos em todos os estúdios. Uma biblioteca nova tem dois: <b>admin</b> / <b>admin</b> (pode fazer tudo) "
-          "e <b>dj</b> / <b>dj</b> (um locutor: no ar, voice tracks, controlo remoto web). <b>Mude primeiro essas palavras-passe</b>: até lá o Início do Pro lembra-o."),
+    ("p", "O programa de emissão, a Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto "
+          "web pedem um <b>utilizador e uma palavra-passe</b>. São os utilizadores da estação, os mesmos em todos os estúdios."),
+    ("p", "Uma biblioteca nova traz dois: <b>admin</b>, com a palavra-passe <b>admin</b>, que pode fazer tudo, e <b>dj</b>, com "
+          "a palavra-passe <b>dj</b>, que é um locutor: trabalha no ar, grava voice tracks e usa o controlo remoto web. "
+          "<b>Mude primeiro essas palavras-passe.</b> Até o fazer, o Início da Pro vai lembrá-lo."),
     ("fig", "login", "Entrar", [
-        ("UserBox", "O utilizador (lembra-se do último)…"),
+        ("UserBox", "O utilizador. O programa lembra-se do último…"),
         ("PasswordBox", "…e a palavra-passe."),
-        ("LoginButton", "<b>Entrar</b>. No Pro, Ficheiro → <b>Mudar de utilizador…</b> troca-o e Ficheiro → <b>Sair</b> volta a cobrir o Pro com a entrada."),
+        ("LoginButton", "<b>Entrar</b>. Na Pro, Ficheiro → <b>Mudar de utilizador…</b> troca de utilizador e Ficheiro → <b>Sair</b> volta a cobrir a Pro com o quadro de entrada."),
     ]),
     ("fig", "users", "Estação → Utilizadores", [
         ("UserList", "Os utilizadores da estação."),
-        ("AddButton", "<b>Novo utilizador</b>; <b>Apagar</b> ao lado."),
+        ("AddButton", "<b>Novo utilizador</b>, e <b>Apagar</b> ao lado."),
         ("NameBox", "O nome…"),
-        ("PasswordBox", "…e uma nova palavra-passe (vazia, fica como está)."),
-        ("EnabledBox", "<b>Pode entrar</b>: desmarque para impedir alguém sem o apagar."),
-        ("AdminPresetButton", "<b>Tudo</b> ou <b>Locutor</b> (no ar, voice tracks e controlo remoto web) marcam os conjuntos habituais."),
-        ("PermissionPanel", "O que pode usar: o Pro só lhe mostra essas ferramentas, menus e botões."),
+        ("PasswordBox", "…e uma nova palavra-passe. Se a deixar vazia, fica a que estava."),
+        ("EnabledBox", "<b>Pode entrar</b>. Desmarque para impedir alguém de entrar sem o apagar."),
+        ("AdminPresetButton", "<b>Tudo</b> e <b>Locutor</b> marcam de uma vez os conjuntos de permissões habituais."),
+        ("PermissionPanel", "O que esta pessoa pode usar. A Pro só lhe mostra essas ferramentas, menus e botões."),
         ("SaveUserButton", "<b>Guardar utilizador</b>."),
     ]),
-    ("table", ["Permissão", "Deixa"], [
-        ["No ar", "O programa de emissão no estúdio: tocar, a playlist, a cartwall, o microfone"],
-        ["Biblioteca", "Músicas, categorias, importar música (e o Sintoniza Import)"],
-        ["Programação", "Modelos de hora, playlists diárias, eventos"],
-        ["Voice tracks", "Gravar voice tracks: vê as playlists diárias mas não muda as músicas"],
-        ["Publicidade", "Blocos de publicidade, clientes e campanhas"],
-        ["Estação", "As definições e cartwalls da estação"],
-        ["Utilizadores", "Adicionar e alterar utilizadores"],
-        ["Definições deste computador", "Abrir as Definições do próprio playout (placas de som, base de dados, teclas…)"],
-        ["Controlo remoto web", "Controlar um playout a partir de um telemóvel"],
+    ("table", ["Permissão", "O que deixa fazer"], [
+        ["No ar", "Trabalhar no programa de emissão: tocar, a playlist, a cartwall, o microfone"],
+        ["Biblioteca", "Músicas, categorias e importação de música, incluindo o Sintoniza Import"],
+        ["Programação", "Modelos de hora, playlists diárias, eventos e programas"],
+        ["Voice tracks", "Gravar voice tracks. Vê as playlists diárias, mas não muda as músicas"],
+        ["Publicidade", "Blocos publicitários, clientes e campanhas"],
+        ["Estação", "As definições e as cartwalls da estação"],
+        ["Utilizadores", "Criar e alterar utilizadores"],
+        ["Definições deste computador", "Abrir as Definições do programa de emissão: placas de som, base de dados, teclas"],
+        ["Controlo remoto web", "Comandar a emissão a partir de um telemóvel"],
     ]),
-    ("tip", "As palavras-passe só são guardadas como um hash seguro: uma esquecida é definida de novo por outro utilizador com <b>Utilizadores</b>. Ninguém se pode apagar ou bloquear a si próprio, nem tirar a sua própria permissão <b>Utilizadores</b>."),
+    ("tip", "As palavras-passe só ficam guardadas como um hash seguro. Se alguém se esquecer da sua, outro utilizador com a permissão <b>Utilizadores</b> define-lhe uma nova. Ninguém se pode apagar nem bloquear a si próprio, nem tirar a si mesmo a permissão <b>Utilizadores</b>."),
     ("h2", "Quotas ERC (música portuguesa)"),
-    ("p", "A Lei da Rádio (art. 41.º–47.º, na redação de 2024) pede, das músicas emitidas num mês: pelo menos <b>30 %</b> de música portuguesa; da "
-          "música portuguesa, pelo menos <b>60 %</b> em língua portuguesa interpretada por cidadãos da UE e pelo menos <b>35 %</b> editada pela primeira vez "
-          "nos últimos 12 meses — no mês inteiro e também <b>de segunda a sexta, das 7:00 às 20:00</b>. Todos os meses a estação envia à ERC o que emitiu, pelo portal."),
-    ("p", "Cada música precisa de: se é música portuguesa, a língua em que é cantada, o país do intérprete e a primeira edição. Dê-os a uma categoria inteira "
-          "em <b>Categorias</b> (as suas músicas e as categorias abaixo ficam com eles), ou a músicas em <b>Músicas</b> → botão direito → <b>Classificação ERC…</b>."),
+    ("p", "A Lei da Rádio, nos artigos 41.º a 47.º na redação de 2024, pede que, das músicas emitidas num mês, pelo menos "
+          "<b>30 %</b> sejam música portuguesa. Dessa música portuguesa, pelo menos <b>60 %</b> tem de ser em língua "
+          "portuguesa interpretada por cidadãos da UE, e pelo menos <b>35 %</b> editada pela primeira vez nos últimos 12 meses."),
+    ("p", "As quotas contam no mês inteiro e também, à parte, <b>de segunda a sexta, das 7:00 às 20:00</b>. Todos os meses a "
+          "estação envia à ERC, pelo portal, o que emitiu."),
+    ("p", "Para isso, cada música precisa de quatro dados: se é música portuguesa, a língua em que é cantada, o país do "
+          "intérprete e a data da primeira edição. Pode dá-los a uma categoria inteira em <b>Categorias</b>, e as músicas e "
+          "categorias dentro dela ficam com eles. Ou pode dá-los música a música em <b>Músicas</b>, com o botão direito e "
+          "<b>Classificação ERC…</b>."),
     ("fig", "erc-song", "Classificação ERC de uma música", [
-        ("PortugueseBox", "<b>Música portuguesa</b>: sim, não, ou como diz a categoria."),
-        ("LanguageBox", "A <b>língua</b> em que é cantada (pt-PT, pt-BR, en…)."),
+        ("PortugueseBox", "<b>Música portuguesa</b>: sim, não, ou o que disser a categoria."),
+        ("LanguageBox", "A <b>língua</b> em que é cantada, como pt-PT, pt-BR ou en."),
         ("CountryBox", "O <b>país do intérprete</b>, da lista da estação com os códigos da ERC."),
-        ("ReleaseBox", "A <b>primeira edição</b>: aaaa-mm-dd, aaaa-mm ou aaaa (vazio: a etiqueta do ano)."),
+        ("ReleaseBox", "A <b>primeira edição</b>, como aaaa-mm-dd, aaaa-mm ou só o ano. Se ficar vazia, conta o ano da etiqueta."),
     ]),
     ("fig", "erc", "Programação → Quotas ERC", [
-        ("FromBox", "O período: <b>Mês passado</b>, <b>Este mês</b> ou quaisquer datas…"),
-        ("CheckButton", "…e <b>Verificar</b>."),
-        ("AllPanel", "As três quotas em todo o período: verde quando cumpridas, vermelho quando não, com quantas de quantas."),
-        ("DaytimePanel", "O mesmo, de segunda a sexta das 7:00 às 20:00. Enquanto o período não acabou, um terceiro cartão junta as playlists diárias ainda por emitir."),
-        ("MissingList", "<b>Músicas por classificar</b>: emitidas (ou planeadas) sem os dados da ERC; até lá contam como não portuguesas."),
-        ("ClassifyButton", "<b>Classificar…</b> as selecionadas, ou <b>🔎 Procurar no MusicBrainz…</b>: o país do intérprete, a língua e a primeira edição a partir do MusicBrainz (internet), com o que isso sugere; desmarca o que não estiver certo e guarda o resto."),
-        ("AddToLibraryButton", "Músicas tocadas a partir de <b>ficheiros fora da biblioteca</b>: <b>Juntar à biblioteca, em</b> uma categoria, para poderem ser classificadas."),
-        ("ExportButton", "<b>Exportar para a ERC (XML)…</b>: o ficheiro que o portal da ERC aceita, uma PLAYLIST por dia."),
-        ("AliasBox", "O nome do serviço de programas na ERC (ALIAS)."),
-        ("CountryPanel", "Os países e os seus códigos ERC (Portugal é 045; copie os outros do portal), e quais são da UE."),
+        ("FromBox", "O período: <b>Mês passado</b>, <b>Este mês</b> ou as datas que quiser…"),
+        ("CheckButton", "…e depois <b>Verificar</b>."),
+        ("AllPanel", "As três quotas no período inteiro: verde quando cumpridas, vermelho quando não, com quantas músicas de quantas."),
+        ("DaytimePanel", "O mesmo, de segunda a sexta das 7:00 às 20:00. Enquanto o período não acabar, um terceiro cartão junta as playlists diárias ainda por emitir."),
+        ("MissingList", "<b>Músicas por classificar</b>: emitidas ou planeadas sem os dados da ERC. Até serem classificadas, contam como não portuguesas."),
+        ("ClassifyButton", "<b>Classificar…</b> as selecionadas, ou <b>🔎 Procurar no MusicBrainz…</b>, que vai buscar à internet o país do intérprete, a língua e a primeira edição. Desmarque o que não estiver certo e guarde o resto."),
+        ("AddToLibraryButton", "Músicas que tocaram a partir de <b>ficheiros fora da biblioteca</b>: <b>Juntar à biblioteca, em</b> uma categoria, para as poder classificar."),
+        ("ExportButton", "<b>Exportar para a ERC (XML)…</b> cria o ficheiro que o portal da ERC aceita, com uma PLAYLIST por dia."),
+        ("AliasBox", "O nome do serviço de programas na ERC, o ALIAS."),
+        ("CountryPanel", "Os países e os seus códigos na ERC, e quais são da UE. Portugal é 045; os outros copiam-se do portal."),
     ]),
-    ("tip", "As playlists diárias só conseguem cumprir as quotas com <b>músicas classificadas</b> por onde escolher: em <b>Músicas</b>, selecione as músicas de uma categoria → botão direito → <b>ERC: procurar no MusicBrainz…</b> (cerca de 3 segundos por música)."),
-    ("p", "<b>Planear para as quotas</b> (à direita, ligado por omissão): cada hora das playlists diárias é feita para cumprir as três quotas sozinha — "
-          "uma música portuguesa cerca de uma em cada três quando há pouca, e entre elas músicas em português por intérpretes da UE e recentes onde estas "
-          "faltam — das músicas classificadas da categoria de cada linha, conforme as regras de descanso permitem."),
+    ("tip", "As playlists diárias só conseguem cumprir as quotas se tiverem <b>músicas classificadas</b> por onde escolher. Em <b>Músicas</b>, selecione as músicas de uma categoria, carregue no botão direito e escolha <b>ERC: procurar no MusicBrainz…</b>. Conte com cerca de 3 segundos por música."),
+    ("p", "Com <b>Planear para as quotas</b>, à direita e ligado por omissão, cada hora das playlists diárias é feita para "
+          "cumprir as três quotas por si só. Entra uma música portuguesa mais ou menos uma vez em cada três quando há poucas, "
+          "e entre elas dá-se preferência às cantadas em português por intérpretes da UE e às recentes, onde fazem falta. As "
+          "escolhas saem das músicas classificadas da categoria de cada linha, dentro das regras de descanso."),
     ("h2", "Restrições das músicas"),
-    ("p", "<b>Músicas</b> → botão direito → <b>Restrições…</b>: quando uma música pode ser escolhida automaticamente. As playlists diárias cumprem-nas "
-          "sempre; a música de enchimento cumpre as datas, dias e horas. Posta à mão, a música toca na mesma. As músicas com restrições mostram ⏱ na lista."),
+    ("p", "As restrições dizem quando uma música pode ser escolhida automaticamente. Uma canção de Natal só em dezembro, uma "
+          "música mais pesada só à noite. Abra-as em <b>Músicas</b>, com o botão direito e <b>Restrições…</b>."),
+    ("p", "As playlists diárias cumprem-nas sempre, e a música de enchimento respeita as datas, os dias e as horas. Se a "
+          "puser à mão, a música toca na mesma. As músicas com restrições aparecem com ⏱ na lista."),
     ("fig", "restrictions", "Restrições de uma música", [
         ("FromBox", "<b>Só de</b>…"),
-        ("UntilBox", "…<b>até</b> (vazio: sem limite) — uma música de Natal em dezembro."),
+        ("UntilBox", "…<b>até</b>. Vazio quer dizer sem limite."),
         ("DayGrid", "Nestes <b>dias</b>…"),
-        ("HourGrid", "…a estas <b>horas</b> (aceso = pode tocar)."),
-        ("DayHoursButton", "Escolhas rápidas: todas, 7:00–20:00, 20:00–7:00."),
+        ("HourGrid", "…e a estas <b>horas</b>. Aceso quer dizer que pode tocar."),
+        ("DayHoursButton", "Escolhas rápidas: todas, 7:00 a 20:00, 20:00 a 7:00."),
         ("MaxDayBox", "No máximo tantas vezes por <b>dia</b>…"),
-        ("MaxWeekBox", "…e por <b>semana</b>, de segunda a domingo (0: sem limite)."),
+        ("MaxWeekBox", "…e por <b>semana</b>, de segunda a domingo. Com 0 não há limite."),
         ("RemoveButton", "<b>Sem restrições</b>."),
     ]),
     ("h2", "Takes: a hora e a temperatura"),
-    ("p", "Pequenas inserções gravadas que o playout monta <b>quando vão para o ar</b>, por isso estão sempre certas. Ponha-as num modelo de hora: "
-          "<b>Juntar uma linha → 🕒 Hora / temperatura…</b> → a hora, a temperatura, ou as duas. Juntar uma categoria ou pasta de takes pergunta o mesmo."),
+    ("p", "Os takes são pequenas gravações de voz que o programa monta <b>no momento em que vão para o ar</b>, por isso dizem "
+          "sempre a hora e a temperatura certas. Para os usar, num modelo de hora escolha <b>Juntar uma linha → 🕒 Hora / "
+          "temperatura…</b> e indique a hora, a temperatura ou as duas. Juntar uma categoria ou pasta de takes faz a mesma pergunta."),
     ("fig", "station-takes", "Definições da estação → Takes", [
-        ("TakesFolderText", "A <b>pasta</b> com os takes: HRS00–HRS23 (a hora), MIN01–MIN59 (os minutos; ou HRS10_15 para uma hora inteira), TMP0–TMP45 e TMPM1… abaixo de zero."),
-        ("TakesFolderNote", "O que encontrou lá."),
-        ("LatitudeBox", "Onde fica a estação, para a temperatura (Open-Meteo, gratuito, a cada 10 minutos)…"),
-        ("TemperatureButton", "…e <b>Ler a temperatura</b> para experimentar."),
+        ("TakesFolderText", "A <b>pasta</b> dos takes: HRS00 a HRS23 para as horas, MIN01 a MIN59 para os minutos, ou HRS10_15 para uma hora inteira, TMP0 a TMP45 para a temperatura e TMPM1 em diante abaixo de zero."),
+        ("TakesFolderNote", "O que o programa encontrou nessa pasta."),
+        ("LatitudeBox", "Onde fica a estação, para saber a temperatura. Vem do Open-Meteo, que é gratuito, e é lida a cada 10 minutos…"),
+        ("TemperatureButton", "…e <b>Ler a temperatura</b> experimenta já."),
     ]),
-    ("tip", "Os ficheiros podem estar em subpastas (Horas, Minutos, Temperatura). Várias gravações do mesmo take (HRS10a, HRS10b) são usadas ao acaso. A hora dita é o minuto mais próximo de quando começa. Um take sem os seus ficheiros é saltado; o registo diz que ficheiro faltava."),
+    ("tip", "Os ficheiros podem estar em subpastas, como Horas, Minutos e Temperatura. Se gravar o mesmo take várias vezes, como HRS10a e HRS10b, o programa escolhe um ao acaso. A hora dita é o minuto mais próximo do momento em que o take começa. Um take sem os seus ficheiros é saltado, e o registo diz qual faltava."),
     ("h2", "A programação"),
-    ("p", "Tudo o que se planeia com antecedência: Eventos, Blocos publicitários, Clientes e campanhas, Modelos de hora e Playlists diárias, escolhidos à esquerda. <b>Guardar</b> (na barra de ferramentas, acesa quando algo mudou, ou Ctrl+S) grava na base de "
-          "dados e o programa de emissão recebe-o em poucos segundos. Se outra pessoa gravou entretanto, é-lhe perguntado antes de substituir o que ela fez."),
-    ("tip", "<b>Os calendários da semana</b> (Eventos, Blocos publicitários, Playlists): <b>clique numa célula</b> para pôr o "
-            "item selecionado nesse dia e hora (outra vez para o tirar), <b>arraste</b> para várias células, <b>clique numa hora</b> "
-            "para todos os dias. <b>Adicionar linha</b> junta uma hora exata, p. ex. <code>12:59:55</code>; <code>*:59:55</code> é esse minuto em todas as horas."),
+    ("p", "A programação é tudo o que se planeia com antecedência: eventos, programas, blocos publicitários, clientes e "
+          "campanhas, modelos de hora e playlists diárias. Escolhe cada ferramenta à esquerda."),
+    ("p", "<b>Guardar</b>, na barra de ferramentas ou com Ctrl+S, grava na base de dados, e o programa de emissão recebe as "
+          "alterações em poucos segundos. O botão acende-se quando há algo por guardar. Se entretanto outra pessoa tiver "
+          "gravado, o programa pergunta antes de substituir o trabalho dela."),
+    ("tip", "<b>Os calendários da semana</b> funcionam todos da mesma maneira. <b>Clique numa célula</b> para pôr o item "
+            "selecionado nesse dia e hora, e outra vez para o tirar. <b>Arraste</b> para preencher várias células, ou "
+            "<b>clique numa hora</b> para todos os dias. <b>Adicionar linha</b> junta uma hora exata, como <code>12:59:55</code>; "
+            "<code>*:59:55</code> quer dizer esse minuto e segundo em todas as horas."),
     ("h2", "Eventos"),
+    ("p", "Um evento é algo que toca a horas certas: o noticiário das 9, a rubrica do trânsito, a ligação à rede nacional."),
     ("fig", "schedule-events", "Eventos: o que toca a horas certas", [
-        ("EventList", "Os eventos. <b>Novo</b> / <b>Apagar</b> por baixo."),
-        ("EventGrid", "A semana: onde o evento selecionado toca."),
-        ("EventAddTimeBox", "Uma hora exata para juntar como linha."),
-        ("SaveButton", "<b>Guardar</b> toda a programação."),
+        ("EventList", "Os eventos, com <b>Novo</b> e <b>Apagar</b> por baixo."),
+        ("EventGrid", "A semana, com as horas em que o evento selecionado toca."),
+        ("EventAddTimeBox", "Uma hora exata para juntar ao calendário como linha."),
+        ("SaveButton", "<b>Guardar</b> grava toda a programação."),
     ]),
-    ("p", "Um evento toca um <b>ficheiro</b>, o <b>ficheiro mais recente de uma pasta</b> (o noticiário: saltado se tiver mais de "
-          "N minutos), um <b>stream</b> ou uma <b>entrada do computador do estúdio</b> (em direto: <b>Entrada…</b>) durante N minutos. Como começa: <b>Flexível</b> (depois de acabar o que está no ar, no "
-          "máximo N minutos atrasado), <b>Rígido</b> (ao segundo; o que está no ar desvanece) ou <b>Acaba à sua hora</b> (acaba exatamente "
-          "a essa hora, nunca depois: as músicas antes dele são ajustadas, e o que está no ar desvanece se fosse passar; um que acaba às 10:00 é o último das 09:00; com o sinal horário em Parar, acaba quando começam os bips, e as músicas da hora anterior já não tocam depois deles; um intervalo curto antes dele é preenchido com a categoria Fillers; as músicas juntadas antes dele que não cabem passam para depois, e uma que não consegue começar antes dele aparece como NÃO TOCA). E o que o locutor pode fazer com ele na playlist: remover e mover, só mover, ou nada."),
+    ("p", "Um evento pode tocar um <b>ficheiro</b>; o <b>ficheiro mais recente de uma pasta</b>, como o noticiário que é "
+          "descarregado para lá, e que é saltado se tiver mais de N minutos; um <b>stream</b>; ou uma <b>entrada do computador "
+          "do estúdio</b> em direto, com <b>Entrada…</b>, durante N minutos."),
+    ("p", "Também escolhe como o evento começa:"),
+    ("list", [
+        "<b>Flexível</b>: espera que acabe o que está no ar, com um atraso máximo de N minutos.",
+        "<b>Rígido</b>: começa ao segundo, e o que está no ar desvanece.",
+        "<b>Acaba à sua hora</b>: acaba exatamente a essa hora, nunca depois. As músicas antes dele são ajustadas, e o que "
+        "estiver no ar desvanece se fosse passar da hora. Um evento que acaba às 10:00 é o último da hora das 09:00. Se o "
+        "sinal horário estiver em Parar, o evento acaba quando começam os bips. Um intervalo curto antes dele é preenchido "
+        "com a categoria Fillers. As músicas juntadas antes dele que não caibam passam para depois, e uma que já não consiga "
+        "começar antes dele aparece como NÃO TOCA.",
+    ]),
+    ("p", "Por fim, diz o que o locutor pode fazer com o evento na playlist: removê-lo e movê-lo, só movê-lo, ou nada."),
+    ("h2", "Séries nos eventos"),
+    ("p", "Uma série toca um ficheiro diferente em certos dias, sempre no mesmo lugar da grelha. Pense no horóscopo de cada "
+          "manhã, com uma gravação para cada dia da semana, ou numa rubrica com um episódio novo em cada data."),
+    ("fig", "schedule-series", "Eventos: uma série", [
+        ("EventList", "Escolha o evento, por exemplo o horóscopo das 8:15."),
+        ("EventSeriesDays", "Em <b>Uma série: outro ficheiro em certos dias</b>, dê um ficheiro a cada dia da semana, de segunda a domingo. Também pode ser uma pasta ou um stream."),
+        ("EventSeriesDates", "As datas: um ficheiro para um dia em particular, como um episódio ou um especial de feriado. As datas que já passaram aparecem a cinzento."),
+        ("EventSeriesDateButton", "<b>Juntar uma data</b> acrescenta uma data à lista."),
+    ]),
+    ("p", "Num dado dia, o programa toca o ficheiro dessa data, se houver. Se não houver, toca o do dia da semana. Se também "
+          "não houver, toca o ficheiro normal do evento. Se esse estiver vazio, o evento é saltado nesse dia e o registo diz porquê."),
+    ("p", "Uma data deixada vazia quer dizer que nesse dia não toca nada. É assim que se tira o horóscopo do dia de Natal. "
+          "De vez em quando, <b>Tirar as datas passadas</b> limpa a lista."),
+    ("h2", "Programas em direto"),
+    ("p", "Em <b>Programação › Programas</b> marca os programas feitos ao vivo, como o programa da manhã. Cada um tem um "
+          "<b>nome</b>, o <b>locutor</b>, quanto tempo dura a partir de cada início, e <b>notas para o locutor</b> com o "
+          "alinhamento, os convidados ou o que referir. Coloca-se na semana como um evento."),
+    ("p", "Enquanto o programa está no ar, a emissão fica em ASSISTIDO, abre-se a vista do locutor, e o nome do programa e do "
+          "locutor vão para o RDS e para o site. Nos modelos do RDS e do site, os campos {show} e {presenter} trazem-nos. O "
+          "capítulo 3 explica o que o locutor vê."),
     ("h2", "Blocos publicitários"),
     ("fig", "schedule-breaks", "Blocos publicitários", [
         ("BreakList", "Os blocos."),
-        ("BreakGrid", "Onde estão na semana (aqui a todas as horas aos :50)."),
-        ("PartList", "A <b>ordem de emissão</b>: jingles e <b>secções</b>; os anúncios marcados numa secção tocam aí."),
+        ("BreakGrid", "Onde estão na semana. Aqui, a todas as horas aos 50 minutos."),
+        ("PartList", "O <b>alinhamento</b> do bloco: jingles e <b>secções</b>. Os anúncios marcados numa secção tocam nesse ponto."),
     ]),
-    ("p", "Um jingle pode ser marcado <i>tocar só quando a secção a seguir tiver spots</i> (abertura de secção). Um bloco sem nada marcado é saltado. Os blocos ficam bloqueados na playlist por omissão."),
+    ("p", "Um jingle pode ser marcado para <i>tocar só quando a secção a seguir tiver spots</i>, a abrir a secção. Um bloco sem "
+          "nada marcado é saltado. Os blocos ficam bloqueados na playlist por omissão."),
+    ("p", "<b>Máximo</b> dá ao bloco uma duração máxima em segundos. Se os anúncios marcados para hoje o tornarem mais longo, "
+          "o Início avisa, para o departamento comercial poder acertar. No ar nada fica de fora."),
     ("h2", "Clientes e campanhas"),
     ("fig", "schedule-clients", "Clientes", [
-        ("ClientList", "Os <b>clientes</b> (o nome no comprovativo de emissão)."),
-        ("CampaignList", "As suas <b>campanhas</b>: os spots (vários vão alternando), secção, posição, primeiro e último dia."),
-        ("SpotGrid", "Os blocos da semana: quantos anúncios e quanto dura cada um. <b>Clique</b> num bloco para marcar a campanha lá, todas as semanas ou só nessa data."),
+        ("ClientList", "Os <b>clientes</b>, com o nome que aparece no comprovativo de emissão."),
+        ("CampaignList", "As <b>campanhas</b> de cada cliente: os spots, que vão alternando quando há vários, a secção, a posição, e o primeiro e o último dia."),
+        ("SpotGrid", "Os blocos da semana, com quantos anúncios tem cada um e quanto duram. <b>Clique</b> num bloco para marcar lá a campanha, todas as semanas ou só nessa data."),
     ]),
-    ("p", "<b>Em todos os blocos</b> marca uma campanha em todos os blocos que têm a sua secção. <b>Posição</b>: automática, 1–5 desde o início da secção, ou 6–10 no fim."),
-    ("p", "<b>Certificado…</b> (por baixo dos clientes): o que foi marcado para o cliente contra o que foi para o ar, spot a spot, num período e numa campanha ou em todas — "
-          "<b>No ar</b> com a hora, <b>NÃO FOI PARA O AR</b>, <b>No ar, não marcado</b>, <b>Por emitir</b>. <b>Certificado para imprimir…</b> dá a página para imprimir "
-          "ou guardar em PDF para o cliente. Com o Sintoniza Rec a gravar, <b>▶ Ouvir</b> toca o anúncio selecionado tal como saiu e <b>Guardar o áudio…</b> guarda-o "
-          "em MP3. O Início avisa quando os anúncios marcados de ontem não foram para o ar."),
+    ("p", "<b>Em todos os blocos</b> marca a campanha em todos os blocos que têm a sua secção. A <b>posição</b> pode ser "
+          "automática, de 1 a 5 a contar do início da secção, ou de 6 a 10 no fim."),
+    ("p", "Cada cliente pode ter um <b>Setor</b>, como Automóveis ou Bancos. Os anúncios automáticos são arrumados de forma a "
+          "que o mesmo cliente, ou dois clientes do mesmo setor, nunca fiquem seguidos se houver maneira de o evitar. Não se "
+          "quer o anúncio de um stand logo a seguir ao da concorrência. Nenhum anúncio fica de fora por isso, e o Início avisa "
+          "quando não há forma de os separar."),
+    ("p", "<b>Certificado…</b>, por baixo dos clientes, compara o que foi marcado para o cliente com o que foi para o ar, spot a "
+          "spot, num período e numa campanha ou em todas. Cada spot aparece como <b>No ar</b>, com a hora, <b>NÃO FOI PARA O "
+          "AR</b>, <b>No ar, não marcado</b> ou <b>Por emitir</b>. <b>Certificado para imprimir…</b> dá uma página para imprimir "
+          "ou guardar em PDF e entregar ao cliente."),
+    ("p", "Se o Sintoniza Rec estiver a gravar a emissão, <b>▶ Ouvir</b> toca o anúncio selecionado tal como saiu, e <b>Guardar "
+          "o áudio…</b> guarda-o em MP3 para enviar ao cliente. O Início avisa quando algum anúncio marcado para ontem não foi "
+          "para o ar."),
+    ("p", "<b>Faturação…</b> conta os spots de todos os clientes num mês, por omissão o mês passado, campanha a campanha: "
+          "marcados, no ar, não emitidos, no ar sem estarem marcados, e o tempo no ar. Conta da mesma maneira que os "
+          "certificados, e pode guardar o resultado em CSV para a contabilidade ou imprimi-lo."),
     ("h2", "Playlists: modelos de hora para os programas"),
+    ("p", "Um modelo de hora é a receita de uma hora: que categorias tocam e por que ordem. Faz-se um para cada programa ou tipo "
+          "de hora, como as Manhãs ou as Tardes, e coloca-se na semana."),
     ("fig", "schedule-templates", "Modelos de hora", [
-        ("TemplateList", "Os modelos: um por programa ou tipo de hora."),
-        ("TemplateGrid", "As horas em que cada um toca: aqui as Manhãs nos dias úteis das 07 às 10."),
-        ("LineList", "As suas <b>linhas</b>, tocadas por ordem e depois de novo do início até a hora ficar cheia."),
-        ("LineCategoryBox", "Uma linha é uma música de uma <b>categoria da biblioteca</b> (Music › Atuais, Gold, Jingles…)…"),
-        ("TempoMinBox", "As músicas da linha selecionada: um intervalo de <b>tempo</b> e <b>energia</b> (aqui a primeira música da manhã é animada)."),
+        ("TemplateList", "Os modelos, um por programa ou tipo de hora."),
+        ("TemplateGrid", "As horas em que cada um toca. Aqui, as Manhãs nos dias úteis, das 7 às 10."),
+        ("LineList", "As <b>linhas</b> do modelo, que tocam por ordem e recomeçam do início até a hora ficar cheia."),
+        ("LineCategoryBox", "Uma linha pode ser uma música de uma <b>categoria da biblioteca</b>, como Music › Atuais, Gold ou Jingles…"),
+        ("TempoMinBox", "Para a linha selecionada, um intervalo de <b>andamento</b> e de <b>energia</b>. Aqui, a primeira música da manhã é animada."),
         ("AddFolderLineButton", "…ou um ficheiro de uma <b>pasta</b>."),
     ]),
     ("h2", "Regras musicais"),
-    ("p", "Dê às músicas um <b>tempo</b> (1 lento … 5 rápido) e uma <b>energia</b> (1 calma … 5 animada) na biblioteca: selecione-as, botão direito → <i>Tempo</i> ou <i>Energia</i>. Depois as linhas de um modelo podem pedi-los, e o modelo afasta artistas e álbuns."),
+    ("p", "As regras musicais ajudam a hora a soar bem: sem baladas umas atrás das outras, sem o mesmo artista duas vezes "
+          "seguidas. Primeiro, dê às músicas um <b>andamento</b>, de 1 lento a 5 rápido, e uma <b>energia</b>, de 1 calma a 5 "
+          "animada. Na biblioteca, selecione-as e use o botão direito. Depois, as linhas de um modelo podem pedir esses valores."),
     ("fig", "schedule-rules", "As regras musicais de um modelo", [
-        ("TempoMinBox", "<b>Tempo</b> de … a … para a linha selecionada (<i>qualquer</i> = sem limite)."),
-        ("EnergyMinBox", "<b>Energia</b> de … a …."),
-        ("ArtistHoursBox", "O mesmo <b>artista</b> não volta antes destas horas (0 = o descanso em Definições → Segurança)."),
-        ("AlbumHoursBox", "O mesmo <b>álbum</b> não volta antes destas horas (0 = sem regra de álbum)."),
-        ("MaxSlowBox", "No máximo estas <b>músicas lentas</b> (tempo 1–2) seguidas (0 = sem limite)."),
+        ("TempoMinBox", "O <b>andamento</b> mínimo e máximo para a linha selecionada. <i>Qualquer</i> quer dizer sem limite."),
+        ("EnergyMinBox", "A <b>energia</b> mínima e máxima."),
+        ("ArtistHoursBox", "O mesmo <b>artista</b> não volta antes destas horas. Com 0, vale o descanso definido em Definições da estação → Segurança."),
+        ("AlbumHoursBox", "O mesmo <b>álbum</b> não volta antes destas horas. Com 0, não há regra de álbum."),
+        ("MaxSlowBox", "No máximo tantas <b>músicas lentas</b> seguidas, ou seja, de andamento 1 ou 2. Com 0, não há limite."),
     ]),
-    ("tip", "Uma regra que não deixaria nada para tocar é largada nessa música (primeiro o álbum, depois as lentas, depois o artista), por isso a hora fica sempre cheia. Uma linha cujo tempo ou energia nenhuma música tem toca de toda a categoria, e as Playlists diárias avisam."),
+    ("tip", "Se uma regra não deixasse nada para tocar, é posta de lado nessa música: primeiro a do álbum, depois a das lentas, depois a do artista. Assim a hora fica sempre cheia. Se nenhuma música tiver o andamento ou a energia que uma linha pede, a linha toca da categoria toda, e as Playlists diárias avisam."),
     ("h2", "Playlists diárias"),
-    ("p", "As horas tal como vão tocar, feitas a partir dos modelos: cada música, jingle e anúncio, por ordem, com a sua hora de início."),
+    ("p", "As playlists diárias são as horas tal como vão tocar, feitas a partir dos modelos: cada música, jingle e anúncio, por ordem, com a sua hora de início."),
     ("fig", "schedule-daily", "Playlists diárias", [
-        ("DayBox", "O dia: ◀ ▶ e <b>Hoje</b>."),
-        ("HourList", "As suas 24 horas, com o modelo e a duração de cada uma. ✎ = alterada à mão; ↻ = o seu modelo mudou entretanto."),
+        ("DayBox", "O dia, com ◀ ▶ e <b>Hoje</b>."),
+        ("HourList", "As 24 horas do dia, com o modelo e a duração de cada uma. ✎ quer dizer alterada à mão; ↻ quer dizer que o modelo mudou entretanto."),
         ("OnAirText", "O que está no ar agora, e quanto vai adiantado ou atrasado em relação ao plano."),
-        ("ItemList", "A hora: músicas, jingles, os anúncios do bloco (com o cliente) e eventos, cada um com a hora de início e de onde veio. ✓ = já tocou; ▶ = no ar; OPCIONAL = só se houver tempo."),
-        ("SegueButton", "<b>Transição…</b>: como a música selecionada passa para a seguinte (ver Transições)."),
-        ("StreamButton", "<b>Stream…</b>: o stream de outra rádio a uma hora desta hora, à hora certa ou depois do item no ar. Remover tira-o."),
+        ("ItemList", "A hora: músicas, jingles, os anúncios do bloco com o cliente, e os eventos, cada um com a hora de início e de onde veio. ✓ já tocou, ▶ está no ar, OPCIONAL só toca se houver tempo."),
+        ("SegueButton", "<b>Transição…</b> mostra como a música selecionada passa para a seguinte, como em Transições."),
+        ("StreamButton", "<b>Stream…</b> põe o stream de outra rádio nesta hora, a uma hora certa ou depois do item no ar. Remover tira-o."),
         ("TagsButton", "<b>Editar etiquetas…</b> da música selecionada."),
-        ("ReplaceButton", "<b>Outra música</b> da mesma linha do modelo; ▲ ▼ movem, <b>Remover</b> tira."),
-        ("NoteButton", "<b>📝 Nota…</b> no item selecionado e <b>📝 Nota da hora…</b>: notas para o locutor, mostradas no ar antes e enquanto toca (📝 na lista)."),
+        ("ReplaceButton", "<b>Outra música</b> troca-a por outra da mesma linha do modelo. ▲ ▼ mudam a ordem e <b>Remover</b> tira."),
+        ("NoteButton", "<b>📝 Nota…</b> no item selecionado e <b>📝 Nota da hora…</b> deixam recados para o locutor, mostrados no ar antes e durante o item. Os itens com nota têm 📝 na lista."),
         ("GenerateHourButton", "<b>Refazer esta hora</b> a partir do seu modelo."),
-        ("GenerateDayButton", "<b>Refazer o dia</b> (as horas alteradas à mão ficam)."),
-        ("Tracks", "A biblioteca: <b>duplo clique</b> numa música para a pôr a seguir ao item selecionado; botão direito → Ouvir."),
-        ("ListenButton", "<b>Ouvir</b> o item selecionado (ou duplo clique nele, ou Espaço), só na saída de pré-escuta."),
+        ("GenerateDayButton", "<b>Refazer o dia</b>. As horas alteradas à mão ficam como estão."),
+        ("Tracks", "A biblioteca. Com <b>duplo clique</b> numa música, ela entra a seguir ao item selecionado. O botão direito tem Ouvir."),
+        ("ListenButton", "<b>Ouvir</b> o item selecionado, também com duplo clique ou a barra de espaços, sempre na pré-escuta."),
         ("TotalText", "O total da hora: músicas e jingles, blocos e eventos, e o que é opcional."),
     ]),
     ("list", [
-        "<b>Construa-a música a música</b> com Outra música, ▲ ▼, Remover e a biblioteca. Cada alteração fica gravada logo e a hora fica marcada ✎; nunca é refeita sozinha.",
-        "<b>Ou deixe as regras fazê-lo</b>: hoje e os próximos dias estão sempre feitos, e uma hora cujo modelo muda é refeita em poucos minutos (exceto se foi alterada à mão ou está prestes a tocar).",
-        "As regras: primeiro as músicas que descansaram mais tempo; uma música não volta antes de N horas, um artista antes de N minutos (Definições da estação → Segurança); nunca o mesmo artista duas vezes seguidas se houver outro.",
+        "<b>Pode construir a hora música a música</b> com Outra música, ▲ ▼, Remover e a biblioteca. Cada alteração fica gravada logo, e a hora fica marcada com ✎. Uma hora assim nunca é refeita sozinha.",
+        "<b>Ou pode deixar as regras trabalhar.</b> Hoje e os dias seguintes estão sempre feitos, e uma hora cujo modelo mude é refeita em poucos minutos, a não ser que tenha sido alterada à mão ou esteja prestes a tocar.",
+        "As regras de escolha são simples: primeiro as músicas que descansaram mais tempo; uma música não volta antes de N horas e um artista antes de N minutos, como definido em Definições da estação → Segurança; e nunca o mesmo artista duas vezes seguidas se houver outro.",
         "As músicas que o programa de emissão junta para acertar o horário aparecem como <i>juntada na emissão para acertar o horário</i>.",
     ]),
     ("h2", "Voice tracks"),
-    ("p", "Grave as suas locuções entre duas músicas com antecedência, como se estivesse em direto: selecione uma música numa hora e clique em <b>Voice track…</b>."),
+    ("p", "Com os voice tracks, o locutor grava com antecedência o que diria entre duas músicas, como se estivesse em direto. É "
+          "assim que se faz o programa de fim de semana sem estar no estúdio. Selecione uma música numa hora e clique em "
+          "<b>Voice track…</b>."),
     ("fig", "voicetrack", "Voice track…", [
-        ("InputBox", "A <b>entrada</b> de onde gravar (o microfone do estúdio, ou qualquer entrada deste computador)."),
-        ("PreRollBox", "Quanto do fim da música ouve primeiro."),
-        ("StartButton", "<b>Começar</b> toca o fim da música anterior, na saída de pré-escuta."),
-        ("TalkButton", "<b>Falar</b> (Espaço) começa a gravar — por cima do fim da música, se quiser; outra vez para parar."),
-        ("NextButton", "<b>Música seguinte</b> (Enter) faz entrar o item seguinte enquanto fala, por baixo da sua voz."),
-        ("OverlapText", "Depois de gravar: quanto começa por cima do fim da música…"),
-        ("NextText", "…e onde entra a música seguinte. ±0,5 s para os acertar."),
-        ("PlayBackButton", "<b>Ouvir</b> como no ar; <b>Gravar de novo</b> se quiser."),
-        ("SaveButton", "<b>Guardar</b>: fica um MP3 na pasta de voice tracks da estação e na biblioteca em <b>Takes</b>."),
+        ("InputBox", "A <b>entrada</b> por onde grava: o microfone do estúdio ou outra entrada deste computador."),
+        ("PreRollBox", "Quanto do fim da música ouve antes de falar."),
+        ("StartButton", "<b>Começar</b> toca o fim da música anterior, na pré-escuta."),
+        ("TalkButton", "<b>Falar</b>, ou a barra de espaços, começa a gravar, se quiser por cima do fim da música. Outra vez para parar."),
+        ("NextButton", "<b>Música seguinte</b>, ou Enter, faz entrar o item seguinte por baixo da sua voz, enquanto continua a falar."),
+        ("OverlapText", "Depois de gravar, ajuste quanto da voz entra por cima do fim da música…"),
+        ("NextText", "…e onde entra a música seguinte, em passos de meio segundo."),
+        ("PlayBackButton", "<b>Ouvir</b> tal como vai sair no ar, ou <b>Gravar de novo</b>."),
+        ("SaveButton", "<b>Guardar</b> deixa um MP3 na pasta de voice tracks da estação e na biblioteca, em <b>Takes</b>."),
     ]),
     ("fig", "schedule-voice", "O voice track na hora", [
-        ("ItemList", "Fica logo a seguir à sua música (🗣), a começar por cima dos últimos segundos dela."),
-        ("VoiceButton", "<b>Voice track…</b> outra vez na música, ou no voice track, para o gravar de novo."),
+        ("ItemList", "O voice track fica logo a seguir à sua música, marcado com 🗣, e começa por cima dos últimos segundos dela."),
+        ("VoiceButton", "<b>Voice track…</b> outra vez, na música ou no próprio voice track, para o gravar de novo."),
     ]),
-    ("tip", "Um voice track pertence à música antes dele: tirar ou trocar essa música tira o voice track também, mover a música move-o, e no ar é saltado se a música não puder tocar."),
+    ("tip", "Um voice track pertence à música que está antes dele. Se tirar ou trocar essa música, o voice track vai com ela; se a mover, ele também se move; e no ar é saltado se a música não puder tocar."),
 ]),
 
-("Sintoniza Importação", "import", [
-    ("p", "Traz uma pasta de música para a biblioteca, com as pastas lá dentro como categorias. Pede um utilizador com a permissão <b>Biblioteca</b>."),
-    ("fig", "import", "Sintoniza Importação", [
-        ("FolderBox", "A <b>pasta</b> a importar (<b>Escolher…</b> ao lado)."),
-        ("NameBox", "A <b>categoria</b> para onde vai (por omissão o nome da pasta)…"),
-        ("ParentBox", "…<b>dentro de</b> uma das oito da estação (Music por omissão) ou de uma categoria debaixo delas."),
-        ("KindBox", "O <b>tipo</b> das categorias novas: segue o daquela onde ficam."),
-        ("LevelsBox", "<b>Pastas dentro dela tornam-se subcategorias</b>: nenhuma, ou 1 a 3 níveis (Música/Anos 80 → Music › Anos 80)."),
-        ("AlsoInRadio", "Músicas que já estão noutra categoria: manter e juntar também esta, passá-las para esta, ou deixá-las como estão."),
-        ("PreviewButton", "<b>Pré-visualizar</b>: o que vai acontecer. Ainda nada é alterado."),
-        ("PlanList", "As categorias que vai criar (NOVA ou JÁ EXISTE), os ficheiros de cada uma, quantos já estão na biblioteca e quantos estão noutra categoria."),
-        ("ImportButton", "<b>Importar</b>: cria as categorias, lê as músicas e põe cada uma na sua categoria."),
+("Sintoniza Import", "import", [
+    ("p", "O Sintoniza Import, que nos ecrãs em português se chama Sintoniza Importação, traz uma pasta de música para a "
+          "biblioteca e transforma as pastas que tem lá dentro em categorias. Pede um utilizador com a permissão <b>Biblioteca</b>."),
+    ("fig", "import", "Sintoniza Import", [
+        ("FolderBox", "A <b>pasta</b> a importar, com <b>Escolher…</b> ao lado."),
+        ("NameBox", "A <b>categoria</b> para onde vai. Por omissão, tem o nome da pasta…"),
+        ("ParentBox", "…e fica <b>dentro de</b> uma das oito da estação, Music por omissão, ou de uma categoria debaixo delas."),
+        ("KindBox", "O <b>tipo</b> das categorias novas, que segue o da categoria onde ficam."),
+        ("LevelsBox", "<b>Pastas dentro dela tornam-se subcategorias</b>: nenhuma, ou de 1 a 3 níveis. Por exemplo, a pasta Música/Anos 80 dá Music › Anos 80."),
+        ("AlsoInRadio", "O que fazer às músicas que já estão noutra categoria: mantê-las lá e juntar também esta, passá-las para esta, ou deixá-las como estão."),
+        ("PreviewButton", "<b>Pré-visualizar</b> mostra o que vai acontecer, sem mudar nada."),
+        ("PlanList", "As categorias que vai criar, marcadas NOVA ou JÁ EXISTE, os ficheiros de cada uma, quantos já estão na biblioteca e quantos estão noutra categoria."),
+        ("ImportButton", "<b>Importar</b> cria as categorias, lê as músicas e põe cada uma na sua categoria."),
     ]),
-    ("p", "Cada pasta fica associada à sua categoria: as músicas que lá forem postas mais tarde também a recebem (o programa de "
-          "emissão analisa essas pastas sozinho). <b>Parar</b> interrompe uma importação; importar de novo termina-a."),
-    ("h2", "radio-import (linha de comandos)"),
-    ("p", "A mesma análise sem janela, p. ex. todas as noites pelo cron ou pelo Agendador de Tarefas:"),
+    ("p", "Cada pasta fica associada à sua categoria, por isso as músicas que lá forem postas mais tarde também entram nela. "
+          "O programa de emissão analisa essas pastas sozinho. <b>Parar</b> interrompe uma importação, e importar de novo termina-a."),
+    ("h2", "radio-import, na linha de comandos"),
+    ("p", "A mesma análise pode correr sem janela, por exemplo todas as noites pelo cron ou pelo Agendador de Tarefas:"),
     ("pre", "radio-import                          analisa as pastas da biblioteca\n"
             "radio-import /musica /jingles         analisa estas pastas\n"
             "radio-import --db /caminho/library.db um ficheiro de biblioteca SQLite\n"
             "radio-import --mysql utilizador:palavra-passe@servidor[:porta]/basededados\n"
             "radio-import --stats                  o que está na biblioteca"),
-    ("p", "Só são lidos os ficheiros novos e alterados. Os ficheiros apagados, e as músicas de uma pasta apagada, saem da biblioteca; um disco ou partilha que não está ligado fica como está."),
+    ("p", "Só são lidos os ficheiros novos e os alterados. Os ficheiros apagados, e as músicas de uma pasta apagada, saem da biblioteca. Um disco ou uma partilha que não esteja ligado fica como está."),
 ]),
 
 ("Sintoniza Rec", "rec", [
-    ("p", "O gravador da estação: grava o que vai para o ar, todo o dia, todos os dias, e guarda-o. A Lei da Rádio (art. 39.º) "
-          "obriga a gravar as emissões e a guardá-las pelo menos 30 dias. Não precisa da biblioteca nem de um utilizador, por isso "
-          "pode correr no computador do estúdio ou noutro qualquer; num computador só para ele continua a gravar quando o do estúdio é reiniciado."),
+    ("p", "O Sintoniza Rec é o gravador da estação. Grava tudo o que vai para o ar, todo o dia e todos os dias, e guarda as "
+          "gravações. A Lei da Rádio, no artigo 39.º, obriga a gravar as emissões e a guardá-las pelo menos 30 dias."),
+    ("p", "Não precisa da biblioteca nem de um utilizador, por isso pode correr no computador do estúdio ou noutro qualquer. "
+          "Num computador só para ele, continua a gravar enquanto o do estúdio é reiniciado."),
     ("fig", "rec", "Sintoniza Rec", [
-        ("RecText", "<b>● REC</b> enquanto grava (PARADO a vermelho quando não grava, SILÊNCIO quando não há som há algum tempo), e há quanto tempo."),
+        ("RecText", "<b>● REC</b> enquanto grava, e há quanto tempo. Aparece PARADO a vermelho quando não grava, e SILÊNCIO quando não há som há algum tempo."),
         ("SourceText", "De onde grava, e como."),
-        ("MeterL", "O nível do que entra."),
-        ("DiskText", "O ficheiro que está a ser escrito, o espaço livre, quanto tempo as gravações são guardadas e de quanto em quanto tempo começa um ficheiro novo."),
-        ("RecButton", "<b>Gravar</b> / <b>Parar</b>. Fechar a janela pergunta primeiro: para a gravação."),
-        ("MonitorButton", "<b>Ouvir em direto</b>: o que está a ser gravado, na saída de escuta (auscultadores, nunca uma saída que vá para o ar)."),
+        ("MeterL", "O nível do que está a entrar."),
+        ("DiskText", "O ficheiro que está a ser escrito, o espaço livre, durante quanto tempo as gravações são guardadas e de quanto em quanto tempo começa um ficheiro novo."),
+        ("RecButton", "<b>Gravar</b> e <b>Parar</b>. Fechar a janela para a gravação, por isso o programa pergunta primeiro."),
+        ("MonitorButton", "<b>Ouvir em direto</b> o que está a ser gravado, na saída de escuta: auscultadores, nunca uma saída que vá para o ar."),
         ("SettingsButton", "<b>Definições</b>: a origem, os ficheiros, a escuta e os alertas."),
-        ("DayBox", "As <b>gravações de um dia</b> (Hoje volta a hoje)…"),
+        ("DayBox", "As <b>gravações de um dia</b>. Hoje volta ao dia de hoje…"),
         ("FileList", "…cada ficheiro com o início e o fim, a duração e o tamanho. Faça duplo clique num, ou escolha-o e…"),
-        ("PlayButton", "…<b>▶</b> para o ouvir; a barra por baixo percorre-o, com a hora a que esteve no ar."),
-        ("FromBox", "<b>Exportar um excerto</b>: um dia, uma hora de início e de fim e um formato…"),
-        ("ExportButton", "…<b>Exportar…</b> pergunta onde guardar um só ficheiro, cortado ao segundo, feito de quantas gravações forem precisas. Um tempo em que o gravador esteve parado fica de fora, e é dito."),
+        ("PlayButton", "…carregue em <b>▶</b> para o ouvir. A barra por baixo percorre-o e mostra a hora a que cada momento esteve no ar."),
+        ("FromBox", "Para <b>exportar um excerto</b>, escolha o dia, a hora de início e de fim e o formato…"),
+        ("ExportButton", "…e <b>Exportar…</b> pergunta onde guardar. Sai um só ficheiro, cortado ao segundo, feito de quantas gravações forem precisas. Se o gravador esteve parado nesse período, esse tempo fica de fora, e o programa diz-lho."),
     ]),
     ("h2", "De onde grava"),
     ("fig", "rec-settings", "Definições → Origem", [
-        ("StationBox", "O nome da estação, na janela e nos alertas."),
-        ("InputRadio", "Uma <b>entrada</b> deste computador…"),
-        ("InputBox", "…qual: de preferência a saída de programa da mesa ligada à placa de som, para os microfones irem na gravação (o som do próprio playout não tem os microfones)."),
-        ("StreamRadio", "Ou o <b>stream</b> da estação…"),
-        ("StreamBox", "…o seu endereço. Se o stream cair, é aberto outra vez sozinho, num ficheiro novo."),
-        ("AutostartBox", "<b>Abrir o Sintoniza Rec quando entro neste computador</b>: depois de uma falha de luz ou de reiniciar, volta a gravar sozinho."),
+        ("StationBox", "O nome da estação, que aparece na janela e nos alertas."),
+        ("InputRadio", "Pode gravar uma <b>entrada</b> deste computador…"),
+        ("InputBox", "…de preferência a saída de programa da mesa, ligada à placa de som. Assim os microfones também ficam gravados, o que não acontece com o som do próprio programa de emissão."),
+        ("StreamRadio", "Ou pode gravar o <b>stream</b> da estação…"),
+        ("StreamBox", "…a partir do seu endereço. Se o stream cair, é aberto outra vez sozinho, num ficheiro novo."),
+        ("AutostartBox", "<b>Abrir o Sintoniza Rec quando entro neste computador</b>: depois de uma falha de luz ou de um reinício, volta a gravar sozinho."),
     ]),
     ("h2", "Os ficheiros"),
     ("fig", "rec-files", "Definições → Ficheiros", [
-        ("FolderBox", "A <b>pasta</b>: lá dentro, uma pasta por dia (2026-10-21) com os ficheiros (RE_2026-10-21_10-00-00.mp3). Também pode ser uma pasta partilhada."),
-        ("FormatBox", "MP3, ou WAV (sem compressão: cerca de 10 GB por dia)."),
-        ("BitrateBox", "A qualidade do MP3; <b>Mono</b> ocupa metade do espaço."),
-        ("MinutesBox", "<b>Um ficheiro novo a cada</b> 5 a 60 minutos, a partir de um minuto escolhido. O ficheiro novo começa antes de o anterior acabar: nada se perde entre eles."),
-        ("KeepDaysBox", "<b>Guardadas durante</b>: as gravações mais antigas são apagadas sozinhas. Pelo menos 30 dias."),
+        ("FolderBox", "A <b>pasta</b> das gravações. Lá dentro há uma pasta por dia, como 2026-10-21, com os ficheiros, como RE_2026-10-21_10-00-00.mp3. Também pode ser uma pasta partilhada."),
+        ("FormatBox", "MP3, ou WAV sem compressão, que ocupa cerca de 10 GB por dia."),
+        ("BitrateBox", "A qualidade do MP3. <b>Mono</b> ocupa metade do espaço."),
+        ("MinutesBox", "<b>Um ficheiro novo a cada</b> 5 a 60 minutos, a partir de um minuto à escolha. O ficheiro novo começa antes de o anterior acabar, por isso nada se perde entre os dois."),
+        ("KeepDaysBox", "<b>Guardadas durante</b>: as gravações mais antigas são apagadas sozinhas. No mínimo 30 dias."),
         ("SpaceText", "Quanto espaço ocupa um dia e o período todo."),
-        ("ArchiveBox", "Também uma <b>cópia de arquivo</b>: mono e de baixa qualidade, noutra pasta (um NAS, outro disco), guardada meses ou para sempre."),
+        ("ArchiveBox", "Uma <b>cópia de arquivo</b> opcional, em mono e baixa qualidade, noutra pasta, como um NAS ou outro disco, guardada durante meses ou para sempre."),
     ]),
     ("h2", "Alertas"),
     ("fig", "rec-alerts", "Definições → Alertas", [
-        ("SilenceDbBox", "<b>Silêncio</b>: abaixo deste nível durante este tempo (ou um stream que não manda nada). Volta a avisar quando há som."),
-        ("AliveBox", "Uma mensagem <b>continuo a gravar</b> uma vez por dia: um dia sem ela quer dizer que algo se passa com o computador."),
-        ("TelegramTokenBox", "Enviados por <b>Telegram</b>…"),
+        ("SilenceDbBox", "<b>Silêncio</b>: abaixo deste nível durante este tempo, ou um stream que não envia nada. Volta a avisar quando o som regressa."),
+        ("AliveBox", "Uma mensagem <b>continuo a gravar</b> uma vez por dia. Se um dia ela não chegar, algo se passa com o computador."),
+        ("TelegramTokenBox", "Os alertas seguem por <b>Telegram</b>…"),
         ("SmtpServerBox", "…por <b>e-mail</b>…"),
-        ("WebhookBox", "…ou para um <b>endereço web</b> (JSON). É usado o que estiver preenchido."),
+        ("WebhookBox", "…ou para um <b>endereço web</b>, em JSON. É usado o que estiver preenchido."),
         ("TestAlertButton", "<b>Enviar um teste</b>."),
     ]),
-    ("p", "Também avisa de uma gravação que não pode ser escrita (um disco cheio ou que falta, uma partilha que desapareceu: tenta outra vez com um ficheiro novo) e de menos de 2 GB livres."),
+    ("p", "O Rec também avisa quando uma gravação não pode ser escrita, por causa de um disco cheio ou em falta ou de uma partilha que desapareceu, e nesse caso tenta outra vez com um ficheiro novo. Avisa ainda quando restam menos de 2 GB livres."),
 ]),
 
 ("Como faço…", "howto", [
+    ("p", "Respostas rápidas às tarefas do dia a dia, passo a passo."),
     ("h3", "…para dar a um locutor o seu próprio acesso?"),
-    ("steps", ["Pro → Estação → <b>Utilizadores</b> → <b>Novo utilizador</b>.", "O nome e uma palavra-passe; clique em <b>Locutor</b>.",
-               "<b>Guardar utilizador</b>. Pode trabalhar no ar, gravar voice tracks no Pro e usar o controlo remoto web, mais nada."]),
-    ("h3", "…para criar um programa da manhã nos dias úteis?"),
-    ("steps", ["Pro → <b>Playlists</b> → <b>Novo</b>; dê-lhe um nome.", "Junte as linhas: p. ex. Music › Atuais, Gold, Jingles, Atuais, Anos 80.",
-               "Arraste sobre as horas das 07 às 10, de segunda a sexta. <b>Guardar</b>.", "Veja-o nas <b>Playlists diárias</b>: as horas ficam feitas em poucos minutos."]),
+    ("steps", ["Na Pro, abra Estação → <b>Utilizadores</b> e clique em <b>Novo utilizador</b>.", "Escreva o nome e uma palavra-passe e clique em <b>Locutor</b>.",
+               "Carregue em <b>Guardar utilizador</b>. A partir daí, essa pessoa pode trabalhar no ar, gravar voice tracks na Pro e usar o controlo remoto web, e mais nada."]),
+    ("h3", "…para criar o programa da manhã nos dias úteis?"),
+    ("steps", ["Na Pro, abra os <b>Modelos de hora</b>, clique em <b>Novo</b> e dê-lhe um nome.", "Junte as linhas, por exemplo Music › Atuais, Gold, Jingles, Atuais e Anos 80.",
+               "Arraste por cima das horas das 7 às 10, de segunda a sexta, e carregue em <b>Guardar</b>.", "Veja o resultado nas <b>Playlists diárias</b>: as horas ficam feitas em poucos minutos."]),
     ("h3", "…para pôr a publicidade no fim da hora?"),
-    ("steps", ["Pro → <b>Blocos publicitários</b> → <b>Novo</b>; dê-lhe uma ordem de emissão com uma secção.", "<b>Adicionar linha</b> <code>*:00:00</code> e clique nessa hora para todos os dias.",
-               "Escolha <b>Acaba à sua hora</b>: acaba exatamente à hora certa, a última coisa da hora anterior.", "Marque as campanhas no separador <b>Clientes</b>. <b>Guardar</b>."]),
-    ("h3", "…para trocar uma música nas 09:00 de amanhã?"),
-    ("steps", ["Pro → <b>Playlists diárias</b> → ▶ até amanhã → <b>09:00</b>.", "Selecione a música → <b>Outra música</b>, ou <b>Remover</b> e duplo clique numa da biblioteca."]),
+    ("steps", ["Na Pro, abra os <b>Blocos publicitários</b>, clique em <b>Novo</b> e dê ao bloco um alinhamento com uma secção.", "Com <b>Adicionar linha</b>, junte <code>*:00:00</code> e clique nessa hora para a marcar em todos os dias.",
+               "Escolha <b>Acaba à sua hora</b>. O bloco acaba exatamente à hora certa e é a última coisa da hora anterior.", "Marque as campanhas em <b>Clientes</b> e carregue em <b>Guardar</b>."]),
+    ("h3", "…para pôr o horóscopo de cada manhã?"),
+    ("steps", ["Na Pro, abra os <b>Eventos</b>, crie um evento novo e marque-o na semana, por exemplo às 8:15 todos os dias.",
+               "Em <b>Uma série: outro ficheiro em certos dias</b>, dê a cada dia da semana a sua gravação, de segunda a domingo.",
+               "Para não haver horóscopo no dia de Natal, clique em <b>Juntar uma data</b>, escolha 25 de dezembro e deixe o ficheiro vazio. Carregue em <b>Guardar</b>."]),
+    ("h3", "…para mostrar no site a música que está a tocar?"),
+    ("steps", ["Na Pro, abra <b>Definições da estação → Site</b> e ligue <b>Enviar o que está a tocar para o site da estação</b>.",
+               "Ponha o endereço da página e a chave, ou junte um texto ou a capa em <b>FICHEIROS E FTP</b>.",
+               "Em <b>Atrasar cada mudança</b>, ponha o atraso do stream, e carregue em <b>Enviar agora</b> para experimentar."]),
+    ("h3", "…para trocar uma música às 9:00 de amanhã?"),
+    ("steps", ["Na Pro, abra as <b>Playlists diárias</b>, avance com ▶ até amanhã e escolha a hora <b>09:00</b>.", "Selecione a música e carregue em <b>Outra música</b>, ou em <b>Remover</b>, e depois faça duplo clique numa música da biblioteca."]),
     ("h3", "…para pôr uma pasta de músicas no Gold?"),
-    ("p", "Sintoniza Importação com essa pasta, <i>na categoria</i> Gold, sem subcategorias. Ou no programa de emissão: separador Pastas → botão direito na pasta → Categoria → Gold."),
+    ("p", "Abra o Sintoniza Import com essa pasta, escolha a categoria Gold e não crie subcategorias. Em alternativa, no programa de emissão, vá ao separador Pastas, clique na pasta com o botão direito e escolha Categoria e depois Gold."),
     ("h3", "…para enviar à ERC a música do mês passado?"),
-    ("steps", ["Pro → <b>Quotas ERC</b> → <b>Mês passado</b>.", "Veja as quotas; classifique o que está em <i>Músicas por classificar</i>.",
-               "<b>Exportar para a ERC (XML)…</b> e depois envie o ficheiro no portal da ERC."]),
+    ("steps", ["Na Pro, abra as <b>Quotas ERC</b> e escolha <b>Mês passado</b>.", "Veja as quotas e classifique as músicas que aparecem em <i>Músicas por classificar</i>.",
+               "Carregue em <b>Exportar para a ERC (XML)…</b> e envie o ficheiro pelo portal da ERC."]),
     ("h3", "…para tirar o relatório de música para a sociedade de autores?"),
-    ("p", "Programa de emissão → <b>Relatórios</b> → <i>Música emitida (direitos de autor)</i> → o mês → <b>Guardar como CSV…</b>."),
+    ("p", "No programa de emissão, abra os <b>Relatórios</b>, escolha <i>Música emitida (direitos de autor)</i> e o mês, e carregue em <b>Guardar como CSV…</b>."),
     ("h3", "…para enviar a um anunciante o comprovativo de emissão?"),
-    ("p", "<b>Relatórios</b> → <i>Anúncios (comprovativo de emissão)</i> → o anunciante e as datas → <b>Guardar como página para imprimir…</b> → imprimir para PDF."),
+    ("p", "Nos <b>Relatórios</b>, escolha <i>Anúncios (comprovativo de emissão)</i>, o anunciante e as datas, carregue em <b>Guardar como página para imprimir…</b> e imprima para PDF. Na Pro, o <b>Certificado…</b> do cliente dá o mesmo, com o que foi marcado ao lado do que foi para o ar."),
+    ("h3", "…para fechar a faturação do mês?"),
+    ("p", "Na Pro, em <b>Clientes</b>, carregue em <b>Faturação…</b>. Vem o mês passado por omissão, com os spots de cada cliente campanha a campanha. Guarde em CSV para a contabilidade."),
 ]),
 
 ("Quando algo não está bem", "trouble", [
+    ("p", "Os problemas mais comuns e o que fazer em cada caso."),
     ("table", ["O que vê", "O que fazer"], [
-        ["A playlist da emissão não corresponde às Playlists diárias", "Carregue em <b>Limpar</b> no programa de emissão: volta a encher-se a partir do plano, desde o item planeado para esse momento. Se vai adiantada ou atrasada, a linha vermelha nas Playlists diárias diz quanto; acerta até à hora seguinte."],
-        ["Só tocam jingles e anúncios", "Os ficheiros das músicas mudaram de sítio ou foram apagados: corrija as pastas das categorias (Pro → Categorias) e clique em <b>Analisar</b> no separador Biblioteca."],
-        ["Uma música é saltada com “FileOpen”", "O ficheiro não está onde a biblioteca diz: <b>Analisar</b> de novo."],
-        ["O que oiço na pré-escuta vai para o ar", "Definições → Áudio → <b>Pré-escuta</b>: escolha uma saída que não seja do ar (auscultadores, PFL)."],
-        ["Algo correu mal no ar", "Definições → Segurança → <b>Abrir a pasta dos registos</b>: um ficheiro por dia. Definições → Alertas pode avisá-lo por Telegram ou e-mail."],
-        ["Um estúdio Windows ou Mac não encontra as músicas", "Definições → Biblioteca → <b>Caminhos deste computador</b>: onde está a música da biblioteca nesse computador; <b>Testar</b> diz quantas músicas encontra."],
-        ["O programa de emissão mostra RESERVA", "Outro computador está no ar (a barra diz qual). <b>Ir para o ar</b> se deve ser este."],
+        ["A playlist da emissão não corresponde às Playlists diárias", "Carregue em <b>Limpar</b> no programa de emissão. A playlist volta a encher-se a partir do plano, desde o item previsto para esse momento. Se a emissão vai adiantada ou atrasada, a linha vermelha nas Playlists diárias diz quanto, e o programa acerta até à hora seguinte."],
+        ["Só tocam jingles e anúncios", "Os ficheiros das músicas mudaram de sítio ou foram apagados. Corrija as pastas das categorias em Pro → Categorias e clique em <b>Analisar</b> no separador Biblioteca."],
+        ["Uma música é saltada com “FileOpen”", "O ficheiro não está onde a biblioteca diz. Carregue de novo em <b>Analisar</b>."],
+        ["O que oiço na pré-escuta vai para o ar", "Em Definições → Áudio → <b>Pré-escuta</b>, escolha uma saída que não vá para o ar, como os auscultadores ou o PFL."],
+        ["Algo correu mal no ar", "Em Definições → Segurança, <b>Abrir a pasta dos registos</b> mostra um ficheiro por dia. Em Definições da estação → Alertas pode pedir que o avisem por Telegram ou e-mail."],
+        ["Uma luz de estado está vermelha", "Aponte para ela para ler o que se passa, e clique para abrir as definições correspondentes."],
+        ["Um estúdio Windows ou Mac não encontra as músicas", "Em Definições → Biblioteca → <b>Caminhos deste computador</b>, diga onde está a música da biblioteca nesse computador. <b>Testar</b> diz quantas músicas encontra."],
+        ["O site não mostra a música que está a tocar", "Veja se a música não está marcada <b>Fora do site</b> e se <b>Só músicas</b> não está a guardar a última música durante os jingles. Lembre-se de que o atraso em <b>Atrasar cada mudança</b> faz o site mudar só uns segundos depois."],
+        ["O programa de emissão mostra RESERVA", "Outro computador está no ar, e a barra diz qual. Se deve ser este, carregue em <b>Ir para o ar</b>."],
     ]),
 ]),
 ]

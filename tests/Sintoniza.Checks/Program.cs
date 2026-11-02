@@ -339,17 +339,19 @@ Console.WriteLine("The on-air program (a library of its own)");
     var signText = win.FindControl<TextBlock>("OnAirSignText")!;
     Check(sign.IsVisible && signText.Text?.Contains("Manhãs") == true, $"the ON AIR sign is lit during the live show ({signText.Text})");
     var lamps = win.FindControl<WrapPanel>("LampPanel")!;
-    Check(lamps.IsVisible && lamps.Children.Count >= 9, $"the status lamps are a panel under the deck ({lamps.Children.Count} lamps)");
+    var strip = win.FindControl<Grid>("ScreenStrip")!;
+    var lights = win.FindControl<StackPanel>("Lights")!;
+    Check(!strip.IsVisible && lights.Children.Count >= 9, $"the status lamps are in the status bar, as they were ({lights.Children.Count} lamps)");
     var onGpio = typeof(MainWindow).GetMethod("OnGpio", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
     onGpio.Invoke(win, [GpioAction.MicLive, 0]);
     Ticks();
     Check(signText.Text == "MIC LIVE" && Field("_signLit") is true, "the desk's mic fader up (GPIO): MIC LIVE, and the sign's GPIO output on");
     var settings2 = (AppSettings)Field("_settings")!;
-    settings2.Screen = new ScreenSettings { StatusPanel = false, BigCounters = true, OnAirSign = false, HiddenLamps = ["rec"] };
+    settings2.Screen = new ScreenSettings { LampsAsPanel = true, BigCounters = true, OnAirSign = false, HiddenLamps = ["rec"] };
     typeof(MainWindow).GetMethod("ApplyScreen", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(win, null);
     Ticks();
     Check(!sign.IsVisible && Field("_signLit") is true, "the sign switched off in Settings: not shown, its GPIO output still on");
-    Check(!lamps.IsVisible && win.FindControl<StackPanel>("Lights")!.Children.Count >= 9, "lamps as small lights in the status bar");
+    Check(strip.IsVisible && lamps.Children.Count >= 9 && lights.Children.Count == 0, $"…or, chosen in Settings, a panel under the deck ({lamps.Children.Count} lamps)");
     Check(win.FindControl<TextBlock>("Remaining")!.FontSize >= 60, "big counters");
     // GPIO turned off with the fader up: nobody will say it came down, so it isn't MIC LIVE for ever.
     typeof(MainWindow).GetMethod("StopGpio", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(win, null);
@@ -808,6 +810,17 @@ Console.WriteLine("Now playing for the website (templates, files, the delay, son
     Check(stuck.Error != null, "…and the picture that isn't there is reported, not skipped");
     silent.Stop();
     held.ForEach(c => c.Dispose());
+}
+
+// ───────────────────────── Release notes ─────────────────────────
+
+Console.WriteLine("Release notes in the update window");
+{
+    const string body = "## What's new\n- **Website**: files by FTP\n- See [the manual](https://example.org)\n\n**Full Changelog**: https://github.com/x/y/compare/v1...v2\n\n"
+        + "<!-- downloads -->\n## Downloads\n\n<table>\n<tr><td>Windows</td><td><a href=\"https://x\">setup.exe</a></td></tr>\n</table>\n<!-- /downloads -->";
+    string plain = Updates.PlainNotes(body);
+    Check(plain == "What's new\n• Website: files by FTP\n• See the manual", $"plain text: no downloads table, links or Markdown ({plain.Replace("\n", " | ")})");
+    Check(Updates.PlainNotes("**Full Changelog**: https://x\n\n<!-- downloads -->\n<table></table>\n<!-- /downloads -->") == "", "…nothing else: empty (\"No release notes.\")");
 }
 
 // ───────────────────────── Several stations in one library ─────────────────────────

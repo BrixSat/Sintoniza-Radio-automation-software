@@ -62,7 +62,7 @@ public partial class ScheduleWindow
         foreach (var file in e.Series.Where(f => f.Date != null).OrderBy(f => f.Date).ToList())
         {
             var date = file.Date!.Value;
-            var row = SeriesRow(date.ToString("ddd d MMM yyyy", CultureInfo.CurrentUICulture), file.Path, date < DateTime.Today,
+            var row = SeriesRow(date.ToString(date.Year == DateTime.Today.Year ? "ddd d MMM" : "d MMM yyyy", CultureInfo.CurrentUICulture), file.Path, date < DateTime.Today,
                 path => Edit<ScheduledEvent>(EventList, _ => file.Path = path),
                 () =>
                 {
@@ -87,13 +87,20 @@ public partial class ScheduleWindow
             changed(box.Text?.Trim() ?? "");
             ShowEventPathKind(); // a stream or a folder in the series: their settings shown
         };
-        var file = new Button { Content = L.T("File…") };
+        // The end of the path shows (the file's name), with the whole of it in the tooltip.
+        box.CaretIndex = path.Length;
+        ToolTip.SetTip(box, path.Length > 0 ? path : null);
+        // One button with File… and Folder…, so the path has the room.
+        var choose = new Button { Content = "…", Padding = new Avalonia.Thickness(10, 4) };
+        ToolTip.SetTip(choose, L.T("Choose a file or a folder"));
+        var file = new MenuItem { Header = L.T("File…") };
         file.Click += async (_, _) => { if (await PickFile(L.F("Series: file for {0}", label)) is { } p) box.Text = p; };
-        var folder = new Button { Content = L.T("Folder…") };
+        var folder = new MenuItem { Header = L.T("Folder…") };
         folder.Click += async (_, _) => { if (await PickFolder(L.F("Series: folder whose newest file plays on {0}", label)) is { } p) box.Text = p; };
+        choose.Click += (_, _) => new ContextMenu { Items = { file, folder } }.Open(choose);
+        box.TextChanged += (_, _) => ToolTip.SetTip(box, box.Text is { Length: > 0 } t ? t : null);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Margin = new Avalonia.Thickness(6, 0, 0, 0) };
-        buttons.Children.Add(file);
-        buttons.Children.Add(folder);
+        buttons.Children.Add(choose);
         if (remove != null)
         {
             var delete = new Button { Content = "✕" };
@@ -103,7 +110,7 @@ public partial class ScheduleWindow
         }
         var name = new TextBlock
         {
-            Text = past ? L.F("{0} (past)", label) : label, Width = 130, VerticalAlignment = VerticalAlignment.Center,
+            Text = past ? L.F("{0} (past)", label) : label, MinWidth = 86, Margin = new Avalonia.Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis, Opacity = past ? 0.55 : 1,
         };
         var row = new DockPanel();

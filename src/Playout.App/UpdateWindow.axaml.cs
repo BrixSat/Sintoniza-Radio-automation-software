@@ -26,7 +26,7 @@ public partial class UpdateWindow : Window
 
         HeadingText.Text = L.F("{0} {1} is available", AppInfo.Name, update.Version);
         CurrentText.Text = L.F("You have version {0}.", Updates.CurrentText);
-        NotesText.Text = string.IsNullOrWhiteSpace(update.Notes) ? L.T("No release notes.") : update.Notes.Trim();
+        NotesText.Text = Updates.PlainNotes(update.Notes) is { Length: > 0 } notes ? notes : L.T("No release notes.");
 
         if (update.Asset == null)
         {

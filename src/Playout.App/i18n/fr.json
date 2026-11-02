@@ -2190,7 +2190,6 @@
  "Empty: nothing on this day": "Vide : rien ce jour-là",
  "This computer goes on air automatically if the master stops answering for {0} s.": "Cet ordinateur passe à l'antenne automatiquement si le principal ne répond plus pendant {0} s.",
  "Screen": "Écran",
- "Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar)": "Voyants d'état dans un panneau sous le lecteur, chacun avec ce qu'il fait (désactivé : petits voyants dans la barre d'état)",
  "Lamps shown": "Voyants affichés",
  "Big counters: the time remaining, the cue points, the next event and the top of the hour, to be read across the studio": "Grands compteurs : le temps restant, les points de cue, le prochain événement et le top horaire, lisibles depuis l'autre bout du studio",
  "ON AIR sign: MIC LIVE while the mic is open (or the desk's mic fader is up, by GPIO), ON AIR during a live show or a live input": "Signal ON AIR : MIC LIVE tant que le micro est ouvert (ou que le fader micro de la console est levé, par GPIO), ON AIR pendant une émission en direct ou une entrée en direct",
@@ -2250,5 +2249,7 @@
  "Mic fader up (MIC LIVE)": "Fader micro levé (MIC LIVE)",
  "Mic fader down": "Fader micro baissé",
  "The ON AIR sign (mic live, live show or input)": "Le signal ON AIR (micro ouvert, émission ou entrée en direct)",
- "The computer on air sends RDS": "L'ordinateur à l'antenne envoie le RDS"
+ "The computer on air sends RDS": "L'ordinateur à l'antenne envoie le RDS",
+ "Choose a file or a folder": "Choisir un fichier ou un dossier",
+ "Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar, as usual)": "Voyants d'état dans un panneau sous le lecteur, chacun avec ce qu'il fait (désactivé : petits voyants dans la barre d'état, comme d'habitude)"
 }

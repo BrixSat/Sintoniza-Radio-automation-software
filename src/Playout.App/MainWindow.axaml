@@ -226,6 +226,13 @@
                         </StackPanel>
                     </Grid>
 
+                    <!-- The ON AIR sign: in the room above the meters, so nothing moves when it lights -->
+                    <Border Grid.Row="2" x:Name="OnAirSign" CornerRadius="8" Padding="14,6" Margin="0,10,0,0" Background="#E5484D"
+                            IsVisible="False" VerticalAlignment="Center">
+                        <TextBlock x:Name="OnAirSignText" FontSize="26" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                    </Border>
+
                     <Grid Grid.Row="3" ColumnDefinitions="18,*" Margin="0,10,0,4">
                         <TextBlock Classes="caption" Text="L" VerticalAlignment="Center" />
                         <c:VuMeter Grid.Column="1" x:Name="MeterL" Height="12" />
@@ -238,13 +245,9 @@
             </Border>
         </Grid>
 
-        <!-- ═════════ ON AIR sign and the status lamps (Settings → Screen) ═════════ -->
-        <Grid DockPanel.Dock="Top" x:Name="ScreenStrip" ColumnDefinitions="Auto,*" Margin="0,0,0,12" IsVisible="False">
-            <Border x:Name="OnAirSign" CornerRadius="8" Padding="18,6" Margin="0,0,10,0" Background="#E5484D" IsVisible="False"
-                    MinHeight="46">
-                <TextBlock x:Name="OnAirSignText" FontSize="24" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
-            </Border>
-            <WrapPanel Grid.Column="1" x:Name="LampPanel" ItemSpacing="8" LineSpacing="8" VerticalAlignment="Center" />
+        <!-- ═════════ The status lamps as a panel (Settings → Screen; else in the status bar) ═════════ -->
+        <Grid DockPanel.Dock="Top" x:Name="ScreenStrip" Margin="0,0,0,12" IsVisible="False">
+            <WrapPanel x:Name="LampPanel" ItemSpacing="8" LineSpacing="8" VerticalAlignment="Center" />
         </Grid>
 
         <!-- ═════════ Status bar ═════════ -->

@@ -2190,7 +2190,6 @@
  "Empty: nothing on this day": "Vazio: nada neste dia",
  "This computer goes on air automatically if the master stops answering for {0} s.": "Este computador vai para o ar automaticamente se o principal deixar de responder por {0} s.",
  "Screen": "Ecrã",
- "Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar)": "Luzes de estado num painel por baixo do leitor, cada uma com o que está a fazer (desligado: pequenas luzes na barra de estado)",
  "Lamps shown": "Luzes mostradas",
  "Big counters: the time remaining, the cue points, the next event and the top of the hour, to be read across the studio": "Contadores grandes: o tempo que falta, os pontos de cue, o próximo evento e a hora certa, para se lerem do outro lado do estúdio",
  "ON AIR sign: MIC LIVE while the mic is open (or the desk's mic fader is up, by GPIO), ON AIR during a live show or a live input": "Sinal NO AR: MIC LIVE enquanto o microfone está aberto (ou o fader do micro da mesa está em cima, por GPIO), NO AR durante um programa em direto ou uma entrada em direto",
@@ -2250,5 +2249,7 @@
  "Mic fader up (MIC LIVE)": "Fader do micro em cima (MIC LIVE)",
  "Mic fader down": "Fader do micro em baixo",
  "The ON AIR sign (mic live, live show or input)": "O sinal NO AR (micro aberto, programa ou entrada em direto)",
- "The computer on air sends RDS": "O computador no ar envia o RDS"
+ "The computer on air sends RDS": "O computador no ar envia o RDS",
+ "Choose a file or a folder": "Escolher um ficheiro ou uma pasta",
+ "Status lamps as a panel under the deck, each with what it is doing (off: small lights in the status bar, as usual)": "Luzes de estado num painel por baixo do leitor, cada uma com o que está a fazer (desligado: pequenas luzes na barra de estado, como sempre)"
 }

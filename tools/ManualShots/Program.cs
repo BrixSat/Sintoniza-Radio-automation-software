@@ -85,6 +85,10 @@ foreach (var j in jingles) Audio(Path.Combine(jinglesDir, $"{j}.mp3"), j == jing
 string[] adverts = ["Padaria Central - Pão quente", "Auto Sul - Revisão", "Café Lisboa - Pequeno-almoço", "Óptica Visão - Promoção"];
 foreach (var a in adverts) Audio(Path.Combine(adsDir, $"{a}.mp3"), 30, a, "", "2025", false);
 Audio(Path.Combine(newsDir, T("News 09h.mp3", "Noticiário 09h.mp3")), 120, T("News 09h", "Noticiário 09h"), "Redação", "2025", false);
+// A series: a horoscope for each day of the week
+string horoscopeDir = Path.Combine(media, T("Horoscope", "Horóscopo"));
+string[] horoscopeDays = pt ? ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"] : ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+foreach (var d in horoscopeDays) Audio(Path.Combine(horoscopeDir, $"{T("Horoscope", "Horóscopo")} {d}.mp3"), 90, $"{T("Horoscope", "Horóscopo")} {d}", "Rádio Exemplo", "2025", false);
 // New music not in the library yet, for Sintoniza Import
 string incoming = Path.Combine(media, T("New releases", "Novidades"));
 string[] genres = ["Pop", "Dance", T("Portuguese", "Portuguesa")];
@@ -121,6 +125,17 @@ for (int h = 0; h < 24; h++) Audio(Path.Combine(takesDir, $"HRS{h:00}.mp3"), 1.5
 for (int m = 1; m < 60; m++) Audio(Path.Combine(takesDir, $"MIN{m:00}.mp3"), 1, "", "", "", false);
 for (int t = 0; t <= 35; t++) Audio(Path.Combine(takesDir, $"TMP{t}.mp3"), 1, "", "", "", false);
 settings.Takes = new TakesSettings(takesDir, 38.7223, -9.1393);
+// Now playing for the website: the JSON post, a text line by FTP and the cover picture by HTTP (only in the
+// station settings' picture: the demo addresses can't be reached, and the on-air screen would show it failing)
+var website = new WebNowPlayingSettings
+{
+    Enabled = true, Url = "https://www.radioexemplo.pt/nowplaying/nowplaying.php", Key = "demo-key", DelaySeconds = 8, SendCover = true,
+    Outputs =
+    [
+        new MetadataOutput { Template = "{artist} - {title}", Target = "ftp://ftp.radioexemplo.pt/www/song.txt", User = "radio", Password = "demo" },
+        new MetadataOutput { Kind = MetadataOutputKind.Cover, Target = "https://www.radioexemplo.pt/nowplaying/nowplaying.php?file=cover.jpg", Password = "demo-key", Fallback = logo },
+    ],
+};
 settings.Save();
 Localization.Load(lang);
 
@@ -173,7 +188,10 @@ var news = new ScheduledEvent { Name = T("News", "Noticiário"), Path = newsDir,
 // Another station's stream put in today's playlist, once (Daily playlists → Stream…).
 var relay = new ScheduledEvent { Name = T("Network show", "Programa em rede"), Path = "https://stream.example.org/live.mp3", StreamMinutes = 15,
     Start = EventStart.Hard, Dates = [DateTime.Today.AddHours(DateTime.Now.Hour).AddMinutes(40)] };
-var data = new ScheduleData { Templates = [morning, afternoons, nonstop], Breaks = [adBreak], Events = [news, relay] };
+var horoscope = new ScheduledEvent { Name = T("Horoscope", "Horóscopo"), Times = ["08:15"], Start = EventStart.Soft, MaxDelayMinutes = 5,
+    Series = horoscopeDays.Select((d, i) => new SeriesFile { Day = (DayOfWeek)((i + 1) % 7), Path = Path.Combine(horoscopeDir, $"{T("Horoscope", "Horóscopo")} {d}.mp3") })
+        .Append(new SeriesFile { Date = new DateTime(DateTime.Today.Year, 12, 25) }).ToList() };
+var data = new ScheduleData { Templates = [morning, afternoons, nonstop], Breaks = [adBreak], Events = [news, relay, horoscope] };
 data.Normalize();
 AdClient Client(string name, params string[] files)
 {
@@ -251,6 +269,19 @@ main.FindControl<TextBlock>("NoteNextText")!.IsVisible = false;
 main.FindControl<Border>("NoteBox")!.IsVisible = true;
 Pump(10);
 Shot(main, "main", deck);
+// The ON AIR sign (the desk's mic fader up, by GPIO) and big counters
+{
+    var own = Field<AppSettings>(main, "_settings");
+    var screen = own.Screen;
+    own.Screen = new ScreenSettings { BigCounters = true };
+    main.GetType().GetMethod("ApplyScreen", Any)!.Invoke(main, null);
+    main.GetType().GetMethod("OnGpio", Any)!.Invoke(main, [GpioAction.MicLive, 0]);
+    Shot(main, "main-onair", "OnAirSign", "Remaining", "NextEventCountdown", "Lights");
+    main.GetType().GetMethod("OnGpio", Any)!.Invoke(main, [GpioAction.MicOff, 0]);
+    own.Screen = screen;
+    main.GetType().GetMethod("ApplyScreen", Any)!.Invoke(main, null);
+    Pump(5);
+}
 
 // The web remote's page with the demo station's status, levels, waveform and logo (make-manual.sh photographs it at a
 // computer's and at a phone's size)
@@ -291,7 +322,7 @@ main.FindControl<Avalonia.Controls.Primitives.ToggleButton>("CartwallTab")!.Rais
 Pump(10);
 
 // Settings, tab by tab: this computer's (the on-air program) and the station's (Sintoniza Pro)
-string[] settingsTabs = ["station", "audio", "microphone", "timesignal", "takes", "safety", "library", "shortcuts", "streaming", "rds", "website", "alerts", "playlist", "gpio", "remote", "about"];
+string[] settingsTabs = ["station", "audio", "microphone", "timesignal", "takes", "safety", "library", "shortcuts", "streaming", "rds", "website", "alerts", "playlist", "screen", "gpio", "remote", "about"];
 void SettingsShots(SettingsWindow sw, string prefix)
 {
     sw.Show();
@@ -304,7 +335,8 @@ void SettingsShots(SettingsWindow sw, string prefix)
         tabs.SelectedIndex = i;
         Pump(15);
         Shot(sw, prefix + settingsTabs[i], "LibraryFoldersList", "MusicDeviceBox", "PreviewDeviceBox", "CrossfadeBox", "OtherCrossfadeBox", "StationNameBox",
-            "NextMinutesBox", "PlanDaysBox", "LanguageBox", "LibraryTypeBox", "TestLibraryButton", "ResumeBox", "BackupBox", "SilenceBox", "FillBox", "RdsPsBox", "LoudnessBox", "RemoteBox", "RemotePortBox", "RemoteAddressText", "TakesFolderText", "TakesFolderNote", "LatitudeBox", "TemperatureButton");
+            "NextMinutesBox", "PlanDaysBox", "LanguageBox", "StatusPanelBox", "LampBoxes", "BigCountersBox", "OnAirSignBox",
+            "WebUrlBox", "WebCoverBox", "WebDelayBox", "WebOutputsPanel", "AddWebTextButton", "AddWebCoverButton", "LibraryTypeBox", "TestLibraryButton", "ResumeBox", "BackupBox", "SilenceBox", "FillBox", "RdsPsBox", "LoudnessBox", "RemoteBox", "RemotePortBox", "RemoteAddressText", "TakesFolderText", "TakesFolderNote", "LatitudeBox", "TemperatureButton");
     }
     sw.Close();
 }
@@ -420,6 +452,11 @@ var stabs = schedule.FindControl<TabControl>("Tabs")!;
 void Select(string list, int index) { var l = schedule.FindControl<ListBox>(list)!; l.SelectedIndex = index; Pump(10); }
 stabs.SelectedIndex = 0; Pump(20); Select("EventList", 0);
 Shot(schedule, "schedule-events", "EventList", "EventGrid", "EventAddTimeBox", "EventAddTimeButton", "SaveButton");
+// An event with a series: a horoscope for each day of the week, and nothing on Christmas Day
+Select("EventList", 2);
+schedule.FindControl<Control>("EventSeriesDays")!.BringIntoView();
+Pump(15);
+Shot(schedule, "schedule-series", "EventList", "EventSeriesDays", "EventSeriesDates", "EventSeriesDateButton");
 
 
 // The station's settings and cartwalls (published by the on-air program above, the first time it started)
@@ -428,6 +465,7 @@ for (int i = 0; i < 50 && stationStore.Version() == 0; i++) { Pump(4); }
 var station = stationStore.Load().Settings ?? StationSettings.From(settings);
 var stationSettings = new AppSettings();
 station.ApplyTo(stationSettings);
+stationSettings.WebNowPlaying = website;
 SettingsShots(new SettingsWindow(stationSettings, null, null, SettingsScope.Station, _ => null) { Width = 1100, Height = 760 }, "station-");
 var cartwalls = new CartwallsWindow(station.Cartwalls.Count > 0 ? station.Cartwalls : settings.Cartwalls, settings.Routing, _ => null) { Width = 1100, Height = 700 };
 cartwalls.Show();

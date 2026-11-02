@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262B36"/>
+      <stop offset="1" stop-color="#111318"/>
+    </linearGradient>
+    <linearGradient id="mic" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#C9CED8"/>
+      <stop offset="0.45" stop-color="#F4F5F8"/>
+      <stop offset="1" stop-color="#9AA1AF"/>
+    </linearGradient>
+    <clipPath id="capsule">
+      <rect x="196" y="74" width="120" height="196" rx="60"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background tile -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="none" stroke="#3A4150" stroke-width="6"/>
+
+  <!-- On-air waves -->
+  <g fill="none" stroke="#E5484D" stroke-width="22" stroke-linecap="round">
+    <path d="M150 128 A130 130 0 0 0 150 300"/>
+    <path d="M362 128 A130 130 0 0 1 362 300"/>
+    <path d="M104 92 A190 190 0 0 0 104 336" opacity="0.55"/>
+    <path d="M408 92 A190 190 0 0 1 408 336" opacity="0.55"/>
+  </g>
+
+  <!-- Microphone capsule -->
+  <rect x="196" y="74" width="120" height="196" rx="60" fill="url(#mic)"/>
+  <g stroke="#6B7383" stroke-width="7" stroke-linecap="round">
+    <line x1="214" y1="128" x2="298" y2="128"/>
+    <line x1="208" y1="156" x2="304" y2="156"/>
+    <line x1="208" y1="184" x2="304" y2="184"/>
+    <line x1="214" y1="212" x2="298" y2="212"/>
+  </g>
+  <!-- Band -->
+  <rect x="196" y="236" width="120" height="16" fill="#E5484D" clip-path="url(#capsule)"/>
+
+  <!-- Yoke, stem and base -->
+  <path d="M168 210 V236 A88 88 0 0 0 344 236 V210" fill="none" stroke="#E7E9EE" stroke-width="20" stroke-linecap="round"/>
+  <rect x="245" y="322" width="22" height="70" fill="#E7E9EE"/>
+  <rect x="176" y="384" width="160" height="26" rx="13" fill="#E7E9EE"/>
+</svg>

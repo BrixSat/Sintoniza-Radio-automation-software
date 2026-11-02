@@ -12,8 +12,8 @@ namespace Playout.App;
 /// <summary>What the on-air screen shows besides the deck (this computer's: Settings → Screen).</summary>
 public sealed class ScreenSettings
 {
-    /// <summary>The status lamps as a panel under the deck, each with its state; off: small lights in the status bar.</summary>
-    public bool StatusPanel { get; set; } = true;
+    /// <summary>The status lamps as a panel under the deck, each with its state; off (as it was): small lights in the status bar.</summary>
+    public bool LampsAsPanel { get; set; }
     /// <summary>Lamps not shown (their ids: <see cref="MainWindow.LampIds"/>).</summary>
     public List<string> HiddenLamps { get; set; } = new();
     /// <summary>Remaining, the cue points, the next event and the top of the hour in big digits, to be read across the studio.</summary>
@@ -53,9 +53,9 @@ public partial class MainWindow
     void ApplyScreen()
     {
         var s = _settings.Screen;
-        if (_lampsAsPanel != s.StatusPanel || _lamps.Count == 0)
+        if (_lampsAsPanel != s.LampsAsPanel || _lamps.Count == 0)
         {
-            _lampsAsPanel = s.StatusPanel;
+            _lampsAsPanel = s.LampsAsPanel;
             _lamps.Clear();
             Lights.Children.Clear();
             LampPanel.Children.Clear();
@@ -224,9 +224,7 @@ public partial class MainWindow
             problems.Count > 0 ? Plural(problems.Count, "{0} problem", "{0} problems") : alerts.Enabled && alerts.HasChannel ? L.T("Nothing wrong") : L.T("Off"),
             problems.Count > 0 ? string.Join("\n", problems) : alerts.Enabled && alerts.HasChannel ? L.T("Alerts on: nothing wrong") : L.T("Alerts off (Settings)")));
 
-        bool any = _settings.Screen.StatusPanel && _lamps.Values.Any(l => l.Box.IsVisible);
-        LampPanel.IsVisible = any;
-        ScreenStrip.IsVisible = any || OnAirSign.IsVisible;
+        ScreenStrip.IsVisible = _settings.Screen.LampsAsPanel && _lamps.Values.Any(l => l.Box.IsVisible);
     }
 
     /// <summary>Today's daily playlists: the hours left today that have an hour template should have one made.</summary>
@@ -286,7 +284,6 @@ public partial class MainWindow
         bool lit = text != null;
         OnAirSign.IsVisible = lit && _settings.Screen.OnAirSign;
         if (lit) OnAirSignText.Text = text;
-        ScreenStrip.IsVisible = OnAirSign.IsVisible || LampPanel.IsVisible;
         _signLit = lit;
     }
 

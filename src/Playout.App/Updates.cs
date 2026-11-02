@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Playout.App;
 
@@ -87,6 +88,33 @@ static class Updates
         return new UpdateInfo(version, tag,
             root.TryGetProperty("body", out var body) ? body.GetString() ?? "" : "",
             root.GetProperty("html_url").GetString() ?? ReleasesPage, asset);
+    }
+
+    /// <summary>
+    /// A release's notes as plain text for the update window: without the downloads table, the "Full Changelog" link
+    /// and HTML, and with the Markdown marks taken out (headings, bold, links, bullets as •).
+    /// </summary>
+    public static string PlainNotes(string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(notes)) return "";
+        string text = notes.Replace("\r\n", "\n");
+        text = Regex.Replace(text, @"<!-- downloads -->.*?(<!-- /downloads -->|$)", "", RegexOptions.Singleline);
+        text = Regex.Replace(text, @"<!--.*?-->", "", RegexOptions.Singleline);
+        text = Regex.Replace(text, @"<[^>]+>", "");
+        var lines = new List<string>();
+        foreach (var raw in text.Split('\n'))
+        {
+            string line = raw.TrimEnd();
+            if (Regex.IsMatch(line, @"^\s*\*\*Full Changelog\*\*", RegexOptions.IgnoreCase)) continue;
+            line = Regex.Replace(line, @"^\s*#{1,6}\s*", "");                    // ## What's new → What's new
+            line = Regex.Replace(line, @"^(\s*)[-*+]\s+", "$1• ");                  // - item → • item
+            line = Regex.Replace(line, @"\[([^\]]+)\]\([^)]+\)", "$1");              // [text](address) → text
+            line = Regex.Replace(line, @"(\*\*|__|`)", "");                         // **bold**, `code`
+            line = line.Replace("\\\"", "\"");                                       // \" written for the shell
+            if (line.Length == 0 && (lines.Count == 0 || lines[^1].Length == 0)) continue;
+            lines.Add(line);
+        }
+        return string.Join("\n", lines).Trim();
     }
 
     /// <summary>Downloads the package to a temporary folder, checking its SHA-256 when GitHub publishes one.</summary>

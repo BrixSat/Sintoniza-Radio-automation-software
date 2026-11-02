@@ -1018,7 +1018,7 @@ public partial class SettingsWindow : PageWindow
 
     void LoadScreen(ScreenSettings screen)
     {
-        StatusPanelBox.IsChecked = screen.StatusPanel;
+        StatusPanelBox.IsChecked = screen.LampsAsPanel;
         BigCountersBox.IsChecked = screen.BigCounters;
         OnAirSignBox.IsChecked = screen.OnAirSign;
         foreach (var (id, name) in MainWindow.LampIds)
@@ -1031,7 +1031,7 @@ public partial class SettingsWindow : PageWindow
 
     ScreenSettings ScreenFromUi() => new()
     {
-        StatusPanel = StatusPanelBox.IsChecked == true,
+        LampsAsPanel = StatusPanelBox.IsChecked == true,
         BigCounters = BigCountersBox.IsChecked == true,
         OnAirSign = OnAirSignBox.IsChecked == true,
         HiddenLamps = _lampBoxes.Where(b => b.Value.IsChecked != true).Select(b => b.Key).ToList(),

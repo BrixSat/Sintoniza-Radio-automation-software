@@ -1,0 +1,3 @@
+# Sintoniza website
+
+This folder is the project's one-page website (plain HTML, CSS and a little JavaScript, no build step). The workflow `.github/workflows/pages.yml` publishes it to GitHub Pages on every push to `main` that changes `website/`, or by hand from the Actions tab (Run workflow). To turn it on once, in the repository's **Settings → Pages**, set **Source** to **GitHub Actions**; the site is then at https://brixsat.github.io/Sintoniza-Radio-automation-software/. The screenshots in `img/en` and `img/pt` are WebP copies of the manual's screenshots (`build/manual/shots-en`, `shots-pt`).

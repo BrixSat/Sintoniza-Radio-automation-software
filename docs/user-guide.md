@@ -71,18 +71,20 @@ they are changed in Pro only.
   next thing with a fixed time (an event, an ad break, a timed item), with a large countdown that turns amber in the
   last minute and red in the last 10 seconds — stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
 - **Bottom left — the playlist.** **Bottom right — Cartwall / Library / Folders** tabs.
-- **Under the deck — the ON AIR sign and the status lamps.** A red **MIC LIVE** sign while the microphone is open
-  (the MIC button, or the desk's mic fader by GPIO), **ON AIR · show** during a live show and **ON AIR · LIVE INPUT**
-  while an input of the computer is on air. Beside it, a lamp for each part, with what it is doing: **STUDIO** (this
-  computer on air, and the standby ones), **STREAM**, **RDS**, **WEBSITE**, **REC** (Sintoniza Rec on this computer:
-  green recording, amber recording silence, red open but not recording, grey not running), **LIBRARY**, **TODAY'S
-  PLAYLIST** (red when an hour coming up has an hour template but no daily playlist), **DEAD AIR**, **MIC**, **GPIO**
-  and **ALERTS** (red while a problem is going on). Green working, amber a warning, red a problem, grey off; point at
-  one for the whole story, click it for its settings. Settings → Screen chooses which lamps show, puts them back as
-  small lights in the status line instead, switches the sign off, and turns on **big counters** (the time remaining,
-  the cue points, the next event and the top of the hour in big digits, to read across the studio).
-- **Status line** (bottom): **Settings**, **Reports**, **Log out**, the lamps when they aren't a panel, and the last
-  thing that happened (also in the log, Settings → Safety → Open log folder).
+- **The ON AIR sign** (in the station panel, above the meters). It lights red with **MIC LIVE** while the microphone
+  is open (the MIC button, or the desk's mic fader by GPIO), **ON AIR · show** during a live show and **ON AIR · LIVE
+  INPUT** while an input of the computer is on air. It sits in space that is otherwise empty, so nothing on the screen
+  moves when it lights.
+- **Status line** (bottom): **Settings**, **Reports**, **Log out**, the **status lamps** and the last thing that
+  happened (also in the log, Settings → Safety → Open log folder). The lamps are **STUDIO** (this computer on air, and
+  the standby ones), **STREAM**, **RDS**, **WEBSITE**, **REC** (Sintoniza Rec on this computer: green recording, amber
+  recording silence, red open but not recording, grey not running), **LIBRARY**, **TODAY'S PLAYLIST** (red when an hour
+  coming up has an hour template but no daily playlist), **DEAD AIR**, **MIC**, **GPIO** and **ALERTS** (red while a
+  problem is going on). Green working, amber a warning, red a problem, grey off; point at one for the whole story,
+  click it for its settings.
+- **Settings → Screen** chooses which lamps show, can put them in a panel under the deck with what each is doing,
+  switches the ON AIR sign off, and turns on **big counters** (the time remaining, the cue points, the next event and
+  the top of the hour in big digits, to read across the studio).
 
 ### Logging in
 
