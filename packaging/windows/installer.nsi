@@ -42,11 +42,12 @@ SetCompressor /SOLID lzma
 
 Section "Install"
   SetShellVarContext all
-  ; An in-app update starts this silently and then closes the app: wait (up to 30 s) until its files are free
-  ; (the app as it is now, or under its name before when updating from an older version). SintonizaEmi.dll is
-  ; loaded by every program (Emi, Pro, Rec, Import): free only when they are all closed.
+  ; An in-app update starts this silently and then closes the app: its files come free in a few seconds (the app as
+  ; it is now, or under its name before when updating from an older version). SintonizaEmi.dll is loaded by every
+  ; program (Emi, Pro, Rec, Import): free only when they are all closed.
   StrCpy $1 0
   StrCpy $3 0 ; Sintoniza Rec was closed here: started again after
+  StrCpy $4 0 ; Sintoniza Emi was closed here: started again after
   wait:
     IfFileExists "$INSTDIR\SintonizaEmi.dll" 0 waitexe
     ClearErrors
@@ -66,19 +67,30 @@ Section "Install"
     IfErrors 0 opened
   busy:
     IntOp $1 $1 + 1
-    ; After 20 s, Sintoniza Pro and Rec (and Import) are still open: they are closed, or their files wouldn't be
-    ; replaced and the programs would be half old, half new. Rec is started again after the update.
-    IntCmp $1 40 0 notyet notyet
+    ; After 5 s, whatever of Sintoniza is still open is closed, and again every half second until its files are free:
+    ; Emi with the supervisor that starts it again after a crash (the same program: otherwise it would come straight
+    ; back and the files would never be free), Import (also the same program), Pro and Rec. Emi and Rec are started
+    ; again after the update.
+    IntCmp $1 10 close notyet close
+  close:
+    nsExec::Exec 'taskkill /F /T /IM ${EXENAME}'
+    Pop $0
+    StrCmp $0 "0" 0 +2
+    StrCpy $4 1
+    nsExec::Exec 'taskkill /F /T /IM ${OLDEXE}.exe'
+    Pop $0
     nsExec::Exec 'taskkill /F /IM ${SCHEDEXE}'
     Pop $0
     nsExec::Exec 'taskkill /F /IM ${OLDSCHEDEXE}'
+    Pop $0
+    nsExec::Exec 'taskkill /F /IM ${OLDPRODEXE}'
     Pop $0
     nsExec::Exec 'taskkill /F /IM ${RECEXE}'
     Pop $0
     StrCmp $0 "0" 0 +2
     StrCpy $3 1
   notyet:
-    IntCmp $1 60 ready
+    IntCmp $1 120 ready
     Sleep 500
     Goto wait
   opened:
@@ -138,18 +150,30 @@ Section "Install"
   WriteRegDWORD HKLM "${UNINSTKEY}" "NoModify" 1
   WriteRegDWORD HKLM "${UNINSTKEY}" "NoRepair" 1
 
-  ; In-app update (/S /RESTART): start the new version.
+  ; In-app update (/S /RESTART), or Emi was running and closed for the update: start the new version, so the
+  ; station is on air again.
   ${GetParameters} $0
   ClearErrors
   ${GetOptions} $0 "/RESTART" $1
-  IfErrors +2
-  Exec '"$INSTDIR\${EXENAME}"'
+  IfErrors 0 restart
+  StrCmp $4 "1" restart norestart
+  restart:
+    Exec '"$INSTDIR\${EXENAME}"'
+  norestart:
   StrCmp $3 "1" 0 +2
   Exec '"$INSTDIR\${RECEXE}"'
 SectionEnd
 
 Section "Uninstall"
   SetShellVarContext all
+  ; Everything of Sintoniza closed first (Emi with its supervisor, Import, Pro, Rec), or its files would stay behind.
+  nsExec::Exec 'taskkill /F /T /IM ${EXENAME}'
+  Pop $0
+  nsExec::Exec 'taskkill /F /IM ${SCHEDEXE}'
+  Pop $0
+  nsExec::Exec 'taskkill /F /IM ${RECEXE}'
+  Pop $0
+  Sleep 1000
   Delete "$SMPROGRAMS\${APPNAME}.lnk"
   Delete "$DESKTOP\${APPNAME}.lnk"
   Delete "$SMPROGRAMS\${SCHEDNAME}.lnk"
