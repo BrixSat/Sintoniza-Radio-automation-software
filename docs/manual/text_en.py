@@ -180,8 +180,8 @@ CHAPTERS = [
     ("p", "A GPIO output can light a real ON AIR lamp over the studio door at the same moment."),
     ("p", "<b>Big counters</b> make the time remaining, the cue points, the next event and the top of the hour much larger, so "
           "a presenter can read them from across the studio."),
-    ("fig", "main-onair", "MIC LIVE and the big counters", [
-        ("OnAirSign", "The red sign: MIC LIVE while the mic is open."),
+    ("fig", "main-onair", "MIC LIVE from the mixing desk, with the big counters", [
+        ("OnAirSign", "The red sign: <b>MIC LIVE</b>. This is an FM station, so the mic is on the desk and there is no MIC button: the desk's mic fader is up, and GPIO tells Sintoniza so."),
         ("Remaining", "With big counters on, the time remaining is shown large…"),
         ("NextEventCountdown", "…and so is the countdown to the next event."),
         ("Lights", "The status lamps."),
