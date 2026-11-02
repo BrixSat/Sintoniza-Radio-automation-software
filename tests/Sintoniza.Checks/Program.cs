@@ -688,6 +688,47 @@ Console.WriteLine("Categories (the eight fixed ones, and the station's own at th
     Check(music.Contains(all.First(c => c.Role == "music").Id) && !music.Contains(all.First(c => c.Role == "fillers").Id), "fill music: songs, never the Fillers");
 }
 
+// ───────────────────────── Seasons ─────────────────────────
+
+Console.WriteLine("Seasons (summer, Christmas: their hour templates instead of the all-year ones)");
+{
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    var summer = new Season { Name = "Summer", From = "07-01", To = "08-31" };
+    var christmas = new Season { Name = "Christmas", From = "12-15", To = "01-06" };
+    TemplateLine Line() => new() { Source = LineSource.Folder, Folder = media };
+    WeekTime Nine(DayOfWeek d) => new() { Day = d, Time = "09:00:00" };
+    var allDays = Enum.GetValues<DayOfWeek>();
+    var regular = new PlaylistTemplate { Name = "Mornings", Lines = [Line()], Slots = allDays.Select(Nine).ToList() };
+    var sun = new PlaylistTemplate { Name = "Summer mornings", Lines = [Line()], Slots = allDays.Select(Nine).ToList(), SeasonId = summer.Id };
+    var xmas = new PlaylistTemplate { Name = "Christmas mornings", Lines = [Line()], Slots = allDays.Select(Nine).ToList(), SeasonId = christmas.Id };
+    var data = new ScheduleData { Templates = [regular, sun, xmas], Seasons = [summer, christmas] };
+    DateTime At(int month, int day) => new DateTime(2026, month, day, 9, 0, 0);
+    Check(data.TemplateAt(At(7, 1)) == sun && data.TemplateAt(At(8, 31)) == sun && data.TemplateAt(At(9, 1)) == regular && data.TemplateAt(At(6, 30)) == regular,
+        "the summer template from its first day to its last, the all-year one before and after");
+    Check(data.TemplateAt(At(12, 31)) == xmas && data.TemplateAt(At(1, 6)) == xmas && data.TemplateAt(At(1, 7)) == regular && data.TemplateAt(At(12, 14)) == regular,
+        "a season over the new year (15 Dec to 6 Jan)");
+    Check(data.TemplateAt(At(7, 15).AddHours(1)) == null, "an hour with no template at all: still none");
+    var winter = new Season { Name = "Winter", From = "12-01", To = "02-28" };
+    var cold = new PlaylistTemplate { Name = "Winter mornings", Lines = [Line()], Slots = allDays.Select(Nine).ToList(), SeasonId = winter.Id };
+    var both = new ScheduleData { Templates = [regular, cold, xmas], Seasons = [winter, christmas] };
+    Check(both.TemplateAt(At(12, 25)) == xmas && both.TemplateAt(At(2, 1)) == cold, "two seasons on at once: the shorter one (Christmas in winter)");
+
+    var store = new ScheduleStore(db);
+    var (before, version) = store.Load();
+    var copy = before.Clone();
+    copy.Seasons.AddRange(data.Seasons);
+    copy.Templates.AddRange(data.Templates);
+    store.Save(copy, version, "checks");
+    var back = store.Load().Data;
+    Check(back.Seasons.Count == before.Seasons.Count + 2 && back.TemplateAt(At(12, 25))?.Id == xmas.Id && back.TemplateAt(At(10, 1))?.Id == regular.Id,
+        "seasons and the templates' seasons are kept in the library");
+    var (now, v2) = store.Load();
+    now.Seasons.RemoveAll(x => x.Id == summer.Id || x.Id == christmas.Id);
+    now.Templates.RemoveAll(t => t.Id == regular.Id || t.Id == sun.Id || t.Id == xmas.Id);
+    store.Save(now, v2, "checks");
+}
+
 // ───────────────────────── The hour mix editor ─────────────────────────
 
 Console.WriteLine("The hour mix editor (an item starting over the end of the one before, this hour only)");

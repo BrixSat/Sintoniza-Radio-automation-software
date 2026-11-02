@@ -79,7 +79,8 @@ engine for decoding, mixing and streaming.
   category so songs put there later get it too. It can be stopped and run again.
 - **Daily playlists** — the **Daily playlists** tab of Sintoniza Pro (or `sintoniza-pro --playlists` to
   open on it): place hour templates for your shows on the calendar (Playlists tab), then build each hour song by
-  song or let your rules fill it. Each hour is made ahead of time from the hour template placed there: its lines in
+  song or let your rules fill it. **Seasons** (summer, Christmas: days of the year, every year) have templates of
+  their own that play on those days instead of the all-year ones. Each hour is made ahead of time from the hour template placed there: its lines in
   turn, until the hour is full with the ad breaks and events booked in it, keeping songs and artists apart (the rest
   times of fill music, counting what played and what is planned) and never the same artist twice in a row while
   another can play; songs whose file is gone are passed over. Today and the next 2 days are always made (Settings →

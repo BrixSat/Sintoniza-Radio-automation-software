@@ -647,6 +647,16 @@ CHAPTERS = [
         ("TempoMinBox", "Para a linha selecionada, um intervalo de <b>andamento</b> e de <b>energia</b>. Aqui, a primeira música da manhã é animada."),
         ("AddFolderLineButton", "…ou um ficheiro de uma <b>pasta</b>."),
     ]),
+    ("h3", "Épocas: uma grelha de verão ou de Natal"),
+    ("p", "Muitas rádios mudam a semana no verão ou no Natal. Em vez de mudar os modelos à mão, faça uma vez os modelos da "
+          "época e dê-lhes essa época. Clique em <b>Épocas…</b> e junte uma, por exemplo <i>Verão, de 1 de julho a 31 de "
+          "agosto</i>. Uma época repete-se todos os anos e pode passar a passagem de ano, por exemplo de 15 de dezembro a "
+          "6 de janeiro."),
+    ("p", "Depois escolha a época na caixa <b>Época</b> do modelo e ponha-o no calendário como de costume. Nos dias da "
+          "época, esse modelo toca às suas horas em vez do modelo de todo o ano que lá estiver. As outras horas ficam com o de "
+          "todo o ano. <b>Mostrar a semana</b>, por cima do calendário, mostra a semana tal como vai tocar todo o ano ou numa época."),
+    ("tip", "Quando uma época começa ou acaba, as playlists diárias das horas que ela muda são refeitas sozinhas, a não ser "
+            "que tenham sido alteradas à mão. Faça os modelos da época uns dias antes e confira-os nas Playlists diárias."),
     ("h2", "Regras musicais"),
     ("p", "As regras musicais ajudam a hora a soar bem: sem baladas umas atrás das outras, sem o mesmo artista duas vezes "
           "seguidas. Primeiro, dê às músicas um <b>andamento</b>, de 1 lento a 5 rápido, e uma <b>energia</b>, de 1 calma a 5 "

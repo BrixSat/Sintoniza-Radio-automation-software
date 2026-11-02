@@ -53,6 +53,7 @@ sealed class ScheduleStore(LibraryDb db)
         public string? Presenter { get; set; }
         public double ShowMinutes { get; set; }
         public string? Notes { get; set; }
+        public string? SeasonId { get; set; }
     }
     sealed class SlotRow
     {
@@ -116,6 +117,13 @@ sealed class ScheduleStore(LibraryDb db)
         public string? Date { get; set; }
         public string Time { get; set; } = "";
     }
+    sealed class SeasonRow
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string StartsOn { get; set; } = "";
+        public string EndsOn { get; set; } = "";
+    }
     sealed class SeriesRow
     {
         public string EntryId { get; set; } = "";
@@ -148,7 +156,7 @@ sealed class ScheduleStore(LibraryDb db)
             SELECT id AS Id, type AS Type, name AS Name, enabled AS Enabled, start_mode AS StartMode, max_delay_minutes AS MaxDelayMinutes,
                    lock_level AS LockLevel, path AS Path, stream_minutes AS StreamMinutes, max_age_minutes AS MaxAgeMinutes,
                    artist_hours AS ArtistHours, album_hours AS AlbumHours, max_slow_in_row AS MaxSlowInRow, max_seconds AS MaxSeconds,
-                   presenter AS Presenter, show_minutes AS ShowMinutes, notes AS Notes
+                   presenter AS Presenter, show_minutes AS ShowMinutes, notes AS Notes, season_id AS SeasonId
             FROM schedule_entries WHERE station_id = @Station ORDER BY type, position
             """, p, tx).ToList();
         var slots = c.Query<SlotRow>(
@@ -171,6 +179,8 @@ sealed class ScheduleStore(LibraryDb db)
                    l.tempo_min AS TempoMin, l.tempo_max AS TempoMax, l.energy_min AS EnergyMin, l.energy_max AS EnergyMax
             FROM playlist_lines l JOIN schedule_entries e ON e.id = l.entry_id WHERE e.station_id = @Station ORDER BY l.position
             """, p, tx).ToLookup(r => r.EntryId);
+        var seasons = c.Query<SeasonRow>(
+            "SELECT id AS Id, name AS Name, starts_on AS StartsOn, ends_on AS EndsOn FROM seasons WHERE station_id = @Station ORDER BY position", p, tx).ToList();
         var clients = c.Query<ClientRow>("SELECT id AS Id, name AS Name, enabled AS Enabled, sector AS Sector FROM ad_clients WHERE station_id = @Station ORDER BY position", p, tx).ToList();
         var campaigns = c.Query<CampaignRow>(
             """
@@ -212,6 +222,7 @@ sealed class ScheduleStore(LibraryDb db)
                         TempoMin = r.TempoMin, TempoMax = r.TempoMax, EnergyMin = r.EnergyMin, EnergyMax = r.EnergyMax,
                     }).ToList(),
                     ArtistHours = e.ArtistHours, AlbumHours = e.AlbumHours, MaxSlowInRow = (int)e.MaxSlowInRow,
+                    SeasonId = Guid.TryParse(e.SeasonId, out var season) ? season : null,
                 },
                 "show" => new LiveShow { Presenter = e.Presenter ?? "", Minutes = e.ShowMinutes, Notes = e.Notes ?? "" },
                 _ => new ScheduledEvent
@@ -237,6 +248,7 @@ sealed class ScheduleStore(LibraryDb db)
                 case ScheduledEvent ev: data.Events.Add(ev); break;
             }
         }
+        data.Seasons = seasons.Select(r => new Season { Id = Guid.Parse(r.Id), Name = r.Name, From = r.StartsOn, To = r.EndsOn }).ToList();
         foreach (var r in clients)
             data.Clients.Add(new AdClient
             {
@@ -274,6 +286,9 @@ sealed class ScheduleStore(LibraryDb db)
 
         c.Execute("DELETE FROM schedule_entries WHERE station_id = @Station", new { Station }, tx);
         c.Execute("DELETE FROM ad_clients WHERE station_id = @Station", new { Station }, tx);
+        c.Execute("DELETE FROM seasons WHERE station_id = @Station", new { Station }, tx);
+        c.Execute("INSERT INTO seasons (id, station_id, position, name, starts_on, ends_on) VALUES (@id, @Station, @position, @name, @from, @to)",
+            data.Seasons.Select((x, i) => new { id = x.Id.ToString(), Station, position = i, name = x.Name.Trim(), from = x.From, to = x.To }), tx);
 
         var entries = data.Events.Select((e, i) => (Entry: (ScheduleEntry)e, Type: "event", Position: i))
             .Concat(data.Breaks.Select((b, i) => (Entry: (ScheduleEntry)b, Type: "break", Position: i)))
@@ -286,9 +301,9 @@ sealed class ScheduleStore(LibraryDb db)
             c.Execute(
                 """
                 INSERT INTO schedule_entries (id, station_id, type, position, name, enabled, start_mode, max_delay_minutes, lock_level, path, stream_minutes, max_age_minutes,
-                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, notes)
+                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, notes, season_id)
                 VALUES (@id, @Station, @type, @position, @name, @enabled, @start, @delay, @lock, @path, @stream, @age, @artistHours, @albumHours, @slow, @maxSeconds,
-                        @presenter, @showMinutes, @notes)
+                        @presenter, @showMinutes, @notes, @season)
                 """,
                 new
                 {
@@ -297,6 +312,7 @@ sealed class ScheduleStore(LibraryDb db)
                     artistHours = (entry as PlaylistTemplate)?.ArtistHours ?? 0, albumHours = (entry as PlaylistTemplate)?.AlbumHours ?? 0,
                     slow = (entry as PlaylistTemplate)?.MaxSlowInRow ?? 0, maxSeconds = (entry as AdBreak)?.MaxSeconds ?? 0,
                     presenter = (entry as LiveShow)?.Presenter ?? "", showMinutes = (entry as LiveShow)?.Minutes ?? 0, notes = (entry as LiveShow)?.Notes ?? "",
+                    season = (entry as PlaylistTemplate)?.SeasonId is { } season && data.Seasons.Any(x => x.Id == season) ? season.ToString() : null,
                 }, tx);
             c.Execute("INSERT INTO schedule_slots (entry_id, weekday, time) VALUES (@id, @weekday, @time)",
                 entry.Slots.DistinctBy(s => (s.Day, s.Time)).Select(s => new { id, weekday = (int)s.Day, time = s.Time }), tx);

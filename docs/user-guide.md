@@ -496,6 +496,12 @@ a song from a **library category** (Music, Gold, Music › 80s…; jingle and ad
 a **folder**. Place the template on the calendar: each row is an hour (drag to do many; click an hour for every
 day). This is how you set up your shows: e.g. *Manhãs* on weekdays 07–10, *Tardes* 14–19.
 
+**Seasons.** A summer or Christmas week: **Seasons…** adds one with its days of the year (every year; it may run over
+the new year, e.g. 15 Dec – 6 Jan). Give a template that **Season** and place it as usual: on the season's days it
+plays at its hours instead of the all-year template there; the other hours keep the all-year one. **Show the week** (above the
+calendar) shows the week all year or in a season. The daily playlists of the hours a season changes are made again by
+themselves when it starts and ends (unless changed by hand).
+
 **Music rules.** Select a line to ask for its songs' **tempo** (1 slow … 5 fast) and **energy** (1 calm … 5 lively),
 e.g. tempo 4–5 for the first song after the news. Set both on the songs in the library (select many, right-click →
 *Tempo* / *Energy*; hover a song to see them). For the whole template:

@@ -726,6 +726,16 @@ CHAPTERS = [
         ("AddFolderLineButton", "…or a file from a <b>folder</b>."),
         ("TempoMinBox", "The <b>tempo</b> and <b>energy</b> for the selected line. Here the first song of the morning is a lively one."),
     ]),
+    ("h3", "Seasons: a summer or Christmas schedule"),
+    ("p", "Many stations change their week for the summer or for Christmas. Instead of moving every template by hand, make "
+          "the season's templates once and give them a season. Click <b>Seasons…</b> and add one, such as <i>Summer, from "
+          "1 July to 31 August</i>. A season repeats every year, and it can run over the new year, such as 15 December to "
+          "6 January."),
+    ("p", "Then choose the season in a template's <b>Season</b> box, and place it on the calendar as usual. On the season's "
+          "days, that template plays at its hours instead of the all-year template placed there. Every other hour keeps the "
+          "all-year one. <b>Show the week</b>, above the calendar, shows the week as it will play all year or in a season."),
+    ("tip", "When a season starts or ends, the daily playlists of the hours it changes are made again by themselves, unless "
+            "they were changed by hand. Make the season's templates a few days ahead and check them in Daily playlists."),
     ("h2", "Music rules"),
     ("p", "Music rules shape the flow of an hour: lively songs after the news, no two slow songs in a row, the same artist "
           "kept apart. First give your songs a <b>tempo</b>, from 1 slow to 5 fast, and an <b>energy</b>, from 1 calm to 5 "

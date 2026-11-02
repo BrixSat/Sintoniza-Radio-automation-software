@@ -2291,5 +2291,22 @@
  "Standby: {0} took over; this computer hadn't reached the database for {1:0} s": "En réserve : {0} a pris l'antenne ; cet ordinateur n'atteignait plus la base de données depuis {1:0} s",
  "Standby: {0} was put on air": "En réserve : {0} a été mis à l'antenne",
  "in group": "dans le groupe",
- "RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent with the radio text as an RT+ application (ODA, AID 4BD7) in the group chosen here, announced in type 3A groups. In the encoder, put 3A and that group (usually 11A) in its group sequence, or they won't go out.": "Le RT+ indique aux récepteurs quelle partie du radiotexte est le titre et laquelle l'artiste, pour les afficher et les garder à part. Envoyé avec le radiotexte comme application RT+ (ODA, AID 4BD7) dans le groupe choisi ici, annoncée dans des groupes 3A. Dans le codeur, mettez 3A et ce groupe (en général 11A) dans sa séquence de groupes, sinon ils ne partent pas."
+ "RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent with the radio text as an RT+ application (ODA, AID 4BD7) in the group chosen here, announced in type 3A groups. In the encoder, put 3A and that group (usually 11A) in its group sequence, or they won't go out.": "Le RT+ indique aux récepteurs quelle partie du radiotexte est le titre et laquelle l'artiste, pour les afficher et les garder à part. Envoyé avec le radiotexte comme application RT+ (ODA, AID 4BD7) dans le groupe choisi ici, annoncée dans des groupes 3A. Dans le codeur, mettez 3A et ce groupe (en général 11A) dans sa séquence de groupes, sinon ils ne partent pas.",
+ "The week as it plays all year, or in a season: a season's templates take the hours they have, the all-year ones the rest": "La semaine telle qu'elle passe toute l'année, ou en saison : les modèles de la saison prennent leurs heures, ceux de toute l'année le reste",
+ "Seasons…": "Saisons…",
+ "Summer, Christmas…: the days of the year they run": "Été, Noël… : les jours de l'année où elles s'appliquent",
+ "Season": "Saison",
+ "All year, or only in a season: then on its days it plays instead of the all-year template at the same hours": "Toute l'année, ou seulement en saison : ces jours-là il passe à la place du modèle de toute l'année aux mêmes heures",
+ "All year": "Toute l'année",
+ "No seasons yet. A season's templates play on its days instead of the all-year ones.": "Pas encore de saisons. Les modèles d'une saison passent ses jours-là à la place de ceux de toute l'année.",
+ "e.g. Summer": "p. ex. Été",
+ "from": "du",
+ "Add a season": "Ajouter une saison",
+ "Summer": "Été",
+ "Seasons": "Saisons",
+ "Every year, from the first day to the last (a season may run over the new year, e.g. 15 Dec to 6 Jan). An hour template given a season plays on its days instead of the all-year template at the same hours.": "Chaque année, du premier au dernier jour (une saison peut passer le nouvel an, p. ex. du 15 déc. au 6 janv.). Un modèle horaire avec une saison passe ses jours-là à la place du modèle de toute l'année aux mêmes heures.",
+ "Show the week": "Afficher la semaine",
+ "until (season)": "au",
+ "Delete this season (its templates are switched off)": "Supprimer cette saison (ses modèles sont désactivés)",
+ "Switched off, their season deleted: {0}. Give them another season, or switch them on to play all year.": "Désactivés, leur saison a été supprimée : {0}. Donnez-leur une autre saison, ou activez-les pour toute l'année."
 }

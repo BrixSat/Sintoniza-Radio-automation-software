@@ -16,6 +16,8 @@ public sealed class ScheduleData
     public List<AdClient> Clients { get; set; } = new();
     /// <summary>Hour templates: the daily playlists are made from them (see <see cref="PlaylistGenerator"/>).</summary>
     public List<PlaylistTemplate> Templates { get; set; } = new();
+    /// <summary>Seasons (summer, Christmas): hour templates of a season play on its days instead of the all-year ones.</summary>
+    public List<Season> Seasons { get; set; } = new();
     /// <summary>Live shows: a presenter on air at set times (see <see cref="LiveShow"/>).</summary>
     public List<LiveShow> Shows { get; set; } = new();
     /// <summary>Adverts as saved before clients and campaigns: <see cref="Normalize"/> turns them into those.</summary>
@@ -80,6 +82,7 @@ public sealed class ScheduleData
         Clients ??= new();
         Templates ??= new();
         Shows ??= new();
+        Seasons ??= new();
         LastStarted ??= new();
         foreach (var e in Events.Cast<ScheduleEntry>().Concat(Breaks).Concat(Templates).Concat(Shows)) e.Normalize();
         foreach (var e in Events)
@@ -138,8 +141,20 @@ public sealed class ScheduleData
     }
 
     /// <summary>The template for the hour that starts at <paramref name="hour"/> (null if none is placed there).</summary>
-    public PlaylistTemplate? TemplateAt(DateTime hour) =>
-        Templates.FirstOrDefault(t => t.Enabled && t.Lines.Count > 0 && t.Slots.Any(s => s.Day == hour.DayOfWeek && s.At.Hours == hour.Hour));
+    /// <summary>
+    /// The hour template that plays at <paramref name="hour"/>: one of a season that is on that day, else an all-year
+    /// one placed at that weekday and hour. A season's template is left out on the days outside it.
+    /// </summary>
+    public PlaylistTemplate? TemplateAt(DateTime hour)
+    {
+        var here = Templates.Where(t => t.Enabled && t.Lines.Count > 0 && t.Slots.Any(s => s.Day == hour.DayOfWeek && s.At.Hours == hour.Hour)).ToList();
+        // Two seasons on at once (Winter and Christmas): the shorter one, the more particular.
+        return here.Where(t => SeasonOf(t)?.On(hour) == true).OrderBy(t => SeasonOf(t)!.Days).FirstOrDefault()
+               ?? here.FirstOrDefault(t => SeasonOf(t) == null);
+    }
+
+    /// <summary>A template's season (null: all year, or its season was deleted).</summary>
+    public Season? SeasonOf(PlaylistTemplate t) => t.SeasonId is { } id ? Seasons.FirstOrDefault(s => s.Id == id) : null;
 
     /// <summary>The section names used in the breaks, in the order they first appear.</summary>
     public List<string> Sections() =>
@@ -448,6 +463,38 @@ public sealed class AdBreak : ScheduleEntry
 
 public enum PartKind { Jingle, Section }
 
+/// <summary>A time of the year, every year: from one day to another, perhaps over the new year (15 Dec to 6 Jan).</summary>
+public sealed class Season
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Name { get; set; } = "";
+    /// <summary>"MM-dd": the first day.</summary>
+    public string From { get; set; } = "07-01";
+    /// <summary>"MM-dd": the last day (before <see cref="From"/>: it runs over the new year).</summary>
+    public string To { get; set; } = "08-31";
+
+    /// <summary>How many days it lasts (in a year of 366).</summary>
+    [JsonIgnore]
+    public int Days
+    {
+        get
+        {
+            static int DayOfYear(string md) => DateTime.TryParseExact("2000-" + md, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) ? d.DayOfYear : 1;
+            int from = DayOfYear(From), to = DayOfYear(To);
+            return to >= from ? to - from + 1 : 366 - from + to + 1;
+        }
+    }
+
+    /// <summary>Whether <paramref name="day"/> is in the season.</summary>
+    public bool On(DateTime day)
+    {
+        string md = day.ToString("MM-dd", CultureInfo.InvariantCulture);
+        return string.CompareOrdinal(From, To) <= 0
+            ? string.CompareOrdinal(md, From) >= 0 && string.CompareOrdinal(md, To) <= 0
+            : string.CompareOrdinal(md, From) >= 0 || string.CompareOrdinal(md, To) <= 0;
+    }
+}
+
 /// <summary>
 /// An hour template: its lines in order (a song from a library category, a file from a folder), placed on the week
 /// calendar by hour. The daily playlists are made from it ahead of time (<see cref="PlaylistGenerator"/>).
@@ -455,6 +502,8 @@ public enum PartKind { Jingle, Section }
 public sealed class PlaylistTemplate : ScheduleEntry
 {
     public List<TemplateLine> Lines { get; set; } = new();
+    /// <summary>Its season (<see cref="ScheduleData.Seasons"/>): it plays only on those days; null: all year.</summary>
+    public Guid? SeasonId { get; set; }
     /// <summary>The same artist not again within this many hours (0 = the rest time in the playout's settings).</summary>
     public double ArtistHours { get; set; }
     /// <summary>Not two songs of the same album (and artist) within this many hours (0 = no album rule).</summary>

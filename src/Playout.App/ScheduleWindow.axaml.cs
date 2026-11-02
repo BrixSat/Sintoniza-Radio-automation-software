@@ -119,6 +119,7 @@ public partial class ScheduleWindow : Window
 
         WireEvents();
         WireTemplates();
+        WireSeasons();
         WireBreaks();
         WireShows();
         WireClients();
@@ -439,6 +440,7 @@ public partial class ScheduleWindow : Window
         ArtistHoursBox.Value = (decimal)(t?.ArtistHours ?? 0);
         AlbumHoursBox.Value = (decimal)(t?.AlbumHours ?? 0);
         MaxSlowBox.Value = t?.MaxSlowInRow ?? 0;
+        ShowTemplateSeason(t);
         _loading = false;
         ShowLines(0);
         _templateCalendar.Rebuild();
@@ -540,7 +542,8 @@ public partial class ScheduleWindow : Window
     };
 
     ScheduleRow TemplateRow(PlaylistTemplate t) => new(t, () =>
-        (TemplateName(t), L.F("{0} · {1}", L.F(t.Lines.Count == 1 ? "{0} line" : "{0} lines", t.Lines.Count), HoursSummary(t)), t.Enabled));
+        (TemplateName(t), L.F("{0} · {1}", L.F(t.Lines.Count == 1 ? "{0} line" : "{0} lines", t.Lines.Count), HoursSummary(t))
+            + (_data.SeasonOf(t) is { } season ? " · " + SeasonName(season) : ""), t.Enabled));
 
     static string TemplateName(PlaylistTemplate t) => string.IsNullOrWhiteSpace(t.Name) ? L.T("Playlist") : t.Name.Trim();
 
@@ -1193,6 +1196,9 @@ public partial class ScheduleWindow : Window
 
         public IReadOnlyList<double> Times => _times;
 
+        /// <summary>Which other entries a cell shows (null: all of them): hour templates as they play in a season.</summary>
+        public Func<ScheduleEntry, DayOfWeek, TimeSpan, bool>? Shows { get; set; }
+
         public void Rebuild()
         {
             int minutes = Steps[Math.Max(0, _step.SelectedIndex)];
@@ -1211,7 +1217,7 @@ public partial class ScheduleWindow : Window
             var day = Week[col];
             var time = TimeSpan.FromSeconds(_times[row]);
             var selected = _selected();
-            var others = _all().Where(e => e != selected && e.Has(day, time)).Select(EntryName).ToList();
+            var others = _all().Where(e => e != selected && e.Has(day, time) && Shows?.Invoke(e, day, time) != false).Select(EntryName).ToList();
             bool on = selected?.Has(day, time) == true;
             string text = on ? EntryName(selected!) + (others.Count > 0 ? $" +{others.Count}" : "") : string.Join(", ", others);
             return new GridCell(text, on, selected != null, others.Count > 0);

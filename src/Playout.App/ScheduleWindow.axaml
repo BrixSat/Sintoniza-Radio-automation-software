@@ -617,6 +617,12 @@
                             <TextBox x:Name="TemplateAddTimeBox" />
                             <Button x:Name="TemplateAddTimeButton" />
                         </WrapPanel>
+                        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,8,Auto,8,Auto,*" Margin="0,0,0,8">
+                            <TextBlock Text="Show the week" VerticalAlignment="Center" />
+                            <ComboBox Grid.Column="2" x:Name="SeasonViewBox" MinWidth="200"
+                                      ToolTip.Tip="The week as it plays all year, or in a season: a season's templates take the hours they have, the all-year ones the rest" />
+                            <Button Grid.Column="4" x:Name="SeasonsButton" Content="Seasons…" ToolTip.Tip="Summer, Christmas…: the days of the year they run" />
+                        </Grid>
                         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
                             <TextBlock Classes="note" VerticalAlignment="Center"
                                        Text="Each row is an hour. Click the hours the selected template plays (drag to do many; click an hour for every day)." />
@@ -643,6 +649,11 @@
                                 </StackPanel>
                                 <CheckBox Grid.Column="2" x:Name="TemplateEnabledBox" Content="On" VerticalAlignment="Bottom" />
                             </Grid>
+                            <StackPanel>
+                                <TextBlock Classes="label" Text="Season" />
+                                <ComboBox x:Name="TemplateSeasonBox" HorizontalAlignment="Stretch"
+                                          ToolTip.Tip="All year, or only in a season: then on its days it plays instead of the all-year template at the same hours" />
+                            </StackPanel>
                             <StackPanel Spacing="6">
                                 <TextBlock Classes="label" Text="Lines, played in order (then from the top again until the hour is full)" />
                                 <ListBox x:Name="LineList" Height="260" Background="#13161C">

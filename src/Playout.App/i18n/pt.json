@@ -2291,5 +2291,22 @@
  "Standby: {0} took over; this computer hadn't reached the database for {1:0} s": "Em reserva: {0} passou para o ar; este computador não chegava à base de dados há {1:0} s",
  "Standby: {0} was put on air": "Em reserva: {0} foi posto no ar",
  "in group": "no grupo",
- "RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent with the radio text as an RT+ application (ODA, AID 4BD7) in the group chosen here, announced in type 3A groups. In the encoder, put 3A and that group (usually 11A) in its group sequence, or they won't go out.": "O RT+ diz aos rádios que parte do radiotexto é o título e qual é o artista, para os mostrarem e guardarem em separado. Vai com o radiotexto como aplicação RT+ (ODA, AID 4BD7) no grupo escolhido aqui, anunciada em grupos 3A. No codificador, ponha o 3A e esse grupo (normalmente o 11A) na sequência de grupos, senão não saem para o ar."
+ "RT+ tells radios which part of the radio text is the title and which the artist, so they can show and store them apart. Sent with the radio text as an RT+ application (ODA, AID 4BD7) in the group chosen here, announced in type 3A groups. In the encoder, put 3A and that group (usually 11A) in its group sequence, or they won't go out.": "O RT+ diz aos rádios que parte do radiotexto é o título e qual é o artista, para os mostrarem e guardarem em separado. Vai com o radiotexto como aplicação RT+ (ODA, AID 4BD7) no grupo escolhido aqui, anunciada em grupos 3A. No codificador, ponha o 3A e esse grupo (normalmente o 11A) na sequência de grupos, senão não saem para o ar.",
+ "The week as it plays all year, or in a season: a season's templates take the hours they have, the all-year ones the rest": "A semana tal como toca todo o ano, ou numa época: os modelos da época ficam com as horas que têm, os de todo o ano com as restantes",
+ "Seasons…": "Épocas…",
+ "Summer, Christmas…: the days of the year they run": "Verão, Natal…: os dias do ano em que vigoram",
+ "Season": "Época",
+ "All year, or only in a season: then on its days it plays instead of the all-year template at the same hours": "Todo o ano, ou só numa época: nesses dias toca em vez do modelo de todo o ano às mesmas horas",
+ "All year": "Todo o ano",
+ "No seasons yet. A season's templates play on its days instead of the all-year ones.": "Ainda não há épocas. Os modelos de uma época tocam nos seus dias em vez dos de todo o ano.",
+ "e.g. Summer": "p. ex. Verão",
+ "from": "de",
+ "Add a season": "Juntar uma época",
+ "Summer": "Verão",
+ "Seasons": "Épocas",
+ "Every year, from the first day to the last (a season may run over the new year, e.g. 15 Dec to 6 Jan). An hour template given a season plays on its days instead of the all-year template at the same hours.": "Todos os anos, do primeiro ao último dia (uma época pode passar a passagem de ano, p. ex. de 15 dez a 6 jan). Um modelo de hora com época toca nos seus dias em vez do modelo de todo o ano às mesmas horas.",
+ "Show the week": "Mostrar a semana",
+ "until (season)": "até",
+ "Delete this season (its templates are switched off)": "Apagar esta época (os seus modelos são desligados)",
+ "Switched off, their season deleted: {0}. Give them another season, or switch them on to play all year.": "Desligados, a sua época foi apagada: {0}. Dê-lhes outra época, ou ligue-os para tocarem todo o ano."
 }
