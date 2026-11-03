@@ -3,7 +3,9 @@ using Dapper;
 namespace Playout.Library;
 
 /// <summary>A computer running Sintoniza Emi for a station: when it was last seen (UTC, the database's clock) and whether it is on air.</summary>
-public sealed record Studio(string Computer, DateTime SeenAt, bool OnAir, DateTime? Since, string Playing, string Version);
+/// <param name="Streaming">It is streaming (or trying to): a standby computer going on air in its place streams too. Null:
+/// not known (it is starting, or an older version).</param>
+public sealed record Studio(string Computer, DateTime SeenAt, bool OnAir, DateTime? Since, string Playing, string Version, bool? Streaming = null);
 
 /// <summary>The studios of a station, and the database's time when they were read (to tell how long ago each was seen).</summary>
 public sealed record StudioList(List<Studio> Studios, DateTime Now)
@@ -20,19 +22,19 @@ public sealed partial class LibraryDb
     /// This studio is running (every few seconds): its row is written with the database's time, what it is playing and
     /// its version. Studios not seen for 30 days are taken out.
     /// </summary>
-    public void StudioSeen(long station, string computer, string playing, string version)
+    public void StudioSeen(long station, string computer, string playing, string version, bool? streaming = null)
     {
         using var c = ConnectStudios();
         c.Execute(_mySql
             ? $"""
-              INSERT INTO studios (station_id, computer, seen_at, playing, version) VALUES (@station, @computer, {NowSql}, @playing, @version)
-              ON DUPLICATE KEY UPDATE seen_at = VALUES(seen_at), playing = VALUES(playing), version = VALUES(version)
+              INSERT INTO studios (station_id, computer, seen_at, playing, version, streaming) VALUES (@station, @computer, {NowSql}, @playing, @version, @streaming)
+              ON DUPLICATE KEY UPDATE seen_at = VALUES(seen_at), playing = VALUES(playing), version = VALUES(version), streaming = VALUES(streaming)
               """
             : $"""
-              INSERT INTO studios (station_id, computer, seen_at, playing, version) VALUES (@station, @computer, {NowSql}, @playing, @version)
-              ON CONFLICT(station_id, computer) DO UPDATE SET seen_at = excluded.seen_at, playing = excluded.playing, version = excluded.version
+              INSERT INTO studios (station_id, computer, seen_at, playing, version, streaming) VALUES (@station, @computer, {NowSql}, @playing, @version, @streaming)
+              ON CONFLICT(station_id, computer) DO UPDATE SET seen_at = excluded.seen_at, playing = excluded.playing, version = excluded.version, streaming = excluded.streaming
               """,
-            new { station, computer, playing = Clip(playing, 500), version = Clip(version, 40) });
+            new { station, computer, playing = Clip(playing, 500), version = Clip(version, 40), streaming = streaming is { } on ? on ? 1 : 0 : (int?)null });
         c.Execute("DELETE FROM studios WHERE station_id = @station AND on_air = 0 AND seen_at < @old",
             new { station, old = Time(DateTime.UtcNow.AddDays(-30)) });
     }
@@ -41,9 +43,9 @@ public sealed partial class LibraryDb
     {
         using var c = ConnectStudios();
         string now = c.ExecuteScalar<string>($"SELECT {NowSql}")!;
-        var rows = c.Query<(string Computer, string SeenAt, long OnAir, string? Since, string Playing, string Version)>(
-                "SELECT computer, seen_at, on_air, since, playing, version FROM studios WHERE station_id = @station ORDER BY computer", new { station })
-            .Select(r => new Studio(r.Computer, ParseTime(r.SeenAt), r.OnAir != 0, r.Since == null ? null : ParseTime(r.Since), r.Playing, r.Version))
+        var rows = c.Query<(string Computer, string SeenAt, long OnAir, string? Since, string Playing, string Version, long? Streaming)>(
+                "SELECT computer, seen_at, on_air, since, playing, version, streaming FROM studios WHERE station_id = @station ORDER BY computer", new { station })
+            .Select(r => new Studio(r.Computer, ParseTime(r.SeenAt), r.OnAir != 0, r.Since == null ? null : ParseTime(r.Since), r.Playing, r.Version, r.Streaming is { } on ? on != 0 : null))
             .ToList();
         return new StudioList(rows, ParseTime(now));
     }

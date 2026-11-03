@@ -2410,5 +2410,16 @@
  "Tomorrow's daily playlists aren't ready (hours missing or short, files not found), from": "Les playlists du jour de demain ne sont pas prêtes (heures manquantes ou courtes, fichiers introuvables), à partir de",
  "Tomorrow's daily playlists are ready": "Les playlists du jour de demain sont prêtes",
  "{0}, ad breaks and events: {1}": "{0}, pages de pub et événements : {1}",
- "{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)": "{0} : aucun de ses {1} fichiers n'est accessible depuis cet ordinateur (le partage de la musique, ou les chemins de cet ordinateur)"
+ "{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)": "{0} : aucun de ses {1} fichiers n'est accessible depuis cet ordinateur (le partage de la musique, ou les chemins de cet ordinateur)",
+ "{0} may not work on {1}.": "{0} ne peut pas travailler sur {1}.",
+ "You aren't a user any more: log in again.": "Vous n'êtes plus un utilisateur : reconnectez-vous.",
+ "Your own stations are changed by another admin.": "Vos propres stations sont modifiées par un autre administrateur.",
+ "The database can't be reached.": "La base de données ne répond pas.",
+ "The stations can't be read: {0}": "Impossible de lire les stations : {0}",
+ "That station isn't there any more.": "Cette station n'existe plus.",
+ "Not changed: there are changes not saved here.": "Pas changé : il y a des modifications non enregistrées ici.",
+ "{0} isn't logged in: {1}": "{0} n'est pas connecté : {1}",
+ "Starting and stopping the internet stream by hand (STREAM)": "Démarrer et arrêter le flux internet à la main (STREAM)",
+ "{0} may not start or stop the stream (the Stream permission, Sintoniza Pro → Users)": "{0} ne peut pas démarrer ni arrêter le flux (la permission Flux, Sintoniza Pro → Utilisateurs)",
+ "You may not start or stop it (the Stream permission)": "Vous ne pouvez pas le démarrer ni l'arrêter (la permission Flux)"
 }

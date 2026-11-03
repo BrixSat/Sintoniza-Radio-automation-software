@@ -125,7 +125,7 @@ engine for decoding, mixing and streaming.
   while playing. The station's cartwalls are made in Sintoniza Pro; the host picks one and fires its carts.
 - **Several stations in one library**: the music and the users are shared; each station has its own schedule,
   daily playlists, settings, cartwalls, studios and history. Sintoniza Pro makes stations (Station → New station…,
-  starting from a copy of the settings, without the stream server, RDS name or website upload) and works on one at a time (Station → Work on), without moving a studio's
+  starting from a copy of the settings, without the stream server, RDS name or website upload) and works on one at a time (chosen in its log-in, or Station → Work on, still logged in), without moving a studio's
   on-air program; each studio chooses the station it puts on air (Settings → General → Station). A user can be
   limited to some stations (Users).
 - **Users and permissions**: the on-air program, Sintoniza Pro, Sintoniza Import, the playout's Settings and the web

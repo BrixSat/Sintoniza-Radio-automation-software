@@ -2410,5 +2410,16 @@
  "Tomorrow's daily playlists aren't ready (hours missing or short, files not found), from": "As playlists diárias de amanhã não estão prontas (horas em falta ou curtas, ficheiros não encontrados), a partir das",
  "Tomorrow's daily playlists are ready": "As playlists diárias de amanhã estão prontas",
  "{0}, ad breaks and events: {1}": "{0}, blocos publicitários e eventos: {1}",
- "{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)": "{0}: nenhum dos seus {1} ficheiros se alcança deste computador (a partilha da música, ou os caminhos deste computador)"
+ "{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)": "{0}: nenhum dos seus {1} ficheiros se alcança deste computador (a partilha da música, ou os caminhos deste computador)",
+ "{0} may not work on {1}.": "{0} não pode trabalhar em {1}.",
+ "You aren't a user any more: log in again.": "Já não é um utilizador: entre de novo.",
+ "Your own stations are changed by another admin.": "As suas próprias estações são alteradas por outro administrador.",
+ "The database can't be reached.": "A base de dados não responde.",
+ "The stations can't be read: {0}": "Não é possível ler as estações: {0}",
+ "That station isn't there any more.": "Essa estação já não existe.",
+ "Not changed: there are changes not saved here.": "Não mudou: há alterações por guardar aqui.",
+ "{0} isn't logged in: {1}": "{0} não entrou: {1}",
+ "Starting and stopping the internet stream by hand (STREAM)": "Ligar e desligar o stream da internet à mão (STREAM)",
+ "{0} may not start or stop the stream (the Stream permission, Sintoniza Pro → Users)": "{0} não pode ligar nem desligar o stream (a permissão Stream, Sintoniza Pro → Utilizadores)",
+ "You may not start or stop it (the Stream permission)": "Não o pode ligar nem desligar (a permissão Stream)"
 }

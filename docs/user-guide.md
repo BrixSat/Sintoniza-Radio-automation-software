@@ -232,13 +232,19 @@ of the file manager; on Windows a mapped drive or `\\server\share`; on a Mac it 
 **Several stations in one library.** One library can hold several stations: the music and the users are shared,
 and each station has its own schedule, daily playlists, settings, cartwalls and history. In Sintoniza Pro,
 **Station → New station…** makes one (it starts with a copy of the current station's settings, without its stream
-server, RDS name or website upload, and an empty schedule) and **Station → Work on** switches Pro to another (it starts again on it). Each studio's on-air program
+server, RDS name or website upload, and an empty schedule). Pro's log-in has a **Station** list when there are
+several, and **Station → Work on** switches later (Pro starts again on it, still logged in). Each studio's on-air program
 chooses its station in **Settings → General → Station**; it applies the next time it starts, and the playlist saved for
-the old station isn't put back. In **Users**, a user can be limited to some stations.
+the old station isn't put back (the box shows once there are two stations). In **Users**, a user can be limited to some
+stations. An admin of all stations manages everyone; an admin limited to one station (its own admin) does everything
+there and nothing with the other stations' schedules, settings or users (the music library, categories and import are
+shared by all), and in Users sees and manages only that station's users (and adds users only for it); nobody changes
+their own stations.
 
 With a shared MySQL library every computer running Sintoniza Emi for the station knows the others. **One is on
 air**; the others are **standby**: ready and silent — no playlist, no time signal, no stream, nothing in the play
-history — with an amber **STANDBY** bar at the top saying which computer is on air and what it is playing. The
+history — with an amber **STANDBY** bar at the top saying which computer is on air and what it is playing. One going on
+air in another's place streams if that one was streaming. The
 first to start goes on air. On the one on air the **STUDIO** lamp lists the standby computers;
 Sintoniza Pro's status bar shows them too.
 
@@ -347,6 +353,7 @@ with the log-in until someone logs in (or **Close**). Each user has a name, a pa
 | Users | add and change users |
 | This computer's settings | open a playout's own Settings (sound cards, database, keys…) |
 | Web remote | control a playout from a phone |
+| Stream | start and stop the internet stream by hand (STREAM, its menu or key); it still starts by itself when it should. Admins and technicians (Station or This computer's settings) got it with the update; presenters don't have it |
 
 **Everything** and **Presenter** (on air, voice tracks and web remote) tick the usual sets. **New user** → a name, a password
 → **Save user**; to change a password type a new one (empty keeps it). Untick *May log in* to stop someone without

@@ -388,7 +388,8 @@ CHAPTERS = [
           "running Sintoniza Emi for the station knows about the others."),
     ("p", "<b>One computer is on air.</b> The others are on <b>standby</b>: ready and silent. They have no playlist, play no "
           "time signal, send no stream and write nothing to the play history. The first one to start goes on air. On that "
-          "computer, the STUDIO lamp lists the ones on standby, and Sintoniza Pro's status bar shows them too."),
+          "computer, the STUDIO lamp lists the ones on standby, and Sintoniza Pro's status bar shows them too. A standby "
+          "computer that goes on air in another's place streams if that one was streaming."),
     ("fig", "main-standby", "A computer on standby", [
         ("StandbyBanner", "An amber <b>STANDBY</b> bar across the top."),
         ("StandbyText", "The first line says which computer is on air and what it is playing. The second says what this one will do: <i>This computer goes on air automatically if the master stops answering for 15 s</i>, or that it goes on air only when you press <b>Take on air</b>."),
@@ -522,9 +523,10 @@ CHAPTERS = [
           "They share the music and the users. Each keeps its own schedule, daily playlists, settings, cartwalls and history."),
     ("list", [
         "<b>Station → New station…</b> in Sintoniza Pro makes one. It starts with a copy of the current station's settings and an empty schedule. Its stream server, RDS name and website upload start blank, so it never goes out as the other station.",
-        "<b>Station → Work on</b> switches Pro to another station. Pro starts again on it. The studio's on-air program on the same computer keeps its own station.",
-        "In each studio, <b>Settings → General → Station</b> chooses the station it puts on air. It applies the next time Sintoniza Emi starts.",
+        "Sintoniza Pro's log-in has a <b>Station</b> list when there are several: choose the one to work on as you log in. <b>Station → Work on</b> switches later. Pro starts again on it, and you stay logged in. The studio's on-air program on the same computer keeps its own station.",
+        "In each studio, <b>Settings → General → Station</b> chooses the station it puts on air. It only shows once the library has two stations, and applies the next time Sintoniza Emi starts.",
         "In <b>Users</b>, a user can be limited to some stations. Logging in to another station is then refused.",
+        "An admin of <b>All stations</b> manages every user. An admin limited to one station, the station's own admin, can do everything on that station, and nothing with the other stations' schedules, settings or users. The music library, its categories and importing are shared by every station, so changes there reach all of them. In Users they only see and manage that station's users, and every user they add is for it. A user who also works on another station, or on all of them, isn't theirs to change, and nobody changes their own stations.",
     ]),
     ("h2", "Users and permissions"),
     ("p", "Every program asks for a <b>user and password</b>: the on-air program, Sintoniza Pro, Sintoniza Import, the on-air "
@@ -557,6 +559,7 @@ CHAPTERS = [
         ["Users", "Add and change users"],
         ["This computer's settings", "Open a playout's own Settings: sound cards, database, keys"],
         ["Web remote", "Control a playout from a phone"],
+        ["Stream", "Start and stop the internet stream by hand (the STREAM button, its menu or its key). Without it a presenter can't switch the stream off by mistake; it still starts by itself when it should."],
     ]),
     ("tip", "Passwords are only stored as a secure hash, so nobody can read them. If someone forgets theirs, another user with "
             "the <b>Users</b> permission sets a new one. Nobody can delete or lock out themselves, or take away their own "

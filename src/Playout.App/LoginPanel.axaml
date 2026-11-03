@@ -10,6 +10,10 @@
             </StackPanel>
         </Grid>
         <TextBlock x:Name="ReasonText" Classes="muted" FontSize="12" TextWrapping="Wrap" IsVisible="False" />
+        <StackPanel x:Name="StationPanel" Spacing="4" IsVisible="False">
+            <TextBlock Text="Station" Classes="muted" FontSize="12" />
+            <ComboBox x:Name="StationPicker" HorizontalAlignment="Stretch" />
+        </StackPanel>
         <StackPanel Spacing="4">
             <TextBlock Text="User" Classes="muted" FontSize="12" />
             <TextBox x:Name="UserBox" />

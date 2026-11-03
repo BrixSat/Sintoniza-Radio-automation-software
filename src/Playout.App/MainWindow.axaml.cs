@@ -302,12 +302,12 @@ public partial class MainWindow : Window
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
         Library.EditTagsRequested += async path => await EditTags(path);
 
-        StreamToggle.Click += (_, _) => ToggleStreaming();
+        StreamToggle.Click += (_, _) => { if (MayToggleStream()) ToggleStreaming(); };
         // Right-click: explicit start and stop; Stop also clears an error (a click on an error retries).
         var startStream = new MenuItem { Header = L.T("Start streaming") };
-        startStream.Click += (_, _) => { if (_engine?.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming(); };
+        startStream.Click += (_, _) => { if (_engine?.GetStatus().Stream is StreamState.Off or StreamState.Failed && MayToggleStream()) ToggleStreaming(); };
         var stopStream = new MenuItem { Header = L.T("Stop streaming") };
-        stopStream.Click += (_, _) => _engine?.StopStreaming();
+        stopStream.Click += (_, _) => { if (MayToggleStream()) _engine?.StopStreaming(); };
         var streamMenu = new ContextMenu { Items = { startStream, stopStream } };
         streamMenu.Opening += (_, _) =>
         {
@@ -418,7 +418,7 @@ public partial class MainWindow : Window
                 if (_settings.MicToggle) ToggleMic();
                 else { _micKeyHeld = true; UpdateMic(); }
                 break;
-            case Shortcuts.Stream: if (StreamToggle.IsVisible) ToggleStreaming(); break;
+            case Shortcuts.Stream: if (StreamToggle.IsVisible && MayToggleStream()) ToggleStreaming(); break;
             default:
                 ToggleCart(Array.FindIndex(Shortcuts.Actions, a => a.Id == id) - Array.FindIndex(Shortcuts.Actions, a => a.Id == Shortcuts.Cart(0)));
                 break;
@@ -672,6 +672,8 @@ public partial class MainWindow : Window
         Part("stream", () => UpdateStreamStatus(st));
         Part("on-air sign", () => UpdateOnAirSign(st));
         _playingText = st.State == PlayerState.Playing && st.Current is { } playing ? playing.Display : "";
+        // Not known until it has started (the playlist back, the stream started if it was on): a standby keeps its own.
+        _streamingNow = !_restored || _streamHeld ? -1 : st.Stream != StreamState.Off ? 1 : 0;
         Part("gpio", () => ShowGpio(st));
 
         // Once a second is plenty for the date, ETA column and station info.
@@ -1264,7 +1266,7 @@ public partial class MainWindow : Window
             StreamState.Connecting => L.F("Connecting — click to cancel{0}", StreamKey()),
             StreamState.Failed => L.F("{0}\nClick to retry, or right-click to turn streaming off", st.StreamError),
             _ => L.F("Stream off — click to start (server is set in Settings){0}", StreamKey()),
-        });
+        } + (_user != null && !_user.Can(Permission.Stream) ? "\n" + L.T("You may not start or stop it (the Stream permission)") : ""));
         _slowTick = 0;
     }
 
@@ -1775,6 +1777,14 @@ public partial class MainWindow : Window
     }
 
     // ───────────────────────── Streaming ─────────────────────────
+
+    /// <summary>Who is logged in may start and stop the stream by hand (the Stream permission); if not, it says so.</summary>
+    bool MayToggleStream()
+    {
+        if (_user == null || _user.Can(Permission.Stream)) return true; // no log-in (no library): the station can still be run
+        LastLog.Text = L.F("{0} may not start or stop the stream (the Stream permission, Sintoniza Pro → Users)", _user.Name);
+        return false;
+    }
 
     void ToggleStreaming()
     {

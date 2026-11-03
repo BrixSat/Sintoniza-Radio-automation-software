@@ -88,13 +88,35 @@ public partial class App : Application
             AppLog.Write($"{program}: database unavailable: {error}");
             return offline(error);
         }
+        // Sintoniza Pro started again by itself on another station: who was logged in still is.
+        if (program == AppInfo.ScheduleName)
+        {
+            SintonizaUser? kept = null;
+            try { kept = LoginHandoff.Take(desktop.Args, new UserStore(db)); }
+            catch (Exception ex) { AppLog.Write($"{program}: the login wasn't kept: {ex.Message}"); }
+            if (kept != null && kept.MayUse(CurrentStation.Id))
+            {
+                AppLog.Write($"{program}: {kept.Name} still logged in, on station {CurrentStation.Id}");
+                return open(db, kept);
+            }
+        }
         string station = "";
         try { station = new StationStore(db).Load().Settings?.StationName ?? ""; } catch { /* no name */ }
         LoginWindow.LastUser = settings.LastUser;
         var login = new LoginWindow(db, program, permission, null, station);
         if (program == AppInfo.ImportName) login.AnyStation = true; // the music library is every station's
+        if (program == AppInfo.ScheduleName) login.ChooseStation = true;
         login.LoggedIn += user =>
         {
+            // Sintoniza Pro on the station chosen in the log-in (nothing is open yet: no need to start again).
+            if (program == AppInfo.ScheduleName && login.ChosenStation != CurrentStation.Id)
+            {
+                long chosen = login.ChosenStation;
+                CurrentStation.Id = chosen;
+                settings.ProStation = chosen == settings.Station ? 0 : chosen;
+                AppSettings.Change(s => s.ProStation = chosen == s.Station ? 0 : chosen);
+                AppLog.Write($"{program}: working on station {chosen}");
+            }
             settings.LastUser = user.Name;
             // Only this: the on-air program may have saved its playlist since this copy was read.
             AppSettings.Change(s => s.LastUser = user.Name);

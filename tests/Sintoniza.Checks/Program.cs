@@ -401,6 +401,16 @@ Console.WriteLine("The on-air program (a library of its own)");
     autoSwitch.IsChecked = true;
     Pump(3);
     Check(!target!.ShowPlayButton && !target.ShowFadeButton, "AUTO: no buttons on the rows");
+
+    // The stream by hand only with the Stream permission (a presenter without it: STREAM does nothing, and says why).
+    var logIn = typeof(MainWindow).GetMethod("LogIn", flags)!;
+    var mayStream = typeof(MainWindow).GetMethod("MayToggleStream", flags)!;
+    logIn.Invoke(win, [new SintonizaUser { Name = "dj", Permissions = Permission.Presenter.ToHashSet() }]);
+    bool djMay = (bool)mayStream.Invoke(win, null)!;
+    string said = win.FindControl<TextBlock>("LastLog")?.Text ?? "";
+    logIn.Invoke(win, [new SintonizaUser { Name = "tech", Permissions = [Permission.OnAir, Permission.Stream] }]);
+    Check(!djMay && said.Contains("dj") && (bool)mayStream.Invoke(win, null)! && !Permission.Presenter.Contains(Permission.Stream) && Permission.All.Contains(Permission.Stream),
+        $"STREAM by hand: not for a presenter without the Stream permission ({said}); yes with it; admins have it");
     win.Close();
     Pump(10);
 }
@@ -1351,6 +1361,88 @@ Console.WriteLine("Stations");
     Check(back.Stations.SetEquals([second]) && back.MayUse(second) && !back.MayUse(first) && users.All().First(u => u.Name == "admin").MayUse(first),
         "a user limited to some stations (the others, everywhere)");
     users.Delete(id);
+
+    // A station's own admin: only the users of their station, and new users for it.
+    long stationAdmin = users.Save(new SintonizaUser { Name = "admin-two", Permissions = Permission.All.ToHashSet(), Stations = [second] }, "pw");
+    long twoDj = users.Save(new SintonizaUser { Name = "dj-two", Permissions = Permission.Presenter.ToHashSet(), Stations = [second] }, "pw");
+    long both = users.Save(new SintonizaUser { Name = "dj-both", Permissions = Permission.Presenter.ToHashSet(), Stations = [first, second] }, "pw");
+    var usersView = new UsersView(users, users.All().First(u => u.Id == stationAdmin));
+    var usersHolder = new Window { Content = usersView, Width = 900, Height = 600 };
+    usersHolder.Show();
+    WaitUi(() => usersView.UserList.ItemCount > 0, 5);
+    var listed = usersView.UserList.Items.Cast<object>().Select(o => o.ToString()!).ToList();
+    Check(listed.Contains("admin-two") && listed.Contains("dj-two") && !listed.Contains("admin") && !listed.Contains("dj-both"),
+        $"a station's own admin sees only that station's users (not the admins of all, nor one who also works elsewhere): {string.Join(", ", listed)}");
+    usersView.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Pump(4);
+    Check(usersView.AllStationsBox.IsChecked == false && !usersView.AllStationsBox.IsEnabled, "…a user they add is for their station, never for all of them");
+    // Renaming themselves doesn't make them an admin of every station.
+    usersView.UserList.SelectedItem = "admin-two";
+    Pump(4);
+    usersView.NameBox.Text = "boss-two";
+    usersView.SaveUserButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    WaitUi(() => usersView.UserList.Items.Cast<object>().Any(o => o.ToString() == "boss-two"), 5);
+    var afterRename = usersView.UserList.Items.Cast<object>().Select(o => o.ToString()!).ToList();
+    Check(afterRename.Contains("boss-two") && !afterRename.Contains("admin") && users.All().First(u => u.Id == stationAdmin).Stations.SetEquals([second]),
+        $"…renaming themselves gives them nothing more: still their station only ({string.Join(", ", afterRename)})");
+    usersHolder.Close();
+    var allView = new UsersView(users, users.All().First(u => u.Name == "admin"));
+    var allHolder = new Window { Content = allView, Width = 900, Height = 600 };
+    allHolder.Show();
+    WaitUi(() => allView.UserList.ItemCount > 0, 5);
+    Check(allView.UserList.ItemCount == users.All().Count, "…the admin of every station sees everyone");
+    allHolder.Close();
+
+    // The log-in of Sintoniza Pro: with several stations, which one is chosen there, for a user who may work on it.
+    var proLogin = new LoginWindow(db, AppInfo.ScheduleName, null, null) { ChooseStation = true };
+    proLogin.Show();
+    var picker = proLogin.Panel.StationPicker;
+    Check(WaitUi(() => proLogin.Panel.StationPanel.IsVisible, 5) && picker.Items.Cast<StationInfo>().Any(st => st.Id == second),
+        "Pro's log-in: a list of the stations when there are several");
+    SintonizaUser? loggedIn = null;
+    proLogin.LoggedIn += u => loggedIn = u;
+    picker.SelectedItem = picker.Items.Cast<StationInfo>().First(st => st.Id == first);
+    proLogin.Panel.UserBox.Text = "dj-two";
+    proLogin.Panel.PasswordBox.Text = "pw";
+    proLogin.Panel.LoginButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    WaitUi(() => proLogin.Panel.ErrorText.IsVisible, 5);
+    Check(loggedIn == null && proLogin.Panel.ErrorText.IsVisible, $"…a user not allowed on the station chosen doesn't get in ({proLogin.Panel.ErrorText.Text})");
+    picker.SelectedItem = picker.Items.Cast<StationInfo>().First(st => st.Id == second);
+    proLogin.Panel.PasswordBox.Text = "pw";
+    proLogin.Panel.LoginButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    WaitUi(() => loggedIn != null, 5);
+    Check(loggedIn?.Name == "dj-two" && proLogin.ChosenStation == second, "…on their own station they do, and that is the station Pro opens on");
+    proLogin.Close();
+
+    // Pro's lock screen (after Log out): set up after it is on screen, the list is there too.
+    var lockPanel = new LoginPanel();
+    var lockHolder = new Window { Content = lockPanel, Width = 500, Height = 500 };
+    lockHolder.Show();
+    Pump(4);
+    lockPanel.ChooseStation = true;
+    lockPanel.Setup(db, AppInfo.ScheduleName, null, "", "Close");
+    Check(WaitUi(() => lockPanel.StationPanel.IsVisible, 5), "…and on the lock screen after Log out");
+    lockHolder.Close();
+
+    // Pro starting again on another station keeps who is logged in: once, with the code it was given.
+    var dj = users.All().First(u => u.Id == twoDj);
+    string arg = LoginHandoff.Give(dj);
+    Check(LoginHandoff.Take(["--restarted", arg], users)?.Id == twoDj, "Pro starting again on another station: still logged in, as the same user");
+    Check(LoginHandoff.Take(["--restarted", arg], users) == null, "…once: the same code again logs no one in");
+    LoginHandoff.Give(dj);
+    Check(LoginHandoff.Take(["--restarted", LoginHandoff.Arg + "00112233445566778899AABBCCDDEEFF0011223344556677"], users) == null,
+        "…a code that isn't the one left logs no one in");
+    // The stream, from one studio to the other: the computer on air says whether it streams; one going on air in its place does too.
+    db.StudioSeen(second, "studio-a", "Check 1 - Tone 1", "check", streaming: true);
+    db.StudioSeen(second, "studio-b", "", "check", streaming: false);
+    db.StudioSeen(second, "studio-c", "", "check"); // starting, or an older version: it doesn't say
+    var seen = db.Studios(second).Studios;
+    Check(seen.First(x => x.Computer == "studio-a").Streaming == true && seen.First(x => x.Computer == "studio-b").Streaming == false
+          && seen.First(x => x.Computer == "studio-c").Streaming == null,
+        "each studio says whether it is streaming, or nothing while it doesn't know (a standby keeps its own then)");
+    users.Delete(stationAdmin);
+    users.Delete(twoDj);
+    users.Delete(both);
 
     // Sintoniza Pro on another station than this computer's on-air program: each keeps its own when saving.
     var emiCopy = AppSettings.Load(); // the on-air program's settings, read before Pro chose its station

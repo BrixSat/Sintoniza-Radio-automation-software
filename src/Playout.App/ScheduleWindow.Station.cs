@@ -37,7 +37,7 @@ public partial class ScheduleWindow
             }
             else if (tab == StationSettingsTab) await ShowStationSettings(new StationStore(db));
             else if (tab == CartwallsTab) await ShowCartwalls(new StationStore(db));
-            else if (tab == UsersTab && tab.Content == null) tab.Content = new UsersView(new UserStore(db), _user?.Name ?? "");
+            else if (tab == UsersTab && tab.Content == null) tab.Content = new UsersView(new UserStore(db), _user);
             else if (tab == ErcTab && tab.Content == null) tab.Content = new ErcView(db, Who);
             else if (tab == ListenersTab && tab.Content == null) tab.Content = new ListenersView(db);
         };

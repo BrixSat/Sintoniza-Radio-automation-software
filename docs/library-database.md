@@ -241,7 +241,7 @@ every studio.
 | `id` | integer | |
 | `name` | text | unique, compared without case |
 | `password_hash` | text | `iterations$salt$hash`: PBKDF2-HMAC-SHA256, salt and hash in base64 (16 and 32 bytes) |
-| `permissions` | text | comma-separated: `onair`, `library`, `programming`, `voice`, `traffic`, `station`, `users`, `computer`, `remote` |
+| `permissions` | text | comma-separated: `onair`, `library`, `programming`, `voice`, `traffic`, `station`, `users`, `computer`, `remote`, `stream` (starting and stopping the stream by hand; schema 26 gave it to those with `station` or `computer`) |
 | `enabled` | bool | 0: can't log in |
 | `stations` | text | the station ids it may work on, comma-separated (from schema 24); `''` = every station. A program for another station refuses its login |
 | `last_login`, `created_at` | text | UTC |
@@ -301,6 +301,7 @@ the one that finds another on air in its place goes standby.
 | `on_air` | 1: this one is on air (one per station) |
 | `since` | when it went on air (UTC; null: standby) |
 | `playing` | what it is playing, `Artist - Title` (empty: nothing) |
+| `streaming` | from 26: 1 it is streaming (or trying to), 0 not, null not known yet (starting, or an older version); a standby computer that goes on air in its place streams if the one on air said 1 |
 | `version` | its Sintoniza Emi version |
 
 A computer takes the air in one transaction: it locks the station's rows (`SELECT … FOR UPDATE`), checks that none

@@ -345,7 +345,7 @@ CHAPTERS = [
     ("p", "Com uma biblioteca MySQL partilhada, cada computador com o Sintoniza Emi da estação conhece os outros. <b>Um está "
           "no ar</b> e os restantes ficam <b>de reserva</b>, prontos e calados: sem playlist, sem sinal horário, sem stream e "
           "sem nada no histórico. O primeiro a arrancar vai para o ar."),
-    ("p", "No computador que está no ar, a luz <b>ESTÚDIO</b> mostra quais estão de reserva. A barra de estado da Sintoniza Pro mostra o mesmo."),
+    ("p", "No computador que está no ar, a luz <b>ESTÚDIO</b> mostra quais estão de reserva. A barra de estado da Sintoniza Pro mostra o mesmo. Um computador de reserva que vai para o ar no lugar de outro liga o stream se esse o tinha ligado."),
     ("fig", "main-standby", "Um computador de reserva", [
         ("StandbyBanner", "A barra <b>RESERVA</b> aparece no topo quando outro computador está no ar."),
         ("StandbyText", "A primeira linha diz que computador está no ar e o que está a tocar. A segunda diz o que este fará: <i>Este computador vai para o ar automaticamente se o principal deixar de responder por 15 s</i>, ou que só vai para o ar quando carregar em Ir para o ar."),
@@ -510,9 +510,10 @@ CHAPTERS = [
           "Partilham a música e os utilizadores. Cada uma tem a sua programação, playlists diárias, definições, cartwalls e histórico."),
     ("list", [
         "<b>Estação → Nova estação…</b> no Sintoniza Pro cria uma. Começa com uma cópia das definições da estação atual e uma programação vazia. O servidor de stream, o nome RDS e o envio para o site começam em branco, para nunca sair para o ar como a outra estação.",
-        "<b>Estação → Trabalhar em</b> passa o Pro para outra estação. O Pro abre de novo nela. O programa de emissão do estúdio no mesmo computador fica com a sua estação.",
-        "Em cada estúdio, <b>Definições → Geral → Estação</b> escolhe a estação que ele põe no ar. Vale a partir da próxima vez que o Sintoniza Emi abrir.",
+        "Com várias estações, a entrada no Sintoniza Pro tem uma lista <b>Estação</b>: escolha ao entrar aquela em que vai trabalhar. <b>Estação → Trabalhar em</b> muda depois. O Pro abre de novo nela e continua com a sessão iniciada. O programa de emissão do estúdio no mesmo computador fica com a sua estação.",
+        "Em cada estúdio, <b>Definições → Geral → Estação</b> escolhe a estação que ele põe no ar. Só aparece quando a biblioteca tem duas estações, e vale a partir da próxima vez que o Sintoniza Emi abrir.",
         "Em <b>Utilizadores</b>, um utilizador pode ficar limitado a algumas estações. Entrar noutra estação é então recusado.",
+        "Um administrador de <b>Todas as estações</b> gere todos os utilizadores. Um administrador limitado a uma estação, o administrador dessa rádio, pode fazer tudo nela e nada com a programação, as definições ou os utilizadores das outras. A biblioteca de música, as categorias e a importação são de todas as estações, por isso o que muda aí muda para todas. Em Utilizadores só vê e gere os utilizadores dessa estação, e quem acrescentar fica para ela. Um utilizador que trabalha também noutra estação, ou em todas, não é seu para alterar, e ninguém muda as suas próprias estações.",
     ]),
     ("h2", "Utilizadores e permissões"),
     ("p", "O programa de emissão, a Sintoniza Pro, o Sintoniza Import, as Definições do programa de emissão e o controlo remoto "
@@ -545,6 +546,7 @@ CHAPTERS = [
         ["Utilizadores", "Criar e alterar utilizadores"],
         ["Definições deste computador", "Abrir as Definições do programa de emissão: placas de som, base de dados, teclas"],
         ["Controlo remoto web", "Comandar a emissão a partir de um telemóvel"],
+        ["Stream", "Ligar e desligar o stream da internet à mão (o botão STREAM, o seu menu ou a sua tecla). Sem ela, um locutor não desliga o stream por engano; ele continua a ligar-se sozinho quando deve."],
     ]),
     ("tip", "As palavras-passe só ficam guardadas como um hash seguro. Se alguém se esquecer da sua, outro utilizador com a permissão <b>Utilizadores</b> define-lhe uma nova. Ninguém se pode apagar nem bloquear a si próprio, nem tirar a si mesmo a permissão <b>Utilizadores</b>."),
     ("h2", "Quotas ERC (música portuguesa)"),

@@ -9,6 +9,8 @@ public partial class MainWindow
     StudioRole? _role;
     /// <summary>What is on air, for the studios' check (written by the screen, read on the check's thread).</summary>
     volatile string _playingText = "";
+    /// <summary>Streaming (or trying to), for the studios' check (written by the screen): -1 not known yet (starting), 0 no, 1 yes.</summary>
+    volatile int _streamingNow = -1;
     bool _tookOnAir; // Take on air was pressed here: the playlist made here is kept
 
     /// <summary>Another computer is on air: nothing goes on air from this one.</summary>
@@ -20,7 +22,8 @@ public partial class MainWindow
         if (_engine is not { } engine) return;
         _role = new StudioRole(_library, _settings.WasStandby && _settings.Library.IsMySql,
             () => _playingText, // kept by the screen each second: the check never waits on the engine
-            () => (_settings.TakeOver, _settings.TakeOverSeconds));
+            () => (_settings.TakeOver, _settings.TakeOverSeconds),
+            () => _streamingNow < 0 ? null : _streamingNow == 1);
         SetStandby(_role.Standby);
         _role.Changed += (standby, why) => Dispatcher.UIThread.Post(() => ApplyRole(standby, why));
         _role.Seen += () => Dispatcher.UIThread.Post(ShowStudios);
@@ -119,6 +122,11 @@ public partial class MainWindow
         var list = _role?.Studios;
         StandbyBanner.IsVisible = IsStandby;
         if (!IsStandby) return;
+        // The stream as the computer on air has it: on when this one goes on air in its place if it was on there. Not
+        // while it doesn't say (starting, an older version), nor in its first seconds on air (its stream is starting).
+        if (list?.OnAir is { Streaming: { } streaming } master && master.Computer != StudioRole.Me
+            && (master.Since is not { } since || list.Now - since > TimeSpan.FromSeconds(10)))
+            _settings.StreamingOn = streaming;
         if (list?.OnAir is not { } onAir)
         {
             StandbyText.Text = L.T("Another computer is on air. This one plays nothing until it goes on air.");

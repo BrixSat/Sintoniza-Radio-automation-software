@@ -25,8 +25,10 @@ public static class Permission
     public const string Computer = "computer";
     /// <summary>The web remote.</summary>
     public const string Remote = "remote";
+    /// <summary>Starting and stopping the internet stream by hand (it still starts by itself when set to).</summary>
+    public const string Stream = "stream";
 
-    public static readonly string[] All = [OnAir, Library, Programming, Voice, Traffic, Station, Users, Computer, Remote];
+    public static readonly string[] All = [OnAir, Library, Programming, Voice, Traffic, Station, Users, Computer, Remote, Stream];
     /// <summary>What dj gets the first time: a presenter.</summary>
     public static readonly string[] Presenter = [OnAir, Voice, Remote];
 }

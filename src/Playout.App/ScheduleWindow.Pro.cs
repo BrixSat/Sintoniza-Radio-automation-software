@@ -123,8 +123,14 @@ public partial class ScheduleWindow
         MenuSwitchUser.Click += async (_, _) =>
         {
             if (store == null) return;
-            var login = new LoginWindow(store.Db, AppInfo.ScheduleName, null, L.T("Switch user"), _station?.StationName ?? "");
-            if (await login.ShowDialog<SintonizaUser?>(this) is { } user) ApplyUser(user);
+            var login = new LoginWindow(store.Db, AppInfo.ScheduleName, null, L.T("Switch user"), _station?.StationName ?? "") { ChooseStation = true };
+            if (await login.ShowDialog<SintonizaUser?>(this) is not { } user) return;
+            // Another station: Pro starts again on it, as that user; if it can't, who was here stays, and it says why.
+            if (login.ChosenStation != CurrentStation.Id)
+            {
+                if (await WorkOn(login.ChosenStation, user) is { } why) ErrorText.Text = L.F("{0} isn't logged in: {1}", user.Name, why);
+            }
+            else ApplyUser(user);
         };
         MenuLogout.IsVisible = store != null && _user != null;
         MenuLogout.Click += async (_, _) => await LogOut(store);
@@ -424,6 +430,12 @@ public partial class ScheduleWindow
     /// <summary>What the user may use: the other tools are hidden; their name in the status bar and the station box.</summary>
     void ApplyUser(SintonizaUser? user)
     {
+        // Another user: the Users page is made again for them (it shows what who is logged in may manage).
+        if (user?.Id != _user?.Id)
+        {
+            if (Tabs.SelectedItem == UsersTab) Tabs.SelectedItem = HomeTab;
+            UsersTab.Content = null;
+        }
         _user = user;
         string who = user?.Name ?? AppInfo.UserName;
         StatusUser.Text = $"👤 {who}@{AppInfo.ComputerName}";
@@ -477,9 +489,16 @@ public partial class ScheduleWindow
         if (!_lockWired)
         {
             _lockWired = true;
+            LockLogin.ChooseStation = true;
             LockLogin.Setup(store.Db, AppInfo.ScheduleName, null, _station?.StationName ?? "", L.T("Close"));
-            LockLogin.LoggedIn += user =>
+            LockLogin.LoggedIn += async user =>
             {
+                if (LockLogin.ChosenStation != CurrentStation.Id)
+                {
+                    // Another station: Pro starts again on it, as that user; if it can't, the log-in says why.
+                    if (await WorkOn(LockLogin.ChosenStation, user) is { } why) LockLogin.Show(why);
+                    return;
+                }
                 AppLog.Write($"{AppInfo.ScheduleName}: {user.Name} logged in");
                 if (_settings != null) _settings.LastUser = user.Name;
                 AppSettings.Change(s => s.LastUser = user.Name); // only this, over what the on-air program saved

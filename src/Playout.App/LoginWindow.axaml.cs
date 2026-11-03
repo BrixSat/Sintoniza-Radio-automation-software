@@ -12,6 +12,12 @@ public partial class LoginWindow : Window
     /// <summary>Any station's user may log in (Sintoniza Import works on the shared library).</summary>
     public bool AnyStation { get => Panel.AnyStation; set => Panel.AnyStation = value; }
 
+    /// <summary>Sintoniza Pro: the station is chosen in the log-in too, when the library has several.</summary>
+    public bool ChooseStation { get => Panel.ChooseStation; set => Panel.ChooseStation = value; }
+
+    /// <summary>The station chosen (this program's own when there was nothing to choose).</summary>
+    public long ChosenStation => Panel.ChosenStation;
+
     /// <summary>The last user who logged in here (filled in next time).</summary>
     public static string LastUser
     {

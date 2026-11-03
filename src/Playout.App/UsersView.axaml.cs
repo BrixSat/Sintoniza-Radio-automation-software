@@ -5,7 +5,10 @@ using Playout.Library;
 
 namespace Playout.App;
 
-/// <summary>Sintoniza Pro → Users: the station's users and what each may use.</summary>
+/// <summary>
+/// Sintoniza Pro → Users: the users and what each may use. Whoever works on every station manages everyone; whoever
+/// works only on some (a station's own admin) sees and manages only the users of those stations, and gives only them.
+/// </summary>
 public partial class UsersView : UserControl
 {
     static readonly (string Key, string Name, string Help)[] Permissions =
@@ -19,25 +22,34 @@ public partial class UsersView : UserControl
         (Permission.Users, "Users", "Adding and changing users"),
         (Permission.Computer, "This computer's settings", "A playout's own Settings (sound cards, database, keys…)"),
         (Permission.Remote, "Web remote", "Controlling a playout from a phone"),
+        (Permission.Stream, "Stream", "Starting and stopping the internet stream by hand (STREAM)"),
     ];
 
     readonly UserStore? _store;
-    readonly string _me = "";
+    /// <summary>Who is logged in, by number (a name can be changed); null: no log-in (everything open).</summary>
+    readonly long? _meId;
+    /// <summary>Their name as it is now.</summary>
+    string _me = "";
     readonly Dictionary<string, CheckBox> _boxes = new();
     readonly Dictionary<long, CheckBox> _stationBoxes = new();
     bool _stationsRead;
     List<SintonizaUser> _users = new();
+    /// <summary>Every user (for names already taken, also those not shown here).</summary>
+    List<SintonizaUser> _all = new();
+    /// <summary>The stations of who is logged in (empty: all of them).</summary>
+    HashSet<long> _mine = new();
 
     // Parameterless constructor for the XAML previewer.
-    public UsersView() : this(null, "") { }
+    public UsersView() : this(null, null) { }
 
     /// <param name="me">Who is logged in (can't delete themselves or take away their own Users permission).</param>
-    public UsersView(UserStore? store, string me)
+    public UsersView(UserStore? store, SintonizaUser? me)
     {
         InitializeComponent();
         Localization.Apply(this);
         _store = store;
-        _me = me;
+        _meId = me?.Id;
+        _me = me?.Name ?? "";
         foreach (var (key, name, help) in Permissions)
         {
             var box = new CheckBox { Content = new StackPanel
@@ -55,7 +67,8 @@ public partial class UsersView : UserControl
         AddButton.Click += (_, _) =>
         {
             UserList.SelectedItem = null;
-            ShowUser(new SintonizaUser { Name = "", Enabled = true, Permissions = Permission.Presenter.ToHashSet() });
+            // A station's admin makes users of their own stations.
+            ShowUser(new SintonizaUser { Name = "", Enabled = true, Permissions = Permission.Presenter.ToHashSet(), Stations = _mine.ToHashSet() });
             NameBox.Focus();
         };
         DeleteButton.Click += async (_, _) => await Delete();
@@ -68,11 +81,27 @@ public partial class UsersView : UserControl
 
     SintonizaUser? _editing;
 
+    bool IsMe(SintonizaUser u) => _meId != null && u.Id == _meId;
+
     async Task Load(string? select)
     {
         if (_store is not { } store) return;
-        try { _users = await Task.Run(store.All); }
+        try { _all = await Task.Run(store.All); }
         catch (Exception ex) { MessageText.Text = ex.Message; return; }
+        var self = _all.FirstOrDefault(u => u.Id == _meId);
+        if (_meId != null && self == null)
+        {
+            // Who is logged in isn't a user any more: nothing to manage (never everything).
+            _users = new();
+            UserList.ItemsSource = null;
+            EditPanel.IsEnabled = AddButton.IsEnabled = DeleteButton.IsEnabled = false;
+            MessageText.Text = L.T("You aren't a user any more: log in again.");
+            return;
+        }
+        _me = self?.Name ?? "";
+        _mine = self?.Stations ?? new();
+        // Only some stations: the users of those (not one who also works elsewhere, nor one on every station).
+        _users = _mine.Count == 0 ? _all : _all.Where(u => IsMe(u) || u.Stations.Count > 0 && u.Stations.IsSubsetOf(_mine)).ToList();
         // Several stations in the library: which each user may work on.
         if (_stationBoxes.Count == 0)
         {
@@ -88,7 +117,7 @@ public partial class UsersView : UserControl
             StationsPanel.IsVisible = stations.Count > 1;
         }
         UserList.ItemsSource = _users.Select(u => u.Enabled ? u.Name : $"{u.Name}  ({L.T("can't log in")})").ToList();
-        int i = _users.FindIndex(u => u.Name == (select ?? _editing?.Name ?? _me));
+        int i = _users.FindIndex(u => select != null ? u.Name == select : _editing != null ? u.Id == _editing.Id : IsMe(u));
         UserList.SelectedIndex = Math.Max(0, i);
     }
 
@@ -97,21 +126,21 @@ public partial class UsersView : UserControl
         user ??= UserList.SelectedIndex is >= 0 and var i && i < _users.Count ? _users[i] : null;
         _editing = user;
         EditPanel.IsEnabled = user != null;
-        DeleteButton.IsEnabled = user is { Id: > 0 } && user.Name != _me;
+        DeleteButton.IsEnabled = user is { Id: > 0 } && !IsMe(user);
         if (user == null) return;
         NameBox.Text = user.Name;
         PasswordBox.Text = "";
         PasswordBox.PlaceholderText = user.Id == 0 ? L.T("(needed)") : L.T("(unchanged)");
         EnabledBox.IsChecked = user.Enabled;
-        EnabledBox.IsEnabled = user.Name != _me;
+        EnabledBox.IsEnabled = !IsMe(user);
         foreach (var (key, box) in _boxes) box.IsChecked = user.Can(key);
-        _boxes[Permission.Users].IsEnabled = user.Name != _me; // nobody locks themselves out
+        _boxes[Permission.Users].IsEnabled = !IsMe(user); // nobody locks themselves out
         AllStationsBox.IsChecked = user.Stations.Count == 0;
         foreach (var (id, box) in _stationBoxes) box.IsChecked = user.Stations.Count == 0 || user.Stations.Contains(id);
         // Nobody shuts themselves out of a station; and whoever may work only on some gives only those.
-        var mine = _users.FirstOrDefault(u => u.Name == _me)?.Stations ?? new();
-        AllStationsBox.IsEnabled = user.Name != _me && mine.Count == 0;
-        StationBoxes.IsEnabled = user.Stations.Count > 0 && user.Name != _me;
+        var mine = _mine;
+        AllStationsBox.IsEnabled = !IsMe(user) && mine.Count == 0;
+        StationBoxes.IsEnabled = user.Stations.Count > 0 && !IsMe(user);
         foreach (var (id, box) in _stationBoxes) box.IsEnabled = mine.Count == 0 || mine.Contains(id);
     }
 
@@ -120,7 +149,7 @@ public partial class UsersView : UserControl
         if (_store is not { } store || _editing is not { } user) return;
         string name = NameBox.Text?.Trim() ?? "";
         if (name.Length == 0) { MessageText.Text = L.T("Give the user a name."); return; }
-        if (_users.Any(u => u.Id != user.Id && u.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) { MessageText.Text = L.T("There is already a user with this name."); return; }
+        if (_all.Any(u => u.Id != user.Id && u.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) { MessageText.Text = L.T("There is already a user with this name."); return; }
         string? password = string.IsNullOrEmpty(PasswordBox.Text) ? null : PasswordBox.Text;
         if (user.Id == 0 && password == null) { MessageText.Text = L.T("A new user needs a password."); return; }
         var changed = new SintonizaUser
@@ -128,13 +157,20 @@ public partial class UsersView : UserControl
             Id = user.Id, Name = name, Enabled = EnabledBox.IsChecked == true,
             Permissions = _boxes.Where(kv => kv.Value.IsChecked == true).Select(kv => kv.Key).ToHashSet(),
             // The stations list couldn't be read: as they were. Otherwise all, or those ticked.
-            Stations = !_stationsRead ? user.Stations.ToHashSet()
-                : !StationsPanel.IsVisible || AllStationsBox.IsChecked == true ? new()
+            // One station only (nothing to choose): as they were.
+            Stations = !_stationsRead || !StationsPanel.IsVisible ? user.Stations.ToHashSet()
+                : AllStationsBox.IsChecked == true ? new()
                 : _stationBoxes.Where(kv => kv.Value.IsChecked == true).Select(kv => kv.Key).ToHashSet(),
         };
-        var mine = _users.FirstOrDefault(u => u.Name == _me)?.Stations ?? new();
+        var mine = _mine;
         // Only when the stations change: a password or a name can always be saved.
-        if (mine.Count > 0 && user.Name != _me && !changed.Stations.SetEquals(user.Stations)
+        // Nobody changes their own stations (an admin of some can't make themselves one of all).
+        if (IsMe(user) && !changed.Stations.SetEquals(user.Stations))
+        {
+            MessageText.Text = L.T("Your own stations are changed by another admin.");
+            return;
+        }
+        if (mine.Count > 0 && !IsMe(user) && !changed.Stations.SetEquals(user.Stations)
             && (changed.Stations.Count == 0 || !changed.Stations.Except(user.Stations).All(mine.Contains)))
         {
             MessageText.Text = L.T("You may only give the stations you work on yourself.");
@@ -157,10 +193,10 @@ public partial class UsersView : UserControl
 
     async Task Delete()
     {
-        if (_store is not { } store || _editing is not { Id: > 0 } user || user.Name == _me) return;
+        if (_store is not { } store || _editing is not { Id: > 0 } user || IsMe(user)) return;
         if (TopLevel.GetTopLevel(this) is not Window owner || !await Dialogs.Confirm(owner, L.T("Delete user"), L.F("Delete \"{0}\"?", user.Name), L.T("Delete"))) return;
         await Task.Run(() => store.Delete(user.Id));
         _editing = null;
-        await Load(_me);
+        await Load(null);
     }
 }
