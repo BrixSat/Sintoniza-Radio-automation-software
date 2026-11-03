@@ -24,12 +24,14 @@ public sealed class PlanCheck
     public List<(DateTime At, string What)> NotFound { get; } = new();
     /// <summary>What the ad breaks and events will leave out (a file not found, nothing in a series for the day…), as the playout says it.</summary>
     public List<(DateTime At, string What)> Entries { get; } = new();
-    /// <summary>None of the day's files can be seen from this computer (its paths aren't set): they weren't checked.</summary>
+    /// <summary>None of the day's files can be reached from this computer (a share down, its paths not set): not listed one by one.</summary>
     public bool FilesUnseen { get; private set; }
+    /// <summary>How many files the day plays that were looked for.</summary>
+    public int FilesChecked { get; private set; }
     /// <summary>The day has hour templates (else there is nothing to check: fill music plays).</summary>
     public int Planned { get; private set; }
 
-    public bool AllGood => Missing.Count == 0 && Empty.Count == 0 && Short.Count == 0 && NotFound.Count == 0 && Entries.Count == 0;
+    public bool AllGood => Missing.Count == 0 && Empty.Count == 0 && Short.Count == 0 && NotFound.Count == 0 && Entries.Count == 0 && !FilesUnseen;
 
     /// <param name="exists">Whether a file of the library is there (as this computer sees it).</param>
     public static PlanCheck Day(LibraryDb db, ScheduleData data, DateTime day, PlaylistGenerator.Options options, Func<string, bool>? exists = null)
@@ -44,7 +46,7 @@ public sealed class PlanCheck
         int files = 0, missingFiles = 0;
         var notFound = new List<(DateTime, string)>();
         var said = new List<(DateTime, string)>();
-        Func<long, IReadOnlySet<string>, (string Path, TrackKind Kind)?>? picker = null;
+        Func<long, IReadOnlySet<string>, DateTime, (string Path, TrackKind Kind)?>? picker = null;
         void Look(DateTime at, string path, string what)
         {
             if (path.Length == 0 || Takes.IsTake(path) || path.StartsWith(Pause.Path, StringComparison.Ordinal) || PlayoutEngine.IsUrl(path)) return;
@@ -58,15 +60,26 @@ public sealed class PlanCheck
         {
             var hour = day.AddHours(h);
             var entries = generator.Entries(hour);
-            // As the playout will make them: what it would say it leaves out (a break with no adverts booked is Home's own warning).
+            // As the playout will make them: what it would say it leaves out (a break with no adverts booked is Home's own
+            // warning). Each part it found, and each it says it left out, counts as a file looked for.
             foreach (var entry in entries)
             {
                 string unbooked = L.F("{0}: no adverts booked, skipped", entry.Label);
-                ScheduleItems.For(data, entry.Entry, entry.At, text => { if (text != unbooked) said.Add((entry.At, text)); }, picker ??= ScheduleItems.CategoryPicker(db));
+                int before = said.Count;
+                var found = ScheduleItems.For(data, entry.Entry, entry.At, text => { if (text != unbooked) said.Add((entry.At, text)); },
+                    picker ??= ScheduleItems.CategoryPicker(db), ahead: true);
+                files += found.Count(i => i.StreamName == null) + said.Count - before;
+                missingFiles += said.Count - before;
             }
-            if (data.TemplateAt(hour) == null) continue;
+            var template = data.TemplateAt(hour);
+            if (template == null) continue;
             check.Planned++;
-            if (!hours.ContainsKey(hour)) { check.Missing.Add(hour); continue; }
+            // Not made, or made for another template (the playout makes it again within minutes, unless edited by hand).
+            if (!hours.TryGetValue(hour, out var made) || !made.Edited && made.Signature != PlaylistGenerator.Signature(template))
+            {
+                check.Missing.Add(hour);
+                continue;
+            }
             var list = items.GetValueOrDefault(hour) ?? new();
             if (list.Count == 0) { check.Empty.Add(hour); continue; }
             // What the hour should fill: the hour less its breaks and events (as it was made).
@@ -80,8 +93,10 @@ public sealed class PlanCheck
                 at = at.AddSeconds(Math.Max(0, item.Seconds));
             }
         }
-        // Not one file there: this computer doesn't see the music (its paths: Settings → Library), not a day of missing files.
-        if (files > 0 && missingFiles == files && files >= 5) check.FilesUnseen = true;
+        check.FilesChecked = files;
+        // Not one file there: this computer doesn't reach the music (a share down, or its paths not set), not a day of
+        // missing files.
+        if (files >= 5 && missingFiles == files) check.FilesUnseen = true;
         else
         {
             check.NotFound.AddRange(notFound);
@@ -106,6 +121,7 @@ public sealed class PlanCheck
                 List(NotFound.Select(n => L.F("{0} ({1:HH:mm})", n.What, n.At)).ToList())));
         if (Entries.Count > 0)
             lines.Add(L.F("{0}, ad breaks and events: {1}", when, List(Entries.Select(e => e.What).ToList())));
+        if (FilesUnseen) lines.Add(L.F("{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)", when, FilesChecked));
         return lines;
     }
 }

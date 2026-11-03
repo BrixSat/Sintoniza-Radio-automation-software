@@ -2409,6 +2409,6 @@
  "Tomorrow": "Demain",
  "Tomorrow's daily playlists aren't ready (hours missing or short, files not found), from": "Les playlists du jour de demain ne sont pas prêtes (heures manquantes ou courtes, fichiers introuvables), à partir de",
  "Tomorrow's daily playlists are ready": "Les playlists du jour de demain sont prêtes",
- "📋 Tomorrow's files can't be seen from this computer (its paths: the playout's Settings → Library → This computer's paths), so they weren't checked": "📋 Les fichiers de demain ne sont pas visibles depuis cet ordinateur (ses chemins : Réglages du programme d'antenne → Bibliothèque → Chemins de cet ordinateur), ils n'ont donc pas été vérifiés",
- "{0}, ad breaks and events: {1}": "{0}, pages de pub et événements : {1}"
+ "{0}, ad breaks and events: {1}": "{0}, pages de pub et événements : {1}",
+ "{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)": "{0} : aucun de ses {1} fichiers n'est accessible depuis cet ordinateur (le partage de la musique, ou les chemins de cet ordinateur)"
 }

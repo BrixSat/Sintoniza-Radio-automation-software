@@ -1051,8 +1051,10 @@ public static class ScheduleItems
     /// Picks a file from a category for a part that takes one, not one of the files given (the break's other parts
     /// took them); null: no library, left out.
     /// </param>
+    /// <param name="ahead">Looked at ahead of time (tomorrow's check): only what is wrong already is said. A folder's
+    /// newest file is judged when it plays, not now, and a day a series has nothing for is as it was set.</param>
     public static List<ScheduledItem> For(ScheduleData data, ScheduleEntry entry, DateTime at, Action<string>? say,
-        Func<long, IReadOnlySet<string>, (string Path, TrackKind Kind)?>? fromCategory = null)
+        Func<long, IReadOnlySet<string>, DateTime, (string Path, TrackKind Kind)?>? fromCategory = null, bool ahead = false)
     {
         bool quiet = say == null;
         void Say(string message) => say?.Invoke(message);
@@ -1065,6 +1067,7 @@ public static class ScheduleItems
                 if (PlayoutEngine.IsStreamSource(path))
                     items.Add(new ScheduledItem(path.Trim(), StreamName: string.IsNullOrWhiteSpace(e.Name) ? path.Trim() : e.Name.Trim(),
                         StreamSeconds: Math.Max(0, e.StreamMinutes) * 60));
+                else if (ahead && SharedPaths.DirectoryExists(path)) { } // filled by the time it plays
                 else if (SharedPaths.DirectoryExists(path))
                 {
                     var newest = AudioFiles.InFolder(path).Select(f => new FileInfo(SharedPaths.ToLocal(f))).MaxBy(f => f.LastWriteTimeUtc);
@@ -1076,6 +1079,7 @@ public static class ScheduleItems
                     else items.Add(new ScheduledItem(SharedPaths.ToLibrary(newest.FullName), EventKind(newest.FullName)));
                 }
                 else if (SharedPaths.FileExists(path)) items.Add(new ScheduledItem(path, EventKind(path)));
+                else if (ahead && string.IsNullOrWhiteSpace(path)) { } // nothing that day, on purpose
                 else if (!quiet) Say(string.IsNullOrWhiteSpace(path)
                     ? e.Series.Count > 0 ? L.F("{0}: nothing in the series for {1:dddd, d MMMM}, skipped", label, at) : L.F("{0}: nothing chosen to play", label)
                     : L.F("{0}: not found: {1}", label, path));
@@ -1113,7 +1117,7 @@ public static class ScheduleItems
                     {
                         // Not a file the break plays already (two parts from Jingles: two different jingles).
                         var taken = items.Select(x => x.Path).ToHashSet(StringComparer.Ordinal);
-                        if (fromCategory?.Invoke(category, taken) is { } picked) items.Add(new ScheduledItem(picked.Path, picked.Kind, InBreak: true));
+                        if (fromCategory?.Invoke(category, taken, at) is { } picked) items.Add(new ScheduledItem(picked.Path, picked.Kind, InBreak: true));
                         else if (!quiet) Say(L.F("{0}: nothing to take from {1}, left out", label, part.Section.Length > 0 ? part.Section : L.T("its category")));
                     }
                     else if (SharedPaths.FileExists(part.Path)) items.Add(new ScheduledItem(part.Path, TrackKind.Jingle, InBreak: true));
@@ -1126,11 +1130,10 @@ public static class ScheduleItems
 
     /// <summary>
     /// A file from a category (and the ones under it) for a break: the one rested longest, among a few at random, that
-    /// may play now (song restrictions) and is there. Adverts' categories (Spots) give adverts, the rest jingles.
+    /// may play when the break does (song restrictions) and is there. Adverts' categories (Spots) give adverts, the rest jingles.
     /// </summary>
-    public static Func<long, IReadOnlySet<string>, (string Path, TrackKind Kind)?> CategoryPicker(LibraryDb db) => (id, taken) =>
+    public static Func<long, IReadOnlySet<string>, DateTime, (string Path, TrackKind Kind)?> CategoryPicker(LibraryDb db) => (id, taken, now) =>
     {
-        var now = DateTime.Now;
         var kind = db.Categories().FirstOrDefault(c => c.Id == id)?.Kind == "commercial" ? TrackKind.Commercial : TrackKind.Jingle;
         var tracks = db.RotationTracks([id]).Where(t => t.Rules?.AllowsAt(now) != false).ToList();
         // Not one this break plays already, while the category has another.

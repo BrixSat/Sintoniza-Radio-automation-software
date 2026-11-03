@@ -419,12 +419,14 @@ CHAPTERS = [
           "não no ar. O Início diz-lhe, numa linha cada, se há uma hora com modelo mas ainda sem playlist diária, uma hora que "
           "ficou vazia porque o modelo não encontrou música, uma hora com mais de três minutos a menos (a música de enchimento "
           "tocaria o resto), uma música cujo ficheiro não está lá, e um bloco publicitário ou evento que ia deixar algo de fora, "
-          "como um anúncio ou o ficheiro das notícias que não se encontra. O computador no ar também pode enviar isto como "
-          "alerta, a partir das 18:00 ou da hora que escolher em <b>Definições da estação → Alertas</b>, para alguém o "
-          "resolver antes de a noite acabar."),
-    ("tip", "Se o Início disser que os ficheiros de amanhã não se veem deste computador, é porque este computador do escritório "
-            "não chega à música onde os estúdios chegam. Diga onde ela está em <b>Definições → Biblioteca → Caminhos deste "
-            "computador</b>, no programa de emissão. A partir daí os ficheiros também são verificados daqui."),
+          "como um anúncio ou o ficheiro das notícias que não se encontra. Uma pasta de noticiários que recebe um ficheiro novo "
+          "a cada hora não conta: até lá terá um. O computador no ar também pode enviar isto como alerta, a partir das 18:00 "
+          "ou da hora que escolher em <b>Definições da estação → Alertas</b>, para alguém o resolver antes de a noite acabar. "
+          "Os alertas têm de estar ligados aí, com Telegram, e-mail ou um endereço web."),
+    ("tip", "Se o Início disser que nenhum dos ficheiros de amanhã se alcança deste computador, ou a partilha da música está em "
+            "baixo, ou este computador do escritório vê a música noutro sítio que os estúdios. Diga onde ela está em "
+            "<b>Definições → Biblioteca → Caminhos deste computador</b>, no programa de emissão. A partir daí os ficheiros "
+            "também são verificados daqui."),
     ("h2", "Músicas"),
     ("p", "Aqui está a biblioteca inteira, com pesquisa, categorias, andamento e energia, e etiquetas. Com o botão direito "
           "numa música chega à categoria, às restrições, aos dados da ERC, a <b>Fora do site</b>, a <b>Editar etiquetas…</b> "

@@ -457,11 +457,13 @@ CHAPTERS = [
           "Home tells you, in a line each, about an hour that has a template but no daily playlist yet, an hour that came out "
           "empty because its template found no music, an hour more than three minutes short (fill music would play the rest), "
           "a song whose file isn't there, and an ad break or event that would leave something out, such as an advert or a "
-          "news file that can't be found. The computer on air can also send this as an alert, from 18:00 or the hour you set "
-          "in <b>Station settings → Alerts</b>, so someone can fix it before the evening is over."),
-    ("tip", "If Home says tomorrow's files can't be seen from this computer, it is because this office computer doesn't reach "
-            "the music where the studios do. Set where it is in the playout's <b>Settings → Library → This computer's paths</b>. "
-            "The files are then checked from here too."),
+          "news file that can't be found. A news folder that gets a fresh file each hour isn't counted: it will have one by then. "
+          "The computer on air can also send this as an alert, from 18:00 or the hour you set in <b>Station settings → "
+          "Alerts</b>, so someone can fix it before the evening is over. Alerts must be on there, with Telegram, e-mail or a "
+          "web address."),
+    ("tip", "If Home says none of tomorrow's files can be reached from this computer, either the music share is down or this "
+            "office computer sees the music somewhere else than the studios do. Set where it is in the playout's "
+            "<b>Settings → Library → This computer's paths</b>. The files are then checked from here too."),
     ("h2", "Songs"),
     ("p", "<b>Songs</b> shows the whole library. You can search it, sort songs into categories, give them a tempo and an energy, "
           "and fix their tags. Right-click a song for its category, restrictions, ERC details, <b>Edit tags…</b> and "

@@ -477,10 +477,16 @@ Console.WriteLine("Tomorrow's daily playlists looked over (Pro's Home, the alert
     var data = new ScheduleData { Templates = { new PlaylistTemplate { Name = "Hits", Slots = slots, Lines = [new TemplateLine { Kind = "music" }] } } };
     string gone = Path.Combine(work, "gone", "Gone - Away.mp3");
     data.Events.Add(new ScheduledEvent { Name = "News", Path = Path.Combine(work, "gone", "news.mp3"), Slots = [new WeekTime { Day = tomorrow.DayOfWeek, Time = "07:15:00" }] });
+    // Not wrong ahead of time: a folder whose newest file must be fresh (it will be by then), and a series with nothing that day on purpose.
+    string newsFolder = Path.Combine(work, "news-folder");
+    Directory.CreateDirectory(newsFolder);
+    data.Events.Add(new ScheduledEvent { Name = "Fresh news", Path = newsFolder, MaxAgeMinutes = 30, Slots = [new WeekTime { Day = tomorrow.DayOfWeek, Time = "08:00:00" }] });
+    data.Events.Add(new ScheduledEvent { Name = "Horoscope", Path = "", Series = [new SeriesFile { Day = tomorrow.AddDays(1).DayOfWeek, Path = songs[0] }],
+        Slots = [new WeekTime { Day = tomorrow.DayOfWeek, Time = "08:30:00" }] });
     data.Normalize();
     var plan = new PlanStore(db);
     PlanItem Song(string path, double seconds) => new() { Path = path, Artist = "Check", Title = Path.GetFileNameWithoutExtension(path), Seconds = seconds };
-    PlanHour Hour(int h) => new() { Start = tomorrow.AddHours(h), TemplateId = data.Templates[0].Id };
+    PlanHour Hour(int h) => new() { Start = tomorrow.AddHours(h), TemplateId = data.Templates[0].Id, Signature = PlaylistGenerator.Signature(data.Templates[0]) };
     plan.Save(Hour(7), Enumerable.Range(0, 15).Select(i => Song(songs[i % songs.Length], 240)).ToList()); // the full hour
     // 08:00 not made; 09:00 made empty (no music for its lines); 10:00 forty minutes, one file gone.
     plan.Save(Hour(9), []);
@@ -498,7 +504,14 @@ Console.WriteLine("Tomorrow's daily playlists looked over (Pro's Home, the alert
     var lines = check.Lines("Tomorrow");
     Check(lines.Count == 5 && lines[0].Contains("08:00") && lines[3].Contains("a file") && lines[4].Contains("news.mp3"), $"…told in a line for each ({string.Join(" | ", lines)})");
     var unseen = PlanCheck.Day(db, data, tomorrow, options, _ => false);
-    Check(unseen.FilesUnseen && unseen.NotFound.Count == 0, "a computer that sees none of the files (paths not set): not a day of missing files, it says so");
+    Check(unseen.FilesUnseen && unseen.NotFound.Count == 0 && !unseen.AllGood && unseen.Lines("Tomorrow").Any(l => l.Contains("can be reached")),
+        "a computer that reaches none of the files (a share down, paths not set): not a day of missing files, but said (the alert never says \"ready\")");
+    // An hour made for another template (the playout makes it again soon): not made yet, not "empty"; one edited by hand is kept as it is.
+    plan.Save(new PlanHour { Start = tomorrow.AddHours(9), TemplateId = null, Signature = "" }, []);
+    var remade = PlanCheck.Day(db, data, tomorrow, options);
+    Check(remade.Missing.Contains(tomorrow.AddHours(9)) && !remade.Empty.Contains(tomorrow.AddHours(9)), "an hour made before its template was placed: still to be made, not empty");
+    plan.Save(new PlanHour { Start = tomorrow.AddHours(9), TemplateId = null, Signature = "", Edited = true }, []);
+    Check(PlanCheck.Day(db, data, tomorrow, options).Empty.Contains(tomorrow.AddHours(9)), "…edited by hand: it stays, and an empty one is said");
     for (int h = 8; h <= 10; h++) plan.Save(Hour(h), Enumerable.Range(0, 15).Select(i => Song(songs[i % songs.Length], 240)).ToList());
     data.Events.Clear();
     Check(PlanCheck.Day(db, data, tomorrow, options) is { AllGood: true } fine && fine.Lines("Tomorrow").Count == 0, "…all made and there: nothing to tell");

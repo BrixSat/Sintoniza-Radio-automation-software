@@ -241,17 +241,15 @@ sealed class HealthMonitor : IDisposable
     void CheckTomorrow(AppSettings settings, AlertSettings a)
     {
         var local = DateTime.Now;
-        if (_tomorrowFor is { } day && day != local.Date.AddDays(1))
-        {
-            lock (_active) _active.Remove("tomorrow");
-            _tomorrowFor = null;
-        }
         bool wanted = a.Tomorrow && local.Hour >= Math.Clamp(a.TomorrowHour, 0, 23) && settings.PlanDaysAhead >= 1 && Standby?.Invoke() != true;
-        if (!wanted)
-        {
-            if (!a.Tomorrow || Standby?.Invoke() == true) lock (_active) _active.Remove("tomorrow");
-            return;
-        }
+        lock (_active)
+            // Not wanted now (after midnight, switched off, standby): what was reported goes quietly.
+            if (!wanted || _tomorrowFor != local.Date.AddDays(1))
+            {
+                _active.Remove("tomorrow");
+                _tomorrowFor = null;
+            }
+        if (!wanted) return;
         if (local < _nextTomorrow || _tomorrowChecking is { IsCompleted: false } || _library.Db is not { } db || Schedule?.Invoke() is not { } data || PlanOptions == null) return;
         _nextTomorrow = local.AddMinutes(15);
         var tomorrow = local.Date.AddDays(1);
@@ -260,10 +258,17 @@ sealed class HealthMonitor : IDisposable
         {
             try
             {
-                var check = PlanCheck.Day(db, data, tomorrow, options);
-                var lines = check.Lines(L.T("Tomorrow"));
-                _tomorrowFor = tomorrow;
-                Problem("tomorrow", lines.Count > 0, () => string.Join("\n", lines), L.T("Tomorrow's daily playlists are ready"));
+                var lines = PlanCheck.Day(db, data, tomorrow, options).Lines(L.T("Tomorrow"));
+                string text = string.Join("\n", lines);
+                lock (_active)
+                {
+                    // Finished after midnight, or after this computer went standby: about a day that isn't tomorrow any more.
+                    if (DateTime.Now.Date.AddDays(1) != tomorrow || Standby?.Invoke() == true) return;
+                    _tomorrowFor = tomorrow;
+                    Problem("tomorrow", lines.Count > 0, () => text, L.T("Tomorrow's daily playlists are ready"));
+                    // Still wrong, but something else now: the ALERTS lamp says what (no new alert for it).
+                    if (lines.Count > 0) _active["tomorrow"] = text;
+                }
             }
             catch (Exception ex) { AppLog.Write($"Tomorrow's playlist check: {ex.Message}"); }
         });

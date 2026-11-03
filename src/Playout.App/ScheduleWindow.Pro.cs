@@ -25,9 +25,11 @@ public partial class ScheduleWindow
     List<(string Client, int Missed)> _missedYesterday = new();
     DateTime _nextMissedCheck;
     List<string> _breakWarnings = new();
-    /// <summary>What isn't ready in tomorrow's daily playlists (checked every 10 minutes).</summary>
-    List<string> _tomorrowWarnings = new();
+    /// <summary>What isn't ready in tomorrow's daily playlists, and the day it was checked on (every 10 minutes, and after midnight).</summary>
+    volatile DayLines _tomorrow = new(DateTime.MinValue, []);
+    sealed record DayLines(DateTime Day, List<string> Lines);
     DateTime _nextTomorrowCheck;
+    Task? _tomorrowChecking;
     /// <summary>The listeners now (counted by the computer on air); null: not counted.</summary>
     ListenerSample? _listening;
     DateTime _nextBreakCheck;
@@ -190,10 +192,12 @@ public partial class ScheduleWindow
                     _breakWarnings = BreakWarnings(db, data, now);
                     _nextBreakCheck = DateTime.UtcNow.AddMinutes(2);
                 }
-                if (DateTime.UtcNow >= _nextTomorrowCheck)
+                // Tomorrow's check (it can take a while on a slow share): on its own, never holding up the figures.
+                if ((DateTime.UtcNow >= _nextTomorrowCheck || _tomorrow.Day != now.Date) && _tomorrowChecking is not { IsCompleted: false })
                 {
-                    _tomorrowWarnings = TomorrowWarnings(db, data, station, now);
                     _nextTomorrowCheck = DateTime.UtcNow.AddMinutes(10);
+                    var day = now.Date;
+                    _tomorrowChecking = Task.Run(() => _tomorrow = new DayLines(day, TomorrowWarnings(db, data, station, day)));
                 }
                 var studios = db.IsMySql ? db.Studios(StationStore.Station) : null;
                 var listening = ListenersDb.Now(db, now);
@@ -214,11 +218,6 @@ public partial class ScheduleWindow
         }
     }
 
-    /// <summary>
-    /// Today's breaks still to come: those the adverts booked make longer than their longest, and those where two
-    /// clients of the same sector (or one client) follow each other because there aren't enough other adverts to go
-    /// between them.
-    /// </summary>
     /// <summary>Tomorrow's daily playlists: what isn't ready (none when the playouts don't make them a day ahead).</summary>
     static List<string> TomorrowWarnings(LibraryDb db, ScheduleData data, StationSettings? station, DateTime now)
     {
@@ -227,9 +226,7 @@ public partial class ScheduleWindow
         {
             var options = new PlaylistGenerator.Options(s.Crossfade, s.OtherCrossfade, TimeSpan.FromHours(s.FillSongHours), TimeSpan.FromMinutes(s.FillArtistMinutes));
             var check = PlanCheck.Day(db, data, now.Date.AddDays(1), options);
-            var lines = check.Lines(L.T("Tomorrow")).Select(l => "📋 " + l).ToList();
-            if (check.FilesUnseen) lines.Add(L.T("📋 Tomorrow's files can't be seen from this computer (its paths: the playout's Settings → Library → This computer's paths), so they weren't checked"));
-            return lines;
+            return check.Lines(L.T("Tomorrow")).Select(l => "📋 " + l).ToList();
         }
         catch (Exception ex)
         {
@@ -238,6 +235,11 @@ public partial class ScheduleWindow
         }
     }
 
+    /// <summary>
+    /// Today's breaks still to come: those the adverts booked make longer than their longest, and those where two
+    /// clients of the same sector (or one client) follow each other because there aren't enough other adverts to go
+    /// between them.
+    /// </summary>
     List<string> BreakWarnings(LibraryDb db, ScheduleData data, DateTime now)
     {
         var warnings = new List<string>();
@@ -323,7 +325,7 @@ public partial class ScheduleWindow
         // What needs attention.
         var warnings = new List<string>();
         if (_defaultPasswords.Count > 0) warnings.Add(L.F("🔑 Change the first password of {0} (Station › Users)", string.Join(", ", _defaultPasswords)));
-        warnings.AddRange(_tomorrowWarnings);
+        if (_tomorrow is { } tomorrow && tomorrow.Day == now.Date) warnings.AddRange(tomorrow.Lines); // yesterday's "tomorrow" is today
         if (stats.Missing > 0) warnings.Add(L.F("⚠ {0:N0} songs whose file is missing", stats.Missing));
         if (stats.Uncategorised > 0) warnings.Add(L.F("⚠ {0:N0} songs without a category", stats.Uncategorised));
         int noTemplate = Enumerable.Range(now.Hour, 24 - now.Hour).Count(h => data.TemplateAt(now.Date.AddHours(h)) == null);
