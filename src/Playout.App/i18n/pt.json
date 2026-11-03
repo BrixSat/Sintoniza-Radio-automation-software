@@ -2384,5 +2384,18 @@
  "Counts": "Contagens",
  "{0} isn't on the server; it has {1}": "{0} não está no servidor; tem {1}",
  "Listeners: not counted since {0:HH:mm}": "Ouvintes: não contados desde as {0:HH:mm}",
- "that is the stream's address: give the server's (http://host:port)": "esse é o endereço do stream: indique o do servidor (http://servidor:porta)"
+ "that is the stream's address: give the server's (http://host:port)": "esse é o endereço do stream: indique o do servidor (http://servidor:porta)",
+ "✗ Failed: {0}": "✗ Falhou: {0}",
+ "Posts what is on air now (or, with nothing on air, the station's name) to this address with the key below, and says what the page answered": "Envia o que está no ar agora (ou, sem nada no ar, o nome da estação) para este endereço com a chave abaixo, e diz o que a página respondeu",
+ "✓ The page took it: {0}": "✓ A página aceitou: {0}",
+ "the station's name (nothing on air)": "o nome da estação (nada no ar)",
+ "Type the page's address first.": "Escreva primeiro o endereço da página.",
+ "Type where it goes first.": "Escreva primeiro para onde vai.",
+ "Writes the text once (what is on air, or the station's name) and says how it went": "Escreve o texto uma vez (o que está no ar, ou o nome da estação) e diz como correu",
+ "✓ Written to {0}: {1}": "✓ Escrito em {0}: {1}",
+ "(from here, without what is next or the live show: the studio sends them with the next song)": "(a partir daqui, sem o que vem a seguir nem o programa em direto: o estúdio envia-os com a próxima música)",
+ "Nothing sent: {0}": "Nada enviado: {0}",
+ "Nothing written: the song on air has no cover, and there is no picture for songs without one (on air, the picture stays as it was)": "Nada escrito: a música no ar não tem capa, e não há imagem para músicas sem capa (no ar, a imagem fica como estava)",
+ "Sends the cover picture once, as on air (the song's, else the one for songs without a cover) and says how it went": "Envia a capa uma vez, como no ar (a da música, senão a das músicas sem capa) e diz como correu",
+ "(this one is switched off: on air it isn't written)": "(este está desligado: no ar não é escrito)"
 }

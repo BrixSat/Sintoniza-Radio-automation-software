@@ -74,6 +74,18 @@ public partial class ScheduleWindow
             if (saved is true) SavedText.Text = L.F("Station settings saved at {0:HH:mm:ss}. The playouts take them within a minute.", DateTime.Now);
             await ShowStationSettings(store); // as saved now (or undone)
         };
+        // The Test buttons of the website: what the studios played last, if it is still on air.
+        window.OnAirForTest = () =>
+        {
+            if (store.Db.LastPlayFile() is not { } last || DateTime.UtcNow - last.At > TimeSpan.FromHours(3)) return null;
+            double seconds = Playout.Engine.PlayoutEngine.IsUrl(last.Path) ? 0 : store.Db.GetByPath(last.Path)?.Duration ?? 0;
+            // Ended a while ago, and nothing after it: nothing is on air.
+            if (DateTime.UtcNow - last.At > TimeSpan.FromSeconds(seconds > 0 ? seconds + 60 : 15 * 60)) return null;
+            var kind = last.Path.StartsWith(Playout.Engine.Pause.Path, StringComparison.Ordinal) ? Playout.Engine.TrackKind.Pause
+                : Playout.Engine.PlayoutEngine.IsUrl(last.Path) ? Playout.Engine.TrackKind.Stream : Playout.Engine.TrackClassifier.Classify(last.Path);
+            return new WebTestNow(new Playout.Engine.Track(Guid.NewGuid(), last.Path, last.Artist, last.Title, seconds, kind), last.At, null, null, Partial: true);
+        };
+        window.NotForWebForTest = path => store.Db.IsNotForWeb(path);
         Show(StationSettingsTab, window);
         if (window.FindControl<Button>("CancelButton") is { } cancel) cancel.Content = L.T("Undo changes");
     }

@@ -266,6 +266,8 @@ public sealed class WebNowPlaying : IDisposable
         public MetadataOutput? Output { get; } = output;
         public Prepared? Sent;
         public string? Error;
+        /// <summary>The last send wrote nothing: a cover with no picture to send (the file is left as it was).</summary>
+        public bool Skipped;
     }
 
     readonly WebNowPlayingSettings _s;
@@ -292,7 +294,8 @@ public sealed class WebNowPlaying : IDisposable
     public event Action<string?>? StatusChanged;
 
     /// <param name="notForWeb">Whether the song with this file is kept off the website (asked in the background).</param>
-    public WebNowPlaying(WebNowPlayingSettings settings, string station, Func<string, bool>? notForWeb = null)
+    /// <param name="background">False: nothing is sent by itself, only with <see cref="SendNowAsync"/> (a test, once).</param>
+    public WebNowPlaying(WebNowPlayingSettings settings, string station, Func<string, bool>? notForWeb = null, bool background = true)
     {
         _s = settings.Clone();
         _station = station;
@@ -300,16 +303,20 @@ public sealed class WebNowPlaying : IDisposable
         _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RadioPlayout", Updates.CurrentText));
         if (_s.Url.Trim().Length > 0 || _s.Outputs.All(o => !o.Enabled)) _targets.Add(new Target(L.T("website"), null));
         foreach (var o in _s.Outputs.Where(o => o.Enabled)) _targets.Add(new Target(o.Display, o));
-        Task.Run(Run);
+        if (background) Task.Run(Run);
     }
 
+    /// <summary>The last send wrote nothing anywhere (a cover with no picture to send).</summary>
+    internal bool WroteNothing => _targets.Count > 0 && _targets.All(t => t.Skipped);
+
     /// <summary>What is on air and next (null: nothing), and the live show. Cheap to call often: sends only when they change.</summary>
-    public void Update(Track? onAir, Track? next, ShowInfo? show = null)
+    /// <param name="startedUtc">When what is on air started, if it isn't now (a test, from what the studios played).</param>
+    public void Update(Track? onAir, Track? next, ShowInfo? show = null, DateTime? startedUtc = null)
     {
         if (onAir?.Id != _nowId)
         {
             _nowId = onAir?.Id;
-            _nowStarted = DateTime.UtcNow;
+            _nowStarted = startedUtc ?? DateTime.UtcNow;
         }
         string key = $"{onAir?.Id}|{onAir?.Artist}|{onAir?.Title}|{next?.Id}|{next?.Artist}|{next?.Title}|{show?.Name}|{show?.Presenter}";
         if (key == _key) return;
@@ -392,7 +399,7 @@ public sealed class WebNowPlaying : IDisposable
         {
             if (_cover?.Path != c.OnAir.Path)
             {
-                byte[]? read = c.OnAir.IsStream || c.OnAir.Kind == TrackKind.Pause ? null : Tags.ReadCover(c.OnAir.Path);
+                byte[]? read = c.OnAir.IsStream || c.OnAir.Kind == TrackKind.Pause ? null : Tags.ReadCover(SharedPaths.ToLocal(c.OnAir.Path));
                 _cover = (c.OnAir.Path, read is { Length: <= MaxCover } ? read : null);
             }
             cover = _cover.Value.Cover;
@@ -443,6 +450,7 @@ public sealed class WebNowPlaying : IDisposable
                     if (!File.Exists(file)) throw new FileNotFoundException(L.F("the picture for songs without a cover isn't there: {0}", file));
                     bytes = await File.ReadAllBytesAsync(file, _stop.Token);
                 }
+                t.Skipped = bytes == null;
                 if (bytes != null) await t.Output.WriteAsync(bytes, _http, _stop.Token);
             }
             else await t.Output.WriteAsync(new UTF8Encoding(false).GetBytes(MetadataTemplate.Fill(t.Output.Template, current.Info, FileName(t.Output.Target))), _http, _stop.Token);
@@ -473,7 +481,7 @@ public sealed class WebNowPlaying : IDisposable
     }
 
     /// <summary>The file name a target ends in (for an http address, its ?file=), which says how fields are escaped.</summary>
-    static string FileName(string target)
+    internal static string FileName(string target)
     {
         target = target.Trim();
         if (Uri.TryCreate(target, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")

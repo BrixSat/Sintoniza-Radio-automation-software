@@ -998,6 +998,97 @@ Console.WriteLine("Now playing for the website (templates, files, the delay, son
     held.ForEach(c => c.Dispose());
 }
 
+// ───────────────────────── The website's Test buttons ─────────────────────────
+
+Console.WriteLine("Station settings → Website: Test buttons (the page, each text and the cover), also in Sintoniza Pro");
+{
+    string logo = Path.Combine(work, "web-test", "station-logo.png");
+    Directory.CreateDirectory(Path.GetDirectoryName(logo)!);
+    File.WriteAllBytes(logo, [0x89, 0x50, 0x4E, 0x47, 9, 9]);
+    var edited = new AppSettings { StationName = "Rádio Check", LogoPath = logo };
+    var sw = new SettingsWindow(edited, null, null, SettingsScope.Station, _ => null);
+    var onAir = new Track(Guid.NewGuid(), songs[0], "Check 1", "Tone 1", 4);
+    sw.OnAirForTest = () => new WebTestNow(onAir, DateTime.UtcNow.AddSeconds(-30), null, null, Partial: true);
+    var testOutput = typeof(SettingsWindow).GetMethod("TestOutput", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    var testPost = typeof(SettingsWindow).GetMethod("TestPost", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    string RunOutput(MetadataOutput o)
+    {
+        var result = new TextBlock();
+        var task = (Task)testOutput.Invoke(sw, [o, result, new Button()])!;
+        WaitUi(() => task.IsCompleted, 20);
+        return result.Text ?? "";
+    }
+    string textFile = Path.Combine(work, "web-test", "now.txt");
+    string said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Text, Template = "{artist} - {title}", Target = textFile });
+    Check(File.Exists(textFile) && File.ReadAllText(textFile) == "Check 1 - Tone 1" && said.StartsWith("✓"), $"Test on a text: written once with what is on air ({said})");
+    said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Text, Template = "{started}", Target = textFile, Enabled = false });
+    Check(File.ReadAllText(textFile) == DateTime.Now.AddSeconds(-30).ToString("HH:mm") && said.Contains(L.T("(this one is switched off: on air it isn't written)")),
+        $"…when it started, not when Test was clicked; a row switched off is written, and it says so ({said})");
+    var jingle = new Track(Guid.NewGuid(), songs[1], "", "Jingle Manhãs", 4, TrackKind.Jingle);
+    sw.OnAirForTest = () => new WebTestNow(jingle, DateTime.UtcNow, null, null);
+    File.WriteAllText(textFile, "before");
+    said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Text, Template = "{title}", Target = textFile });
+    Check(File.ReadAllText(textFile) == "before" && said.StartsWith("Nothing sent"), $"…the rules of the air: with Songs only, a jingle on air isn't written ({said})");
+    sw.OnAirForTest = () => new WebTestNow(onAir, DateTime.UtcNow, null, null);
+    sw.NotForWebForTest = path => path == songs[0];
+    said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Text, Template = "{title}", Target = textFile });
+    Check(File.ReadAllText(textFile) == "before", $"…nor a song kept off the website ({said})");
+    sw.NotForWebForTest = null;
+    sw.OnAirForTest = () => null;
+    RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Text, Template = "{artist} - {title}", Target = textFile });
+    Check(File.ReadAllText(textFile) == "Rádio Check", "…nothing on air: the station's name, never made-up test words on the live website");
+
+    string picture = Path.Combine(work, "web-test", "logo.png");
+    byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3];
+    File.WriteAllBytes(picture, png);
+    string coverFile = Path.Combine(work, "web-test", "cover.png");
+    said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Cover, Target = coverFile, Fallback = picture });
+    Check(File.Exists(coverFile) && File.ReadAllBytes(coverFile).SequenceEqual(png) && said.StartsWith("✓"), $"Test on the cover: a song without a cover sends the picture for those ({said})");
+    File.Delete(coverFile);
+    said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Cover, Target = coverFile });
+    Check(!File.Exists(coverFile) && !said.StartsWith("✓"), $"…no cover and no picture: nothing written (not even the logo: on air it isn't), and it says why ({said})");
+    Check(RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Text, Target = "" }).Length > 0 && !RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Cover, Target = "" }).StartsWith("✓"),
+        "…with no address: asks for one");
+
+    // The page (the PHP): what it got, and when it refuses.
+    var port = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    port.Start();
+    int free = ((System.Net.IPEndPoint)port.LocalEndpoint).Port;
+    port.Stop();
+    using var page = new System.Net.HttpListener();
+    page.Prefixes.Add($"http://127.0.0.1:{free}/");
+    page.Start();
+    var got = new List<(string Method, string Path, string Key, string Body)>();
+    _ = Task.Run(async () =>
+    {
+        while (page.IsListening)
+        {
+            System.Net.HttpListenerContext ctx;
+            try { ctx = await page.GetContextAsync(); } catch { break; }
+            string body = new StreamReader(ctx.Request.InputStream).ReadToEnd();
+            string key = ctx.Request.Headers["X-Api-Key"] ?? "";
+            lock (got) got.Add((ctx.Request.HttpMethod, ctx.Request.Url!.PathAndQuery, key, body));
+            ctx.Response.StatusCode = key == "secret" ? 200 : 403;
+            ctx.Response.Close();
+        }
+    });
+    sw.OnAirForTest = () => new WebTestNow(onAir, DateTime.UtcNow, null, null);
+    sw.WebUrlBox.Text = $"http://127.0.0.1:{free}/nowplaying.php";
+    sw.WebKeyBox.Text = "secret";
+    var post = (Task)testPost.Invoke(sw, [])!;
+    WaitUi(() => post.IsCompleted, 20);
+    lock (got) Check(got.Count == 1 && got[0].Method == "POST" && got[0].Body.Contains("\"title\":\"Tone 1\"") && sw.WebPostTestText.Text!.StartsWith("✓"),
+        $"Test on the page's address: the JSON posted once, with the key ({sw.WebPostTestText.Text})");
+    sw.WebKeyBox.Text = "wrong";
+    post = (Task)testPost.Invoke(sw, [])!;
+    WaitUi(() => post.IsCompleted, 20);
+    Check(sw.WebPostTestText.Text!.StartsWith("✗") && sw.WebPostTestText.Text.Contains("403"), $"…a page that refuses it: what it answered ({sw.WebPostTestText.Text})");
+    said = RunOutput(new MetadataOutput { Kind = MetadataOutputKind.Cover, Target = $"http://127.0.0.1:{free}/nowplaying.php?file=cover.png", Password = "secret", Fallback = picture });
+    lock (got) Check(said.StartsWith("✓") && got[^1].Method == "PUT" && got[^1].Path.EndsWith("file=cover.png") && got[^1].Body.Length > 0, $"…the cover to the PHP page, in a PUT with its key ({said})");
+    page.Stop();
+    Directory.Delete(Path.Combine(work, "web-test"), true);
+}
+
 // ───────────────────────── RDS: RT+ over UECP ─────────────────────────
 
 Console.WriteLine("RDS: RT+ over UECP (as an encoder reads the frames)");

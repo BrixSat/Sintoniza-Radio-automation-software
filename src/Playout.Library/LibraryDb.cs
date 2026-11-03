@@ -886,6 +886,16 @@ public sealed partial class LibraryDb
             .ToList();
     }
 
+    /// <summary>The last item played from the playlist on this station, with its file (UTC); null if nothing has played.</summary>
+    public (string Path, string Title, string Artist, DateTime At)? LastPlayFile()
+    {
+        using var c = Connect();
+        var r = c.QueryFirstOrDefault<(string Path, string Title, string Artist, string At)?>(
+            "SELECT path, title, artist, started_at FROM plays WHERE station_id = @station AND source = 'playlist' ORDER BY started_at DESC LIMIT 1",
+            new { station = CurrentStation.Id });
+        return r is { } p ? (p.Path, p.Title, p.Artist, ParseTime(p.At)) : null;
+    }
+
     /// <summary>The last item that went on air on this station, in any of its studios (UTC), or null.</summary>
     public (string Title, string Artist, DateTime At)? LastPlay()
     {

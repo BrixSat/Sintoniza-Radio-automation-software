@@ -465,6 +465,7 @@ CHAPTERS = [
           "FTP, que servem também para um codificador de streaming ou para um site que só aceita ficheiros."),
     ("fig", "station-website", "Definições da estação → Site", [
         ("WebUrlBox", "O <b>endereço</b> para onde é enviado o JSON. Se só quiser os ficheiros mais abaixo, deixe-o vazio. Por baixo fica a <b>chave</b>: a página só aceita envios que a tragam. Com <b>Só músicas</b>, durante jingles, anúncios e programas o site continua a mostrar a última música."),
+        ("WebPostTestButton", "<b>Testar</b> envia uma vez para esta página, com a chave, e diz o que ela respondeu: <i>A página aceitou</i>, ou porque não (uma chave errada dá 403)."),
         ("WebCoverBox", "Envia também a <b>capa</b> da música, quando o ficheiro a tem."),
         ("WebDelayBox", "<b>Atrasar cada mudança</b> estes segundos. Ponha aqui o atraso do stream, para o site mudar no momento em que os ouvintes ouvem a música, e não antes."),
         ("WebOutputsPanel", "<b>FICHEIROS E FTP</b>: cada linha é um ficheiro a escrever. O destino pode ser um ficheiro neste computador ou numa partilha, um endereço ftp:// ou ftps://, ou um endereço http(s):// que recebe o ficheiro por HTTP PUT."),
@@ -478,6 +479,14 @@ CHAPTERS = [
           "ou .json, os campos são escritos de forma segura para esse formato."),
     ("p", "Num destino FTP, preencha o <b>Utilizador FTP</b> e a palavra-passe. Num endereço web, a caixa da palavra-passe "
           "leva a chave da página."),
+    ("p", "Cada texto e a capa têm o seu botão <b>Testar</b>, no topo da caixa. Escreve esse destino uma vez, no ficheiro, no "
+          "servidor FTP ou na página PHP, e diz por baixo se correu bem ou o que falhou. O teste envia o que está no ar, com as "
+          "mesmas regras do ar: com <b>Só músicas</b> não envia um jingle nem um anúncio, nem uma música marcada <i>Fora do "
+          "site</i>. Sem nada no ar, um texto leva o nome da estação, nunca palavras de teste inventadas no seu site. O teste "
+          "da capa envia a capa da música no ar, senão a imagem para músicas sem capa; sem nenhuma, diz que nada foi escrito, "
+          "como no ar. Os testes funcionam também no Sintoniza Pro, para poder configurar tudo a partir do escritório. A partir "
+          "da Pro não se sabe o que vem a seguir nem o programa em direto; o estúdio envia-os com a próxima música. No estúdio, o programa de "
+          "emissão tem ainda <b>Enviar agora</b>, que envia para todos de uma vez."),
     ("p", "O projeto inclui uma página PHP de exemplo, na pasta docs/now-playing, que recebe o JSON e o guarda em "
           "nowplaying.txt e nowplaying.json para o site mostrar. A mesma página aceita os ficheiros enviados por HTTP PUT, "
           "como a capa."),
@@ -877,7 +886,7 @@ CHAPTERS = [
     ("h3", "…para mostrar no site a música que está a tocar?"),
     ("steps", ["Na Pro, abra <b>Definições da estação → Site</b> e ligue <b>Enviar o que está a tocar para o site da estação</b>.",
                "Ponha o endereço da página e a chave, ou junte um texto ou a capa em <b>FICHEIROS E FTP</b>.",
-               "Em <b>Atrasar cada mudança</b>, ponha o atraso do stream, e carregue em <b>Enviar agora</b> para experimentar."]),
+               "Em <b>Atrasar cada mudança</b>, ponha o atraso do stream, e carregue em <b>Testar</b> ao lado de cada um para experimentar."]),
     ("h3", "…para trocar uma música às 9:00 de amanhã?"),
     ("steps", ["Na Pro, abra as <b>Playlists diárias</b>, avance com ▶ até amanhã e escolha a hora <b>09:00</b>.", "Selecione a música e carregue em <b>Outra música</b>, ou em <b>Remover</b>, e depois faça duplo clique numa música da biblioteca."]),
     ("h3", "…para pôr uma pasta de músicas no Gold?"),

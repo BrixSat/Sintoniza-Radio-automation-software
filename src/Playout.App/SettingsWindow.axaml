@@ -725,7 +725,12 @@
                     <StackPanel x:Name="WebPanel" Spacing="12">
                         <StackPanel>
                             <TextBlock Classes="label" Text="Address the JSON is posted to (empty: only the files below)" />
-                            <TextBox x:Name="WebUrlBox" PlaceholderText="https://www.example.com/nowplaying/nowplaying.php" />
+                            <DockPanel>
+                                <Button x:Name="WebPostTestButton" DockPanel.Dock="Right" Content="Test" Margin="8,0,0,0"
+                                        ToolTip.Tip="Posts what is on air now (or, with nothing on air, the station's name) to this address with the key below, and says what the page answered" />
+                                <TextBox x:Name="WebUrlBox" PlaceholderText="https://www.example.com/nowplaying/nowplaying.php" />
+                            </DockPanel>
+                            <TextBlock x:Name="WebPostTestText" Classes="note" Margin="0,4,0,0" IsVisible="False" />
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Classes="label" Text="Key (the page only accepts posts with it)" />

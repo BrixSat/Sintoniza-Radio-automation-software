@@ -12,6 +12,15 @@ public partial class SettingsWindow
     /// <summary>The outputs being edited (their rows change them in place).</summary>
     readonly List<MetadataOutput> _webOutputs = new();
 
+    /// <summary>
+    /// For the Test buttons where nothing plays (Sintoniza Pro): what is on air, as the studios last said (null: nothing
+    /// lately; the station's name is sent). Asked off the UI thread.
+    /// </summary>
+    internal Func<WebTestNow?>? OnAirForTest { get; set; }
+
+    /// <summary>For the Test buttons in Sintoniza Pro: whether the song with this file is kept off the website.</summary>
+    internal Func<string, bool>? NotForWebForTest { get; set; }
+
     const string WebFields = "{artist} {title} {type} {duration} {started} {next_artist} {next_title} {station} {show} {presenter}";
 
     void LoadWeb(WebNowPlayingSettings web)
@@ -40,6 +49,91 @@ public partial class SettingsWindow
         // Only the on-air program has something to send; Sintoniza Pro (where this tab is) has nothing on air.
         WebTestButton.IsVisible = WebTestText.IsVisible = _engine != null;
         WebTestButton.Click += async (_, _) => await TestWeb();
+        WebPostTestButton.Click += async (_, _) => await TestPost();
+    }
+
+    /// <summary>What a test sends: what is on air here (with what is next and the show), else what the studios last played (Pro).</summary>
+    async Task<WebTestNow?> TestNow()
+    {
+        if (_engine != null)
+            return _engine.GetStatus() is { State: not PlayerState.Stopped, Current: { } current } st
+                ? new WebTestNow(current, DateTime.UtcNow.AddSeconds(-Math.Max(0, st.Position - current.Start)), _main?.WebNext, _main?.WebShow)
+                : null;
+        if (OnAirForTest is not { } onAir) return null;
+        try { return await Task.Run(onAir); }
+        catch (Exception) { return null; } // the database can't be read: the station's name
+    }
+
+    string TestStation() => StationNameBox.Text?.Trim() is { Length: > 0 } name ? name : AppInfo.Name;
+
+    /// <summary>
+    /// Sends once with these settings, as the on-air program would: the same rules (songs only, songs kept off the
+    /// website, pauses, the cover's size), nothing made up. The answer: whether it worked, and what went.
+    /// </summary>
+    async Task<(bool Ok, string Text)> SendTest(WebNowPlayingSettings web)
+    {
+        web.Enabled = true;
+        web.DelaySeconds = 0;
+        var now = await TestNow();
+        Func<string, bool>? notForWeb = _main != null ? path => _main.MusicLibrary.Db?.IsNotForWeb(path) ?? false : NotForWebForTest;
+        using var output = new WebNowPlaying(web, TestStation(), notForWeb, background: false);
+        output.Update(now?.OnAir, now?.Next, now?.Show, now?.Started);
+        string? said = await Task.Run(output.SendNowAsync);
+        if (output.Error != null) return (false, L.F("✗ Failed: {0}", output.Error));
+        if (said != null) return (false, L.F("Nothing sent: {0}", said)); // what is on air isn't for the website
+        if (output.WroteNothing)
+            return (false, L.T("Nothing written: the song on air has no cover, and there is no picture for songs without one (on air, the picture stays as it was)"));
+        string what = now?.OnAir is { } item ? item.Display : L.T("the station's name (nothing on air)");
+        if (now is { Partial: true, OnAir: not null }) what += " " + L.T("(from here, without what is next or the live show: the studio sends them with the next song)");
+        return (true, what);
+    }
+
+    /// <summary>Posts the JSON to the website's page only, with the address and key on screen.</summary>
+    async Task TestPost()
+    {
+        var web = WebFromUi();
+        WebPostTestText.IsVisible = true;
+        if (web.Url.Length == 0) { WebPostTestText.Text = L.T("Type the page's address first."); return; }
+        web.Outputs = new();
+        WebPostTestButton.IsEnabled = false;
+        WebPostTestText.Text = L.T("Sending…");
+        try
+        {
+            var (ok, text) = await SendTest(web);
+            WebPostTestText.Text = ok ? L.F("✓ The page took it: {0}", text) : text;
+        }
+        finally
+        {
+            WebPostTestButton.IsEnabled = true;
+        }
+    }
+
+    /// <summary>Writes one output (a text, or the cover picture) once, to its file, FTP or web page, and says how it went.</summary>
+    async Task TestOutput(MetadataOutput o, TextBlock result, Button button)
+    {
+        result.IsVisible = true;
+        if (o.Target.Trim().Length == 0) { result.Text = L.T("Type where it goes first."); return; }
+        button.IsEnabled = false;
+        result.Text = L.T("Sending…");
+        try
+        {
+            var output = o.Clone();
+            output.Enabled = true;
+            var web = WebFromUi();
+            web.Url = "";
+            web.Outputs = [output];
+            var (ok, text) = await SendTest(web);
+            result.Text = (ok ? L.F("✓ Written to {0}: {1}", output.Display, text) : text)
+                + (o.Enabled ? "" : " " + L.T("(this one is switched off: on air it isn't written)"));
+        }
+        catch (Exception ex)
+        {
+            result.Text = L.F("✗ Failed: {0}", ex.Message);
+        }
+        finally
+        {
+            button.IsEnabled = true;
+        }
     }
 
     WebNowPlayingSettings WebFromUi() => new()
@@ -69,6 +163,17 @@ public partial class SettingsWindow
             };
             DockPanel.SetDock(remove, Dock.Right);
             head.Children.Add(remove);
+            var test = new Button
+            {
+                Content = L.T("Test"), Classes = { "tool" }, Margin = new Avalonia.Thickness(0, 0, 6, 0),
+                [ToolTip.TipProperty] = o.Kind == MetadataOutputKind.Cover
+                    ? L.T("Sends the cover picture once, as on air (the song's, else the one for songs without a cover) and says how it went")
+                    : L.T("Writes the text once (what is on air, or the station's name) and says how it went"),
+            };
+            var testResult = new TextBlock { Classes = { "note" }, TextWrapping = TextWrapping.Wrap, IsVisible = false };
+            test.Click += async (_, _) => await TestOutput(o, testResult, test);
+            DockPanel.SetDock(test, Dock.Right);
+            head.Children.Add(test);
             var enabled = new CheckBox
             {
                 Content = o.Kind == MetadataOutputKind.Cover ? L.T("The cover picture") : L.T("A text"),
@@ -140,6 +245,7 @@ public partial class SettingsWindow
                     Text = L.T("The picture is written as it is in the song's file (JPEG or PNG), whatever the name ends with."),
                 });
             }
+            panel.Children.Add(testResult);
             WebOutputsPanel.Children.Add(new Border
             {
                 BorderBrush = Brushes.Gray, BorderThickness = new Avalonia.Thickness(1), CornerRadius = new Avalonia.CornerRadius(4),
@@ -185,3 +291,6 @@ public partial class SettingsWindow
         WebTestButton.IsEnabled = true;
     }
 }
+
+/// <summary>What is on air for a Test button: the item, when it started (UTC), what is next and the live show; Partial: next and the show aren't known (Sintoniza Pro).</summary>
+internal sealed record WebTestNow(Track? OnAir, DateTime? Started, Track? Next, ShowInfo? Show, bool Partial = false);

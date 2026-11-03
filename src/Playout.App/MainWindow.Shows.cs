@@ -13,6 +13,10 @@ public partial class MainWindow
     (LiveShow Show, DateTime Start, DateTime End)? _show;
 
     /// <summary>The live show on air, for RDS and the website; null when none is.</summary>
+    /// <summary>For the website's Test buttons: the live show, and the item after the one on air.</summary>
+    internal ShowInfo? WebShow => ShowNow;
+    internal Track? WebNext => NextItem();
+
     ShowInfo? ShowNow => _show is { } s ? new ShowInfo(s.Show.Name.Trim(), s.Show.Presenter.Trim(), s.End.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")) : null;
 
     /// <summary>Once a second: a show starting or ending switches the mode (on the studio on air only).</summary>

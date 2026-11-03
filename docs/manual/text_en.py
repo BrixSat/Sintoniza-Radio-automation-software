@@ -556,6 +556,7 @@ CHAPTERS = [
           "on air sends it, so a standby studio never interferes."),
     ("fig", "station-website", "Station settings → Website", [
         ("WebUrlBox", "The address of the page that receives now playing. Sintoniza posts it there as JSON: the station, what is on air and what is next, and the live show. The <b>key</b> below it goes with every post, so the page can refuse anyone else. Leave the address empty if you only want the files further down."),
+        ("WebPostTestButton", "<b>Test</b> posts once to this page, with the key, and tells you what it answered: <i>The page took it</i>, or why not (a wrong key gives 403)."),
         ("WebCoverBox", "Send the song's cover picture too, when the file has one. Just above, <b>Songs only</b> keeps the last song on the website during jingles, adverts and programmes."),
         ("WebDelayBox", "<b>Hold every change back</b> by this many seconds. Set it to your stream's delay, so the website changes when listeners actually hear the new song."),
         ("WebOutputsPanel", "<b>Files and FTP</b>: each one is written whenever now playing changes."),
@@ -575,8 +576,15 @@ CHAPTERS = [
         "an <b>FTP</b> server, with an address such as <i>ftp://server/folder/song.txt</i>, or <i>ftps://</i> for FTP over TLS, with its user and password;",
         "a web page that takes it by <b>HTTP PUT</b>. The example PHP page that comes with Sintoniza does this; its key goes in the password box.",
     ]),
-    ("p", "<b>Send now</b> sends what is on air straight away, so you can check it works. If the website or the FTP server "
-          "can't be reached, Sintoniza tries again every 30 seconds, and the WEBSITE lamp in the studio turns red."),
+    ("p", "Each text and the cover has its own <b>Test</b> button, at the top of its box. It writes that one once, to its file, "
+          "FTP server or PHP page, and says underneath whether it worked or what went wrong. The test sends what is on air "
+          "now, with the same rules as on air: with <b>Songs only</b> a jingle or an advert isn't sent, nor is a song marked "
+          "<i>Not on the website</i>. If nothing is on air, a text gets the station's name, never made-up test words on your "
+          "website. The cover test sends the cover of the song on air, or else the picture for songs without a cover; with "
+          "neither, it says nothing was written, as on air. The tests work in Sintoniza Pro too, so you can set everything "
+          "up from the office. From Pro they don't know what is next or the live show; the studio sends those with the next song."),
+    ("p", "In the studio, the on-air program also has <b>Send now</b>, which sends to all of them at once. If the website or "
+          "the FTP server can't be reached, Sintoniza tries again every 30 seconds, and the WEBSITE lamp in the studio turns red."),
     ("tip", "Songs marked <b>Not on the website</b> in the library are never sent. A pause isn't either. The website simply "
             "keeps what it showed before."),
     ("h2", "ERC quotas (Portuguese music)"),
@@ -966,7 +974,7 @@ CHAPTERS = [
           "go to the Folders tab, right-click the folder and choose Category → Gold."),
     ("h3", "…show the song on air on our website?"),
     ("p", "In Pro → Station settings → <b>Website</b>, tick <b>Send now playing to the station's website</b>. Fill in the "
-          "address of your page and its key, or add a text to be sent by FTP. Click <b>Send now</b> to check, then <b>Save</b>."),
+          "address of your page and its key, or add a text to be sent by FTP. Click <b>Test</b> beside each one to check it, then <b>Save</b>."),
     ("h3", "…send the ERC last month's music?"),
     ("steps", ["In Pro, open <b>ERC quotas</b> and choose <b>Last month</b>.", "Check the quotas, and classify anything under <i>Songs to classify</i>.",
                "Click <b>Export for the ERC (XML)…</b>, then upload the file on the ERC's portal."]),
@@ -985,7 +993,7 @@ CHAPTERS = [
         ["A song is skipped with “FileOpen”", "The file isn't where the library says it is. <b>Scan</b> again."],
         ["Listening is heard on air", "In Settings → Audio, set <b>Preview</b> to an output that isn't on air, such as headphones or the desk's PFL."],
         ["A status lamp is red", "Point at it to read what is wrong, and click it to go straight to its settings."],
-        ["The website doesn't change", "Look at the WEBSITE lamp. In Pro → Station settings → Website, click <b>Send now</b> and read the message. Remember that songs marked <i>Not on the website</i> are never sent."],
+        ["The website doesn't change", "Look at the WEBSITE lamp. In Pro → Station settings → Website, click <b>Test</b> on the page and on each text, and read what it says. Remember that songs marked <i>Not on the website</i> are never sent."],
         ["Something went wrong on air", "In Settings → Safety, click <b>Open log folder</b>: there is one file a day. Pro → Station settings → Alerts can warn you by Telegram or e-mail next time."],
         ["A Windows or Mac studio doesn't find the songs", "In Settings → Library → <b>This computer's paths</b>, say where the library's music is on that computer. <b>Test</b> tells you how many songs it finds."],
         ["The on-air program shows STANDBY", "Another computer is on air, and the bar says which. Press <b>Take on air</b> if this one should be."],

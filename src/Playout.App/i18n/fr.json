@@ -2384,5 +2384,18 @@
  "Counts": "Relevés",
  "{0} isn't on the server; it has {1}": "{0} n'est pas sur le serveur ; il a {1}",
  "Listeners: not counted since {0:HH:mm}": "Auditeurs : non comptés depuis {0:HH:mm}",
- "that is the stream's address: give the server's (http://host:port)": "c'est l'adresse du flux : donnez celle du serveur (http://hôte:port)"
+ "that is the stream's address: give the server's (http://host:port)": "c'est l'adresse du flux : donnez celle du serveur (http://hôte:port)",
+ "✗ Failed: {0}": "✗ Échec : {0}",
+ "Posts what is on air now (or, with nothing on air, the station's name) to this address with the key below, and says what the page answered": "Envoie ce qui est à l'antenne (ou, sans rien à l'antenne, le nom de la station) à cette adresse avec la clé ci-dessous, et dit ce que la page a répondu",
+ "✓ The page took it: {0}": "✓ La page l'a accepté : {0}",
+ "the station's name (nothing on air)": "le nom de la station (rien à l'antenne)",
+ "Type the page's address first.": "Saisissez d'abord l'adresse de la page.",
+ "Type where it goes first.": "Saisissez d'abord où l'envoyer.",
+ "Writes the text once (what is on air, or the station's name) and says how it went": "Écrit le texte une fois (ce qui est à l'antenne, ou le nom de la station) et dit comment ça s'est passé",
+ "✓ Written to {0}: {1}": "✓ Écrit dans {0} : {1}",
+ "(from here, without what is next or the live show: the studio sends them with the next song)": "(d'ici, sans ce qui suit ni l'émission en direct : le studio les envoie avec le prochain titre)",
+ "Nothing sent: {0}": "Rien n'a été envoyé : {0}",
+ "Nothing written: the song on air has no cover, and there is no picture for songs without one (on air, the picture stays as it was)": "Rien n'a été écrit : le titre à l'antenne n'a pas de pochette, et il n'y a pas d'image pour les titres sans pochette (à l'antenne, l'image reste telle quelle)",
+ "Sends the cover picture once, as on air (the song's, else the one for songs without a cover) and says how it went": "Envoie la pochette une fois, comme à l'antenne (celle du titre, sinon celle des titres sans pochette) et dit comment ça s'est passé",
+ "(this one is switched off: on air it isn't written)": "(celui-ci est désactivé : à l'antenne il n'est pas écrit)"
 }

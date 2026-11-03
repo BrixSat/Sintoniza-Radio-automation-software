@@ -245,8 +245,9 @@ engine for decoding, mixing and streaming.
   (`{artist}`, `{title}`, `{next_title}`, `{show}`, `{presenter}`…: a line for the website or a streaming encoder, an
   XML or HTML page) and the **cover picture** (or the station's logo when a song has none), to a file, by **FTP / FTPS**
   or by **HTTP PUT**. Every change can be **held back** by the stream's delay, so the website changes when listeners
-  hear it. Songs marked **Not on the website** in the library (right-click) are never sent: the website keeps what it
-  had. [docs/now-playing](docs/now-playing) has the format and a PHP page that keeps it in `nowplaying.txt` and
+  hear it. A **Test** button beside the page's address and on each text and the cover (also in Sintoniza Pro) sends that
+  one once and says what the page or the FTP server answered. Songs marked **Not on the website** in the library
+  (right-click) are never sent: the website keeps what it had. [docs/now-playing](docs/now-playing) has the format and a PHP page that keeps it in `nowplaying.txt` and
   `nowplaying.json`, and takes the uploaded files.
 - **Listener counts** (Sintoniza Pro → Station settings → Streaming → *Count the listeners*): every minute the computer on
   air reads how many listen from the Icecast or Shoutcast server's public statistics (several mount points added up, also
