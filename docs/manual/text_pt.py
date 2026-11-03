@@ -391,7 +391,7 @@ CHAPTERS = [
         ["Streaming", "O servidor Icecast ou Shoutcast, o formato e o bitrate, e a contagem de ouvintes"],
         ["RDS", "O PS, o radiotexto e o RT+"],
         ["Site", "O que está a tocar, enviado para o site da estação"],
-        ["Alertas", "Avisos por Telegram, e-mail ou web: silêncio, stream em baixo, falhas, disco cheio, relógio, cópias"],
+        ["Alertas", "Avisos por Telegram, e-mail ou web: silêncio, stream em baixo, falhas, disco cheio, relógio, cópias, playlists de amanhã por preparar"],
         ["Playlist", "Quantos dias de playlists diárias se fazem com antecedência e as cores das linhas"],
     ]),
 ]),
@@ -407,7 +407,7 @@ CHAPTERS = [
         ("NavPanel", "As <b>ferramentas</b>, por grupos: Início; Biblioteca, com músicas, categorias e importação; Programação, com modelos de hora, playlists diárias, eventos e programas; Publicidade, com blocos, clientes e campanhas; Estação, com definições, cartwalls e utilizadores."),
         ("HomeClock", "O relógio e a data."),
         ("HomeToday", "<b>Hoje</b>: as horas planeadas, os blocos e anúncios marcados, os eventos e os voice tracks."),
-        ("HomeWarnings", "<b>A verificar</b>: ficheiros em falta, músicas sem categoria, horas sem modelo, campanhas a acabar esta semana, blocos que ficam longos demais e alterações por guardar."),
+        ("HomeWarnings", "<b>A verificar</b>: ficheiros em falta, músicas sem categoria, horas sem modelo, campanhas a acabar esta semana, blocos que ficam longos demais, alterações por guardar e o que não está pronto nas <b>playlists diárias de amanhã</b> (veja abaixo)."),
         ("HomeComputer", "<b>Este computador</b>: o sistema, o processador, a memória, o disco livre e há quanto tempo está ligado. Ao lado, a biblioteca e a base de dados."),
         ("NowTitleText", "O que está <b>a tocar</b> no ar, segundo o histórico de todos os estúdios, e o modelo desta hora."),
         ("BoxStationText", "A estação, a base de dados e quem está a trabalhar aqui."),
@@ -415,6 +415,16 @@ CHAPTERS = [
         ("StatusClock", "…e a data e a hora."),
     ]),
     ("p", "Com uma biblioteca partilhada, a barra de estado também diz que computador está no ar e quais estão de reserva (capítulo 3)."),
+    ("p", "As <b>playlists diárias de amanhã</b> são verificadas a cada dez minutos, para um problema aparecer na véspera e "
+          "não no ar. O Início diz-lhe, numa linha cada, se há uma hora com modelo mas ainda sem playlist diária, uma hora que "
+          "ficou vazia porque o modelo não encontrou música, uma hora com mais de três minutos a menos (a música de enchimento "
+          "tocaria o resto), uma música cujo ficheiro não está lá, e um bloco publicitário ou evento que ia deixar algo de fora, "
+          "como um anúncio ou o ficheiro das notícias que não se encontra. O computador no ar também pode enviar isto como "
+          "alerta, a partir das 18:00 ou da hora que escolher em <b>Definições da estação → Alertas</b>, para alguém o "
+          "resolver antes de a noite acabar."),
+    ("tip", "Se o Início disser que os ficheiros de amanhã não se veem deste computador, é porque este computador do escritório "
+            "não chega à música onde os estúdios chegam. Diga onde ela está em <b>Definições → Biblioteca → Caminhos deste "
+            "computador</b>, no programa de emissão. A partir daí os ficheiros também são verificados daqui."),
     ("h2", "Músicas"),
     ("p", "Aqui está a biblioteca inteira, com pesquisa, categorias, andamento e energia, e etiquetas. Com o botão direito "
           "numa música chega à categoria, às restrições, aos dados da ERC, a <b>Fora do site</b>, a <b>Editar etiquetas…</b> "

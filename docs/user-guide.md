@@ -300,7 +300,9 @@ shows by itself within half a minute; **⟳ Refresh** in the toolbar (F5) reads 
 
 It opens on **Home**: the clock, what is on air, **today** (hours planned, ad breaks and adverts booked, events,
 voice tracks), what **needs attention** (missing files, songs without a category, hours without a template,
-campaigns ending this week, unsaved changes), the **library**, the **database** and **this computer** (system,
+campaigns ending this week, unsaved changes, and **tomorrow's daily playlists** — hours not made yet, empty or more than
+3 minutes short, files not found, an ad break's advert or an event's file that would be left out; checked every 10
+minutes, also sent as an alert from the hour set in Station settings → Alerts), the **library**, the **database** and **this computer** (system,
 processor, memory, free disk, how long it has been on). **Songs** shows the whole library (search, categories,
 tempo and energy, tags). Double-click a song (or select it and press Space or ▶ at the bottom) to listen, on this
 computer's Preview output; right-click → **Edit cue points…** (the waveform, Cue In, Intro, Outro, Mix, Cue Out —

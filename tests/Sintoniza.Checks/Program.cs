@@ -467,6 +467,43 @@ Console.WriteLine("A restart (yesterday's playlist saved, a daily playlist for e
     Pump(10);
 }
 
+// ───────────────────────── Tomorrow's daily playlists ─────────────────────────
+
+Console.WriteLine("Tomorrow's daily playlists looked over (Pro's Home, the alerts)");
+{
+    var db = LibraryDb.Open(new LibrarySettings { File = Path.Combine(work, "tomorrow.db") });
+    var tomorrow = DateTime.Today.AddDays(1);
+    var slots = new[] { 7, 8, 9, 10 }.Select(h => new WeekTime { Day = tomorrow.DayOfWeek, Time = $"{h:00}:00:00" }).ToList();
+    var data = new ScheduleData { Templates = { new PlaylistTemplate { Name = "Hits", Slots = slots, Lines = [new TemplateLine { Kind = "music" }] } } };
+    string gone = Path.Combine(work, "gone", "Gone - Away.mp3");
+    data.Events.Add(new ScheduledEvent { Name = "News", Path = Path.Combine(work, "gone", "news.mp3"), Slots = [new WeekTime { Day = tomorrow.DayOfWeek, Time = "07:15:00" }] });
+    data.Normalize();
+    var plan = new PlanStore(db);
+    PlanItem Song(string path, double seconds) => new() { Path = path, Artist = "Check", Title = Path.GetFileNameWithoutExtension(path), Seconds = seconds };
+    PlanHour Hour(int h) => new() { Start = tomorrow.AddHours(h), TemplateId = data.Templates[0].Id };
+    plan.Save(Hour(7), Enumerable.Range(0, 15).Select(i => Song(songs[i % songs.Length], 240)).ToList()); // the full hour
+    // 08:00 not made; 09:00 made empty (no music for its lines); 10:00 forty minutes, one file gone.
+    plan.Save(Hour(9), []);
+    plan.Save(Hour(10), Enumerable.Range(0, 9).Select(i => Song(songs[i % songs.Length], 240)).Append(Song(gone, 240)).ToList());
+    var options = new PlaylistGenerator.Options(0, 0, TimeSpan.FromHours(3), TimeSpan.FromHours(1));
+    var check = PlanCheck.Day(db, data, tomorrow, options);
+    Check(check.Planned == 4 && check.Missing.SequenceEqual([tomorrow.AddHours(8)]), $"an hour with a template and no daily playlist ({string.Join(", ", check.Missing.Select(h => h.ToString("HH:mm")))})");
+    Check(check.Empty.SequenceEqual([tomorrow.AddHours(9)]), "…an hour made with nothing in it");
+    Check(check.Short.Count == 1 && check.Short[0].Hour == tomorrow.AddHours(10) && Math.Round(check.Short[0].By.TotalMinutes) == 20,
+        $"…an hour 20 minutes short (the full one isn't) ({string.Join(", ", check.Short.Select(x => $"{x.Hour:HH:mm} {x.By.TotalMinutes:0}"))})");
+    Check(check.NotFound.Count == 1 && check.NotFound[0].What.Contains("Gone - Away") && check.NotFound[0].At == tomorrow.AddHours(10).AddMinutes(36),
+        $"…a file of the daily playlists not found, with when it plays ({string.Join("; ", check.NotFound.Select(n => $"{n.At:HH:mm} {n.What}"))})");
+    Check(check.Entries.Count == 1 && check.Entries[0].At == tomorrow.AddHours(7).AddMinutes(15) && check.Entries[0].What.Contains("news.mp3"),
+        $"…an event the playout would leave out (its file isn't there), as it would say it ({string.Join("; ", check.Entries.Select(n => $"{n.At:HH:mm} {n.What}"))})");
+    var lines = check.Lines("Tomorrow");
+    Check(lines.Count == 5 && lines[0].Contains("08:00") && lines[3].Contains("a file") && lines[4].Contains("news.mp3"), $"…told in a line for each ({string.Join(" | ", lines)})");
+    var unseen = PlanCheck.Day(db, data, tomorrow, options, _ => false);
+    Check(unseen.FilesUnseen && unseen.NotFound.Count == 0, "a computer that sees none of the files (paths not set): not a day of missing files, it says so");
+    for (int h = 8; h <= 10; h++) plan.Save(Hour(h), Enumerable.Range(0, 15).Select(i => Song(songs[i % songs.Length], 240)).ToList());
+    data.Events.Clear();
+    Check(PlanCheck.Day(db, data, tomorrow, options) is { AllGood: true } fine && fine.Lines("Tomorrow").Count == 0, "…all made and there: nothing to tell");
+}
+
 // ───────────────────────── Sintoniza Pro ─────────────────────────
 
 Console.WriteLine("Sintoniza Pro");

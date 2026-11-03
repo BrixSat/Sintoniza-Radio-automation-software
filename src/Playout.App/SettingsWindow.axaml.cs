@@ -737,6 +737,8 @@ public partial class SettingsWindow : PageWindow
         AlertClockSecondsBox.Value = (decimal)a.ClockSeconds;
         AlertTimeServerBox.Text = a.TimeServer;
         AlertBackupBox.IsChecked = a.Backup;
+        AlertTomorrowBox.IsChecked = a.Tomorrow;
+        AlertTomorrowHourBox.Value = Math.Clamp(a.TomorrowHour, 0, 23);
         TelegramTokenBox.Text = a.TelegramToken;
         TelegramChatBox.Text = a.TelegramChat;
         SmtpServerBox.Text = a.SmtpServer;
@@ -778,6 +780,8 @@ public partial class SettingsWindow : PageWindow
         ClockSeconds = (double)(AlertClockSecondsBox.Value ?? 2),
         TimeServer = AlertTimeServerBox.Text?.Trim() is { Length: > 0 } server ? server : "pool.ntp.org",
         Backup = AlertBackupBox.IsChecked == true,
+        Tomorrow = AlertTomorrowBox.IsChecked == true,
+        TomorrowHour = (int)(AlertTomorrowHourBox.Value ?? 18),
         TelegramToken = TelegramTokenBox.Text?.Trim() ?? "",
         TelegramChat = TelegramChatBox.Text?.Trim() ?? "",
         SmtpServer = SmtpServerBox.Text?.Trim() ?? "",

@@ -429,7 +429,7 @@ CHAPTERS = [
         ["Streaming", "The Icecast or Shoutcast server, format and bitrate, and counting the listeners"],
         ["RDS", "PS, radio text and RT+"],
         ["Website", "Now playing for the station's website, as JSON, files or FTP"],
-        ["Alerts", "Telegram, e-mail or web alerts for silence, a stream down, a crash, a full disk, the clock or backups"],
+        ["Alerts", "Telegram, e-mail or web alerts for silence, a stream down, a crash, a full disk, the clock, backups, or tomorrow's daily playlists not ready"],
         ["Playlist", "How many days of daily playlists are made ahead, and the row colours"],
     ]),
 ]),
@@ -445,7 +445,7 @@ CHAPTERS = [
         ("NavPanel", "The <b>tools</b>, grouped as on the menu: the library, the programming, traffic for advertising, and the station."),
         ("HomeClock", "The clock and the date."),
         ("HomeToday", "<b>Today</b>: the hours planned, the ad breaks and adverts booked, events and voice tracks."),
-        ("HomeWarnings", "<b>Needs attention</b>: missing files, songs without a category, hours without a template, campaigns ending this week, unsaved changes."),
+        ("HomeWarnings", "<b>Needs attention</b>: missing files, songs without a category, hours without a template, campaigns ending this week, unsaved changes, and anything not ready in <b>tomorrow's daily playlists</b> (see below)."),
         ("HomeComputer", "<b>This computer</b>: system, processor, memory, free disk and how long it has been on. Next to it, the library and the database."),
         ("NowTitleText", "<b>Now playing</b> on air, from every studio, and this hour's template."),
         ("BoxStationText", "The station, the database and who is logged in."),
@@ -453,6 +453,15 @@ CHAPTERS = [
         ("StatusClock", "…and the date and time."),
     ]),
     ("p", "With a shared library, the status bar also says which computer is on air and which are on standby (chapter 3)."),
+    ("p", "<b>Tomorrow's daily playlists</b> are looked over every ten minutes, so a problem is found the day before, not on air. "
+          "Home tells you, in a line each, about an hour that has a template but no daily playlist yet, an hour that came out "
+          "empty because its template found no music, an hour more than three minutes short (fill music would play the rest), "
+          "a song whose file isn't there, and an ad break or event that would leave something out, such as an advert or a "
+          "news file that can't be found. The computer on air can also send this as an alert, from 18:00 or the hour you set "
+          "in <b>Station settings → Alerts</b>, so someone can fix it before the evening is over."),
+    ("tip", "If Home says tomorrow's files can't be seen from this computer, it is because this office computer doesn't reach "
+            "the music where the studios do. Set where it is in the playout's <b>Settings → Library → This computer's paths</b>. "
+            "The files are then checked from here too."),
     ("h2", "Songs"),
     ("p", "<b>Songs</b> shows the whole library. You can search it, sort songs into categories, give them a tempo and an energy, "
           "and fix their tags. Right-click a song for its category, restrictions, ERC details, <b>Edit tags…</b> and "

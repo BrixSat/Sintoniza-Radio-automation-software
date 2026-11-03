@@ -2397,5 +2397,18 @@
  "Nothing sent: {0}": "Nada enviado: {0}",
  "Nothing written: the song on air has no cover, and there is no picture for songs without one (on air, the picture stays as it was)": "Nada escrito: a música no ar não tem capa, e não há imagem para músicas sem capa (no ar, a imagem fica como estava)",
  "Sends the cover picture once, as on air (the song's, else the one for songs without a cover) and says how it went": "Envia a capa uma vez, como no ar (a da música, senão a das músicas sem capa) e diz como correu",
- "(this one is switched off: on air it isn't written)": "(este está desligado: no ar não é escrito)"
+ "(this one is switched off: on air it isn't written)": "(este está desligado: no ar não é escrito)",
+ "{0} ({1:HH:mm})": "{0} ({1:HH:mm})",
+ "{0}: {1} not found: {2}": "{0}: {1} não encontrado(s): {2}",
+ "{0:HH:mm} ({1:0} min)": "{0:HH:mm} ({1:0} min)",
+ "{0}: no daily playlist yet for {1} (Daily playlists makes them)": "{0}: ainda sem playlist diária para {1} (as Playlists diárias fazem-nas)",
+ "{0}: nothing in {1}: its template found no music (fill music plays)": "{0}: nada em {1}: o modelo não encontrou música (toca a música de enchimento)",
+ "{0}: short hours, fill music plays the rest: {1}": "{0}: horas curtas, a música de enchimento toca o resto: {1}",
+ "a file": "um ficheiro",
+ " and {0} more": " e mais {0}",
+ "Tomorrow": "Amanhã",
+ "Tomorrow's daily playlists aren't ready (hours missing or short, files not found), from": "As playlists diárias de amanhã não estão prontas (horas em falta ou curtas, ficheiros não encontrados), a partir das",
+ "Tomorrow's daily playlists are ready": "As playlists diárias de amanhã estão prontas",
+ "📋 Tomorrow's files can't be seen from this computer (its paths: the playout's Settings → Library → This computer's paths), so they weren't checked": "📋 Os ficheiros de amanhã não se veem deste computador (os caminhos: Definições do programa de emissão → Biblioteca → Caminhos deste computador), por isso não foram verificados",
+ "{0}, ad breaks and events: {1}": "{0}, blocos publicitários e eventos: {1}"
 }

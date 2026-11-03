@@ -275,8 +275,10 @@ engine for decoding, mixing and streaming.
   SQLite: a copy) and the station's files; kept for 14 days (the newest three always).
 - **Alerts** (Settings → Alerts): by Telegram, email and/or a web address (JSON POST), when there is silence on air,
   the stream is down, the engine stops responding, the app had to be started again after a crash or a freeze, the
-  database is unavailable, a disk is nearly full, the computer's clock is off (checked against a time server) or a
-  backup fails; and again when it is fixed. *Send a test alert* checks the setup.
+  database is unavailable, a disk is nearly full, the computer's clock is off (checked against a time server), a
+  backup fails, or — from an hour you choose, 18:00 by default, and only from the computer on air — tomorrow's daily
+  playlists aren't ready (hours with no playlist, empty or short, files not found, an ad break or event that would be
+  left out); and again when it is fixed. Sintoniza Pro's Home lists the same about tomorrow. *Send a test alert* checks the setup.
 - **Graphics on Linux with NVIDIA**: the app tells the driver to sleep instead of spinning a CPU core while it waits
   for the screen (`__GL_YIELD=USLEEP`, unless set already).
 - **Top of the hour time signal** (Settings → Time signal): the pips (five short, the long one on the hour) or your own

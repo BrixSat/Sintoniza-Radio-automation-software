@@ -25,6 +25,9 @@ public partial class ScheduleWindow
     List<(string Client, int Missed)> _missedYesterday = new();
     DateTime _nextMissedCheck;
     List<string> _breakWarnings = new();
+    /// <summary>What isn't ready in tomorrow's daily playlists (checked every 10 minutes).</summary>
+    List<string> _tomorrowWarnings = new();
+    DateTime _nextTomorrowCheck;
     /// <summary>The listeners now (counted by the computer on air); null: not counted.</summary>
     ListenerSample? _listening;
     DateTime _nextBreakCheck;
@@ -187,6 +190,11 @@ public partial class ScheduleWindow
                     _breakWarnings = BreakWarnings(db, data, now);
                     _nextBreakCheck = DateTime.UtcNow.AddMinutes(2);
                 }
+                if (DateTime.UtcNow >= _nextTomorrowCheck)
+                {
+                    _tomorrowWarnings = TomorrowWarnings(db, data, station, now);
+                    _nextTomorrowCheck = DateTime.UtcNow.AddMinutes(10);
+                }
                 var studios = db.IsMySql ? db.Studios(StationStore.Station) : null;
                 var listening = ListenersDb.Now(db, now);
                 return (stats, categories.Count, last, hours, items, station, studios, listening);
@@ -211,6 +219,25 @@ public partial class ScheduleWindow
     /// clients of the same sector (or one client) follow each other because there aren't enough other adverts to go
     /// between them.
     /// </summary>
+    /// <summary>Tomorrow's daily playlists: what isn't ready (none when the playouts don't make them a day ahead).</summary>
+    static List<string> TomorrowWarnings(LibraryDb db, ScheduleData data, StationSettings? station, DateTime now)
+    {
+        if (station is not { PlanDaysAhead: >= 1 } s) return new();
+        try
+        {
+            var options = new PlaylistGenerator.Options(s.Crossfade, s.OtherCrossfade, TimeSpan.FromHours(s.FillSongHours), TimeSpan.FromMinutes(s.FillArtistMinutes));
+            var check = PlanCheck.Day(db, data, now.Date.AddDays(1), options);
+            var lines = check.Lines(L.T("Tomorrow")).Select(l => "📋 " + l).ToList();
+            if (check.FilesUnseen) lines.Add(L.T("📋 Tomorrow's files can't be seen from this computer (its paths: the playout's Settings → Library → This computer's paths), so they weren't checked"));
+            return lines;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Tomorrow's playlist check: {ex.Message}");
+            return new();
+        }
+    }
+
     List<string> BreakWarnings(LibraryDb db, ScheduleData data, DateTime now)
     {
         var warnings = new List<string>();
@@ -296,6 +323,7 @@ public partial class ScheduleWindow
         // What needs attention.
         var warnings = new List<string>();
         if (_defaultPasswords.Count > 0) warnings.Add(L.F("🔑 Change the first password of {0} (Station › Users)", string.Join(", ", _defaultPasswords)));
+        warnings.AddRange(_tomorrowWarnings);
         if (stats.Missing > 0) warnings.Add(L.F("⚠ {0:N0} songs whose file is missing", stats.Missing));
         if (stats.Uncategorised > 0) warnings.Add(L.F("⚠ {0:N0} songs without a category", stats.Uncategorised));
         int noTemplate = Enumerable.Range(now.Hour, 24 - now.Hour).Count(h => data.TemplateAt(now.Date.AddHours(h)) == null);

@@ -25,6 +25,9 @@ public sealed class AlertSettings
     public string TimeServer { get; set; } = "pool.ntp.org";
     public bool Backup { get; set; } = true;
     public bool Restart { get; set; } = true;
+    /// <summary>Tomorrow's daily playlists aren't ready (hours missing, empty or short, files not found), from this hour on.</summary>
+    public bool Tomorrow { get; set; } = true;
+    public int TomorrowHour { get; set; } = 18;
 
     public string TelegramToken { get; set; } = "";
     public string TelegramChat { get; set; } = "";
@@ -127,6 +130,14 @@ sealed class HealthMonitor : IDisposable
     DateTime _nextDisk = DateTime.MinValue, _nextClock = DateTime.MinValue, _nextDbPing = DateTime.MinValue;
     bool _dbPingFailed;
     int _checking;
+    DateTime _nextTomorrow = DateTime.MinValue;
+    DateTime? _tomorrowFor; // the day the "tomorrow" problem is about
+    Task? _tomorrowChecking;
+
+    /// <summary>For tomorrow's check: the schedule, how the daily playlists are made, and whether this computer is standby (the one on air tells).</summary>
+    internal Func<ScheduleData?>? Schedule { get; init; }
+    internal Func<PlaylistGenerator.Options>? PlanOptions { get; init; }
+    internal Func<bool>? Standby { get; init; }
 
     /// <summary>A line for the status bar and the log (raised off the UI thread).</summary>
     public event Action<string>? Message;
@@ -208,6 +219,8 @@ sealed class HealthMonitor : IDisposable
                 () => L.F("Disk almost full: {0}", string.Join(", ", low)), L.T("Disk space is fine again"));
         }
 
+        CheckTomorrow(settings, a);
+
         if (a.Clock && now >= _nextClock)
         {
             _nextClock = now.AddHours(6);
@@ -219,6 +232,41 @@ sealed class HealthMonitor : IDisposable
                     L.T("The computer's clock is right again"));
             });
         }
+    }
+
+    /// <summary>
+    /// Tomorrow's daily playlists, every quarter of an hour from the hour set (alerts at night are for what is wrong
+    /// tonight). At midnight tomorrow becomes today (the TODAY'S PLAYLIST lamp's): what was reported is dropped quietly.
+    /// </summary>
+    void CheckTomorrow(AppSettings settings, AlertSettings a)
+    {
+        var local = DateTime.Now;
+        if (_tomorrowFor is { } day && day != local.Date.AddDays(1))
+        {
+            lock (_active) _active.Remove("tomorrow");
+            _tomorrowFor = null;
+        }
+        bool wanted = a.Tomorrow && local.Hour >= Math.Clamp(a.TomorrowHour, 0, 23) && settings.PlanDaysAhead >= 1 && Standby?.Invoke() != true;
+        if (!wanted)
+        {
+            if (!a.Tomorrow || Standby?.Invoke() == true) lock (_active) _active.Remove("tomorrow");
+            return;
+        }
+        if (local < _nextTomorrow || _tomorrowChecking is { IsCompleted: false } || _library.Db is not { } db || Schedule?.Invoke() is not { } data || PlanOptions == null) return;
+        _nextTomorrow = local.AddMinutes(15);
+        var tomorrow = local.Date.AddDays(1);
+        var options = PlanOptions();
+        _tomorrowChecking = Task.Run(() =>
+        {
+            try
+            {
+                var check = PlanCheck.Day(db, data, tomorrow, options);
+                var lines = check.Lines(L.T("Tomorrow"));
+                _tomorrowFor = tomorrow;
+                Problem("tomorrow", lines.Count > 0, () => string.Join("\n", lines), L.T("Tomorrow's daily playlists are ready"));
+            }
+            catch (Exception ex) { AppLog.Write($"Tomorrow's playlist check: {ex.Message}"); }
+        });
     }
 
     /// <summary>Reports a problem when it starts and when it ends.</summary>

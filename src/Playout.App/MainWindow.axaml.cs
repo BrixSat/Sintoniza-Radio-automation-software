@@ -2012,7 +2012,10 @@ public partial class MainWindow : Window
     {
         if (_engine != null)
         {
-            _health = new HealthMonitor(_engine, _library, () => _settings);
+            _health = new HealthMonitor(_engine, _library, () => _settings)
+            {
+                Schedule = () => _scheduler?.Current, PlanOptions = PlanOptions, Standby = () => IsStandby,
+            };
             _health.Message += message =>
             {
                 AppLog.Write(message);
