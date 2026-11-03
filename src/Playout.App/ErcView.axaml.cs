@@ -39,8 +39,8 @@ public partial class ErcView : UserControl
         _db = db;
         _who = who;
         SetMonth(-1);
-        LastMonthButton.Click += (_, _) => { SetMonth(-1); _ = Check(); };
-        ThisMonthButton.Click += (_, _) => { SetMonth(0); _ = Check(); };
+        LastMonthButton.Click += (_, _) => { SetMonth(-1); Check().Report(); };
+        ThisMonthButton.Click += (_, _) => { SetMonth(0); Check().Report(); };
         CheckButton.Click += async (_, _) => await Check();
         ExportButton.Click += async (_, _) => await Export();
         MissingList.SelectionChanged += (_, _) => Selected();

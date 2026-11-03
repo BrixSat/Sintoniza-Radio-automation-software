@@ -38,8 +38,10 @@ public sealed class ScheduleRow : INotifyPropertyChanged
 /// (news, programmes, streams), ad breaks and their running order, and the clients' campaigns placed in them, on week
 /// calendars. Save writes schedule.json; the playout loads it within a few seconds.
 /// </summary>
-public partial class ScheduleWindow : Window
+public partial class ScheduleWindow : Window, IShowsProblems
 {
+    void IShowsProblems.ShowProblem(string text) => ErrorText.Text = text;
+
     static readonly DayOfWeek[] Week = [DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday];
     static readonly int[] Steps = [5, 10, 15, 20, 30, 60];
 
@@ -89,6 +91,11 @@ public partial class ScheduleWindow : Window
         _library = library;
         _settings = settings;
         InitializeComponent();
+        Problems.Watch(this);
+        // One message at a time in the status bar: a new one takes the place of the last, whichever it was (an old
+        // error never hides what a click just said).
+        SavedText.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty && !string.IsNullOrEmpty(SavedText.Text)) ErrorText.Text = _offline ?? ""; };
+        ErrorText.PropertyChanged += (_, e) => { if (e.Property == TextBlock.TextProperty && !string.IsNullOrEmpty(ErrorText.Text)) SavedText.Text = ""; };
         Localization.Apply(this);
         _data = data;
         _data.Normalize();
@@ -132,7 +139,7 @@ public partial class ScheduleWindow : Window
         Tabs.SelectionChanged += (_, _) =>
         {
             if (Tabs.SelectedItem != DailyTab || _daily != null || store == null || settings == null) return;
-            DailyTab.Content = _daily = new DailyPlaylistsView(store.Db, library, store, settings, _data.Clone(), null, ChangeNow) { VoiceOnly = !May(Permission.Programming) };
+            DailyTab.Content = _daily = new DailyPlaylistsView(store.Db, library, store, settings, _data.Clone(), null, ChangeNow) { VoiceOnly = !May(Permission.Programming), MayEditLibrary = May(Permission.Library) };
         };
         Closed += (_, _) => _daily?.Stop();
         Closing += async (_, e) =>
@@ -152,7 +159,7 @@ public partial class ScheduleWindow : Window
         TemplateList.ItemsSource = _templateRows;
         TemplateList.SelectedIndex = _templateRows.Count > 0 ? 0 : -1;
         ShowTemplate();
-        _ = LoadCategories();
+        LoadCategories().Report();
         EventList.ItemsSource = _eventRows;
         BreakList.ItemsSource = _breakRows;
         ClientList.ItemsSource = _clientRows;
@@ -1486,11 +1493,11 @@ public partial class ScheduleWindow : Window
             _saved = Snapshot();
             ErrorText.Text = "";
             SavedText.Text = L.F("Saved at {0:HH:mm:ss}. The playout takes it within a few seconds.", DateTime.Now);
-            if (_daily != null) _ = _daily.ScheduleSaved(); // the hours whose template changed are made again
+            if (_daily != null) _daily.ScheduleSaved().Report(); // the hours whose template changed are made again
         }
         catch (ScheduleStore.ChangedException ex)
         {
-            _ = AskOverwrite(ex);
+            AskOverwrite(ex).Report();
         }
         catch (Exception ex)
         {

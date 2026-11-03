@@ -212,7 +212,7 @@ sealed class LibraryService
             ? _autoMinutes > 0 && now - last >= TimeSpan.FromMinutes(_autoMinutes)
             : (_autoMinutes > 0 || _watch) && now - _started >= FirstScan;
         bool changed = _dirty && now - _lastChange >= WatchQuiet;
-        if (due || changed) _ = ScanAsync(_autoFolders, automatic: true);
+        if (due || changed) ScanAsync(_autoFolders, automatic: true).Report();
     }
 
     void Watch()

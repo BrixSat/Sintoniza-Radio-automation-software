@@ -54,7 +54,9 @@ public partial class TrackLibraryView : UserControl
         TrackList.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter || Selected() is not { Count: > 0 } rows) return;
-            AddRequested?.Invoke(rows.Select(r => r.Path).ToList(), false);
+            // Into the playlist where there is one; in Sintoniza Pro's Songs (none), Enter listens, as a double-click does.
+            if (AddRequested != null) AddRequested(rows.Select(r => r.Path).ToList(), false);
+            else ListenRequested?.Invoke(rows[0].Path);
             e.Handled = true;
         };
         TrackList.ContextMenu = new ContextMenu();

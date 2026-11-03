@@ -75,7 +75,7 @@ public partial class LoginPanel : UserControl
         CancelButton.IsVisible = cancel != null;
         if (cancel != null) CancelButton.Content = cancel;
         Clear();
-        _ = LoadStations(); // set up after it was shown (the lock screen of Sintoniza Pro)
+        LoadStations().Report(); // set up after it was shown (the lock screen of Sintoniza Pro)
     }
 
     /// <summary>The station's users (null: not reachable yet; Log in waits).</summary>

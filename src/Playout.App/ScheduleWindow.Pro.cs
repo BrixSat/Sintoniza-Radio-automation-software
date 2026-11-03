@@ -85,8 +85,8 @@ public partial class ScheduleWindow
         if (_library != null)
         {
             SongsView.Attach(_library);
-            SongsView.EditTagsRequested += path => _ = EditSongTags(path);
-            SongsView.EditCuesRequested += path => _ = EditSongCues(path);
+            SongsView.EditTagsRequested += path => EditSongTags(path).Report();
+            SongsView.EditCuesRequested += path => EditSongCues(path).Report();
             // Listening: on this computer's Preview output (Settings → Audio), never on air.
             SongsListening.Settings = _settings;
             SongsListening.Selected = () => SongsView.SelectedSong;
@@ -113,7 +113,8 @@ public partial class ScheduleWindow
             + "\n\nCésar Araújo · cesararaujo.net", L.T("Close"));
         KeyDown += (_, e) =>
         {
-            if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control)) { Save(); e.Handled = true; }
+            // Ctrl+S is Save: only for who may save (the button is hidden for the others).
+            if (e.Key == Key.S && e.KeyModifiers.HasFlag(KeyModifiers.Control)) { if (SaveButton.IsVisible) Save(); e.Handled = true; }
             else if (e.Key == Key.F5) { Refresh(); e.Handled = true; }
         };
 
@@ -158,7 +159,7 @@ public partial class ScheduleWindow
         SaveButton.IsEnabled = MenuSave.IsEnabled = changed && store != null;
         SaveButton.Classes.Set("accent", changed);
         if (_saved == null) return; // still opening
-        if (now >= _nextFigures && !_figuresBusy && store != null) _ = Figures(store.Db, now);
+        if (now >= _nextFigures && !_figuresBusy && store != null) Figures(store.Db, now).Report();
     }
 
     /// <summary>What the Home page, the status bar and the boxes on the left show, read every 15 seconds.</summary>
@@ -435,6 +436,8 @@ public partial class ScheduleWindow
         {
             if (Tabs.SelectedItem == UsersTab) Tabs.SelectedItem = HomeTab;
             UsersTab.Content = null;
+            if (Tabs.SelectedItem == ErcTab) Tabs.SelectedItem = HomeTab;
+            ErcTab.Content = null; // saves under who is logged in
         }
         _user = user;
         string who = user?.Name ?? AppInfo.UserName;
@@ -447,7 +450,7 @@ public partial class ScheduleWindow
             : tab == Tabs.Items[3] || tab == Tabs.Items[0] || tab == ShowsTab ? May(Permission.Programming)
             : tab == Tabs.Items[1] || tab == Tabs.Items[2] ? May(Permission.Traffic)
             : tab == StationSettingsTab || tab == CartwallsTab ? May(Permission.Station)
-            : tab == UsersTab ? May(Permission.Users)
+            : tab == UsersTab ? May(Permission.Users) && _store != null
             : tab == ErcTab ? May(Permission.Programming) && _store != null
             : tab == ListenersTab ? _store != null
             : true;
@@ -467,7 +470,11 @@ public partial class ScheduleWindow
             group.IsVisible = NavPanel.Children.Skip(i + 1).TakeWhile(c => c is Button).Any(c => c.IsVisible);
         }
         SaveButton.IsVisible = MenuSave.IsVisible = May(Permission.Programming) || May(Permission.Traffic);
-        if (_daily != null) _daily.VoiceOnly = !May(Permission.Programming);
+        if (_daily != null)
+        {
+            _daily.VoiceOnly = !May(Permission.Programming);
+            _daily.MayEditLibrary = May(Permission.Library);
+        }
         if (Tabs.SelectedItem is TabItem current && !Allowed(current)) Tabs.SelectedItem = HomeTab;
         _nextFigures = DateTime.MinValue;
     }
@@ -525,7 +532,7 @@ public partial class ScheduleWindow
     {
         if (_library != null) _library.NotifyChanged();
         else LibraryChanged();
-        if (_daily != null) _ = _daily.Refresh();
+        if (_daily != null) _daily.Refresh().Report();
         SavedText.Text = L.F("Refreshed at {0:HH:mm:ss}.", DateTime.Now);
     }
 
@@ -538,13 +545,13 @@ public partial class ScheduleWindow
         if (DateTime.Now - _categoriesRead > TimeSpan.FromSeconds(3))
         {
             _categoriesRead = DateTime.Now;
-            _ = LoadCategories();
+            LoadCategories().Report();
         }
         foreach (var page in _pages.Values)
             switch (page)
             {
-                case CategoriesWindow categories: _ = categories.Refresh(); break;
-                case ImportWindow import: _ = import.Refresh(); break;
+                case CategoriesWindow categories: categories.Refresh().Report(); break;
+                case ImportWindow import: import.Refresh().Report(); break;
             }
         _nextFigures = DateTime.MinValue; // Home's figures too
     }
@@ -554,7 +561,7 @@ public partial class ScheduleWindow
     /// <summary>Songs → Edit tags…: written in the file, then the library and the planned hours show them.</summary>
     async Task EditSongTags(string path)
     {
-        if (_tagsOpen) return;
+        if (_tagsOpen) { SavedText.Text = L.T("Another editor is open: close it first."); return; }
         if (!SharedPaths.FileExists(path))
         {
             SavedText.Text = L.F("Not found: {0}", path);
@@ -581,7 +588,8 @@ public partial class ScheduleWindow
     /// </summary>
     async Task EditSongCues(string path)
     {
-        if (_tagsOpen || _library?.Db is not { } db) return;
+        if (_tagsOpen) { SavedText.Text = L.T("Another editor is open: close it first."); return; }
+        if (_library?.Db is not { } db) { ErrorText.Text = L.T("The library isn't open yet: try again in a moment."); return; }
         if (!SharedPaths.FileExists(path))
         {
             SavedText.Text = L.F("Not found: {0}", path);

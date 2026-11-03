@@ -295,6 +295,7 @@ public partial class CartwallsWindow : PageWindow
             _player = _deck.Open(path);
             _player?.Play();
             if (_player != null) ListenButton.Content = L.T("■ Stop");
+            else ErrorText.Text = L.F("Can't listen: {0} can't be opened on this computer", Path.GetFileName(path));
         }
         catch (Exception ex)
         {

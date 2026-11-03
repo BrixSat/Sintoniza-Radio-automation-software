@@ -72,7 +72,7 @@ public partial class MainWindow
         else
         {
             // At start the saved playlist is being put back: that carries on (CarryOn), not this.
-            if (_restored) _ = GoOnAir(_tookOnAir);
+            if (_restored) GoOnAir(_tookOnAir).Report();
             _tookOnAir = false;
             if (_settings.StreamingOn && _settings.UsesStreaming && !string.IsNullOrWhiteSpace(_settings.StreamHost) && MayStream()
                 && engine.GetStatus().Stream is StreamState.Off or StreamState.Failed) ToggleStreaming();
@@ -101,7 +101,7 @@ public partial class MainWindow
     {
         if (_role is not { } role) return;
         string other = role.Studios?.OnAir?.Computer ?? L.T("another computer");
-        if (!await Dialogs.Confirm(this, L.T("Take on air"),
+        if (!await Dialogs.Confirm(AskOver(), L.T("Take on air"),
                 L.F("{0} is on air. Put this computer on air instead? {0} goes standby and stops playing.", other), L.T("Take on air")))
             return;
         try

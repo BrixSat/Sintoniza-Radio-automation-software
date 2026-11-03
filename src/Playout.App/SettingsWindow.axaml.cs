@@ -29,6 +29,10 @@ public partial class SettingsWindow : PageWindow
     readonly Func<AppSettings, string?>? _saveStation;
     readonly PlayoutEngine? _engine;
     readonly MainWindow? _main;
+    readonly Func<LibraryDb?>? _database;
+
+    /// <summary>The library: the on-air program's, or the one Sintoniza Pro gave (null: not reachable).</summary>
+    LibraryDb? Db => _main?.MusicLibrary.Db ?? _database?.Invoke();
     UpdateInfo? _update;
     string? _logoPath;
     string? _signalFile;
@@ -64,8 +68,9 @@ public partial class SettingsWindow : PageWindow
     public SettingsWindow() : this(new AppSettings(), null) { }
 
     public SettingsWindow(AppSettings settings, PlayoutEngine? engine, MainWindow? main = null,
-        SettingsScope scope = SettingsScope.Computer, Func<AppSettings, string?>? saveStation = null)
+        SettingsScope scope = SettingsScope.Computer, Func<AppSettings, string?>? saveStation = null, Func<LibraryDb?>? database = null)
     {
+        _database = database;
         InitializeComponent();
         Localization.Apply(this);
         _scope = scope;
@@ -100,7 +105,7 @@ public partial class SettingsWindow : PageWindow
             _languages.Add((chosen, chosen));
         LanguageBox.ItemsSource = _languages.Select(l => l.Code == "" ? L.T(l.Name) : l.Name).ToList();
         LanguageBox.SelectedIndex = Math.Max(0, _languages.FindIndex(l => l.Code.Equals(settings.Language, StringComparison.OrdinalIgnoreCase)));
-        _ = LoadStations(settings.Station);
+        LoadStations(settings.Station).Report();
         TranslationsButton.Click += (_, _) => OpenTranslations();
         CurrencyBox.PlaceholderText = PlaylistRow.SystemCurrency;
         SetLogo(settings.LogoPath);
@@ -181,7 +186,7 @@ public partial class SettingsWindow : PageWindow
         FillLibraryRadio.IsCheckedChanged += (_, _) => ShowFillFolder();
         ChooseFillButton.Click += async (_, _) => await ChooseFillFolder();
         ClearFillButton.Click += (_, _) => { _fillFolder = ""; ShowFillFolder(); };
-        _ = LoadFillCategories(settings.FillCategories ?? new());
+        LoadFillCategories(settings.FillCategories ?? new()).Report();
         ResumeBox.IsChecked = settings.ResumeOnStart;
         TakeOverBox.IsChecked = settings.TakeOver;
         TakeOverSecondsBox.Value = Math.Clamp(settings.TakeOverSeconds, 5, 300);
@@ -671,7 +676,7 @@ public partial class SettingsWindow : PageWindow
     async Task LoadFillCategories(List<long> chosen)
     {
         _fillCategoriesUnknown = chosen.ToList();
-        if (_main?.MusicLibrary.Db is not { } db)
+        if (Db is not { } db)
         {
             FillCategoriesNote.Text = L.T("The library isn't open, so its categories can't be shown. ") +
                 (chosen.Count > 0 ? L.T("The categories chosen before are kept.") : L.T("None chosen: every music category."));
@@ -1064,7 +1069,7 @@ public partial class SettingsWindow : PageWindow
     /// <summary>The stations in the library, to choose this computer's (shown only when there are several).</summary>
     async Task LoadStations(long current)
     {
-        if (_main?.MusicLibrary.Db is not { } db) return;
+        if (Db is not { } db) return;
         try { _stations = await Task.Run(db.Stations); }
         catch { return; }
         if (_stations.Count < 2) return;

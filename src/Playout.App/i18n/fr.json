@@ -2421,5 +2421,16 @@
  "{0} isn't logged in: {1}": "{0} n'est pas connecté : {1}",
  "Starting and stopping the internet stream by hand (STREAM)": "Démarrer et arrêter le flux internet à la main (STREAM)",
  "{0} may not start or stop the stream (the Stream permission, Sintoniza Pro → Users)": "{0} ne peut pas démarrer ni arrêter le flux (la permission Flux, Sintoniza Pro → Utilisateurs)",
- "You may not start or stop it (the Stream permission)": "Vous ne pouvez pas le démarrer ni l'arrêter (la permission Flux)"
+ "You may not start or stop it (the Stream permission)": "Vous ne pouvez pas le démarrer ni l'arrêter (la permission Flux)",
+ "{0} is scheduled: it is changed in Sintoniza Pro (Events, Ad breaks), and comes into the playlist when it is due": "{0} est programmé : il se change dans Sintoniza Pro (Événements, Pages de pub) et entre dans la playlist à son heure",
+ "Another editor is open: close it first.": "Un autre éditeur est ouvert : fermez-le d'abord.",
+ "A pause on air or already played can't be changed.": "Une pause à l'antenne ou déjà passée ne peut pas être modifiée.",
+ "A stream or a pause has no file to edit.": "Un flux ou une pause n'a pas de fichier à modifier.",
+ "Can't listen: {0} can't be opened on this computer": "Écoute impossible : {0} ne s'ouvre pas sur cet ordinateur",
+ "Can't open {0}: {1}": "Impossible d'ouvrir {0} : {1}",
+ "Select an item in the playlist first.": "Sélectionnez d'abord un élément de la playlist.",
+ "Something went wrong: {0} (the log has the details)": "Un problème est survenu : {0} (le journal a les détails)",
+ "This can't be removed here (an hour that has played, or not allowed for this user).": "Impossible de retirer ici (une heure déjà passée, ou pas permis à cet utilisateur).",
+ "Select what to remove first.": "Sélectionnez d'abord ce qu'il faut retirer.",
+ "Select a file first.": "Sélectionnez d'abord un fichier."
 }

@@ -10,8 +10,10 @@ namespace Playout.App;
 /// Sintoniza Import (its own menu entry): brings a folder of audio into the library, in a category, with the folders
 /// inside it as categories under that one. A preview shows what will be made before anything is changed.
 /// </summary>
-public partial class ImportWindow : PageWindow
+public partial class ImportWindow : PageWindow, IShowsProblems
 {
+    void IShowsProblems.ShowProblem(string text) => StatusText.Text = text;
+
     static readonly string[] Kinds = ["music", "jingle", "commercial", "other"];
 
     readonly LibraryDb? _db;
@@ -26,6 +28,7 @@ public partial class ImportWindow : PageWindow
     internal ImportWindow(LibraryDb? db, string? error)
     {
         InitializeComponent();
+        Problems.Watch(this);
         Localization.Apply(this);
         _db = db;
         LibraryText.Text = db != null ? L.F("Library: {0}", db.Location) : L.F("The library can't be opened: {0}", error);

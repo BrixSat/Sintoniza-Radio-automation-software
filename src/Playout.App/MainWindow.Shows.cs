@@ -76,7 +76,7 @@ public partial class MainWindow
 
     void OpenPresenterView()
     {
-        if (_presenter is { } open) { open.Activate(); return; }
+        if (_presenter is { } open) { Front(open); return; }
         _presenter = new PresenterWindow(this);
         _presenter.Closed += (_, _) => _presenter = null;
         _presenter.Show();

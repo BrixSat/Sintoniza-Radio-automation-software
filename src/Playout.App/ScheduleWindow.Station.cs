@@ -68,7 +68,7 @@ public partial class ScheduleWindow
             updated.ErcCountries = station.ErcCountries;
             updated.ErcPlan = station.ErcPlan;
             return SaveStation(store, updated, version);
-        });
+        }, () => store.Db);
         window.Finished += async saved =>
         {
             if (saved is true) SavedText.Text = L.F("Station settings saved at {0:HH:mm:ss}. The playouts take them within a minute.", DateTime.Now);

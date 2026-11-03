@@ -57,11 +57,11 @@ public partial class LibraryBrowser : UserControl
 
         FileList.ContextMenu = BuildMenu(SelectedFilePaths);
         var editCues = new MenuItem { Header = L.T("Edit cue points…") };
-        editCues.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditCuesRequested?.Invoke(p); };
+        editCues.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditCuesRequested?.Invoke(p); else Problems.Show(L.T("Select a file first.")); };
         FileList.ContextMenu.Items.Add(new Separator());
         FileList.ContextMenu.Items.Add(editCues);
         var editTags = new MenuItem { Header = L.T("Edit tags…") };
-        editTags.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditTagsRequested?.Invoke(p); };
+        editTags.Click += (_, _) => { if (SelectedFilePaths() is [var p, ..]) EditTagsRequested?.Invoke(p); else Problems.Show(L.T("Select a file first.")); };
         FileList.ContextMenu.Items.Add(editTags);
         FolderTree.ContextMenu = BuildMenu(() =>
             FolderTree.SelectedItem is FolderNode n ? [n.Path] : []);

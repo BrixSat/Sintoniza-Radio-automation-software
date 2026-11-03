@@ -35,7 +35,7 @@ sealed class TakeService : IDisposable
         {
             bool place = value.Latitude != _settings.Latitude || value.Longitude != _settings.Longitude;
             _settings = value;
-            if (place) { _temperature = null; _ = Refresh(); }
+            if (place) { _temperature = null; Refresh().Report(); }
         }
     }
 

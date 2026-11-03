@@ -46,6 +46,9 @@ public partial class DailyPlaylistsView : UserControl
         }
     }
     bool _voiceOnly;
+
+    /// <summary>The library may be changed from here (its categories edited, songs taken out): only with the Library permission.</summary>
+    public bool MayEditLibrary { set => Tracks.CanEditCategories = value; }
     /// <summary>Changes the schedule and saves it straight away (Sintoniza Pro does it); returns why not, or null.</summary>
     readonly Func<Action<ScheduleData>, string?>? _changeSchedule;
     ScheduleData _schedule;
@@ -76,9 +79,9 @@ public partial class DailyPlaylistsView : UserControl
         if (library != null)
         {
             Tracks.Attach(library);
-            Tracks.AddRequested += (paths, asNext) => _ = InsertFromLibrary(paths);
+            Tracks.AddRequested += (paths, asNext) => InsertFromLibrary(paths).Report();
             Tracks.ListenRequested += path => Listen(path, System.IO.Path.GetFileNameWithoutExtension(path));
-            Tracks.EditTagsRequested += path => _ = EditTags(path);
+            Tracks.EditTagsRequested += path => EditTags(path).Report();
         }
         if (db == null)
         {
@@ -87,11 +90,11 @@ public partial class DailyPlaylistsView : UserControl
         }
 
         DayBox.SelectedDate = _day;
-        DayBox.SelectedDateChanged += (_, _) => { if (DayBox.SelectedDate is { } d && d.Date != _day) _ = ShowDay(d.Date); };
+        DayBox.SelectedDateChanged += (_, _) => { if (DayBox.SelectedDate is { } d && d.Date != _day) ShowDay(d.Date).Report(); };
         PrevDayButton.Click += (_, _) => DayBox.SelectedDate = _day.AddDays(-1);
         NextDayButton.Click += (_, _) => DayBox.SelectedDate = _day.AddDays(1);
         TodayButton.Click += (_, _) => DayBox.SelectedDate = DateTime.Today;
-        HourList.SelectionChanged += (_, _) => { if (HourList.SelectedItem is PlanHourRow r && r.Start != _hour) _ = ShowHour(r.Start); };
+        HourList.SelectionChanged += (_, _) => { if (HourList.SelectedItem is PlanHourRow r && r.Start != _hour) ShowHour(r.Start).Report(); };
         GenerateDayButton.Click += async (_, _) => await GenerateDay();
         GenerateHourButton.Click += async (_, _) => await GenerateHour();
         RemoveButton.Click += async (_, _) => await RemoveSelected();
@@ -111,7 +114,16 @@ public partial class DailyPlaylistsView : UserControl
         Listening.Selected = () => SelectedRow() is { Path.Length: > 0 } row ? (row.Path, Display(row)) : null;
         Listening.Problem += problem => StatusText.Text = problem;
         Listening.SpaceListens(this);
-        ItemList.KeyDown += async (_, e) => { if (e.Key == Key.Delete) { e.Handled = true; await RemoveSelected(); } };
+        // Delete is Remove: only where Remove can be pressed (not a voice-tracks-only user, not an hour that has played).
+        ItemList.KeyDown += async (_, e) =>
+        {
+            if (e.Key != Key.Delete) return;
+            e.Handled = true;
+            if (RemoveButton.IsVisible && RemoveButton.IsEnabled) await RemoveSelected();
+            else if (!RemoveButton.IsVisible || !(_hour is { } h && h >= Hour(DateTime.Now)))
+                StatusText.Text = L.T("This can't be removed here (an hour that has played, or not allowed for this user).");
+            else StatusText.Text = L.T("Select what to remove first.");
+        };
 
         // What the playout (or another studio) made meanwhile, and a schedule saved since: seen within a minute.
         // The hour on air every 15 seconds (what played, what is on air); the whole day every minute.

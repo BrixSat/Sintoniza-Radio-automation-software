@@ -83,7 +83,7 @@ public partial class MainWindow
 
     void OpenRequests()
     {
-        if (_requestsWindow is { } open) { open.Activate(); return; }
+        if (_requestsWindow is { } open) { Front(open); return; }
         _requestsWindow = new RequestsWindow(this);
         _requestsWindow.Closed += (_, _) => _requestsWindow = null;
         _requestsWindow.Show(this);

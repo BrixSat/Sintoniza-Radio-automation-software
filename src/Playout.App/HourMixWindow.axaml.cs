@@ -75,7 +75,7 @@ public partial class HourMixWindow : Window
             if (_playing.Count > 0) StopListening(); else Play();
         }, RoutingStrategies.Tunnel);
         Closed += (_, _) => StopListening();
-        _ = Load();
+        Load().Report();
     }
 
     /// <summary>Each file's cue points, length and waveform (in the background), then the time line.</summary>

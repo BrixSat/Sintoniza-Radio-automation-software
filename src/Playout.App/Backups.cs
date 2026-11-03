@@ -44,7 +44,7 @@ sealed class Backups : IDisposable
         {
             // After a failed one, the next try waits (an hour): not a database dump, a half-written file and an
             // alert every minute while the backup folder is away or full.
-            if (DateTime.UtcNow >= _retryAfter && IsDue(DateTime.Now)) _ = RunAsync();
+            if (DateTime.UtcNow >= _retryAfter && IsDue(DateTime.Now)) RunAsync().Report();
         }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
 

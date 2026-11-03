@@ -59,7 +59,7 @@ public partial class SettingsWindow
     {
         try
         {
-            if (_main?.MusicLibrary.Db is not { } db) return "";
+            if (Db is not { } db) return "";
             var paths = db.Search("", new CategoryFilter(), 200).Tracks.Select(t => t.Path).ToList();
             if (paths.Count == 0) return "";
             string common = paths.Aggregate(CommonStart);
@@ -83,7 +83,7 @@ public partial class SettingsWindow
     /// <summary>A few of the library's songs looked for on this computer, with the paths as they are in the window.</summary>
     async Task TestPathMap()
     {
-        if (_main?.MusicLibrary.Db is not { } db)
+        if (Db is not { } db)
         {
             PathMapNote.Text = L.T("The library isn't open: save, then test.");
             return;

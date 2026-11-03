@@ -27,9 +27,10 @@ public static class Program
         else if (args.Contains(AppInfo.RecArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.RecWmClass });
         else builder.With(new X11PlatformOptions { WmClass = AppInfo.WmClass });
         // A mistake in a window must not take the station off air: the engine runs on, so log it and carry on.
+        // A mistake in a click is also said on screen (the window in front), never just nothing.
         Dispatcher.UIThread.UnhandledException += (_, e) =>
         {
-            AppLog.Write($"Error: {e.Exception}");
+            Problems.Unhandled(e.Exception);
             e.Handled = true;
         };
         return builder.StartWithClassicDesktopLifetime(args);

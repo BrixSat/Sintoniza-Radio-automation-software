@@ -284,6 +284,7 @@ Console.WriteLine("The on-air program (a library of its own)");
     showStart = showStart.AddTicks(-(showStart.Ticks % TimeSpan.TicksPerSecond));
     {
         var showDb = LibraryDb.Open(settings.Library);
+        LibraryScanner.Scan(showDb, [media]); // songs in the library tab
         var showData = new ScheduleData { Shows = { new LiveShow { Name = "Manhãs", Presenter = "Rita", Minutes = 60, Notes = "Guest at 10:30",
             Slots = [new WeekTime { Day = showStart.DayOfWeek, Time = showStart.ToString("HH:mm:ss") }] } } };
         showData.Normalize();
@@ -312,6 +313,26 @@ Console.WriteLine("The on-air program (a library of its own)");
     editor.FindControl<Button>("SaveButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Pump(20);
     Check(editor.Saved && engine.GetCues(songs[0]).CueIn is { } cueIn && Math.Abs(cueIn - 1) < 0.01, "Edit cue points saves them");
+    // From the library tab's menu, as the presenter does it (right-click a song → Edit cue points…).
+    {
+        win.FindControl<ToggleButton>("LibraryTab")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Pump(10);
+        var tracks = win.FindControl<TrackLibraryView>("Tracks")!;
+        var trackList = tracks.GetLogicalDescendants().OfType<ListBox>().First(l => l.Name == "TrackList");
+        WaitUi(() => trackList.ItemCount > 0, 20);
+        trackList.SelectedIndex = 0;
+        Pump(5);
+        var libraryMenu = new ContextMenu();
+        typeof(TrackLibraryView).GetMethod("BuildMenu", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(tracks, [libraryMenu]);
+        var cueItem = libraryMenu.Items.OfType<MenuItem>().FirstOrDefault(m => (m.Header as string) == "Edit cue points…");
+        cueItem?.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        WaitUi(() => win.OwnedWindows.OfType<CueEditorWindow>().Any(w => w != editor && w.IsVisible), 5);
+        var fromLibrary = win.OwnedWindows.OfType<CueEditorWindow>().FirstOrDefault(w => w != editor && w.IsVisible);
+        Check(trackList.ItemCount > 0 && cueItem != null && fromLibrary != null,
+            $"the library tab: Edit cue points… opens the editor ({trackList.ItemCount} songs, item {(cueItem != null ? "there" : "missing")}, last message: {win.FindControl<TextBlock>("LastLog")?.Text})");
+        fromLibrary?.Close();
+        Pump(5);
+    }
 
     // The show on air: ASSISTED, and the presenter view open.
     var autoSwitch = win.FindControl<ToggleButton>("AutoSwitch")!;
@@ -587,6 +608,12 @@ Console.WriteLine("Sintoniza Pro");
         WaitUi(() => !editor.IsVisible, 5);
         Check(db.GetCues(path).CueIn is { } c && Math.Abs(c - 2) < 0.01, "…and saves them in the library");
     }
+    // Something that goes wrong after a click is said in the status bar (not lost: it used to show nothing at all).
+    Task.FromException(new InvalidOperationException("check boom")).Report();
+    Check(WaitUi(() => win.FindControl<TextBlock>("ErrorText")?.Text?.Contains("check boom") == true, 5),
+        $"a click that fails says so in Pro's status bar ({win.FindControl<TextBlock>("ErrorText")?.Text})");
+    win.FindControl<TextBlock>("SavedText")!.Text = "Saved.";
+    Check(win.FindControl<TextBlock>("ErrorText")!.Text == "", "…and a newer message takes its place (an old error never hides it)");
     win.FindControl<Button>("NavDaily")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     Pump(40);
     Check(win.GetLogicalDescendants().OfType<DailyPlaylistsView>().Any(d => d.GetLogicalDescendants().OfType<ListenBar>().Any()),

@@ -18,8 +18,10 @@ using Track = Playout.Engine.Track;
 
 namespace Playout.App;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IShowsProblems
 {
+    void IShowsProblems.ShowProblem(string text) => LastLog.Text = text;
+
     readonly PlayoutEngine? _engine;
     readonly AppSettings _settings = AppSettings.Load();
     readonly ObservableCollection<PlaylistRow> _rows = new();
@@ -46,6 +48,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Problems.Watch(this);
         Localization.Apply(this);
         Playlist.ItemsSource = _rows;
 
@@ -128,7 +131,7 @@ public partial class MainWindow : Window
             LeaveOutOldItems();
             AddEntries(_settings.PlaylistItems);
             StartStudioRole();
-            _ = CarryOn();
+            CarryOn().Report();
             _scheduler = new Scheduler(_engine, ScheduleSource.LoadLocal(), new ScheduleSource(() => _library.Db)) { Standby = IsStandby };
             _scheduler.Message += message =>
             {
@@ -219,7 +222,7 @@ public partial class MainWindow : Window
         {
             // On a row's own button (ASSISTED's ▶ or fade-out) the button did it: a double-click isn't Play now again.
             if (e.Source is Visual v && (v is Button || v.FindAncestorOfType<Button>() != null)) return;
-            if ((e.Source as Control)?.DataContext is PlaylistRow row) _ = PlayNow(row);
+            if ((e.Source as Control)?.DataContext is PlaylistRow row) PlayNow(row).Report();
         };
         var editCues = new MenuItem { Header = L.T("Edit cue points…"), InputGesture = new KeyGesture(Key.E, CommandModifiers) };
         editCues.Click += async (_, _) => await EditSelectedCues();
@@ -232,12 +235,21 @@ public partial class MainWindow : Window
         var remove = new MenuItem { Header = L.T("Remove"), InputGesture = new KeyGesture(Key.Delete) };
         remove.Click += (_, _) => RemoveSelected();
         Playlist.ContextMenu = new ContextMenu { Items = { editCues, editSegue, editTags, editPause, remove } };
-        Playlist.ContextMenu.Opening += (_, _) => editPause.IsVisible = Playlist.SelectedItem is PlaylistRow { IsPause: true };
+        Playlist.ContextMenu.Opening += (_, _) =>
+        {
+            // Only what can be done to the row: a scheduled one still to come is changed in Sintoniza Pro; a stream has no file.
+            var row = Playlist.SelectedItem as PlaylistRow;
+            bool file = row is { IsPreview: false, Track.IsStream: false };
+            editCues.IsEnabled = editSegue.IsEnabled = editTags.IsEnabled = file;
+            remove.IsEnabled = Playlist.SelectedItems?.OfType<PlaylistRow>().Any(r => !r.IsPreview) == true;
+            editPause.IsVisible = row is { IsPause: true };
+            editPause.IsEnabled = row is { IsPause: true, IsPlaying: false, IsPlayed: false, IsPreview: false };
+        };
 
         Playlist.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Delete) { RemoveSelected(); e.Handled = true; }
-            else if (e.Key == Key.Enter && Playlist.SelectedItem is PlaylistRow row) { _ = PlayNow(row); e.Handled = true; }
+            else if (e.Key == Key.Enter && Playlist.SelectedItem is PlaylistRow row) { PlayNow(row).Report(); e.Handled = true; }
         };
 
         // Rows can be dragged to reorder; drops also come from the music browser or the OS file manager.
@@ -381,7 +393,7 @@ public partial class MainWindow : Window
     {
         if (IsStandby)
         {
-            _ = AskTakeOnAir();
+            AskTakeOnAir().Report();
             return;
         }
         if (!_restored)
@@ -411,9 +423,9 @@ public partial class MainWindow : Window
         switch (id)
         {
             case Shortcuts.Play: PlayPressed(); break;
-            case Shortcuts.Pause: _ = PausePressed(); break;
-            case Shortcuts.Next: _ = NextPressed(); break;
-            case Shortcuts.Stop: _ = StopPressed(); break;
+            case Shortcuts.Pause: PausePressed().Report(); break;
+            case Shortcuts.Next: NextPressed().Report(); break;
+            case Shortcuts.Stop: StopPressed().Report(); break;
             case Shortcuts.Mic:
                 if (_settings.MicToggle) ToggleMic();
                 else { _micKeyHeld = true; UpdateMic(); }
@@ -476,12 +488,17 @@ public partial class MainWindow : Window
     async Task<bool> MayCutAdvert(string action, string question)
     {
         if (_engine?.GetStatus() is not { } st || !AdvertOnAir(st)) return true;
-        if (_askingAboutAdvert) return false; // the question is already open
+        if (_askingAboutAdvert)
+        {
+            // The question is already open (maybe behind another window): in front again.
+            if (OwnedWindows.Concat(_presenter?.OwnedWindows ?? []).LastOrDefault(w => w is not (RequestsWindow or ReportsWindow or PresenterWindow)) is { } open) Front(open);
+            return false;
+        }
         _askingAboutAdvert = true;
         try
         {
             string what = st.Current!.Advertiser is { Length: > 0 } client ? $"{st.Current.Display} ({client})" : st.Current.Display;
-            return await Dialogs.Confirm(this, L.T("Advert on air"), L.F("An advert is on air: {0}.", what) + "\n\n" + question, action,
+            return await Dialogs.Confirm(AskOver(), L.T("Advert on air"), L.F("An advert is on air: {0}.", what) + "\n\n" + question, action,
                 enterConfirms: false);
         }
         finally
@@ -489,6 +506,9 @@ public partial class MainWindow : Window
             _askingAboutAdvert = false;
         }
     }
+
+    /// <summary>Where a question goes: over the presenter view when that is where it was pressed (it may be on another screen).</summary>
+    Window AskOver() => _presenter is { IsActive: true } presenter ? presenter : this;
 
     async Task NextPressed()
     {
@@ -555,15 +575,15 @@ public partial class MainWindow : Window
         var cmd = CommandModifiers;
         switch (e.Key)
         {
-            case Key.O when e.KeyModifiers == cmd: _ = AddFilesFromPicker(); break;
+            case Key.O when e.KeyModifiers == cmd: AddFilesFromPicker().Report(); break;
             case Key.F when e.KeyModifiers == cmd: ShowSideTab("library"); Tracks.FocusSearch(); break;
-            case Key.S when e.KeyModifiers == cmd: _ = SavePlaylist(); break;
-            case Key.E when e.KeyModifiers == cmd: _ = EditSelectedCues(); break;
-            case Key.G when e.KeyModifiers == cmd: _ = EditSelectedSegue(); break;
-            case Key.T when e.KeyModifiers == cmd: _ = EditSelectedTags(); break;
+            case Key.S when e.KeyModifiers == cmd: SavePlaylist().Report(); break;
+            case Key.E when e.KeyModifiers == cmd: EditSelectedCues().Report(); break;
+            case Key.G when e.KeyModifiers == cmd: EditSelectedSegue().Report(); break;
+            case Key.T when e.KeyModifiers == cmd: EditSelectedTags().Report(); break;
             case Key.Up when e.KeyModifiers == cmd: MoveSelected(-1); break;
             case Key.Down when e.KeyModifiers == cmd: MoveSelected(+1); break;
-            case Key.OemComma when e.KeyModifiers == cmd: _ = OpenSettings(); break;
+            case Key.OemComma when e.KeyModifiers == cmd: OpenSettings().Report(); break;
             default: return;
         }
         e.Handled = true;
@@ -1368,8 +1388,23 @@ public partial class MainWindow : Window
 
     void RemoveSelected()
     {
-        foreach (var row in Playlist.SelectedItems?.OfType<PlaylistRow>().ToList() ?? new())
+        var rows = Playlist.SelectedItems?.OfType<PlaylistRow>().ToList() ?? new();
+        if (rows.Count > 0 && rows.All(r => r.IsPreview)) { LastLog.Text = ScheduledNote(rows[0]); return; }
+        foreach (var row in rows.Where(r => !r.IsPreview))
             _engine?.Remove(row.Id);
+    }
+
+    /// <summary>Why a scheduled item still to come can't be changed here.</summary>
+    static string ScheduledNote(PlaylistRow row) =>
+        L.F("{0} is scheduled: it is changed in Sintoniza Pro (Events, Ad breaks), and comes into the playlist when it is due", row.Track.Event ?? row.Track.Display);
+
+    /// <summary>The selected row for an editor, or null and why not (said in the status line).</summary>
+    PlaylistRow? FileRow()
+    {
+        if (Playlist.SelectedItem is not PlaylistRow row) { LastLog.Text = L.T("Select an item in the playlist first."); return null; }
+        if (row.IsPreview) { LastLog.Text = ScheduledNote(row); return null; }
+        if (row.Track.IsStream) { LastLog.Text = L.T("A stream or a pause has no file to edit."); return null; }
+        return row;
     }
 
     void MoveSelected(int delta)
@@ -1601,7 +1636,8 @@ public partial class MainWindow : Window
     /// <summary>A pause not on air yet: what to talk about, and how long.</summary>
     async Task EditSelectedPause()
     {
-        if (_engine == null || Playlist.SelectedItem is not PlaylistRow { IsPause: true, IsPlaying: false, IsPlayed: false } row) return;
+        if (_engine == null || Playlist.SelectedItem is not PlaylistRow { IsPause: true } row) return;
+        if (row.IsPlaying || row.IsPlayed) { LastLog.Text = L.T("A pause on air or already played can't be changed."); return; }
         var editing = new PauseRequest(row.Track.Title, row.Track.Duration, false);
         if (await new PauseDialog(editing).ShowDialog<PauseRequest?>(this) is not { } p) return;
         _engine.EditPause(row.Id, p.Comment, p.Seconds);
@@ -1681,14 +1717,15 @@ public partial class MainWindow : Window
 
     async Task EditSelectedCues()
     {
-        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false, IsPreview: false } row) await EditCues(row.Track.Path, row.Track.Display);
+        if (FileRow() is { } row) await EditCues(row.Track.Path, row.Track.Display);
     }
 
     bool _editorOpen;
 
     async Task EditCues(string path, string title)
     {
-        if (_engine == null || _editorOpen) return;
+        if (_engine == null) return;
+        if (_editorOpen) { LastLog.Text = L.T("Another editor is open: close it first."); return; }
         _editorOpen = true;
         try
         {
@@ -1703,8 +1740,9 @@ public partial class MainWindow : Window
     /// <summary>The segue editor for the selected item and the one after it in the playlist.</summary>
     async Task EditSelectedSegue()
     {
-        if (_engine is not { } engine || _editorOpen) return;
-        if (Playlist.SelectedItem is not PlaylistRow { IsPreview: false } row) return;
+        if (_engine is not { } engine) return;
+        if (_editorOpen) { LastLog.Text = L.T("Another editor is open: close it first."); return; }
+        if (FileRow() is not { } row) return;
         var after = _rows.Skip(_rows.IndexOf(row) + 1).FirstOrDefault(r => !r.IsPreview);
         if (row.Track.IsStream || after == null || after.Track.IsStream)
         {
@@ -1759,12 +1797,13 @@ public partial class MainWindow : Window
 
     async Task EditSelectedTags()
     {
-        if (Playlist.SelectedItem is PlaylistRow { Track.IsStream: false, IsPreview: false } row) await EditTags(row.Track.Path);
+        if (FileRow() is { } row) await EditTags(row.Track.Path);
     }
 
     async Task EditTags(string path)
     {
-        if (_engine == null || _editorOpen) return;
+        if (_engine == null) return;
+        if (_editorOpen) { LastLog.Text = L.T("Another editor is open: close it first."); return; }
         _editorOpen = true;
         try
         {
@@ -1798,7 +1837,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(_settings.StreamHost) || _settings.StreamPort <= 0)
         {
             LastLog.Text = L.T("Set up the streaming server in Settings first");
-            _ = OpenSettings();
+            OpenSettings().Report();
             return;
         }
 
@@ -2064,7 +2103,7 @@ public partial class MainWindow : Window
         {
             _settings.Save();
             ApplyAutoScan();
-            _ = _library.ScanAsync(_settings.Library.Folders, automatic: true);
+            _library.ScanAsync(_settings.Library.Folders, automatic: true).Report();
         });
 
     /// <summary>
@@ -2334,9 +2373,16 @@ public partial class MainWindow : Window
     string? _webKey;
     ReportsWindow? _reports;
 
+    /// <summary>A window already open, in front (also when it was minimised: Activate alone leaves it down there).</summary>
+    static void Front(Window w)
+    {
+        if (w.WindowState == WindowState.Minimized) w.WindowState = WindowState.Normal;
+        w.Activate();
+    }
+
     void OpenReports()
     {
-        if (_reports != null) { _reports.Activate(); return; }
+        if (_reports != null) { Front(_reports); return; }
         _reports = new ReportsWindow(AsRunLog.DefaultFolder, _settings.StationName) { Database = () => _library.Db };
         _reports.Closed += (_, _) => _reports = null;
         _reports.Show(this);

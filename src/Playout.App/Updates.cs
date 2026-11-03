@@ -222,7 +222,12 @@ static class Updates
     public static void OpenInBrowser(string url)
     {
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
-        catch { /* no browser: nothing more we can do */ }
+        catch (Exception ex)
+        {
+            // No browser or file manager here: said, not nothing.
+            AppLog.Write($"Can't open {url}: {ex.Message}");
+            Problems.Show(L.F("Can't open {0}: {1}", url, ex.Message));
+        }
     }
 
     static bool TryParseVersion(string tag, out Version version)
