@@ -1,6 +1,6 @@
 # User guide
 
-Sintoniza is four programs and a command, sharing one database (the **library**: music, categories, the schedule,
+Sintoniza is five programs and a command, sharing one database (the **library**: music, categories, the schedule,
 the daily playlists and the play history):
 
 | Program | Who uses it | What for |
@@ -9,7 +9,8 @@ the daily playlists and the play history):
 | [**Sintoniza Pro**](#2-sintoniza-pro) | programming, the commercial department, whoever runs the station | the station's settings, categories and cartwalls; events, ad breaks, clients and campaigns, hour templates, and the **daily playlists** song by song |
 | [**Sintoniza Import**](#3-sintoniza-import) | whoever looks after the music | bringing folders of music into the library, in categories |
 | [**Sintoniza Rec**](#4-sintoniza-rec) | the technician, the station's management | records what the station broadcasts and keeps it (the law asks for 30 days); exports a stretch for the regulator, a client or a complaint |
-| [**radio-import**](#5-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
+| [**Sintoniza Tempo**](#5-sintoniza-tempo) | the host, in the studio | the studio clock on a screen: the seconds in a ring of lights, the date, the ON AIR sign |
+| [**radio-import**](#6-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
 
 Each has its own entry in the app menu (Linux), the Start menu and desktop (Windows) or Applications (macOS). Only one
 copy of each runs on a computer. With a MySQL / MariaDB library, Pro and Import can run on other computers (the
@@ -676,7 +677,20 @@ address (**Send a test**). Closing the window asks first, because it stops the r
 
 ---
 
-## 5. radio-import (command line)
+## 5. Sintoniza Tempo
+
+The studio clock, for a screen the presenter can see: hours and minutes large, the seconds under them and in a ring of
+60 lights lit round to the second, the hours as marks outside it, the station's name, the date and the time to the top
+of the hour. On a studio computer it goes by the station's time and name as Emi keeps them there (the time zone in Pro →
+Station settings → General; from its next start); on a computer without Emi, by the computer's clock. When Emi runs on
+the same computer, its red sign shows over the clock (**MIC LIVE**, **ON AIR · show**; out as soon as Emi closes).
+Double-click or **F11**: full screen (**Esc** leaves it); it opens again on the screen it was on, full screen there if
+it was, never over the on-air program on another screen. Right-click: the ON AIR sign and the time to the top of the hour on
+or off, **Start with the computer**, Close. It needs neither the library nor a user.
+
+---
+
+## 6. radio-import (command line)
 
 ```
 radio-import                          scan the library's folders (Pro → Station settings → Library)

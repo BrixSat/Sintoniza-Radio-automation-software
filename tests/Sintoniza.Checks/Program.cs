@@ -1378,6 +1378,38 @@ Console.WriteLine("RDS: RT+ over UECP (as an encoder reads the frames)");
 
 // ───────────────────────── Release notes ─────────────────────────
 
+Console.WriteLine("Sintoniza Tempo (the studio clock)");
+{
+    var tempo = new TempoWindow { Width = 700, Height = 760 };
+    var face = tempo.FindControl<StudioClock>("Clock")!;
+    face.Fixed = DateTime.Today.AddHours(10).AddMinutes(41).AddSeconds(37);
+    StudioSign.Show("MIC LIVE");
+    tempo.Show();
+    Pump(10);
+    var signBox = tempo.FindControl<Border>("SignBox")!;
+    var topText = tempo.FindControl<TextBlock>("TopText")!;
+    Check(signBox.IsVisible && tempo.FindControl<TextBlock>("SignText")!.Text == "MIC LIVE", "the on-air program's sign (MIC LIVE) over the clock");
+    Check(topText.Text?.Contains("18:23") == true && tempo.FindControl<TextBlock>("DateText")!.Text?.Length > 0,
+        $"the date, and the time to the top of the hour ({topText.Text})");
+    // The right-click menu's option, clicked: unticked, no sign, kept; clicked again: back.
+    var signItem = tempo.MenuForChecks.Items.OfType<MenuItem>().First(m => m.Name == "SignItem");
+    bool wasOn = (signItem.Header as string)?.StartsWith("✓") == true;
+    signItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    Pump(3);
+    Check(wasOn && (signItem.Header as string)?.StartsWith("✓") == false && !signBox.IsVisible && !TempoSettings.Load().ShowSign,
+        $"Show the ON AIR sign, unticked on the right-click menu: no sign, and kept ({signItem.Header})");
+    signItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    Pump(3);
+    StudioSign.Clear(); // the on-air program closing
+    typeof(TempoWindow).GetMethod("Refresh", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.Invoke(tempo, null);
+    Check((signItem.Header as string)?.StartsWith("✓") == true && TempoSettings.Load().ShowSign && !signBox.IsVisible,
+        "…ticked again; and the sign goes out at once when the on-air program closes");
+    face.Fixed = null;
+    Check(Math.Abs((face.Time - StationTime.Now).TotalSeconds) < 2, "the station's time (its time zone)");
+    tempo.Close();
+    Pump(5);
+}
+
 Console.WriteLine("Release notes in the update window");
 {
     const string body = "## What's new\n- **Website**: files by FTP\n- See [the manual](https://example.org)\n\n**Full Changelog**: https://github.com/x/y/compare/v1...v2\n\n"

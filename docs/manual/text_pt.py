@@ -19,7 +19,7 @@ WORDS = {
 CHAPTERS = [
 ("O Sintoniza num relance", "intro", [
     ("p", "O Sintoniza é um sistema de automação para rádios que estão no ar a toda a hora. Este capítulo apresenta os "
-          "quatro programas que o compõem e mostra, em quatro passos, como um dia de emissão é preparado e vai para o ar."),
+          "cinco programas que o compõem e mostra, em quatro passos, como um dia de emissão é preparado e vai para o ar."),
     ("p", "Três dos programas partilham uma base de dados a que chamamos <b>biblioteca</b>. É lá que vivem a música e as "
           "suas categorias, a programação, as playlists diárias e o histórico de tudo o que foi emitido."),
     ("icons", [
@@ -27,6 +27,7 @@ CHAPTERS = [
         ("radio-playout-schedule.png", "Sintoniza Pro", "O programa de produção. Aqui se definem a estação, as categorias e as cartwalls, os eventos, a publicidade, os programas e as playlists de cada dia."),
         ("radio-playout-import.png", "Sintoniza Import", "Traz pastas de música para a biblioteca, já arrumadas em categorias."),
         ("radio-playout-rec.png", "Sintoniza Rec", "Grava tudo o que a estação emite e guarda as gravações durante o tempo que a lei pede. Trabalha sozinho, sem a biblioteca."),
+        ("radio-playout-tempo.png", "Sintoniza Tempo", "O relógio de estúdio, para um ecrã no estúdio: os segundos num anel de luzes, a data e o sinal NO AR."),
     ]),
     ("p", "Cada programa tem a sua entrada no menu das aplicações em Linux, no menu Iniciar e no ambiente de trabalho em "
           "Windows, e em Aplicações no macOS. Só corre uma cópia de cada programa por computador."),
@@ -904,6 +905,23 @@ CHAPTERS = [
         ("TestAlertButton", "<b>Enviar um teste</b>."),
     ]),
     ("p", "O Rec também avisa quando uma gravação não pode ser escrita, por causa de um disco cheio ou em falta ou de uma partilha que desapareceu, e nesse caso tenta outra vez com um ficheiro novo. Avisa ainda quando restam menos de 2 GB livres."),
+]),
+
+("Sintoniza Tempo", "tempo", [
+    ("p", "O Sintoniza Tempo é o relógio de estúdio. Ponha-o num ecrã que o locutor veja: a hora em grande e os segundos a "
+          "andar à volta num anel de luzes, para contar de relance até às notícias ou à hora certa."),
+    ("fig", "tempo", "Sintoniza Tempo", [
+        ("StationText", "O nome da estação."),
+        ("SignBox", "O <b>sinal NO AR</b> do programa de emissão, quando corre no mesmo computador: <b>MIC LIVE</b> com o microfone aberto, <b>NO AR</b> durante um programa ao vivo."),
+        ("Clock", "A hora: horas e minutos, os segundos por baixo, e o anel de 60 luzes aceso até ao segundo. As marcas por fora são as horas."),
+        ("DateText", "A data. Com um fuso horário definido para a estação, o relógio mostra a hora da estação e o fuso, como a Sintoniza Emi os guarda neste computador. Num computador sem a Emi, mostra a hora do próprio computador."),
+        ("TopText", "Quanto falta para a hora certa."),
+    ]),
+    ("p", "Duplo clique no relógio, ou <b>F11</b>, para ecrã inteiro; <b>Esc</b> sai. O Tempo volta a abrir no ecrã onde "
+          "estava, por isso um relógio no segundo ecrã do estúdio nunca tapa o programa de emissão. O resto está no botão direito: mostrar ou "
+          "não o sinal NO AR e quanto falta para a hora certa, e <b>Arrancar com o computador</b>, para o relógio voltar "
+          "sozinho depois de um reinício. O Tempo não precisa da biblioteca nem de utilizador, e só é tão certo como o relógio "
+          "do computador: acerte-o por um servidor de hora."),
 ]),
 
 ("Como faço…", "howto", [

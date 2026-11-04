@@ -18,13 +18,14 @@ CHAPTERS = [
 ("Sintoniza at a glance", "intro", [
     ("p", "Sintoniza is radio automation for stations that stay on air around the clock. This chapter explains what each "
           "of its programs is for and how a day of radio is planned and played. Read it first, whatever your job at the station."),
-    ("p", "Sintoniza is made of four programs. Three of them share one database, which we call the <b>library</b>. It holds "
+    ("p", "Sintoniza is made of five programs. Three of them share one database, which we call the <b>library</b>. It holds "
           "the music and its categories, the schedule, the daily playlists and the history of everything that went on air."),
     ("icons", [
         ("radio-playout.png", "Sintoniza Emi", "The on-air program, in the studio. The name comes from <i>emissão</i>, Portuguese for broadcast. Presenters use it for the playlist, the cartwall, the microphone and the stream."),
         ("radio-playout-schedule.png", "Sintoniza Pro", "The station's production program. Whoever runs the station uses it for the settings, categories and cartwalls, the events and ad breaks, clients and campaigns, the hour templates for your shows and the daily playlists."),
         ("radio-playout-import.png", "Sintoniza Import", "Brings folders of music into the library and sorts them into categories."),
         ("radio-playout-rec.png", "Sintoniza Rec", "Records everything the station broadcasts and keeps it for as long as the law asks. It works on its own and doesn't need the library."),
+        ("radio-playout-tempo.png", "Sintoniza Tempo", "The studio clock, for a screen in the studio: the seconds in a ring of lights, the date, and the ON AIR sign."),
     ]),
     ("p", "Each program has its own entry in the app menu on Linux, in the Start menu and on the desktop on Windows, and in "
           "Applications on a Mac. Only one copy of each can run on a computer at a time."),
@@ -983,6 +984,23 @@ CHAPTERS = [
     ]),
     ("p", "Rec also warns you when a recording can't be written, for example because a disk is full or a shared folder has "
           "gone away. It keeps trying with a new file. And it warns you when there is less than 2 GB free."),
+]),
+
+("Sintoniza Tempo", "tempo", [
+    ("p", "Sintoniza Tempo is the studio clock. Put it on a screen the presenter can see: the time large, the seconds going "
+          "round in a ring of lights, so a presenter can count down to the news or the top of the hour at a glance."),
+    ("fig", "tempo", "Sintoniza Tempo", [
+        ("StationText", "The station's name."),
+        ("SignBox", "The <b>ON AIR sign</b> of the on-air program, when it runs on the same computer: <b>MIC LIVE</b> while the microphone is open, <b>ON AIR</b> during a live show."),
+        ("Clock", "The time: hours and minutes, the seconds under them, and the ring of 60 lights lit round to the second. The marks outside are the hours."),
+        ("DateText", "The date. With a time zone set for the station, the clock shows the station's time and its zone, as Sintoniza Emi keeps them on this computer. On a computer without Emi it shows the computer's own time."),
+        ("TopText", "How long until the top of the hour."),
+    ]),
+    ("p", "Double-click the clock, or press <b>F11</b>, for full screen; <b>Esc</b> leaves it. Tempo opens again on the screen "
+          "it was on, so a clock on the studio's second screen never covers the on-air program. Right-click for the rest: whether "
+          "to show the ON AIR sign and the time to the top of the hour, and <b>Start with the computer</b>, so a studio clock "
+          "comes back by itself after a restart. Tempo doesn't need the library or a user, and keeps the computer's clock "
+          "exact only as well as the computer does: keep it set by a time server."),
 ]),
 
 ("How do I…", "howto", [

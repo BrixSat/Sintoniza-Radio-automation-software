@@ -686,6 +686,18 @@ Shot(recSettings, "rec-alerts", "SilenceDbBox", "AliveBox", "TelegramTokenBox", 
 recSettings.Close();
 rec.Close();
 
+// ───────────────────────── Sintoniza Tempo ─────────────────────────
+
+// The studio clock at a moment with the mic open in the studio (the sign as Emi writes it).
+StudioSign.Show("MIC LIVE");
+var tempo = new TempoWindow { Width = 820, Height = 900 };
+tempo.FindControl<StudioClock>("Clock")!.Fixed = DateTime.Today.AddHours(10).AddMinutes(41).AddSeconds(37);
+tempo.Show();
+Pump(20);
+Shot(tempo, "tempo", "StationText", "SignBox", "Clock", "DateText", "TopText");
+tempo.Close();
+StudioSign.Show(null);
+
 File.WriteAllText(Path.Combine(outDir, "callouts.json"), JsonSerializer.Serialize(callouts, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine("Done.");
 Environment.Exit(0);

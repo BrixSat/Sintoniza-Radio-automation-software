@@ -167,7 +167,7 @@ section { padding: 96px 0; }
 .alt { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 
 /* Programs */
-.programs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.programs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; }
 .program {
   background: linear-gradient(180deg, var(--panel) 0%, rgba(23,27,34,0.6) 100%);
   border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 22px 24px;

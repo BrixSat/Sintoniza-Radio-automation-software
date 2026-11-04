@@ -1,6 +1,7 @@
 # Sintoniza
 
-Sintoniza Emi (on air), Sintoniza Pro (production), Sintoniza Rec (the broadcast recorder) and Sintoniza Import.
+Sintoniza Emi (on air), Sintoniza Pro (production), Sintoniza Rec (the broadcast recorder), Sintoniza Tempo (the
+studio clock) and Sintoniza Import.
 A broadcast radio automation / playout app for **Linux, macOS and Windows**, with the same look on all three.
 It is built in C# with [Avalonia](https://avaloniaui.net/) and uses the [BASS](https://www.un4seen.com/) audio
 engine for decoding, mixing and streaming.
@@ -471,7 +472,7 @@ Nothing is published if any of it fails. `scripts/check.sh` can be run on its ow
 #### macOS
 
 `./build.sh mac 1.0.0` builds, for Apple Silicon (`arm64`) and Intel (`x64`) Macs, **Sintoniza Emi.app**,
-**Sintoniza Pro.app**, **Sintoniza Rec.app** and **Sintoniza Import.app** (which start the first's production or
+**Sintoniza Pro.app**, **Sintoniza Rec.app**, **Sintoniza Tempo.app** and **Sintoniza Import.app** (which start the first's production or
 recorder program, or it as the import program; keep them in the same folder, normally Applications; *Sintoniza Radio
 Broadcast system.app*, its name before, can be deleted once Sintoniza Emi.app is there), with their icons and the
 microphone permission text.
@@ -481,7 +482,7 @@ microphone permission text.
   Mac, `git pull`, then `./release-mac.sh 1.0.0` (needs `brew install gh` and `gh auth login`).
 - **On Linux**: they go in `.zip` files. An Apple Silicon Mac only starts signed apps, so these are signed ad hoc if
   [`rcodesign`](https://github.com/indygreg/apple-platform-rs) is installed; otherwise sign them once on the Mac after
-  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Emi.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Rec.app" "/Applications/Sintoniza Import.app"`.
+  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Emi.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Rec.app" "/Applications/Sintoniza Tempo.app" "/Applications/Sintoniza Import.app"`.
 
 **Signed so macOS opens them without a warning (no "Move to Trash").** macOS only trusts apps downloaded from the
 internet when they are signed with an Apple **Developer ID** and **notarized** by Apple; nothing else avoids the

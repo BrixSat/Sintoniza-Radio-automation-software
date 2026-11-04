@@ -1,4 +1,4 @@
-// Sintoniza Pro.app, Sintoniza Rec.app, Sintoniza Import.app: start their program inside Sintoniza Emi.app (one
+// Sintoniza Pro.app, Sintoniza Rec.app, Sintoniza Tempo.app, Sintoniza Import.app: start their program inside Sintoniza Emi.app (one
 // .NET runtime for all). Sintoniza Emi.app is looked for next to this app (both in Applications), then in
 // /Applications and ~/Applications, also under its name before. build.sh compiles it once per app:
 //   clang -DPROGRAM='"SintonizaPro"' -DARGUMENT='""' -DTITLE='"Sintoniza Pro"' launcher.c -o sintoniza-schedule

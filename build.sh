@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds self-contained release packages into dist/ (Sintoniza Emi, Pro, Rec and Import in each):
+# Builds self-contained release packages into dist/ (Sintoniza Emi, Pro, Rec, Tempo and Import in each):
 #   dist/RadioPlayout-<version>-win-x64.zip
 #   dist/RadioPlayout-<version>-win-x64-setup.exe   (needs NSIS: apt install nsis)
 #   dist/RadioPlayout-<version>-linux-x64.tar.gz
@@ -42,8 +42,8 @@ build() { # $1 = win|linux
   rm -rf "$out"
 
   echo "▶ Publishing $rid"
-  # Sintoniza Emi, Sintoniza Pro, Sintoniza Rec and radio-import (library scanner) share one folder and one .NET runtime.
-  for project in "$PROJECT" "$ROOT/src/Sintoniza.Pro" "$ROOT/src/Sintoniza.Rec" "$ROOT/src/Sintoniza.Import"; do
+  # Sintoniza Emi, Pro, Rec, Tempo and radio-import (library scanner) share one folder and one .NET runtime.
+  for project in "$PROJECT" "$ROOT/src/Sintoniza.Pro" "$ROOT/src/Sintoniza.Rec" "$ROOT/src/Sintoniza.Tempo" "$ROOT/src/Sintoniza.Import"; do
     # ReadyToRun: compiled ahead, so the programs open quickly (Windows most) instead of compiling as they start.
     dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
       -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$out"
@@ -73,7 +73,7 @@ build() { # $1 = win|linux
       installer "$out" "$DIST/$pkg-setup.exe"
       ;;
     linux)
-      chmod +x "$out/$EXE" "$out/SintonizaPro" "$out/SintonizaRec" "$out/radio-import"
+      chmod +x "$out/$EXE" "$out/SintonizaPro" "$out/SintonizaRec" "$out/SintonizaTempo" "$out/radio-import"
       # Its name before, for what still starts it so (autostart entries, the updater of an older version).
       ln -sf "$EXE" "$out/RadioPlayout"
       tar -C "$DIST" -czf "$DIST/$pkg.tar.gz" "$pkg"
@@ -131,22 +131,29 @@ SH
 #!/bin/sh
 exec /opt/$pkg/SintonizaRec "\$@"
 SH
+  cat > "$root/usr/bin/sintoniza-tempo" <<SH
+#!/bin/sh
+exec /opt/$pkg/SintonizaTempo "\$@"
+SH
   # Its names before: Sintoniza Schedule, Sintoniza Production.
   ln -s sintoniza-pro "$root/usr/bin/sintoniza-schedule"
   ln -s sintoniza-pro "$root/usr/bin/sintoniza-production"
   cp "$ROOT/packaging/linux/$pkg.desktop" "$ROOT/packaging/linux/$pkg-schedule.desktop" "$ROOT/packaging/linux/$pkg-import.desktop" \
-    "$ROOT/packaging/linux/$pkg-rec.desktop" "$ROOT/packaging/linux/$pkg-manual.desktop" "$root/usr/share/applications/"
+    "$ROOT/packaging/linux/$pkg-rec.desktop" "$ROOT/packaging/linux/$pkg-tempo.desktop" "$ROOT/packaging/linux/$pkg-manual.desktop" \
+    "$root/usr/share/applications/"
   cp "$ROOT/packaging/linux/$pkg.png" "$ROOT/packaging/linux/$pkg-schedule.png" "$ROOT/packaging/linux/$pkg-import.png" \
-    "$ROOT/packaging/linux/$pkg-rec.png" "$root/usr/share/icons/hicolor/256x256/apps/"
+    "$ROOT/packaging/linux/$pkg-rec.png" "$ROOT/packaging/linux/$pkg-tempo.png" "$root/usr/share/icons/hicolor/256x256/apps/"
   cp "$ROOT/packaging/icon.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg.svg"
   cp "$ROOT/packaging/icon-schedule.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg-schedule.svg"
   cp "$ROOT/packaging/icon-import.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg-import.svg"
   cp "$ROOT/packaging/icon-rec.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg-rec.svg"
+  cp "$ROOT/packaging/icon-tempo.svg" "$root/usr/share/icons/hicolor/scalable/apps/$pkg-tempo.svg"
 
   find "$root" -type d -exec chmod 755 {} +
   find "$root" -type f -exec chmod 644 {} +
-  chmod 755 "$root/opt/$pkg/$EXE" "$root/opt/$pkg/SintonizaPro" "$root/opt/$pkg/SintonizaRec" "$root/opt/$pkg/radio-import" \
-    "$root/usr/bin/$pkg" "$root/usr/bin/radio-import" "$root/usr/bin/sintoniza-pro" "$root/usr/bin/sintoniza-rec" \
+  chmod 755 "$root/opt/$pkg/$EXE" "$root/opt/$pkg/SintonizaPro" "$root/opt/$pkg/SintonizaRec" "$root/opt/$pkg/SintonizaTempo" \
+    "$root/opt/$pkg/radio-import" "$root/usr/bin/$pkg" "$root/usr/bin/radio-import" "$root/usr/bin/sintoniza-pro" \
+    "$root/usr/bin/sintoniza-rec" "$root/usr/bin/sintoniza-tempo" \
     "$root/usr/bin/sintoniza-manual"
 }
 
@@ -179,7 +186,8 @@ Priority: optional
 Description: Sintoniza - radio automation, production and recording
  Sintoniza Emi (on-air playout with crossfades, cartwall, cue points and
  Icecast/Shoutcast streaming), Sintoniza Pro (library, schedule and
- advertising) and Sintoniza Rec (the broadcast recorder).
+ advertising), Sintoniza Rec (the broadcast recorder) and Sintoniza Tempo
+ (the studio clock).
 CTL
 
   fakeroot dpkg-deb --build "$root" "$file" >/dev/null
@@ -235,6 +243,7 @@ cp -a "$stage"/. %{buildroot}/
 /usr/bin/radio-import
 /usr/bin/sintoniza-emi
 /usr/bin/sintoniza-rec
+/usr/bin/sintoniza-tempo
 /usr/bin/sintoniza-pro
 /usr/bin/sintoniza-production
 /usr/bin/sintoniza-schedule
@@ -245,14 +254,17 @@ cp -a "$stage"/. %{buildroot}/
 /usr/share/applications/$pkg-schedule.desktop
 /usr/share/applications/$pkg-import.desktop
 /usr/share/applications/$pkg-rec.desktop
+/usr/share/applications/$pkg-tempo.desktop
 /usr/share/icons/hicolor/256x256/apps/$pkg.png
 /usr/share/icons/hicolor/256x256/apps/$pkg-schedule.png
 /usr/share/icons/hicolor/256x256/apps/$pkg-import.png
 /usr/share/icons/hicolor/256x256/apps/$pkg-rec.png
+/usr/share/icons/hicolor/256x256/apps/$pkg-tempo.png
 /usr/share/icons/hicolor/scalable/apps/$pkg.svg
 /usr/share/icons/hicolor/scalable/apps/$pkg-schedule.svg
 /usr/share/icons/hicolor/scalable/apps/$pkg-import.svg
 /usr/share/icons/hicolor/scalable/apps/$pkg-rec.svg
+/usr/share/icons/hicolor/scalable/apps/$pkg-tempo.svg
 SPEC
 
   rpmbuild -bb --quiet --define "_topdir $top" "$top/SPECS/$pkg.spec" >/dev/null
@@ -261,8 +273,9 @@ SPEC
   echo "→ $file"
 }
 
-# macOS: four apps per Mac type (Apple Silicon arm64, Intel x64): Sintoniza Emi.app, and Sintoniza Pro.app,
-# Sintoniza Rec.app and Sintoniza Import.app (launchers that start its SintonizaPro or SintonizaRec program, or it
+# macOS: five apps per Mac type (Apple Silicon arm64, Intel x64): Sintoniza Emi.app, and Sintoniza Pro.app,
+# Sintoniza Rec.app, Sintoniza Tempo.app and Sintoniza Import.app (launchers that start its SintonizaPro, SintonizaRec
+# or SintonizaTempo program, or it
 # with --import). On a Mac they are signed (ad hoc, or with
 # the Developer ID in MAC_SIGN_IDENTITY) and put in a .dmg; on Linux they go in a .zip, signed ad hoc only if rcodesign
 # is installed: an Apple Silicon Mac won't start an unsigned app (sign it there with codesign, see the README).
@@ -330,7 +343,7 @@ mac_signing() {
 
 mac() {
   mac_signing
-  local native="$ROOT/native/osx" rid out pkg app sched imp stage file appname="Sintoniza Emi" rec
+  local native="$ROOT/native/osx" rid out pkg app sched imp stage file appname="Sintoniza Emi" rec tempo
   if [[ -z "$(ls -A "$native" 2>/dev/null)" || ! -e "$native/libbassflac.dylib" ]]; then
     "$ROOT/scripts/fetch-bass.sh" osx
   fi
@@ -342,12 +355,13 @@ mac() {
     sched="$out/Sintoniza Pro.app"
     imp="$out/Sintoniza Import.app"
     rec="$out/Sintoniza Rec.app"
-    mkdir -p "$rec/Contents/MacOS" "$rec/Contents/Resources"
+    tempo="$out/Sintoniza Tempo.app"
+    mkdir -p "$rec/Contents/MacOS" "$rec/Contents/Resources" "$tempo/Contents/MacOS" "$tempo/Contents/Resources"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" "$sched/Contents/MacOS" "$sched/Contents/Resources" \
       "$imp/Contents/MacOS" "$imp/Contents/Resources"
 
     echo "▶ Publishing $rid"
-    for project in "$PROJECT" "$ROOT/src/Sintoniza.Pro" "$ROOT/src/Sintoniza.Rec" "$ROOT/src/Sintoniza.Import"; do
+    for project in "$PROJECT" "$ROOT/src/Sintoniza.Pro" "$ROOT/src/Sintoniza.Rec" "$ROOT/src/Sintoniza.Tempo" "$ROOT/src/Sintoniza.Import"; do
       dotnet publish "$project" -c Release -r "$rid" --self-contained -p:PublishReadyToRun=true \
         -p:DebugType=none -p:DebugSymbols=false -p:Version="$appver" -p:InformationalVersion="${version#v}" -o "$app/Contents/MacOS"
     done
@@ -366,25 +380,28 @@ mac() {
     sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Rec-Info.plist" > "$rec/Contents/Info.plist"
     cp "$ROOT/packaging/macos/rec.icns" "$rec/Contents/Resources/"
     launcher "$rec/Contents/MacOS/sintoniza-rec" SintonizaRec "" "Sintoniza Rec" "$ROOT/packaging/macos/sintoniza-rec"
+    sed "s/@VERSION@/$appver/g" "$ROOT/packaging/macos/Tempo-Info.plist" > "$tempo/Contents/Info.plist"
+    cp "$ROOT/packaging/macos/tempo.icns" "$tempo/Contents/Resources/"
+    launcher "$tempo/Contents/MacOS/sintoniza-tempo" SintonizaTempo "" "Sintoniza Tempo" "$ROOT/packaging/macos/sintoniza-tempo"
     chmod +x "$app/Contents/MacOS/$EXE" "$app/Contents/MacOS/SintonizaPro" "$app/Contents/MacOS/SintonizaRec" \
-      "$app/Contents/MacOS/radio-import" "$sched/Contents/MacOS/sintoniza-schedule" "$imp/Contents/MacOS/sintoniza-import" \
-      "$rec/Contents/MacOS/sintoniza-rec"
+      "$app/Contents/MacOS/SintonizaTempo" "$app/Contents/MacOS/radio-import" "$sched/Contents/MacOS/sintoniza-schedule" \
+      "$imp/Contents/MacOS/sintoniza-import" "$rec/Contents/MacOS/sintoniza-rec" "$tempo/Contents/MacOS/sintoniza-tempo"
 
     echo "▶ Signing $pkg"
     if command -v codesign >/dev/null; then
-      for bundle in "$app" "$sched" "$rec" "$imp"; do sign_bundle "$bundle"; done
+      for bundle in "$app" "$sched" "$rec" "$tempo" "$imp"; do sign_bundle "$bundle"; done
     elif command -v rcodesign >/dev/null; then
-      rcodesign sign "$app" >/dev/null && rcodesign sign "$sched" >/dev/null && rcodesign sign "$rec" >/dev/null && rcodesign sign "$imp" >/dev/null
+      rcodesign sign "$app" >/dev/null && rcodesign sign "$sched" >/dev/null && rcodesign sign "$rec" >/dev/null && rcodesign sign "$tempo" >/dev/null && rcodesign sign "$imp" >/dev/null
     elif [[ $rid == osx-arm64 ]]; then
       echo "⚠ Not signed (no codesign or rcodesign): on an Apple Silicon Mac run once" >&2
-      echo "    codesign --force --deep --sign - \"/Applications/$appname.app\" \"/Applications/Sintoniza Pro.app\" \"/Applications/Sintoniza Rec.app\" \"/Applications/Sintoniza Import.app\"" >&2
+      echo "    codesign --force --deep --sign - \"/Applications/$appname.app\" \"/Applications/Sintoniza Pro.app\" \"/Applications/Sintoniza Rec.app\" \"/Applications/Sintoniza Tempo.app\" \"/Applications/Sintoniza Import.app\"" >&2
     fi
 
     echo "▶ Packaging $pkg"
     if command -v hdiutil >/dev/null; then
       # The disk image: the apps and a link to Applications to drag them onto.
       stage="$(mktemp -d)"
-      cp -R "$app" "$sched" "$rec" "$imp" "$out/README.md" "$stage/"
+      cp -R "$app" "$sched" "$rec" "$tempo" "$imp" "$out/README.md" "$stage/"
       cp "$out"/Sintoniza-Manual*.pdf "$stage/" 2>/dev/null || true
       ln -s /Applications "$stage/Applications"
       file="$DIST/$pkg.dmg"
@@ -395,7 +412,7 @@ mac() {
     else
       file="$DIST/$pkg.zip"
       rm -f "$file"
-      (cd "$out" && zip -qry "$file" "$appname.app" "Sintoniza Pro.app" "Sintoniza Rec.app" "Sintoniza Import.app" README.md Sintoniza-Manual*.pdf)
+      (cd "$out" && zip -qry "$file" "$appname.app" "Sintoniza Pro.app" "Sintoniza Rec.app" "Sintoniza Tempo.app" "Sintoniza Import.app" README.md Sintoniza-Manual*.pdf)
     fi
     echo "→ $file"
   done

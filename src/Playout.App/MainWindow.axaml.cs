@@ -359,6 +359,7 @@ public partial class MainWindow : Window, IShowsProblems
             SaveSettings();
         };
         Closed += (_, _) => _rds?.Dispose();
+        Closed += (_, _) => StudioSign.Clear(); // the studio clock's sign goes out with the on-air program
         Closed += (_, _) => StopGpio();
         Closed += (_, _) => _web?.Dispose();
         Closed += (_, _) => _listeners?.Dispose();

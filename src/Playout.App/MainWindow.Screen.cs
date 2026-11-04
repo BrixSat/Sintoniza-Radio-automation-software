@@ -311,6 +311,7 @@ public partial class MainWindow
             else if (current != null && LiveInput.Is(current.Path)) text = L.T("ON AIR · LIVE INPUT");
         }
         bool lit = text != null;
+        StudioSign.Show(text); // for the studio clock (Sintoniza Tempo) on this computer
         OnAirSign.IsVisible = lit && _settings.Screen.OnAirSign;
         if (lit) OnAirSignText.Text = text;
         _signLit = lit;

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Tempo
+GenericName=Studio clock
+Comment=The studio clock: hours, minutes and seconds in a ring of lights, the date, and the ON AIR sign
+Exec=sintoniza-tempo
+Icon=radio-playout-tempo
+StartupWMClass=SintonizaTempo
+Terminal=false
+Keywords=radio;clock;studio;time;
+Categories=AudioVideo;Audio;

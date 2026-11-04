@@ -32,8 +32,10 @@ public partial class App : Application
             bool import = !schedule && desktop.Args?.Contains(AppInfo.ImportArg) == true;
             // The recorder (its own program, Sintoniza Rec): the station's sound, kept as the law asks.
             bool rec = !schedule && !import && desktop.Args?.Contains(AppInfo.RecArg) == true;
+            // The studio clock (its own program, Sintoniza Tempo): the time, for a screen in the studio.
+            bool tempo = !schedule && !import && !rec && desktop.Args?.Contains(AppInfo.TempoArg) == true;
             var (lockName, name) = schedule ? ("schedule", AppInfo.ScheduleName) : import ? ("import", AppInfo.ImportName)
-                : rec ? ("rec", AppInfo.RecName) : ("playout", AppInfo.Name);
+                : rec ? ("rec", AppInfo.RecName) : tempo ? ("tempo", AppInfo.TempoName) : ("playout", AppInfo.Name);
             // One of each per computer: a second start says so instead of opening another (two playouts would fight
             // over the sound card and the playlist).
             bool locked = SingleInstance.Acquire(lockName);
@@ -56,6 +58,7 @@ public partial class App : Application
                 : import ? WithLogin(desktop, settings, AppInfo.ImportName, Permission.Library, (db, user) => new ImportWindow(db, null),
                     error => new ImportWindow(null, error))
                 : rec ? RecProgram()
+                : tempo ? TempoProgram()
                 : PlayoutProgram();
         }
         base.OnFrameworkInitializationCompleted();
@@ -66,6 +69,13 @@ public partial class App : Application
     {
         Autostart.Rec.Refresh();
         return new RecWindow(start: true);
+    }
+
+    /// <summary>The studio clock; starting at login follows it if it moved.</summary>
+    static TempoWindow TempoProgram()
+    {
+        Autostart.Tempo.Refresh();
+        return new TempoWindow();
     }
 
     /// <summary>The on-air program; starting at login follows it if it was renamed or moved by an update.</summary>

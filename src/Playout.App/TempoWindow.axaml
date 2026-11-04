@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:app="using:Playout.App"
+        x:Class="Playout.App.TempoWindow"
+        Icon="/Assets/tempo.ico"
+        Title="Sintoniza Tempo"
+        Width="900" Height="900" MinWidth="320" MinHeight="320"
+        Background="#08090C"
+        WindowStartupLocation="CenterScreen">
+    <Window.ContextMenu>
+        <ContextMenu x:Name="Menu">
+            <MenuItem x:Name="FullScreenItem" Header="Full screen" InputGesture="F11" />
+            <MenuItem x:Name="SignItem" />
+            <MenuItem x:Name="TopItem" />
+            <MenuItem x:Name="AutostartItem" />
+            <Separator />
+            <MenuItem x:Name="CloseItem" Header="Close" />
+        </ContextMenu>
+    </Window.ContextMenu>
+    <Grid RowDefinitions="Auto,*,Auto" Margin="24">
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock x:Name="StationText" FontSize="22" FontWeight="SemiBold" Foreground="#9AA3B2" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" />
+            <!-- The on-air program's red sign, when Emi runs on this computer -->
+            <Border Grid.Column="1" x:Name="SignBox" Background="#E5484D" CornerRadius="10" Padding="22,8" IsVisible="False">
+                <TextBlock x:Name="SignText" FontSize="26" FontWeight="Bold" Foreground="White" />
+            </Border>
+        </Grid>
+        <app:StudioClock Grid.Row="1" x:Name="Clock" Margin="0,16" />
+        <StackPanel Grid.Row="2" HorizontalAlignment="Center" Spacing="4">
+            <TextBlock x:Name="DateText" FontSize="28" Foreground="#F2F4F8" HorizontalAlignment="Center" />
+            <TextBlock x:Name="TopText" FontSize="18" Foreground="#9AA3B2" HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</Window>

@@ -14,6 +14,8 @@ sealed class Autostart(string Name, string LinuxName, string MacLabel, string Di
     public static readonly Autostart Playout = new("RadioPlayout", "radio-playout.desktop", "net.cesararaujo.radioplayout", AppInfo.Name, "radio-playout");
     /// <summary>The recorder, Sintoniza Rec.</summary>
     public static readonly Autostart Rec = new("SintonizaRec", "sintoniza-rec.desktop", "net.cesararaujo.sintonizarec", AppInfo.RecName, "radio-playout-rec");
+    /// <summary>The studio clock, Sintoniza Tempo.</summary>
+    public static readonly Autostart Tempo = new("SintonizaTempo", "sintoniza-tempo.desktop", "net.cesararaujo.sintonizatempo", AppInfo.TempoName, "radio-playout-tempo");
 
     /// <summary>The program to start; null when run through "dotnet" (built from source), where this isn't offered.</summary>
     static string? Exe =>

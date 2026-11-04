@@ -30,6 +30,12 @@ public static class AppInfo
     public const string RecArg = "--rec";
     /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
     public const string RecWmClass = "SintonizaRec";
+    /// <summary>The studio clock: hours, minutes, seconds and the date, for a screen in the studio (its own program, SintonizaTempo).</summary>
+    public const string TempoName = "Sintoniza Tempo";
+    /// <summary>Starts the app as the studio clock.</summary>
+    public const string TempoArg = "--tempo";
+    /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
+    public const string TempoWmClass = "SintonizaTempo";
     /// <summary>Where users can support the project (Settings → About, Pro's Help menu, Rec).</summary>
     public const string SupportUrl = "https://buymeacoffee.com/sintoniza";
     /// <summary>Opens the schedule program on its daily playlists (what was Sintoniza Playlists).</summary>

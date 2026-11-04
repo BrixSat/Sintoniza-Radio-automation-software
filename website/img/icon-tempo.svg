@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Sintoniza Tempo: the app's tile, with a studio clock: the seconds as a ring of lights, the hours outside it. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262B36"/>
+      <stop offset="1" stop-color="#111318"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="none" stroke="#3A4150" stroke-width="6"/>
+  <circle cx="256.0" cy="88.0" r="13" fill="#E5484D"/>
+  <circle cx="273.6" cy="88.9" r="8" fill="#E5484D"/>
+  <circle cx="290.9" cy="91.7" r="8" fill="#E5484D"/>
+  <circle cx="307.9" cy="96.2" r="8" fill="#E5484D"/>
+  <circle cx="324.3" cy="102.5" r="8" fill="#E5484D"/>
+  <circle cx="340.0" cy="110.5" r="13" fill="#E5484D"/>
+  <circle cx="354.7" cy="120.1" r="8" fill="#E5484D"/>
+  <circle cx="368.4" cy="131.2" r="8" fill="#E5484D"/>
+  <circle cx="380.8" cy="143.6" r="8" fill="#E5484D"/>
+  <circle cx="391.9" cy="157.3" r="8" fill="#E5484D"/>
+  <circle cx="401.5" cy="172.0" r="13" fill="#E5484D"/>
+  <circle cx="409.5" cy="187.7" r="8" fill="#E5484D"/>
+  <circle cx="415.8" cy="204.1" r="8" fill="#E5484D"/>
+  <circle cx="420.3" cy="221.1" r="8" fill="#E5484D"/>
+  <circle cx="423.1" cy="238.4" r="8" fill="#E5484D"/>
+  <circle cx="424.0" cy="256.0" r="13" fill="#E5484D"/>
+  <circle cx="423.1" cy="273.6" r="8" fill="#E5484D"/>
+  <circle cx="420.3" cy="290.9" r="8" fill="#E5484D"/>
+  <circle cx="415.8" cy="307.9" r="8" fill="#E5484D"/>
+  <circle cx="409.5" cy="324.3" r="8" fill="#E5484D"/>
+  <circle cx="401.5" cy="340.0" r="13" fill="#E5484D"/>
+  <circle cx="391.9" cy="354.7" r="8" fill="#E5484D"/>
+  <circle cx="380.8" cy="368.4" r="8" fill="#E5484D"/>
+  <circle cx="368.4" cy="380.8" r="8" fill="#E5484D"/>
+  <circle cx="354.7" cy="391.9" r="8" fill="#E5484D"/>
+  <circle cx="340.0" cy="401.5" r="13" fill="#E5484D"/>
+  <circle cx="324.3" cy="409.5" r="8" fill="#E5484D"/>
+  <circle cx="307.9" cy="415.8" r="8" fill="#E5484D"/>
+  <circle cx="290.9" cy="420.3" r="8" fill="#E5484D"/>
+  <circle cx="273.6" cy="423.1" r="8" fill="#E5484D"/>
+  <circle cx="256.0" cy="424.0" r="13" fill="#E5484D"/>
+  <circle cx="238.4" cy="423.1" r="8" fill="#E5484D"/>
+  <circle cx="221.1" cy="420.3" r="8" fill="#E5484D"/>
+  <circle cx="204.1" cy="415.8" r="8" fill="#E5484D"/>
+  <circle cx="187.7" cy="409.5" r="8" fill="#E5484D"/>
+  <circle cx="172.0" cy="401.5" r="13" fill="#E5484D"/>
+  <circle cx="157.3" cy="391.9" r="8" fill="#E5484D"/>
+  <circle cx="143.6" cy="380.8" r="8" fill="#E5484D"/>
+  <circle cx="131.2" cy="368.4" r="8" fill="#E5484D"/>
+  <circle cx="120.1" cy="354.7" r="8" fill="#E5484D"/>
+  <circle cx="110.5" cy="340.0" r="13" fill="#E5484D"/>
+  <circle cx="102.5" cy="324.3" r="8" fill="#3A4150"/>
+  <circle cx="96.2" cy="307.9" r="8" fill="#3A4150"/>
+  <circle cx="91.7" cy="290.9" r="8" fill="#3A4150"/>
+  <circle cx="88.9" cy="273.6" r="8" fill="#3A4150"/>
+  <circle cx="88.0" cy="256.0" r="13" fill="#3A4150"/>
+  <circle cx="88.9" cy="238.4" r="8" fill="#3A4150"/>
+  <circle cx="91.7" cy="221.1" r="8" fill="#3A4150"/>
+  <circle cx="96.2" cy="204.1" r="8" fill="#3A4150"/>
+  <circle cx="102.5" cy="187.7" r="8" fill="#3A4150"/>
+  <circle cx="110.5" cy="172.0" r="13" fill="#3A4150"/>
+  <circle cx="120.1" cy="157.3" r="8" fill="#3A4150"/>
+  <circle cx="131.2" cy="143.6" r="8" fill="#3A4150"/>
+  <circle cx="143.6" cy="131.2" r="8" fill="#3A4150"/>
+  <circle cx="157.3" cy="120.1" r="8" fill="#3A4150"/>
+  <circle cx="172.0" cy="110.5" r="13" fill="#3A4150"/>
+  <circle cx="187.7" cy="102.5" r="8" fill="#3A4150"/>
+  <circle cx="204.1" cy="96.2" r="8" fill="#3A4150"/>
+  <circle cx="221.1" cy="91.7" r="8" fill="#3A4150"/>
+  <circle cx="238.4" cy="88.9" r="8" fill="#3A4150"/>
+  <circle cx="256.0" cy="50.0" r="7" fill="#78A2F5"/>
+  <circle cx="359.0" cy="77.6" r="7" fill="#78A2F5"/>
+  <circle cx="434.4" cy="153.0" r="7" fill="#78A2F5"/>
+  <circle cx="462.0" cy="256.0" r="7" fill="#78A2F5"/>
+  <circle cx="434.4" cy="359.0" r="7" fill="#78A2F5"/>
+  <circle cx="359.0" cy="434.4" r="7" fill="#78A2F5"/>
+  <circle cx="256.0" cy="462.0" r="7" fill="#78A2F5"/>
+  <circle cx="153.0" cy="434.4" r="7" fill="#78A2F5"/>
+  <circle cx="77.6" cy="359.0" r="7" fill="#78A2F5"/>
+  <circle cx="50.0" cy="256.0" r="7" fill="#78A2F5"/>
+  <circle cx="77.6" cy="153.0" r="7" fill="#78A2F5"/>
+  <circle cx="153.0" cy="77.6" r="7" fill="#78A2F5"/>
+  <!-- The time in the middle, as the clock shows it -->
+  <rect x="150" y="212" width="212" height="88" rx="18" fill="#0B0D11"/>
+  <g fill="#F2F4F8">
+    <rect x="170" y="228" width="14" height="56" rx="5"/>
+    <rect x="198" y="228" width="40" height="14" rx="5"/><rect x="224" y="228" width="14" height="34" rx="5"/>
+    <rect x="198" y="249" width="40" height="13" rx="5"/><rect x="198" y="249" width="14" height="35" rx="5"/><rect x="198" y="270" width="40" height="14" rx="5"/>
+    <circle cx="256" cy="244" r="6"/><circle cx="256" cy="268" r="6"/>
+    <rect x="274" y="228" width="40" height="14" rx="5"/><rect x="300" y="228" width="14" height="56" rx="5"/><rect x="274" y="249" width="40" height="13" rx="5"/><rect x="274" y="270" width="40" height="14" rx="5"/>
+    <rect x="326" y="228" width="14" height="56" rx="5"/>
+  </g>
+</svg>

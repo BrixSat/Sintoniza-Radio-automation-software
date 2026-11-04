@@ -2486,5 +2486,11 @@
  "{0}: {1} in a row, the target is at most {2}": "{0}: {1} seguidas, a meta é no máximo {2}",
  "at least": "pelo menos",
  "in a row, at most": "seguidas, no máximo",
- "Daily playlist {0:dd/MM HH}:00: {1}": "Playlist diária {0:dd/MM HH}:00: {1}"
+ "Daily playlist {0:dd/MM HH}:00: {1}": "Playlist diária {0:dd/MM HH}:00: {1}",
+ "Sintoniza Tempo": "Sintoniza Tempo",
+ "Full screen": "Ecrã inteiro",
+ "Show the ON AIR sign": "Mostrar o sinal NO AR",
+ "Show the time to the top of the hour": "Mostrar quanto falta para a hora certa",
+ "Start with the computer": "Arrancar com o computador",
+ "Top of the hour in {0}": "Hora certa daqui a {0}"
 }

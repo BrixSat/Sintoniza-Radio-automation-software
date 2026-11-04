@@ -5,6 +5,7 @@
     <Project Path="src/Sintoniza.Import/Sintoniza.Import.csproj" />
     <Project Path="src/Playout.Library/Playout.Library.csproj" />
     <Project Path="src/Sintoniza.Rec/Sintoniza.Rec.csproj" />
+    <Project Path="src/Sintoniza.Tempo/Sintoniza.Tempo.csproj" />
     <Project Path="src/Sintoniza.Pro/Sintoniza.Pro.csproj" />
   </Folder>
   <Folder Name="/tests/">
