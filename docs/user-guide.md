@@ -229,6 +229,12 @@ The share has to be a folder on the computer: on Linux mount it (e.g. in `/etc/f
 `//server/radio /mnt/radio cifs credentials=/etc/radio.cred,uid=1000,iocharset=utf8 0 0`), not an `smb://` address
 of the file manager; on Windows a mapped drive or `\\server\share`; on a Mac it appears under `/Volumes`.
 
+Playing from a share, the on-air program reads the next item (and the one after it) into memory while the current
+one plays, and plays it from there: for an item read into memory, a share or a Wi-Fi link that stops answering for a
+while is not heard. Files over 80 MB, and an item started before it could be read (the first after pressing Play, or
+one skipped to at once), play from the file as before. Even so, an on-air computer is best on a cable,
+or with its own copy of the music (its paths pointing at the copy).
+
 ### Several computers on air: one on air, the others standby
 
 **Several stations in one library.** One library can hold several stations: the music and the users are shared,

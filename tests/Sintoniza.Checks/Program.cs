@@ -534,6 +534,39 @@ Console.WriteLine("The on-air program (a library of its own)");
     logIn.Invoke(win, [new SintonizaUser { Name = "tech", Permissions = [Permission.OnAir, Permission.Stream] }]);
     Check(!djMay && said.Contains("dj") && (bool)mayStream.Invoke(win, null)! && !Permission.Presenter.Contains(Permission.Stream) && Permission.All.Contains(Permission.Stream),
         $"STREAM by hand: not for a presenter without the Stream permission ({said}); yes with it; admins have it");
+    // What plays next is read into memory ahead (a share that stops answering while it plays is never heard).
+    {
+        autoSwitch.IsChecked = true;
+        if (engine.State != PlayerState.Playing) engine.Play();
+        engine.AddFiles([songs[3]]);
+        var cache = typeof(PlayoutEngine).GetField("_cache", flags)!.GetValue(engine)!;
+        var ready = cache.GetType().GetMethod("Ready")!;
+        // The item after the one on air, as the screen last had it from the engine.
+        string? NextPath() => Field("_snapshot") is PlaylistSnapshot snap && snap.NextId is { } id ? snap.Items.FirstOrDefault(t => t.Id == id)?.Path : null;
+        bool read = WaitUi(() => NextPath() is { } path && ready.Invoke(cache, [SharedPaths.ToLocal(path)]) != null, 10);
+        bool inMemory = WaitUi(() => typeof(PlayoutEngine).GetField("_preload", flags)!.GetValue(engine) != null
+                                      && typeof(PlayoutEngine).GetField("_preloadInMemory", flags)!.GetValue(engine) is true, 5);
+        Check(read && inMemory, $"the next item is read into memory ahead, and opened from it (read {read}, from memory {inMemory}, next {Path.GetFileName(NextPath() ?? "")})");
+        // The share stops answering (the file isn't there now): the next item plays all the same, from memory.
+        if (NextPath() is { } nextPath)
+        {
+            string away = nextPath + ".away";
+            Pump(20); // the waveform read (started with it) done
+            try { File.Move(nextPath, away); }
+            catch (IOException ex) { Check(false, $"…its file couldn't be moved away for the check: {ex.Message}"); away = ""; }
+            if (away.Length > 0)
+            try
+            {
+                engine.Next();
+                bool plays = WaitUi(() => engine.GetStatus() is { State: PlayerState.Playing, Current: { } on } && on.Path == nextPath, 8);
+                Pump(10);
+                var st = engine.GetStatus();
+                Check(plays && st.State == PlayerState.Playing && st.Current?.Path == nextPath && st.Position > 0,
+                    $"…and plays from it with its file gone (a share that stopped answering): {st.State}, {Path.GetFileName(st.Current?.Path ?? "")} at {st.Position:0.0} s");
+            }
+            finally { File.Move(away, nextPath); }
+        }
+    }
     win.Close();
     Pump(10);
 }

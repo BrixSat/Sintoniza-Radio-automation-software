@@ -57,6 +57,10 @@ public sealed class PlayoutEngine : IDisposable
     readonly HashSet<Guid> _played = new();
     int _cursorIndex = -1; // index of the last started item; survives removal of that item
     (Guid Id, int Handle)? _preload;
+    /// <summary>The next items read into memory ahead (a network share stopping for a while is never heard).</summary>
+    readonly FileCache _cache = new();
+    /// <summary>The pre-opened next item plays from memory (not its file).</summary>
+    bool _preloadInMemory;
     int _connectAttempt;   // bumped by every start and stop, so a stream that connects too late is dropped
     Guid? _connecting;     // stream item that is due but still connecting; automation waits for it instead of starting it again
     (Guid Id, Task<int> Handle)? _streamConnection; // connection to a stream item, opened ahead of its start
@@ -344,6 +348,7 @@ public sealed class PlayoutEngine : IDisposable
             }
             // The next item is opened ahead of time: let go of the file while it is rewritten.
             _tagWriting.Add(path);
+            _cache.Forget(SharedPaths.ToLocal(path)); // what was read is the file before its new tags
             if (_preload is { } p && _playlist.Find(t => t.Id == p.Id) is { } pre && string.Equals(pre.Path, path, comparer))
             {
                 Bass.StreamFree(p.Handle);
@@ -352,6 +357,7 @@ public sealed class PlayoutEngine : IDisposable
             Task.Run(() => Tags.Write(path, tags, cover)).ContinueWith(write => Post(() =>
             {
                 _tagWriting.Remove(path);
+                _cache.Forget(SharedPaths.ToLocal(path)); // a read that ran meanwhile may be half old, half new
                 if (write.IsCompletedSuccessfully && !string.IsNullOrWhiteSpace(tags.Title))
                     for (int i = 0; i < _playlist.Count; i++)
                         if (string.Equals(_playlist[i].Path, path, comparer))
@@ -1286,7 +1292,7 @@ public sealed class PlayoutEngine : IDisposable
             track = parts[0];
         }
 
-        int handle = TakePreload(track.Id) ?? OpenStream(track.Path, prescan: true);
+        int handle = TakePreload(track.Id) ?? OpenForPlay(track.Path);
         if (handle == 0)
         {
             Skip(track, outgoingFade, Bass.LastError.ToString());
@@ -2233,15 +2239,63 @@ public sealed class PlayoutEngine : IDisposable
             _preload = null;
         }
         if (_streamConnection is { } sc && sc.Id != next?.Id) DropConnection();
-        if (next != null && !next.IsStream && !next.IsTake && _preload == null && _current != null && !_tagWriting.Contains(next.Path))
-        {
-            int h = OpenStream(next.Path, prescan: true);
-            if (h != 0) _preload = (next.Id, h);
-            _waveforms.LoadAsync(next.Path); // warm the cache so the waveform is ready at the transition
-        }
+        PreloadNext(next);
 
         PlaylistChanged?.Invoke(new PlaylistSnapshot(
             _playlist.ToList(), _current?.Track.Id, next?.Id, _played.ToHashSet()));
+    }
+
+    /// <summary>
+    /// The next item (and the one after it) read into memory, off this thread. The next is pre-opened at once as before
+    /// (from memory if it is read already, else from its file), so the crossfade point never waits on the disk or the
+    /// network, and swapped for the copy in memory when its read is over (<see cref="PreloadFromMemory"/>).
+    /// </summary>
+    void PreloadNext(Track? next)
+    {
+        var ahead = new List<Track>();
+        if (next != null && Playable(next))
+        {
+            ahead.Add(next);
+            int at = _playlist.FindIndex(t => t.Id == next.Id);
+            if (at >= 0 && _playlist.Skip(at + 1).FirstOrDefault(Playable) is { } after) ahead.Add(after);
+        }
+        _cache.Keep(ahead.Select(t => SharedPaths.ToLocal(t.Path)).ToList());
+        foreach (var t in ahead.Where(t => !_tagWriting.Contains(t.Path)))
+            // The next: once read, its pre-opened file is swapped for the copy in memory (back on this thread).
+            _cache.Prefetch(SharedPaths.ToLocal(t.Path), t == next ? () => Post(() => PreloadFromMemory(t.Id)) : null);
+        if (next == null || !Playable(next) || _preload != null || _current == null || _tagWriting.Contains(next.Path)) return;
+        // Opened ahead as before (from memory if it is there already, else from the file): never later than it was.
+        int h = OpenForPlay(next.Path);
+        if (h != 0)
+        {
+            _preload = (next.Id, h);
+            _preloadInMemory = _cache.Ready(SharedPaths.ToLocal(next.Path)) != null;
+        }
+        _waveforms.LoadAsync(next.Path); // warm the cache so the waveform is ready at the transition
+    }
+
+    /// <summary>The next item's read is over: its pre-opened file swapped for the copy in memory, if it is still next and not started.</summary>
+    void PreloadFromMemory(Guid id)
+    {
+        if (NextTrack() is not { } next || next.Id != id || _tagWriting.Contains(next.Path)) return;
+        if (_preload is { } p && (p.Id != id || _preloadInMemory)) return;
+        if (_preload == null && _current == null) return; // nothing on air: opened when it is needed
+        if (_cache.Ready(SharedPaths.ToLocal(next.Path)) is not { } bytes) return; // not read (too large, unreadable): as it is
+        int h = FileCache.Open(bytes, BassFlags.Decode | BassFlags.Float | BassFlags.Prescan);
+        if (h == 0) return;
+        if (_preload is { } old) Bass.StreamFree(old.Handle); // the file it was opened from: let go
+        _preload = (id, h);
+        _preloadInMemory = true;
+    }
+
+    static bool Playable(Track t) => !t.IsStream && !t.IsTake && !Pause.Is(t.Path) && !LiveInput.Is(t.Path);
+
+    /// <summary>An item to play: from memory when it has been read ahead, else from its file.</summary>
+    int OpenForPlay(string path)
+    {
+        var flags = BassFlags.Decode | BassFlags.Float | BassFlags.Prescan;
+        if (_cache.Ready(SharedPaths.ToLocal(path)) is { } bytes && FileCache.Open(bytes, flags) is var h and not 0) return h;
+        return OpenStream(path, prescan: true);
     }
 
     int? TakePreload(Guid id)
