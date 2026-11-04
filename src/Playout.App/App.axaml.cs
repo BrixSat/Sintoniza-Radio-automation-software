@@ -41,7 +41,12 @@ public partial class App : Application
             bool locked = SingleInstance.Acquire(lockName);
             // Started again by itself (Sintoniza Pro on another station): the copy that started it is closing.
             if (!locked && desktop.Args?.Contains(AppInfo.RestartedArg) == true) locked = SingleInstance.Wait(lockName, 20);
-            if (!locked && desktop.Args?.Contains(Watchdog.ChildArg) == true)
+            // The watchdog's first start: a copy closed a moment ago may still be letting go (opened again at once).
+            if (!locked && desktop.Args?.Contains(Watchdog.ChildArg) == true && desktop.Args?.Contains(Watchdog.RetryArg) != true)
+                locked = SingleInstance.Wait(lockName, 5);
+            // Started again by the watchdog (not its first start: that one, finding the lock taken, is a second copy and
+            // says the program is already running).
+            if (!locked && desktop.Args?.Contains(Watchdog.RetryArg) == true)
             {
                 // Started again by the watchdog while the copy it stopped is still letting go: wait for it, and if it
                 // doesn't, end with an error (the watchdog tries again later) rather than wait for an OK nobody clicks.
@@ -49,7 +54,7 @@ public partial class App : Application
                 if (!locked)
                 {
                     AppLog.Write($"{name}: the copy stopped by the watchdog still holds the lock; trying again later");
-                    Environment.Exit(3);
+                    Environment.Exit(Watchdog.LockHeldExit);
                 }
             }
             desktop.MainWindow = !locked ? SingleInstance.AlreadyRunning(name)
