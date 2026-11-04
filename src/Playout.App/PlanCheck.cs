@@ -6,7 +6,8 @@ namespace Playout.App;
 /// <summary>
 /// A day's daily playlists looked over ahead of time (tomorrow's, for Sintoniza Pro's Home and the alerts): hours with
 /// an hour template but no daily playlist, hours that came out empty or short (fill music plays the rest), and the
-/// files the day plays that aren't there, in the playlists and in the ad breaks and events.
+/// files the day plays that aren't there, in the playlists and in the ad breaks and events; and its shows (two on at
+/// the same time, a live one without a presenter).
 /// </summary>
 public sealed class PlanCheck
 {
@@ -24,6 +25,8 @@ public sealed class PlanCheck
     public List<(DateTime At, string What)> NotFound { get; } = new();
     /// <summary>What the ad breaks and events will leave out (a file not found, nothing in a series for the day…), as the playout says it.</summary>
     public List<(DateTime At, string What)> Entries { get; } = new();
+    /// <summary>What is wrong with the day's shows (<see cref="ShowCheck"/>).</summary>
+    public List<string> Shows { get; } = new();
     /// <summary>None of the day's files can be reached from this computer (a share down, its paths not set): not listed one by one.</summary>
     public bool FilesUnseen { get; private set; }
     /// <summary>How many files the day plays that were looked for.</summary>
@@ -31,7 +34,7 @@ public sealed class PlanCheck
     /// <summary>The day has hour templates (else there is nothing to check: fill music plays).</summary>
     public int Planned { get; private set; }
 
-    public bool AllGood => Missing.Count == 0 && Empty.Count == 0 && Short.Count == 0 && NotFound.Count == 0 && Entries.Count == 0 && !FilesUnseen;
+    public bool AllGood => Missing.Count == 0 && Empty.Count == 0 && Short.Count == 0 && NotFound.Count == 0 && Entries.Count == 0 && Shows.Count == 0 && !FilesUnseen;
 
     /// <param name="exists">Whether a file of the library is there (as this computer sees it).</param>
     public static PlanCheck Day(LibraryDb db, ScheduleData data, DateTime day, PlaylistGenerator.Options options, Func<string, bool>? exists = null)
@@ -93,6 +96,7 @@ public sealed class PlanCheck
                 at = at.AddSeconds(Math.Max(0, item.Seconds));
             }
         }
+        check.Shows.AddRange(ShowCheck.Problems(data, day, 1, presenters: false));
         check.FilesChecked = files;
         // Not one file there: this computer doesn't reach the music (a share down, or its paths not set), not a day of
         // missing files.
@@ -105,8 +109,8 @@ public sealed class PlanCheck
         return check;
     }
 
-    /// <summary>What to tell, a line for each kind of problem ("Tomorrow: …"); empty when all is well.</summary>
-    public List<string> Lines(string when)
+    /// <summary>What to tell, a line for each kind of problem ("Tomorrow: …"); empty when all is well. <paramref name="shows"/>: also the shows' problems (Pro's Home lists those for the week).</summary>
+    public List<string> Lines(string when, bool shows = true)
     {
         static string Hours(IEnumerable<DateTime> hours) => List(hours.Select(h => h.ToString("HH:mm")).ToList());
         static string List(IReadOnlyList<string> all) => string.Join(", ", all.Take(Named)) + (all.Count > Named ? L.F(" and {0} more", all.Count - Named) : "");
@@ -121,6 +125,7 @@ public sealed class PlanCheck
                 List(NotFound.Select(n => L.F("{0} ({1:HH:mm})", n.What, n.At)).ToList())));
         if (Entries.Count > 0)
             lines.Add(L.F("{0}, ad breaks and events: {1}", when, List(Entries.Select(e => e.What).ToList())));
+        if (shows) lines.AddRange(Shows.Select(s => L.F("{0}: {1}", when, s)));
         if (FilesUnseen) lines.Add(L.F("{0}: none of its {1} files can be reached from this computer (the music share, or this computer's paths)", when, FilesChecked));
         return lines;
     }

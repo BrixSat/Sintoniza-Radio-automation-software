@@ -233,7 +233,7 @@ public partial class ScheduleWindow
         {
             var options = new PlaylistGenerator.Options(s.Crossfade, s.OtherCrossfade, TimeSpan.FromHours(s.FillSongHours), TimeSpan.FromMinutes(s.FillArtistMinutes));
             var check = PlanCheck.Day(db, data, now.Date.AddDays(1), options);
-            return check.Lines(L.T("Tomorrow")).Select(l => "📋 " + l).ToList();
+            return check.Lines(L.T("Tomorrow"), shows: false).Select(l => "📋 " + l).ToList();
         }
         catch (Exception ex)
         {
@@ -333,6 +333,7 @@ public partial class ScheduleWindow
         var warnings = new List<string>();
         if (_defaultPasswords.Count > 0) warnings.Add(L.F("🔑 Change the first password of {0} (Station › Users)", string.Join(", ", _defaultPasswords)));
         if (_tomorrow is { } tomorrow && tomorrow.Day == now.Date) warnings.AddRange(tomorrow.Lines); // yesterday's "tomorrow" is today
+        warnings.AddRange(ShowCheck.Problems(data, now.Date, 7).Select(p => "🎙 " + p));
         if (stats.Missing > 0) warnings.Add(L.F("⚠ {0:N0} songs whose file is missing", stats.Missing));
         if (stats.Uncategorised > 0) warnings.Add(L.F("⚠ {0:N0} songs without a category", stats.Uncategorised));
         int noTemplate = Enumerable.Range(now.Hour, 24 - now.Hour).Count(h => data.TemplateAt(now.Date.AddHours(h)) == null);

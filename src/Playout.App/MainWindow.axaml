@@ -76,6 +76,19 @@
             </Grid>
         </Border>
 
+        <!-- ═════════ A live show: is the presenter there? ═════════ -->
+        <Border DockPanel.Dock="Top" x:Name="ShowBar" IsVisible="False" Background="#14283A" BorderBrush="#3B82F6"
+                BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto,*,Auto,8,Auto">
+                <TextBlock Text="SHOW" FontSize="18" FontWeight="Bold" Foreground="#7FB2FF" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" x:Name="ShowBarText" Margin="16,0" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <Button Grid.Column="2" x:Name="ShowHereButton" Classes="accent" Content="I'm here: ASSISTED"
+                        ToolTip.Tip="You are presenting the show: each item waits for you to start it, until the show ends or you log out" />
+                <Button Grid.Column="4" x:Name="ShowKeepAutoButton" Content="Keep AUTO"
+                        ToolTip.Tip="The show goes on by itself (you can still say you are here later, from the presenter view)" />
+            </Grid>
+        </Border>
+
         <!-- ═════════ Header: on-air deck + station panel ═════════ -->
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,12,400" Margin="0,0,0,12">
 

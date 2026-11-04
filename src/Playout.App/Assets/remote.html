@@ -28,6 +28,8 @@
   .badge.stream.error { background:#6E2427; border-color:#E5484D; } .badge.stream.error i { background:#E5484D; }
   .badge.cue { font-size:13px; padding:2px 10px; color:#fff; } .badge.intro { background:#1F6F4A; } .badge.outro { background:#5B3F99; }
   .badge.silence { background:var(--onair); } .badge.break { background:#1F6F4A; } .badge.break.soon { background:var(--onair); }
+  .waiting { display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 10px; border-radius:6px; background:#6E2427;
+             border:1px solid var(--onair); font-weight:600; } .waiting span { flex:1; } .waiting.hidden { display:none; }
   .mode { display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700; letter-spacing:1.5px; padding:5px 10px; border-radius:6px;
           background:#4A3510; border:1px solid var(--next); color:#FFD48A; }
   .mode.on { background:#174A33; border-color:var(--ok); color:#9CF0C8; }
@@ -170,6 +172,7 @@
 <template id="t-assisted">{{ASSISTED}}</template>
 <template id="t-breakin">{{BREAK IN}}</template>
 <template id="t-silence">{{SILENCE}}</template>
+<template id="t-waiting">{{ASSISTED: nothing on air, it waits for PLAY. AUTO plays the playlist.}}</template>
 
 <svg width="0" height="0" style="position:absolute">
   <symbol id="i-play" viewBox="0 0 11 14"><path d="M0,0 L11,7 L0,14 Z"/></symbol>
@@ -210,6 +213,7 @@
       </div>
       <button class="mode" id="auto"><svg><use href="#i-auto"/></svg><span>AUTO</span></button>
     </div>
+    <div class="waiting hidden" id="waiting"><span id="waitingText"></span><button class="accent" id="waitingAuto">{{AUTO}}</button></div>
     <div id="title">—</div>
     <div id="artist"></div>
     <canvas id="wave"></canvas>
@@ -335,6 +339,7 @@ async function command(c) {
 }
 document.querySelectorAll("[data-cmd]").forEach(b => b.onclick = () => command({ cmd: b.dataset.cmd }));
 $("auto").onclick = () => command({ cmd: "auto", on: !(last && last.auto) });
+$("waitingAuto").onclick = () => command({ cmd: "auto", on: true, play: true });
 $("cartwall").onchange = () => command({ cmd: "cartwall", name: $("cartwall").value });
 document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b));
@@ -377,6 +382,7 @@ async function refresh() {
   $("breakIn").classList.toggle("hidden", !s.breakIn);
   if (s.breakIn) $("breakIn").textContent = `${s.currency}  ${t("breakin")}  ${s.breakIn.time} ${s.breakIn.how || ""}`;
   $("auto").classList.toggle("on", s.auto);
+  $("waiting").classList.toggle("hidden", !s.waiting); $("waitingText").textContent = t("waiting");
   $("auto").innerHTML = `<svg><use href="#i-${s.auto ? "auto" : "assisted"}"/></svg><span>${esc(s.auto ? t("auto") : t("assisted"))}</span>`;
   ["play", "pause", "stop"].forEach(k => document.querySelector(".transport ." + k).classList.toggle("active",
     k === "play" ? s.state === "playing" : k === "pause" ? s.state === "paused" : s.state === "stopped"));

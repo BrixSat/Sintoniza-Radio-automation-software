@@ -85,6 +85,8 @@ public partial class MainWindow : IRemoteHandler
             state = st.State switch { PlayerState.Playing => "playing", PlayerState.Paused => "paused", _ => "stopped" },
             stateText = OnAirText.Text,
             auto = _engine?.AutoAdvance == true,
+            // ASSISTED with nothing on air: the station is silent until someone presses PLAY (or AUTO).
+            waiting = _engine?.AutoAdvance == false && st.State is PlayerState.Stopped or PlayerState.Paused,
             onAir = st.Current is { } t && st.State != PlayerState.Stopped
                 ? new { id = t.Id.ToString(), title = t.Title, artist = t.Artist, position = st.Position, length = st.Length, advert = t.Kind == TrackKind.Commercial }
                 : null,
@@ -189,6 +191,8 @@ public partial class MainWindow : IRemoteHandler
                 break;
             case "auto":
                 AutoSwitch.IsChecked = c["on"]?.GetValue<bool>() == true; // as the switch on screen
+                // From the "it waits for PLAY" warning: and the playlist goes on now.
+                if (c["play"]?.GetValue<bool>() == true && AutoSwitch.IsChecked == true && engine.State is PlayerState.Stopped or PlayerState.Paused) engine.Play();
                 break;
             case "cart":
                 int index = c["index"]?.GetValue<int>() ?? -1;

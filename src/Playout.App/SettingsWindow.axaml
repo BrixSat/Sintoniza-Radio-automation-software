@@ -788,8 +788,9 @@
                                     <TextBox x:Name="AlertTimeServerBox" Width="180" PlaceholderText="pool.ntp.org" />
                                 </WrapPanel>
                                 <CheckBox x:Name="AlertBackupBox" Content="A backup fails" />
+                                <CheckBox x:Name="AlertShowBox" Content="A live show started and nobody said they are presenting it within 2 minutes" />
                                 <WrapPanel ItemSpacing="6" LineSpacing="4">
-                                    <CheckBox x:Name="AlertTomorrowBox" Content="Tomorrow's daily playlists aren't ready (hours missing or short, files not found), from" VerticalAlignment="Center" />
+                                    <CheckBox x:Name="AlertTomorrowBox" Content="Tomorrow's daily playlists aren't ready (hours missing or short, files not found, shows at the same time), from" VerticalAlignment="Center" />
                                     <NumericUpDown x:Name="AlertTomorrowHourBox" Minimum="0" Maximum="23" Increment="1" FormatString="00':00'" Width="120" />
                                 </WrapPanel>
                             </StackPanel>

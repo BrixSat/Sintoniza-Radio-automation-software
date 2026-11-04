@@ -271,6 +271,27 @@ Console.WriteLine("Translations");
 
 // ───────────────────────── The on-air program ─────────────────────────
 
+Console.WriteLine("Shows: one after the other, at the same time, live without a presenter");
+{
+    // Every half hour from 11:00 to 12:30, an hour each (as made by hand): one show from 11:00 to 13:30.
+    var monday = DateTime.Today.AddDays(((int)DayOfWeek.Monday - (int)DateTime.Today.DayOfWeek + 7) % 7);
+    var brunch = new LiveShow { Name = "Brunch", Minutes = 60,
+        Slots = new[] { "11:00:00", "11:30:00", "12:00:00", "12:30:00" }.Select(t => new WeekTime { Day = DayOfWeek.Monday, Time = t }).ToList() };
+    var soneca = new LiveShow { Name = "Soneca", Presenter = "Ana", Minutes = 60, Slots = [new WeekTime { Day = DayOfWeek.Monday, Time = "13:00:00" }] };
+    var data = new ScheduleData { Shows = { brunch, soneca } };
+    data.Normalize();
+    var on = LiveShow.At(data, monday.AddHours(11).AddMinutes(45));
+    Check(on is { } o && o.Show == brunch && o.End == monday.AddHours(13).AddMinutes(30), $"times one after the other are one show, until the last ends ({on?.End:HH:mm})");
+    var problems = ShowCheck.Problems(data, monday, 7);
+    Check(problems.Any(p => p.Contains("Brunch") && p.Contains("starts again")), "a show that starts again before it ends is said");
+    Check(problems.Any(p => p.Contains("Brunch") && p.Contains("Soneca")), "two shows on at the same time are said");
+    Check(problems.Any(p => p.Contains("Brunch") && p.Contains("no presenter")) && !problems.Any(p => p.Contains("Soneca") && p.Contains("no presenter")),
+        "a live show without a presenter is said");
+    brunch.Live = false;
+    Check(!ShowCheck.Problems(data, monday, 7).Any(p => p.Contains("no presenter")) && Math.Abs(ShowCheck.LiveHours(data, monday, 7) - 1) < 0.01,
+        $"an automated show needs no presenter, and isn't counted as live ({ShowCheck.LiveHours(data, monday, 7):0.#} h live)");
+}
+
 Console.WriteLine("The on-air program (a library of its own)");
 {
     var settings = AppSettings.Load();
@@ -282,16 +303,21 @@ Console.WriteLine("The on-air program (a library of its own)");
     // A live show on air now: it started 10 minutes ago, for an hour.
     var showStart = DateTime.Now.AddMinutes(-10);
     showStart = showStart.AddTicks(-(showStart.Ticks % TimeSpan.TicksPerSecond));
+    var later = showStart.AddHours(-6); // an automated show then
     {
         var showDb = LibraryDb.Open(settings.Library);
         LibraryScanner.Scan(showDb, [media]); // songs in the library tab
         var showData = new ScheduleData { Shows = { new LiveShow { Name = "Manhãs", Presenter = "Rita", Minutes = 60, Notes = "Guest at 10:30",
             Slots = [new WeekTime { Day = showStart.DayOfWeek, Time = showStart.ToString("HH:mm:ss") }] } } };
+        // An automated one some other time (it only names that part of the day).
+        showData.Shows.Add(new LiveShow { Name = "Noites", Minutes = 30, Live = false, Slots = [new WeekTime { Day = later.DayOfWeek, Time = later.ToString("HH:mm:ss") }] });
         showData.Normalize();
         new ScheduleStore(showDb).Save(showData, null, "checks");
         var back = new ScheduleStore(showDb).Load().Data.Shows.FirstOrDefault();
-        Check(back is { Presenter: "Rita", Minutes: 60, Notes: "Guest at 10:30" } && back.OnAirAt(DateTime.Now) != null,
-            "a live show is kept when the schedule is saved, and is on air at its time");
+        var backAll = new ScheduleStore(showDb).Load().Data.Shows;
+        Check(back is { Presenter: "Rita", Minutes: 60, Notes: "Guest at 10:30", Live: true } && back.OnAirAt(DateTime.Now) != null
+              && backAll.Any(x => x is { Name: "Noites", Live: false }),
+            "a live show is kept when the schedule is saved, and is on air at its time; an automated one stays automated");
     }
     var win = new MainWindow { Width = 1400, Height = 860 };
     win.Show();
@@ -339,11 +365,24 @@ Console.WriteLine("The on-air program (a library of its own)");
     var scheduler = (Scheduler)typeof(MainWindow).GetField("_scheduler", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win)!;
     var follow = typeof(MainWindow).GetMethod("FollowShow", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
     WaitUi(() => scheduler.Loaded && scheduler.ShowAt(DateTime.Now) != null, 15);
+    object? Field(string name) => typeof(MainWindow).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win);
+    var lockScreen = typeof(MainWindow).GetMethod("Lock", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    var logInOnAir = typeof(MainWindow).GetMethod("LogIn", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    var rita = new SintonizaUser { Name = "Rita", Permissions = Permission.Presenter.ToHashSet() };
+    var showBar = win.FindControl<Border>("ShowBar")!;
+    lockScreen.Invoke(win, null); // nobody logged in on air
     follow.Invoke(win, [DateTime.Now]); // as the screen does once a second (headless, its timer comes round rarely)
     Pump(5);
-    Check(autoSwitch.IsChecked == false && !engine.AutoAdvance, "a live show on air: ASSISTED");
-    object? Field(string name) => typeof(MainWindow).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(win);
-    Check(WaitUi(() => Field("_presenter") is PresenterWindow { IsVisible: true }, 3), "…and the presenter view opens");
+    Check(autoSwitch.IsChecked == true && engine.AutoAdvance && !showBar.IsVisible, "a live show with nobody logged in on air: AUTO goes on");
+    logInOnAir.Invoke(win, [rita]);
+    follow.Invoke(win, [DateTime.Now]);
+    Pump(5);
+    Check(autoSwitch.IsChecked == true && showBar.IsVisible, "…someone logs in: it asks whether they are presenting it, AUTO meanwhile");
+    Check(WaitUi(() => Field("_presenter") is PresenterWindow { IsVisible: true } p && p.FindControl<Border>("HereBox")!.IsVisible, 3),
+        "…and the presenter view opens, asking too");
+    win.FindControl<Button>("ShowHereButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Pump(5);
+    Check(autoSwitch.IsChecked == false && !engine.AutoAdvance && !showBar.IsVisible, "…I'm here: ASSISTED");
 
     // A request taken, then put on next by the presenter, with who it is for as its note.
     Check(win.AddRequest(songs[2], "Song", "Band", "Ana", "Happy birthday", "staff") == null && win.Requests.Count == 1, "a request is taken");
@@ -389,6 +428,26 @@ Console.WriteLine("The on-air program (a library of its own)");
     Check(offAtStart && onWithSign && !pins.DtrOn, "a serial GPIO output for the ON AIR sign follows the sign");
     serial.Dispose();
 
+    // The presenter logs out during the show: AUTO again; back in, asked again.
+    lockScreen.Invoke(win, null);
+    follow.Invoke(win, [DateTime.Now]);
+    Pump(3);
+    Check(autoSwitch.IsChecked == true && engine.AutoAdvance, "logged out during the live show: AUTO again");
+    logInOnAir.Invoke(win, [rita]);
+    follow.Invoke(win, [DateTime.Now]);
+    Pump(3);
+    bool askedAgain = showBar.IsVisible;
+    // Keep AUTO, with the switch on ASSISTED by hand: AUTO really (not just said).
+    autoSwitch.IsChecked = false;
+    Pump(2);
+    win.FindControl<Button>("ShowKeepAutoButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Pump(3);
+    Check(askedAgain && autoSwitch.IsChecked == true && engine.AutoAdvance && !showBar.IsVisible, "…logged in again: asked again; Keep AUTO switches AUTO on, even from ASSISTED");
+    // Later, from the presenter view: I'm here.
+    (Field("_presenter") as PresenterWindow)?.FindControl<Button>("HereButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    Pump(3);
+    Check(autoSwitch.IsChecked == false, "…and I'm here from the presenter view, later: ASSISTED");
+
     // The show ends: AUTO again (as the screen sees it a second after the end).
     // The screen's own once-a-second update follows the show by the real clock, where it is still on: so the end is
     // shown again each time it is looked at, and the sign updated on its own.
@@ -401,14 +460,29 @@ Console.WriteLine("The on-air program (a library of its own)");
     }
     Check(WaitUi(Ended, 3), "the show is over: AUTO again");
     Check(Ended() && !sign.IsVisible, "…and the ON AIR sign goes out");
+    // An ASSISTED show straight into another (the automated one), the player waiting for the presenter: AUTO, and
+    // the playlist goes on (never silence nobody chose).
+    follow.Invoke(win, [DateTime.Now]);
+    Pump(3);
+    win.FindControl<Button>("ShowHereButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    engine.AddFiles([songs[1]]);
+    engine.Stop();
+    WaitUi(() => engine.State == PlayerState.Stopped, 5);
+    bool wasAssisted = autoSwitch.IsChecked == false;
+    follow.Invoke(win, [later.AddMinutes(1)]);
+    Check(wasAssisted && autoSwitch.IsChecked == true && WaitUi(() => engine.State == PlayerState.Playing, 5),
+        "a live show straight into another, the player stopped: AUTO, and the playlist goes on");
+    engine.Stop();
+    WaitUi(() => engine.State == PlayerState.Stopped, 5);
     // ASSISTED: a song's ▶ puts it on air now; the song on air fades out with its button.
     autoSwitch.IsChecked = false;
     Pump(3);
     engine.AddFiles([songs[1], songs[2]]);
     var rowsById = (Dictionary<Guid, PlaylistRow>)Field("_rowsById")!;
     PlaylistRow? target = null;
-    WaitUi(() => (target = rowsById.Values.FirstOrDefault(r => r.IsMusic && !r.IsPlaying && !r.IsPreview && r.Track.Path == songs[2])) != null, 5);
-    Check(target is { ShowPlayButton: true, ShowFadeButton: false }, "ASSISTED: a song in the playlist has a ▶");
+    // The one just added (not one that played earlier).
+    WaitUi(() => (target = rowsById.Values.FirstOrDefault(r => r.IsMusic && !r.IsPlaying && !r.IsPlayed && !r.IsPreview && r.Track.Path == songs[2])) != null, 5);
+    Check(target is { ShowPlayButton: true, ShowFadeButton: false }, $"ASSISTED: a song in the playlist has a ▶ ({(target == null ? "no row" : $"auto {autoSwitch.IsChecked}, playing {target.IsPlaying}, rows {rowsById.Count}")}; {win.FindControl<TextBlock>("LastLog")?.Text})");
     var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
     typeof(MainWindow).GetMethod("RowPlay_Click", flags)!.Invoke(win, [new Button { DataContext = target }, new RoutedEventArgs()]);
     Check(WaitUi(() => engine.GetStatus().Current?.Path == songs[2], 5), "…which puts it on air now");
@@ -419,6 +493,8 @@ Console.WriteLine("The on-air program (a library of its own)");
     Thread.Sleep(700); // not the second click of a double-click on ▶ (that is ignored: ▶ turns into fade-out there)
     typeof(MainWindow).GetMethod("RowFade_Click", flags)!.Invoke(win, [new Button { DataContext = target }, new RoutedEventArgs()]);
     Check(WaitUi(() => engine.State == PlayerState.Stopped, 8), "…which fades it out, and the player waits");
+    var remoteStatus = System.Text.Json.JsonSerializer.SerializeToNode(typeof(MainWindow).GetMethod("StatusNow", flags)!.Invoke(win, null))!;
+    Check(remoteStatus["waiting"]?.GetValue<bool>() == true, "the web remote says ASSISTED is waiting with nothing on air");
     autoSwitch.IsChecked = true;
     Pump(3);
     Check(!target!.ShowPlayButton && !target.ShowFadeButton, "AUTO: no buttons on the rows");

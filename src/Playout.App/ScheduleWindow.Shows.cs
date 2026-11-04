@@ -1,6 +1,6 @@
 namespace Playout.App;
 
-/// <summary>Sintoniza Pro → Shows: live shows in the week, with their presenter, length and notes.</summary>
+/// <summary>Sintoniza Pro → Shows: the shows in the week, live or automated, with their presenter, length and notes, and what is wrong with them.</summary>
 public partial class ScheduleWindow
 {
     EntryCalendar? _showCalendar;
@@ -11,7 +11,7 @@ public partial class ScheduleWindow
     void WireShows()
     {
         _showCalendar = new EntryCalendar(this, ShowGrid, ShowHeader, ShowStepBox, ShowOffsetBox, ShowAddTimeBox, ShowAddTimeButton, ShowClearButton,
-            () => _data.Shows, () => SelectedShow, () => (ShowList.SelectedItem as ScheduleRow)?.Refresh());
+            () => _data.Shows, () => SelectedShow, () => { (ShowList.SelectedItem as ScheduleRow)?.Refresh(); ShowProblems(); });
         ShowStepBox.SelectedIndex = Array.IndexOf(Steps, 30) is var half and >= 0 ? half : 1; // shows start on the hour or the half hour
         ShowList.SelectionChanged += (_, _) => ShowShow();
         AddShowButton.Click += (_, _) =>
@@ -34,12 +34,27 @@ public partial class ScheduleWindow
             ShowList.ItemsSource = _showRows;
             ShowList.SelectedIndex = Math.Min(i, _showRows.Count - 1);
             _showCalendar.Rebuild();
+            ShowProblems();
         };
         ShowNameBox.TextChanged += (_, _) => Edit<LiveShow>(ShowList, s => s.Name = ShowNameBox.Text?.Trim() ?? "");
-        ShowEnabledBox.IsCheckedChanged += (_, _) => Edit<LiveShow>(ShowList, s => s.Enabled = ShowEnabledBox.IsChecked == true);
-        ShowPresenterBox.TextChanged += (_, _) => Edit<LiveShow>(ShowList, s => s.Presenter = ShowPresenterBox.Text?.Trim() ?? "");
-        ShowMinutesBox.ValueChanged += (_, _) => Edit<LiveShow>(ShowList, s => s.Minutes = (double)(ShowMinutesBox.Value ?? 60));
+        ShowEnabledBox.IsCheckedChanged += (_, _) => { Edit<LiveShow>(ShowList, s => s.Enabled = ShowEnabledBox.IsChecked == true); ShowProblems(); };
+        ShowPresenterBox.TextChanged += (_, _) => { Edit<LiveShow>(ShowList, s => s.Presenter = ShowPresenterBox.Text?.Trim() ?? ""); ShowProblems(); };
+        ShowMinutesBox.ValueChanged += (_, _) => { Edit<LiveShow>(ShowList, s => s.Minutes = (double)(ShowMinutesBox.Value ?? 60)); ShowProblems(); };
         ShowNotesBox.TextChanged += (_, _) => Edit<LiveShow>(ShowList, s => s.Notes = ShowNotesBox.Text ?? "");
+        ShowLiveRadio.IsCheckedChanged += (_, _) => { Edit<LiveShow>(ShowList, s => s.Live = ShowLiveRadio.IsChecked == true); ShowProblems(); };
+    }
+
+    /// <summary>Over the show shows that start again before they end or are on at the same time, live ones without a presenter, and how long the live ones are on.</summary>
+    void ShowProblems()
+    {
+        var today = DateTime.Today;
+        var problems = ShowCheck.Problems(_data, today, 7);
+        ShowWarnings.Text = string.Join("\n", problems.Select(p => "⚠ " + p));
+        ShowWarnings.IsVisible = problems.Count > 0;
+        double hours = ShowCheck.LiveHours(_data, today, 7);
+        ShowLiveHours.Text = hours > 0
+            ? L.F("Live shows: up to {0:0.#} hours a day (ASSISTED while the presenter is there)", hours)
+            : L.T("No live shows: AUTO all day.");
     }
 
     void LoadShows(ScheduleData data)
@@ -60,13 +75,16 @@ public partial class ScheduleWindow
         ShowPresenterBox.Text = s?.Presenter ?? "";
         ShowMinutesBox.Value = (decimal)(s?.Minutes ?? 60);
         ShowNotesBox.Text = s?.Notes ?? "";
+        ShowLiveRadio.IsChecked = s?.Live ?? true;
+        ShowAutomatedRadio.IsChecked = !(s?.Live ?? true);
         _loading = false;
         _showCalendar?.Rebuild();
+        ShowProblems();
     }
 
     ScheduleRow ShowRow(LiveShow s) => new(s, () =>
     {
-        string presenter = s.Presenter.Trim().Length > 0 ? s.Presenter.Trim() + " · " : "";
+        string presenter = !s.Live ? L.T("automated") + " · " : s.Presenter.Trim().Length > 0 ? s.Presenter.Trim() + " · " : "";
         return (EntryName(s), $"{presenter}{SlotsSummary(s)} · {Plural((int)s.Minutes, "{0} minute", "{0} minutes")}", s.Enabled);
     });
 }

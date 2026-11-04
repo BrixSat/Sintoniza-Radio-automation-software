@@ -37,6 +37,8 @@ public partial class PresenterWindow : Window
         PlayButton.Click += (_, _) => _main.PresenterPlay();
         NextButton.Click += async (_, _) => await _main.PresenterNext();
         StopButton.Click += async (_, _) => await _main.PresenterStop();
+        HereButton.Click += (_, _) => _main.PresenterHere();
+        KeepAutoButton.Click += (_, _) => _main.PresenterKeepsAuto();
         RequestList.SelectionChanged += (_, _) => AcceptButton.IsEnabled = DeclineButton.IsEnabled = RequestList.SelectedItem != null;
         AcceptButton.Click += (_, _) => { if (RequestList.SelectedItem is RequestRow r) _main.AcceptRequest(r.Request.Id); };
         DeclineButton.Click += (_, _) => { if (RequestList.SelectedItem is RequestRow r) _main.DeclineRequest(r.Request.Id); };
@@ -63,6 +65,10 @@ public partial class PresenterWindow : Window
         ShowEndsText.Text = s.ShowEnds is { } ends && ends > now ? Clock(ends - now) : "—";
         ShowEndsText.Foreground = s.ShowEnds is { } e && e - now <= TimeSpan.FromMinutes(1) ? Red : Brushes.White;
         ShowNotesText.Text = s.ShowNotes;
+        // A live show waits for the presenter to say they are there (or, kept on AUTO, may still be told).
+        HereBox.IsVisible = s.Asking || s.KeptAuto;
+        KeepAutoButton.IsVisible = s.Asking;
+        HereText.Text = s.Asking ? L.T("Are you presenting this show? Until you say so, AUTO goes on.") : L.T("The show goes on in AUTO.");
         ShowNotesBox.IsVisible = s.ShowNotes.Length > 0;
 
         TitleText.Text = s.OnAir?.Title ?? L.T("Nothing on air");

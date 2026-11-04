@@ -144,11 +144,15 @@ engine for decoding, mixing and streaming.
   kept by the daily playlists and fill music.
 - **Takes**: the time and the temperature (from Open-Meteo) put together from recorded files (HRS10 + MIN15, TMP18)
   the moment they go on air; a take line in an hour template.
-- **Live shows** (Sintoniza Pro → Shows): a show has a name, a presenter, a length and notes, and is placed on the
-  week like an event. While it is on, Sintoniza Emi is in ASSISTED (each item waits for the presenter's Play), the
-  **presenter view** opens, and the show and presenter go to RDS and the website. When it ends Emi goes back to
-  AUTO and, if nothing is on air, starts the playlist; closed during a show and started after it, Emi comes back in
-  AUTO. Ad breaks and events play as usual.
+- **Shows** (Sintoniza Pro → Shows): a show has a name, a presenter, a length and notes, is **live** (a presenter
+  in the studio) or **automated** (it only names that part of the day), and is placed on the week like an event; the
+  show and presenter go to RDS and the website. A live one asks whoever is logged in on air whether they are
+  presenting it (a bar over the playlist and the **presenter view**, which opens): **I'm here** puts Emi in ASSISTED
+  (each item waits for the presenter's Play) until the show ends or they log out, then AUTO again and, if nothing is
+  on air, the playlist starts. Nobody logged in, nobody saying so, or **Keep AUTO**: AUTO goes on, with an alert when
+  nobody said so in 2 minutes. Pro warns about shows that start again before they end, two shows at the same time
+  and a live show without a presenter (on the Shows page, when saving, on Home and in tomorrow's check). Ad breaks
+  and events play as usual.
 - **Presenter view** (opens with a live show, or **Presenter view** above the playlist): a large, simple screen —
   the show and how long until it ends, what is on air with its time left and a **TALK UP** countdown to the Intro
   marker, the next three items, the notes (the item's, a pause's, the show's), countdowns to the next break and
@@ -160,7 +164,8 @@ engine for decoding, mixing and streaming.
 - **Web remote** (Settings → Remote): a web page for a phone or computer on the station's network, laid out as the
   on-air screen — the deck with the waveform and countdowns, ▶ ❚❚ ⏭ ■ and AUTO, the clock and level meters, the
   playlist (play now / remove), the cartwalls, a library search to add a song or take a listener's **request** (♥),
-  and the requests waiting (play next / turn down). It logs in with a station user who has the *Web remote* permission; five wrong
+  and the requests waiting (play next / turn down). In ASSISTED with nothing on air, a red bar says it waits for
+  PLAY, with AUTO that starts the playlist. It logs in with a station user who has the *Web remote* permission; five wrong
   passwords lock it for a minute. Plain HTTP: for the station's own network or its VPN only.
 - **Station panel**: logo, station name, clock and date, countdown to the top of the hour, playlist end time,
   tracks played today, stream time (when streaming is used), the next scheduled event, and stereo peak meters.

@@ -53,6 +53,7 @@ sealed class ScheduleStore(LibraryDb db)
         public double MaxSeconds { get; set; }
         public string? Presenter { get; set; }
         public double ShowMinutes { get; set; }
+        public long ShowLive { get; set; } = 1;
         public string? Notes { get; set; }
         public string? SeasonId { get; set; }
     }
@@ -157,7 +158,7 @@ sealed class ScheduleStore(LibraryDb db)
             SELECT id AS Id, type AS Type, name AS Name, enabled AS Enabled, start_mode AS StartMode, max_delay_minutes AS MaxDelayMinutes, max_early_minutes AS MaxEarlyMinutes,
                    lock_level AS LockLevel, path AS Path, stream_minutes AS StreamMinutes, max_age_minutes AS MaxAgeMinutes,
                    artist_hours AS ArtistHours, album_hours AS AlbumHours, max_slow_in_row AS MaxSlowInRow, max_seconds AS MaxSeconds,
-                   presenter AS Presenter, show_minutes AS ShowMinutes, notes AS Notes, season_id AS SeasonId
+                   presenter AS Presenter, show_minutes AS ShowMinutes, show_live AS ShowLive, notes AS Notes, season_id AS SeasonId
             FROM schedule_entries WHERE station_id = @Station ORDER BY type, position
             """, p, tx).ToList();
         var slots = c.Query<SlotRow>(
@@ -225,7 +226,7 @@ sealed class ScheduleStore(LibraryDb db)
                     ArtistHours = e.ArtistHours, AlbumHours = e.AlbumHours, MaxSlowInRow = (int)e.MaxSlowInRow,
                     SeasonId = Guid.TryParse(e.SeasonId, out var season) ? season : null,
                 },
-                "show" => new LiveShow { Presenter = e.Presenter ?? "", Minutes = e.ShowMinutes, Notes = e.Notes ?? "" },
+                "show" => new LiveShow { Presenter = e.Presenter ?? "", Minutes = e.ShowMinutes, Notes = e.Notes ?? "", Live = e.ShowLive != 0 },
                 _ => new ScheduledEvent
                 {
                     Path = e.Path, StreamMinutes = e.StreamMinutes, MaxAgeMinutes = (int)e.MaxAgeMinutes,
@@ -303,9 +304,9 @@ sealed class ScheduleStore(LibraryDb db)
             c.Execute(
                 """
                 INSERT INTO schedule_entries (id, station_id, type, position, name, enabled, start_mode, max_delay_minutes, lock_level, path, stream_minutes, max_age_minutes,
-                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, notes, season_id, max_early_minutes)
+                                              artist_hours, album_hours, max_slow_in_row, max_seconds, presenter, show_minutes, show_live, notes, season_id, max_early_minutes)
                 VALUES (@id, @Station, @type, @position, @name, @enabled, @start, @delay, @lock, @path, @stream, @age, @artistHours, @albumHours, @slow, @maxSeconds,
-                        @presenter, @showMinutes, @notes, @season, @early)
+                        @presenter, @showMinutes, @showLive, @notes, @season, @early)
                 """,
                 new
                 {
@@ -313,7 +314,7 @@ sealed class ScheduleStore(LibraryDb db)
                     delay = entry.MaxDelayMinutes, early = entry.MaxEarlyMinutes, @lock = entry.Lock.ToString(), path = ev?.Path ?? "", stream = ev?.StreamMinutes ?? 0, age = ev?.MaxAgeMinutes ?? 0,
                     artistHours = (entry as PlaylistTemplate)?.ArtistHours ?? 0, albumHours = (entry as PlaylistTemplate)?.AlbumHours ?? 0,
                     slow = (entry as PlaylistTemplate)?.MaxSlowInRow ?? 0, maxSeconds = (entry as AdBreak)?.MaxSeconds ?? 0,
-                    presenter = (entry as LiveShow)?.Presenter ?? "", showMinutes = (entry as LiveShow)?.Minutes ?? 0, notes = (entry as LiveShow)?.Notes ?? "",
+                    presenter = (entry as LiveShow)?.Presenter ?? "", showMinutes = (entry as LiveShow)?.Minutes ?? 0, showLive = (entry as LiveShow)?.Live == false ? 0 : 1, notes = (entry as LiveShow)?.Notes ?? "",
                     season = (entry as PlaylistTemplate)?.SeasonId is { } season && data.Seasons.Any(x => x.Id == season) ? season.ToString() : null,
                 }, tx);
             c.Execute("INSERT INTO schedule_slots (entry_id, weekday, time) VALUES (@id, @weekday, @time)",

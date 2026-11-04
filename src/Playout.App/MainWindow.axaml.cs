@@ -207,6 +207,9 @@ public partial class MainWindow : Window, IShowsProblems
             ShowAutomationMode();
         };
 
+        ShowHereButton.Click += (_, _) => PresenterHere();
+        ShowKeepAutoButton.Click += (_, _) => PresenterKeepsAuto();
+
         AddStreamButton.Click += async (_, _) => await AddStream();
         AddPauseButton.Click += async (_, _) => await AddPause();
         RequestsButton.Click += (_, _) => OpenRequests();
@@ -2002,6 +2005,13 @@ public partial class MainWindow : Window, IShowsProblems
     void LoadSettingsIntoUi()
     {
         ShowStationType();
+        // ASSISTED left by a show when the app closed: AUTO from the start (a show on now asks again), not only once the
+        // schedule can be read.
+        if (_settings.AssistedForShow)
+        {
+            _settings.AssistedForShow = false;
+            _settings.AutoAdvance = true;
+        }
         AutoSwitch.IsChecked = _settings.AutoAdvance;
         ShowAutomationMode();
         Library.SetRoot(_settings.MusicFolder);

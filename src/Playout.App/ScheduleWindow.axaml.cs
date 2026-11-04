@@ -1493,6 +1493,9 @@ public partial class ScheduleWindow : Window, IShowsProblems
             _saved = Snapshot();
             ErrorText.Text = "";
             SavedText.Text = L.F("Saved at {0:HH:mm:ss}. The playout takes it within a few seconds.", DateTime.Now);
+            // Shows that would be on at the same time, or live without a presenter: said when saved, not only on Home.
+            if (ShowCheck.Problems(_data, DateTime.Today, 7) is { Count: > 0 } shows)
+                SavedText.Text += " " + Plural(shows.Count, "⚠ {0} problem with the shows (Shows)", "⚠ {0} problems with the shows (Shows)");
             if (_daily != null) _daily.ScheduleSaved().Report(); // the hours whose template changed are made again
         }
         catch (ScheduleStore.ChangedException ex)

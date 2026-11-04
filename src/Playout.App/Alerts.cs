@@ -24,6 +24,8 @@ public sealed class AlertSettings
     public double ClockSeconds { get; set; } = 2;
     public string TimeServer { get; set; } = "pool.ntp.org";
     public bool Backup { get; set; } = true;
+    /// <summary>A live show started and nobody said they are presenting it (it goes on in AUTO).</summary>
+    public bool Show { get; set; } = true;
     public bool Restart { get; set; } = true;
     /// <summary>Tomorrow's daily playlists aren't ready (hours missing, empty or short, files not found), from this hour on.</summary>
     public bool Tomorrow { get; set; } = true;
@@ -160,7 +162,7 @@ sealed class HealthMonitor : IDisposable
     public void Report(string kind, string message)
     {
         var a = _settings().Alerts;
-        if (!a.Enabled || !a.HasChannel || (kind == "backup" && !a.Backup)) return;
+        if (!a.Enabled || !a.HasChannel || (kind == "backup" && !a.Backup) || (kind == "show" && !a.Show)) return;
         _ = Send(kind, false, message);
     }
 

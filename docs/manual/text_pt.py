@@ -235,10 +235,18 @@ CHAPTERS = [
           "nunca vai para o RDS, o site nem o stream. Não há crossfade a entrar nem a sair, e a deteção de silêncio deixa-a em "
           "paz. Para a mudar antes de tocar, use o botão direito e <i>Editar pausa…</i>."),
     ("h2", "Programas em direto e a vista do locutor"),
-    ("p", "Quando um programa em direto marcado na Pro começa (capítulo 4, Programas), a emissão passa para <b>ASSISTIDO</b>: "
-          "cada item espera que o locutor carregue em Play. O nome do programa e do locutor seguem para o RDS e para o site, e "
-          "abre-se a <b>vista do locutor</b>. Quando o programa acaba, a emissão volta a <b>AUTO</b> e, se nada estiver a tocar, "
-          "arranca a playlist. Os blocos publicitários e os eventos tocam como sempre."),
+    ("p", "Quando um programa ao vivo marcado na Pro começa (capítulo 4, Programas), o nome do programa e do locutor seguem "
+          "para o RDS e para o site, mas a emissão continua em AUTO até o locutor dizer que está. Se alguém tiver sessão "
+          "iniciada no ar, uma barra azul <b>PROGRAMA</b> por cima da playlist e a <b>vista do locutor</b>, que se abre sozinha, "
+          "perguntam se é quem o apresenta. <b>Estou aqui: ASSISTIDO</b> passa para <b>ASSISTIDO</b>, e cada item espera que o "
+          "locutor carregue em Play; <b>Manter AUTO</b> deixa o programa correr sozinho. Se ninguém tiver sessão iniciada, nada "
+          "muda até um locutor entrar, e aí é-lhe perguntado."),
+    ("p", "Se 2 minutos depois do início ninguém tiver dito que apresenta o programa, o registo diz isso e, se estiver "
+          "configurado em Definições → Alertas, é enviado um alerta. A estação continua a tocar em AUTO: um programa a que "
+          "ninguém apareceu nunca deixa silêncio no ar. Terminar a sessão durante o programa volta a AUTO, e a playlist "
+          "arranca se estava à espera. Quando o programa acaba, a emissão volta a <b>AUTO</b> e, se nada estiver a tocar, "
+          "arranca a playlist. Os blocos publicitários e os eventos tocam como sempre. Um programa <b>automático</b> nunca "
+          "pergunta: só dá nome a essa parte do dia."),
     ("p", "A <b>vista do locutor</b> é um ecrã grande e simples, pensado para quem está a fazer o programa. Mostra quanto falta "
           "para o programa acabar, o que está no ar com o tempo que falta e a contagem <b>FALAR ATÉ À VOZ</b> até ao fim da "
           "introdução, os três itens seguintes, as notas, as contagens para o próximo bloco e para a hora certa, os pedidos à "
@@ -667,12 +675,18 @@ CHAPTERS = [
     ("p", "Uma data deixada vazia quer dizer que nesse dia não toca nada. É assim que se tira o horóscopo do dia de Natal. "
           "De vez em quando, <b>Tirar as datas passadas</b> limpa a lista."),
     ("h2", "Programas em direto"),
-    ("p", "Em <b>Programação › Programas</b> marca os programas feitos ao vivo, como o programa da manhã. Cada um tem um "
+    ("p", "Em <b>Programação › Programas</b> marca os programas da estação, como o programa da manhã. Cada um tem um "
           "<b>nome</b>, o <b>locutor</b>, quanto tempo dura a partir de cada início, e <b>notas para o locutor</b> com o "
           "alinhamento, os convidados ou o que referir. Coloca-se na semana como um evento."),
-    ("p", "Enquanto o programa está no ar, a emissão fica em ASSISTIDO, abre-se a vista do locutor, e o nome do programa e do "
-          "locutor vão para o RDS e para o site. Nos modelos do RDS e do site, os campos {show} e {presenter} trazem-nos. O "
-          "capítulo 3 explica o que o locutor vê."),
+    ("p", "Em <b>No ar</b>, escolha <b>Ao vivo</b> para um programa com locutor no estúdio, ou <b>Automático</b> para um que só "
+          "dá nome a uma parte do dia, como a música da noite. Um programa ao vivo pergunta ao locutor com sessão iniciada no "
+          "ar se está lá, e passa a ASSISTIDO quando ele diz que sim. Um automático fica em AUTO. Em ambos os casos, o nome do "
+          "programa e do locutor vão para o RDS e para o site. Nos modelos do RDS e do site, os campos {show} e {presenter} "
+          "trazem-nos. O capítulo 3 explica o que o locutor vê."),
+    ("p", "Um programa que começa a cada meia hora e dura uma hora é um só programa longo, não vários. Por cima das definições "
+          "do programa, a Pro avisa de um programa que começa de novo antes de acabar, de dois programas no ar à mesma hora e "
+          "de um programa ao vivo sem locutor, e diz quantas horas por dia estão no ar os programas ao vivo. Os mesmos avisos "
+          "aparecem ao guardar, na página Início e na verificação de amanhã."),
     ("h2", "Blocos publicitários"),
     ("fig", "schedule-breaks", "Blocos publicitários", [
         ("BreakList", "Os blocos."),

@@ -44,6 +44,17 @@
             </Grid>
         </Border>
 
+        <!-- A live show: is the presenter there? -->
+        <Border DockPanel.Dock="Top" x:Name="HereBox" Classes="box" Background="#14283A" BorderBrush="#3B82F6" Margin="0,0,0,14" IsVisible="False">
+            <Grid ColumnDefinitions="*,Auto,10,Auto">
+                <TextBlock x:Name="HereText" FontSize="18" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" x:Name="HereButton" Classes="transport accent" Content="I'm here: ASSISTED"
+                        ToolTip.Tip="You are presenting the show: each item waits for you to start it, until the show ends or you log out" />
+                <Button Grid.Column="3" x:Name="KeepAutoButton" Classes="transport" Content="Keep AUTO"
+                        ToolTip.Tip="The show goes on by itself" />
+            </Grid>
+        </Border>
+
         <!-- Transport -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="12" Margin="0,14,0,0">
             <Button x:Name="PlayButton" Classes="transport accent" Content="▶  PLAY" ToolTip.Tip="Starts the next item (in ASSISTED, each item waits for this)" />

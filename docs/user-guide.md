@@ -74,7 +74,7 @@ they are changed in Pro only.
   last minute and red in the last 10 seconds — stream time, and the level meters. **STREAM** starts and stops the internet stream (server: Pro → Station settings → Streaming).
 - **Bottom left — the playlist.** **Bottom right — Cartwall / Library / Folders** tabs.
 - **The ON AIR sign** (in the station panel, above the meters). It lights red with **MIC LIVE** while the microphone
-  is open (the MIC button, or the desk's mic fader by GPIO), **ON AIR · show** during a live show and **ON AIR · LIVE
+  is open (the MIC button, or the desk's mic fader by GPIO), **ON AIR · show** during a live show (once its presenter has said they are there) and **ON AIR · LIVE
   INPUT** while an input of the computer is on air. It sits in space that is otherwise empty, so nothing on the screen
   moves when it lights.
 - **Status line** (bottom): **Settings**, **Reports**, **Log out**, the **status lamps** and the last thing that
@@ -168,7 +168,8 @@ phone remembers the user name). The page is laid out as the on-air screen (on a 
 the deck with the waveform, time played and left, the talk-over and ad break countdowns, **▶ ❚❚ ⏭ ■** and **AUTO**;
 the station panel with the clock, top of hour, playlist end, next event and the level meters; the playlist with its
 colours and tags (tap an item for *▶ Now* and ✕); and **CARTWALL** (any of the cartwalls) / **LIBRARY** (search, add
-a song after the item on air). An advert on air is only
+a song after the item on air). In ASSISTED with nothing on air, a red bar says the station waits for PLAY, with an
+**AUTO** button that also starts the playlist. An advert on air is only
 cut after a question. Five wrong passwords lock it for a minute. It is plain HTTP: for the station's own network, or
 from outside only through the station's VPN — never open the port on the router.
 
@@ -495,6 +496,25 @@ Choose how it starts:
   PLAY** in the playlist (in ASSISTED, or until it is moved), so the list shows what will really go on air.
 
 and what the host may do with it in the playlist (remove/move, only move, or nothing).
+
+### Shows
+
+Programming → **Shows**: a name, the presenter, how long from each start, notes for the presenter, and its times on
+the week calendar. **On air**: **Live** (a presenter in the studio) or **Automated** (it only names that part of the
+day; AUTO goes on). Either way the show and the presenter go to RDS and the website (`{show}`, `{presenter}`).
+
+- A **live** show doesn't take over by itself. When it starts and someone is logged in on air, a blue **SHOW** bar
+  over the playlist and the presenter view (it opens) ask whether they are presenting it: **I'm here: ASSISTED** (each
+  item waits for them, until the show ends or they log out) or **Keep AUTO**. Nobody logged in: AUTO goes on, and
+  whoever logs in during the show is asked.
+- Nobody said they are there 2 minutes after the start: the log says so and an alert goes (Settings → Alerts, *A live
+  show started and nobody said they are presenting it*). The station keeps playing in AUTO.
+- Logging out during the show: AUTO again, and the playlist starts if it was waiting (also when paused). The show
+  over, or another starting straight after it: AUTO again if it was ASSISTED, and the playlist starts if it was waiting.
+  **Keep AUTO** switches AUTO on even if it was ASSISTED before the show.
+- Times one after the other (every half hour, an hour each) are one show. Over the show's settings Pro warns about a
+  show that starts again before it ends, two shows at the same time and a live show without a presenter, and says how
+  many hours a day live shows are on; also when saving, on Home and in tomorrow's check.
 
 ### Ad breaks
 

@@ -298,7 +298,7 @@ public partial class MainWindow
 
     /// <summary>
     /// The red sign: MIC LIVE while the mic is open (the MIC button, or the desk's mic fader by GPIO), ON AIR while a
-    /// live show or a live input is on air. Nothing on a standby computer.
+    /// live show (its presenter said they are there) or a live input is on air. Nothing on a standby computer.
     /// </summary>
     void UpdateOnAirSign(PlayerStatus? st = null)
     {
@@ -307,7 +307,7 @@ public partial class MainWindow
         {
             var current = st is { State: PlayerState.Playing } playing ? playing.Current : null;
             if (_micOn || _deskMic) text = L.T("MIC LIVE");
-            else if (_show is { } show) text = L.F("ON AIR · {0}", show.Show.Name.Trim() is { Length: > 0 } n ? n : L.T("live show"));
+            else if (_show is { } show && _showMode == ShowMode.Assisted) text = L.F("ON AIR · {0}", show.Show.Name.Trim() is { Length: > 0 } n ? n : L.T("live show"));
             else if (current != null && LiveInput.Is(current.Path)) text = L.T("ON AIR · LIVE INPUT");
         }
         bool lit = text != null;

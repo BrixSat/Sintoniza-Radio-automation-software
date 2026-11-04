@@ -783,7 +783,11 @@
                     </DockPanel>
 
                     <ScrollViewer Grid.Column="4">
-                        <StackPanel x:Name="ShowPanel" Spacing="12" Margin="0,0,14,0">
+                        <StackPanel Spacing="12" Margin="0,0,14,0">
+                        <!-- What is wrong with the shows (all of them), and how long the live ones are on -->
+                        <TextBlock x:Name="ShowWarnings" TextWrapping="Wrap" FontSize="12" Foreground="#F5A524" IsVisible="False" />
+                        <TextBlock x:Name="ShowLiveHours" Classes="muted" TextWrapping="Wrap" FontSize="12" />
+                        <StackPanel x:Name="ShowPanel" Spacing="12">
                             <Grid ColumnDefinitions="*,12,Auto">
                                 <StackPanel>
                                     <TextBlock Classes="label" Text="Name" />
@@ -794,6 +798,11 @@
                             <StackPanel>
                                 <TextBlock Classes="label" Text="Presenter" />
                                 <TextBox x:Name="ShowPresenterBox" MaxLength="100" />
+                            </StackPanel>
+                            <StackPanel Spacing="4">
+                                <TextBlock Classes="label" Text="On air" />
+                                <RadioButton x:Name="ShowLiveRadio" GroupName="ShowKind" Content="Live: a presenter in the studio" />
+                                <RadioButton x:Name="ShowAutomatedRadio" GroupName="ShowKind" Content="Automated: it only names this part of the day" />
                             </StackPanel>
                             <StackPanel>
                                 <TextBlock Classes="label" Text="How long" />
@@ -808,7 +817,8 @@
                                          PlaceholderText="Running order, guests, what to mention" />
                             </StackPanel>
                             <TextBlock Classes="note"
-                                       Text="While the show is on, the playout is in ASSISTED (each item waits for the presenter), the presenter view opens, and the show and presenter go to RDS and the website. When it ends, the playout goes back to AUTO and, if nothing is on air, starts the playlist. Ad breaks and events play as usual." />
+                                       Text="A live show asks whoever is logged in on air whether they are presenting it: once they say so (I'm here), the playout is in ASSISTED (each item waits for the presenter) until the show ends or they log out; then AUTO again and, if nothing is on air, the playlist starts. Nobody logged in, or nobody saying so: AUTO goes on (and an alert after 2 minutes). An automated show stays in AUTO. Either way the show and presenter go to RDS and the website. Ad breaks and events play as usual." />
+                        </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>

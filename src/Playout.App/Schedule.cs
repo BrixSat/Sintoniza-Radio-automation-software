@@ -403,9 +403,10 @@ public sealed class SeriesFile
 }
 
 /// <summary>
-/// A live show: a presenter on air for <see cref="Minutes"/> from each of its times. The playout goes ASSISTED for
-/// it (each item waits for the presenter) and back to AUTO after it; its name and presenter go to RDS and the website,
-/// and its notes to the presenter view. Nothing is put in the playlist for it.
+/// A show: on air for <see cref="Minutes"/> from each of its times; its name and presenter go to RDS and the website,
+/// and its notes to the presenter view. A live one (a presenter in the studio) asks the presenter logged in on air
+/// whether they are there, and is ASSISTED (each item waits for the presenter) once they say so, AUTO again after it.
+/// An automated one only names that part of the day: AUTO goes on. Nothing is put in the playlist for it.
 /// </summary>
 public sealed class LiveShow : ScheduleEntry
 {
@@ -414,6 +415,8 @@ public sealed class LiveShow : ScheduleEntry
     public double Minutes { get; set; } = 60;
     /// <summary>For the presenter: the running order, what to mention, guests.</summary>
     public string Notes { get; set; } = "";
+    /// <summary>A presenter in the studio (ASSISTED once they say they are there); false: automated, AUTO goes on.</summary>
+    public bool Live { get; set; } = true;
 
     /// <summary>The show's start and end around <paramref name="at"/> when it is on air then (it may have started yesterday).</summary>
     public (DateTime Start, DateTime End)? OnAirAt(DateTime at)
@@ -424,13 +427,41 @@ public sealed class LiveShow : ScheduleEntry
         return null;
     }
 
-    /// <summary>The show on air at <paramref name="at"/> (the one that started last, if two overlap); null when none is.</summary>
+    /// <summary>
+    /// When it really ends, from an end: its times that start before (or as) the one before ends make one show, not
+    /// several (11:00 and 11:30 for an hour each: on until 12:30).
+    /// </summary>
+    public DateTime RunEnd(DateTime end)
+    {
+        for (int i = 0; i < 200; i++)
+        {
+            var next = TimesOn(end.Date.AddDays(-1)).Concat(TimesOn(end.Date))
+                .Where(s => s <= end && s.AddMinutes(Minutes) > end).DefaultIfEmpty().Max();
+            if (next == default) break;
+            end = next.AddMinutes(Minutes);
+        }
+        return end;
+    }
+
+    /// <summary>
+    /// The show on air at <paramref name="at"/> (the one that started last, if two overlap) and when it ends (its times
+    /// one after the other count as one); null when none is.
+    /// </summary>
     public static (LiveShow Show, DateTime Start, DateTime End)? At(ScheduleData data, DateTime at)
     {
         (LiveShow Show, DateTime Start, DateTime End)? found = null;
         foreach (var show in data.Shows)
-            if (show.OnAirAt(at) is { } t && (found == null || t.Start > found.Value.Start)) found = (show, t.Start, t.End);
-        return found;
+            if (LatestAt(show, at) is { } t && (found == null || t.Start > found.Value.Start)) found = (show, t.Start, t.End);
+        return found is { } f ? (f.Show, f.Start, f.Show.RunEnd(f.End)) : null;
+    }
+
+    /// <summary>Of its times on air at <paramref name="at"/>, the one that started last.</summary>
+    static (DateTime Start, DateTime End)? LatestAt(LiveShow show, DateTime at)
+    {
+        if (!show.Enabled || show.Minutes <= 0) return null;
+        var start = show.TimesOn(at.Date.AddDays(-1)).Concat(show.TimesOn(at.Date))
+            .Where(s => s <= at && at < s.AddMinutes(show.Minutes)).DefaultIfEmpty().Max();
+        return start == default ? null : (start, start.AddMinutes(show.Minutes));
     }
 }
 

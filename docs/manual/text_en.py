@@ -306,10 +306,17 @@ CHAPTERS = [
     ("h2", "Live shows, the presenter view and requests"),
     ("p", "When a presenter is live, they want a calm screen with only what matters, and a simple way to deal with listeners "
           "who call in. That is what the presenter view and the requests list are for."),
-    ("p", "<b>Live shows</b> are set up in Sintoniza Pro → <b>Shows</b> (chapter 4). While a show is on, the playout switches "
-          "to ASSISTED, so each item waits for the presenter to press Play. The presenter view opens by itself, and the show "
-          "and the presenter's name go out on RDS and the website. When the show ends, the playout goes back to AUTO and, if "
-          "nothing is on air, starts the playlist. Ad breaks and events play as usual throughout."),
+    ("p", "<b>Live shows</b> are set up in Sintoniza Pro → <b>Shows</b> (chapter 4). When one starts, the show and the "
+          "presenter's name go out on RDS and the website, but the playout stays in AUTO until the presenter says they are "
+          "there. If someone is logged in on air, a blue <b>SHOW</b> bar over the playlist and the presenter view, which opens "
+          "by itself, ask whether they are presenting it. <b>I'm here: ASSISTED</b> switches to ASSISTED, so each item waits "
+          "for the presenter to press Play; <b>Keep AUTO</b> lets the show run by itself. If nobody is logged in, nothing "
+          "changes until a presenter logs in, and then they are asked."),
+    ("p", "If nobody has said they are presenting the show 2 minutes after it starts, the log says so and, if it is set up in "
+          "Settings → Alerts, an alert is sent. The station keeps playing in AUTO: a show nobody turned up for never leaves "
+          "dead air. Logging out during the show goes back to AUTO, and the playlist starts if it was waiting. When the show "
+          "ends, the playout goes back to AUTO and, if nothing is on air, starts the playlist. Ad breaks and events play as "
+          "usual throughout. An <b>automated</b> show never asks: it only names that part of the day."),
     ("p", "<b>The presenter view</b> is a large, simple screen. It opens with a live show, or with the <b>Presenter view</b> "
           "button above the playlist. It shows:"),
     ("list", [
@@ -730,13 +737,19 @@ CHAPTERS = [
           "file. If there is none of these, the event is skipped that day and the log says so."),
     ("p", "A date left empty is how you take a day off: add 25 December with no file, and there is no horoscope on Christmas Day."),
     ("h2", "Shows"),
-    ("p", "A show is a live programme with a presenter, such as the morning show from 7 to 10. Setting it up in <b>Shows</b> "
-          "lets the playout get out of the presenter's way while they are on, and lets listeners see who is on air."),
+    ("p", "A show is a programme with its own name, such as the morning show from 7 to 10. Setting it up in <b>Shows</b> "
+          "lets listeners see what and who is on air, and, for a live show, lets the playout get out of the presenter's way "
+          "while they are on."),
     ("p", "Give a show its name, its presenter, how long it lasts and notes for the presenter, such as the running order, "
           "guests or what to mention. Then click the times it starts on the week calendar, as you do for events."),
-    ("p", "While the show is on, the studio switches to ASSISTED and opens the presenter view, and the show and presenter go "
-          "out on RDS and the website. When it ends, the playout goes back to AUTO. Chapter 3 describes this from the "
-          "presenter's side."),
+    ("p", "Under <b>On air</b>, choose <b>Live</b> for a show with a presenter in the studio, or <b>Automated</b> for one that "
+          "only names part of the day, such as the night music. A live show asks the presenter logged in on air whether they "
+          "are there, and switches to ASSISTED once they say so. An automated one stays in AUTO. Either way the show and the "
+          "presenter go out on RDS and the website. Chapter 3 describes this from the presenter's side."),
+    ("p", "A show that starts every half hour for an hour is one long show, not several. Over the show's settings, Pro "
+          "warns you about a show that starts again before it ends, two shows on at the same time and a live show without a "
+          "presenter, and shows how many hours a day the live ones are on. The same warnings appear when you save, on the "
+          "Home page and in tomorrow's check."),
     ("h2", "Ad breaks"),
     ("p", "An ad break is a slot for adverts, such as every hour at :50. You set up the break once, and the adverts booked for "
           "each day fill it."),
