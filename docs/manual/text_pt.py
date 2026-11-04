@@ -755,6 +755,13 @@ CHAPTERS = [
         ("MaxSlowBox", "No máximo tantas <b>músicas lentas</b> seguidas, ou seja, de andamento 1 ou 2. Com 0, não há limite."),
     ]),
     ("tip", "Se uma regra não deixasse nada para tocar, é posta de lado nessa música: primeiro a do álbum, depois a das lentas, depois a do artista. Assim a hora fica sempre cheia. Se nenhuma música tiver o andamento ou a energia que uma linha pede, a linha toca da categoria toda, e as Playlists diárias avisam."),
+    ("p", "As <b>metas da hora</b> dizem como deve ficar a música da hora, por categoria: <b>pelo menos</b> tantas músicas "
+          "por hora (pelo menos 4 portuguesas), <b>no máximo</b> tantas (no máximo 2 lentas), ou <b>no máximo tantas "
+          "seguidas</b> (1: nunca duas dos anos 80 juntas). Escolha o tipo, o número e a categoria e carregue em <b>Juntar "
+          "meta</b>; uma categoria inclui as que estão por baixo. As playlists diárias são feitas para cumprir as metas sempre "
+          "que as linhas do modelo têm essas músicas, e um <i>pelo menos</i> fica espalhado pela hora. Uma hora que falhe "
+          "uma, porque as categorias das linhas têm poucas dessas músicas ou todas tocaram há pouco, diz isso nas Playlists "
+          "diárias. As quotas da ERC vêm primeiro."),
     ("h2", "Playlists diárias"),
     ("p", "As playlists diárias são as horas tal como vão tocar, feitas a partir dos modelos: cada música, jingle e anúncio, por ordem, com a sua hora de início."),
     ("fig", "schedule-daily", "Playlists diárias", [

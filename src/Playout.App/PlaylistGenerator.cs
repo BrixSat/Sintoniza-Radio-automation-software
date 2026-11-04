@@ -20,7 +20,9 @@ public sealed record PlannedPart(string Path, TrackKind Kind, string Title, stri
 /// hour is full with the ad breaks and events booked in it. Songs and artists are kept apart by the rest times, counting
 /// what played and what is planned before; the songs rested longest come first. The music rules: a line may ask for a
 /// tempo and energy range; a template may keep an artist and an album apart for some hours, and limit slow songs in a
-/// row. A rule that leaves nothing to play is let go, the least important first (album, slow songs, artist). What doesn't quite fit at the end is
+/// row; and set targets for the hour's songs of a category (at least, at most, not more in a row), kept where the
+/// lines' categories have such songs, an hour that misses one saying so.
+/// A rule that leaves nothing to play is let go, the least important first (album, slow songs, artist). What doesn't quite fit at the end is
 /// marked optional, with one spare song, so the playout can start the next hour on time either way.
 /// </summary>
 public sealed class PlaylistGenerator
@@ -44,6 +46,19 @@ public sealed class PlaylistGenerator
     readonly Times<string> _albumTimes = new();
     /// <summary>The songs' tempos (null: not set) by when they play, for the slow songs in a row.</summary>
     readonly SortedList<DateTime, int?> _tempos = new();
+    /// <summary>The songs (library id, null: not from the library) by when they play, for the targets' songs in a row.</summary>
+    readonly SortedList<DateTime, long?> _musicIds = new();
+
+    // ───── The template's targets: each hour on its own ─────
+    /// <summary>The songs of each target's category (and the ones under it).</summary>
+    readonly Dictionary<long, HashSet<long>> _targetSongs = new();
+    /// <summary>This hour: how many of each target's songs, the most in a row, and how many songs in all.</summary>
+    readonly Dictionary<HourTarget, int> _targetCount = new(), _targetRun = new();
+    int _hourSongs;
+    /// <summary>About how many songs this hour has, and when its music ends: to spread a target's songs over it.</summary>
+    double _expectedSongs;
+    DateTime _musicEnds;
+
     /// <summary>Lines whose tempo or energy found no song (the whole category played instead).</summary>
     readonly HashSet<string> _relaxed = new();
 
@@ -130,7 +145,8 @@ public sealed class PlaylistGenerator
     public static string Signature(PlaylistTemplate? t) => t == null ? ""
         : t.Id + JsonSerializer.Serialize(t.Lines.Select(l => new { l.Source, l.CategoryId, l.Kind, l.Folder }))
           + (t.Lines.Any(l => l.HasFilter) ? JsonSerializer.Serialize(t.Lines.Select(l => new { l.TempoMin, l.TempoMax, l.EnergyMin, l.EnergyMax })) : "")
-          + (t.ArtistHours > 0 || t.AlbumHours > 0 || t.MaxSlowInRow > 0 ? $"|{t.ArtistHours}|{t.AlbumHours}|{t.MaxSlowInRow}" : "");
+          + (t.ArtistHours > 0 || t.AlbumHours > 0 || t.MaxSlowInRow > 0 ? $"|{t.ArtistHours}|{t.AlbumHours}|{t.MaxSlowInRow}" : "")
+          + (t.Targets.Count > 0 ? JsonSerializer.Serialize(t.Targets.Select(x => new { x.Kind, x.Count, x.CategoryId })) : "");
 
     /// <summary>
     /// What played (the library's history) and what is planned (<paramref name="planned"/>, from its hour's start)
@@ -169,8 +185,124 @@ public sealed class PlaylistGenerator
         if (ArtistKey(artist) is { } a) _artistTimes.Add(a, at);
         if (path != null) _pathTimes.Add(path, at);
         if (AlbumKey(artist, album) is { } b) _albumTimes.Add(b, at);
-        if (music) _tempos[at] = tempo;
+        if (music)
+        {
+            _tempos[at] = tempo;
+            _musicIds[at] = trackId;
+        }
     }
+
+    HashSet<long> TargetSongs(long categoryId)
+    {
+        if (_targetSongs.TryGetValue(categoryId, out var songs)) return songs;
+        try { songs = _db.TrackIdsIn([categoryId]); }
+        catch { songs = new(); }
+        return _targetSongs[categoryId] = songs;
+    }
+
+    /// <summary>How many songs of <paramref name="songs"/> play in a row just before <paramref name="at"/>.</summary>
+    int InRowBefore(DateTime at, HashSet<long> songs)
+    {
+        int n = 0;
+        for (int i = _musicIds.Count - 1; i >= 0; i--)
+        {
+            if (_musicIds.Keys[i] >= at) continue;
+            if (_musicIds.Values[i] is not { } id || !songs.Contains(id)) break;
+            n++;
+        }
+        return n;
+    }
+
+    /// <summary>
+    /// The songs of a music line that keep the hour to its targets: none of a category that has had its most this hour,
+    /// or as many in a row as it may; a category that needs more, about evenly over the hour (sooner as the hour runs
+    /// out). Only where the line has such songs: otherwise the line is left as it is (a later line may make up for it).
+    /// </summary>
+    List<RotationTrack> Aim(List<RotationTrack> pool, PlaylistTemplate template, DateTime at, Func<RotationTrack, bool> rested)
+    {
+        var targets = template.Targets.Where(x => x.CategoryId > 0).ToList();
+        // First what may not play now (its most this hour, or as many in a row as it may), and only while other songs
+        // that may play are left; then what the hour needs more of, never from a category that may not play now.
+        var full = new HashSet<long>();
+        foreach (var target in targets.Where(x => x.Kind is TargetKind.AtMost or TargetKind.InRow))
+        {
+            var songs = TargetSongs(target.CategoryId);
+            bool reached = target.Kind == TargetKind.AtMost
+                ? _targetCount.GetValueOrDefault(target) >= target.Count
+                : InRowBefore(at, songs) >= Math.Max(1, target.Count);
+            if (!reached) continue;
+            full.Add(target.CategoryId);
+            var others = pool.Where(t => !songs.Contains(t.Id)).ToList();
+            if (others.Any(rested)) pool = others;
+        }
+        // Outside the making of an hour (one more song for Fill or Replace) the hour's spread isn't known: only the limits.
+        if (_expectedSongs <= 0) return pool;
+        foreach (var target in targets.Where(x => x.Kind == TargetKind.AtLeast && !full.Contains(x.CategoryId)))
+        {
+            var songs = TargetSongs(target.CategoryId);
+            int have = _targetCount.GetValueOrDefault(target);
+            if (have >= target.Count) continue;
+            // Spread: the next one due after about every (songs ÷ (target + 1)) songs; and at once when only as many
+            // songs are left in the hour as are still needed.
+            double every = _expectedSongs / (target.Count + 1);
+            double left = Math.Max(0, (_musicEnds - at).TotalSeconds) / 210;
+            if (_hourSongs + 1 < (have + 1) * every && left > target.Count - have + 0.5) continue;
+            var wanted = pool.Where(t => songs.Contains(t.Id)).ToList();
+            if (wanted.Any(rested)) pool = wanted;
+        }
+        return pool;
+    }
+
+    /// <summary>How many songs from <paramref name="hour"/> to <paramref name="at"/> (inclusive).</summary>
+    int MusicSince(DateTime hour, DateTime at) => _musicIds.Keys.Count(k => k >= hour && k <= at);
+
+    /// <summary>
+    /// One more song for an hour made before (Fill, Replace): its targets counted from what the hour has planned, so
+    /// the limits hold (an at-least isn't pushed: the hour isn't being made).
+    /// </summary>
+    void TargetsFor(DateTime at, PlaylistTemplate template)
+    {
+        _targetCount.Clear();
+        _expectedSongs = 0;
+        var hour = new DateTime(at.Year, at.Month, at.Day, at.Hour, 0, 0, at.Kind);
+        var ids = _musicIds.Where(kv => kv.Key >= hour && kv.Key < hour.AddHours(1) && kv.Value != null).Select(kv => kv.Value!.Value).ToList();
+        foreach (var target in template.Targets.Where(x => x.CategoryId > 0))
+        {
+            var songs = TargetSongs(target.CategoryId);
+            _targetCount[target] = ids.Count(songs.Contains);
+        }
+    }
+
+    /// <summary>Counts a song put in the hour, for the targets.</summary>
+    void CountTargets(PlanItem item, PlaylistTemplate template, DateTime at, DateTime hour)
+    {
+        if (item.Kind != TrackKind.Music) return;
+        _hourSongs++;
+        foreach (var target in template.Targets.Where(x => x.CategoryId > 0))
+        {
+            var songs = TargetSongs(target.CategoryId);
+            if (item.TrackId is not { } id || !songs.Contains(id)) continue;
+            _targetCount[target] = _targetCount.GetValueOrDefault(target) + 1;
+            // This one and those just before it in this hour (Remember noted it already).
+            _targetRun[target] = Math.Max(_targetRun.GetValueOrDefault(target), Math.Min(InRowBefore(at.AddTicks(1), songs), MusicSince(hour, at)));
+        }
+    }
+
+    /// <summary>The targets the hour made last missed ("Portugal: 3 songs, the target is at least 4").</summary>
+    public List<string> Missed { get; private set; } = new();
+
+    /// <summary>The targets the hour missed, as the daily playlists say them.</summary>
+    List<string> MissedTargets(PlaylistTemplate template) => template.Targets.Where(x => x.CategoryId > 0).Select(t =>
+    {
+        int have = _targetCount.GetValueOrDefault(t);
+        return t.Kind switch
+        {
+            TargetKind.AtLeast when have < t.Count => L.F("{0}: {1} songs, the target is at least {2}", t.CategoryName, have, t.Count),
+            TargetKind.AtMost when have > t.Count => L.F("{0}: {1} songs, the target is at most {2}", t.CategoryName, have, t.Count),
+            TargetKind.InRow when _targetRun.GetValueOrDefault(t) > Math.Max(1, t.Count) => L.F("{0}: {1} in a row, the target is at most {2}", t.CategoryName, _targetRun.GetValueOrDefault(t), t.Count),
+            _ => null,
+        };
+    }).OfType<string>().ToList();
 
     /// <summary>An album by its artist and name ("Greatest Hits" of two artists are two albums).</summary>
     static string? AlbumKey(string artist, string album) =>
@@ -235,6 +367,8 @@ public sealed class PlaylistGenerator
         };
         var items = new List<PlanItem>();
         var problems = new List<string>();
+        Missed = new();
+        _expectedSongs = 0;
         if (template == null) return (record, items, problems);
 
         // The end of the hour before may run past the hour (its optional songs, if they play): it comes before this one.
@@ -244,10 +378,23 @@ public sealed class PlaylistGenerator
             _tempos.Remove(tail[i].Key);
             _tempos[hour.AddMilliseconds(i - tail.Count)] = tail[i].Value;
         }
+        var tailIds = _musicIds.Where(kv => kv.Key >= hour && kv.Key < hour.AddMinutes(15)).ToList();
+        for (int i = 0; i < tailIds.Count; i++)
+        {
+            _musicIds.Remove(tailIds[i].Key);
+            _musicIds[hour.AddMilliseconds(i - tailIds.Count)] = tailIds[i].Value;
+        }
 
         // The hour less what the breaks and events booked in it take.
         double target = 3600 - Entries(hour).Sum(e => e.Seconds);
         _qSongs = _qPortuguese = _qLanguage = _qRecent = 0; // each hour meets the quotas on its own
+        _targetCount.Clear();
+        _targetRun.Clear();
+        _hourSongs = 0;
+        // About 3½ minutes a song, in the share of the lines that are music.
+        double musicShare = template.Lines.Count == 0 ? 1 : (double)template.Lines.Count(x => x.TrackKind is null or TrackKind.Music) / template.Lines.Count;
+        _expectedSongs = Math.Max(1, target / 210 * musicShare);
+        _musicEnds = hour.AddSeconds(target);
         double used = 0;
         int line = 0, misses = 0;
         var lines = template.Lines;
@@ -286,10 +433,12 @@ public sealed class PlaylistGenerator
                 if (used - target > item.Seconds / 2) item.Optional = true;
                 full = true;
             }
+            if (!item.Optional) CountTargets(item, template, at, hour);
         }
         foreach (var what in _relaxed)
             if (!problems.Contains(what)) problems.Add(what);
         _relaxed.Clear();
+        Missed = MissedTargets(template);
         if (items.Count > 0 && lines.Any(x => x.TrackKind is null or TrackKind.Music) && !items.Any(i => i.Kind == TrackKind.Music))
         {
             // Music lines that found no music: nothing rather than an hour of jingles (the playout fills with music).
@@ -302,6 +451,7 @@ public sealed class PlaylistGenerator
     /// <summary>One more song for a template line (the manager's Replace), not one of <paramref name="avoid"/>.</summary>
     public PlanItem? Another(TemplateLine line, TemplateLine next, DateTime at, IReadOnlyCollection<string> avoid, PlaylistTemplate? template = null)
     {
+        if (template is { Targets.Count: > 0 }) TargetsFor(at, template);
         var item = Pick(line, next, at, avoid, template);
         if (item != null) Remember(item, at); // the next one asked for keeps the rules with it
         _relaxed.Clear();
@@ -397,6 +547,9 @@ public sealed class PlaylistGenerator
             }
             // The ERC quotas: Portuguese music (and among it in Portuguese, and recent) where the hour has too little.
             if (music && Quota() is { } quota) pool = Steer(pool, quota, at, SongRested);
+            // The template's targets (after the quotas, which the law asks for).
+            // Only to songs that keep the song and artist rest (a target never makes an artist come back too soon).
+            if (music && template is { Targets.Count: > 0 }) pool = Aim(pool, template, at, t => SongRested(t) && ArtistRested(t));
             // Whatever the rules allow, not the artists of the last two songs while others can play (two: the last of an
             // hour may be an optional one that is dropped on air).
             if (music)

@@ -85,7 +85,9 @@ engine for decoding, mixing and streaming.
   their own that play on those days instead of the all-year ones. Each hour is made ahead of time from the hour template placed there: its lines in
   turn, until the hour is full with the ad breaks and events booked in it, keeping songs and artists apart (the rest
   times of fill music, counting what played and what is planned) and never the same artist twice in a row while
-  another can play; songs whose file is gone are passed over. Today and the next 2 days are always made (Settings →
+  another can play; songs whose file is gone are passed over. A template's **targets for the hour** ask for at
+  least or at most so many songs of a category an hour, or at most so many in a row ("at least 4 Portuguese", "no two
+  80s together"); an hour that misses one says so. Today and the next 2 days are always made (Settings →
   Playlist), and an hour whose template changed is made again within minutes, unless it was changed by hand or is
   about to play. The tab shows a day's 24 hours and, for each, every song and jingle in order with its start
   time and where it came from, and the ad breaks (each advert with its client, as booked now) and events in their

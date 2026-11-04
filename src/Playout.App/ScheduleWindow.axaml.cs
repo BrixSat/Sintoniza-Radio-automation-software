@@ -367,6 +367,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
         ArtistHoursBox.ValueChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.ArtistHours = (double)(ArtistHoursBox.Value ?? 0));
         AlbumHoursBox.ValueChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.AlbumHours = (double)(AlbumHoursBox.Value ?? 0));
         MaxSlowBox.ValueChanged += (_, _) => Edit<PlaylistTemplate>(TemplateList, t => t.MaxSlowInRow = (int)(MaxSlowBox.Value ?? 0));
+        WireTargets();
         LineUpButton.Click += (_, _) => MoveLine(-1);
         LineDownButton.Click += (_, _) => MoveLine(1);
         LineCopyButton.Click += (_, _) =>
@@ -448,6 +449,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
         ArtistHoursBox.Value = (decimal)(t?.ArtistHours ?? 0);
         AlbumHoursBox.Value = (decimal)(t?.AlbumHours ?? 0);
         MaxSlowBox.Value = t?.MaxSlowInRow ?? 0;
+        ShowTargets();
         ShowTemplateSeason(t);
         _loading = false;
         ShowLines(0);
@@ -592,6 +594,8 @@ public partial class ScheduleWindow : Window, IShowsProblems
                 int songs = CategoryTree.WithDescendants(categories, [x.Category.Id]).Sum(id => counts.GetValueOrDefault(id));
                 return $"{new string(' ', 4 * x.Depth)}{KindIcon(x.Category.Kind)}  {x.Category.Name}  ({songs})";
             }).ToList();
+            TargetCategoryBox.ItemsSource = LineCategoryBox.ItemsSource;
+            AddTargetButton.IsEnabled = categories.Count > 0;
             AddCategoryLineButton.IsEnabled = categories.Count > 0;
             LibraryNote.Text = categories.Count == 0 ? L.T("The music library has no categories yet; folders can still be used.") : "";
             ShowLines(LineList.SelectedIndex);
@@ -601,6 +605,55 @@ public partial class ScheduleWindow : Window, IShowsProblems
             LibraryNote.Text = L.F("The music library isn't available ({0}); folders can still be used.", ex.Message);
         }
     }
+
+    // ───────────────────────── The hour's targets ─────────────────────────
+
+    static readonly string[] TargetKinds = ["at least", "at most", "in a row, at most"];
+
+    void WireTargets()
+    {
+        TargetKindBox.ItemsSource = TargetKinds.Select(L.T).ToList();
+        TargetKindBox.SelectedIndex = 0;
+        AddTargetButton.IsEnabled = false; // until the library's categories are read
+        TargetList.SelectionChanged += (_, _) => RemoveTargetButton.IsEnabled = TargetList.SelectedIndex >= 0;
+        AddTargetButton.Click += (_, _) =>
+        {
+            if (SelectedTemplate is not { } t) return;
+            if (TargetCategoryBox.SelectedIndex is not (>= 0 and var i) || i >= _categories.Count)
+            {
+                ErrorText.Text = L.T("Choose the target's category first.");
+                return;
+            }
+            var c = _categories[i];
+            var kind = (TargetKind)Math.Max(0, TargetKindBox.SelectedIndex);
+            int count = (int)(TargetCountBox.Value ?? 1);
+            if (kind == TargetKind.InRow && count < 1) count = 1; // none in a row is "at most 0"
+            Edit<PlaylistTemplate>(TemplateList, edited => edited.Targets.Add(new HourTarget { Kind = kind, Count = count, CategoryId = c.Id, CategoryName = CategoryTree.PathOf(_categories, c.Id) }));
+            ShowTargets(t.Targets.Count - 1);
+        };
+        RemoveTargetButton.Click += (_, _) =>
+        {
+            if (SelectedTemplate is not { } t || TargetList.SelectedIndex is not (>= 0 and var i) || i >= t.Targets.Count) return;
+            Edit<PlaylistTemplate>(TemplateList, edited => edited.Targets.RemoveAt(i));
+            ShowTargets(Math.Min(i, t.Targets.Count - 1));
+        };
+    }
+
+    void ShowTargets(int select = -1)
+    {
+        var t = SelectedTemplate;
+        TargetList.ItemsSource = t?.Targets.Select(TargetText).ToList();
+        TargetList.SelectedIndex = select;
+        RemoveTargetButton.IsEnabled = select >= 0;
+    }
+
+    /// <summary>"At least 4 · Music › Portuguese".</summary>
+    static string TargetText(HourTarget t) => t.Kind switch
+    {
+        TargetKind.AtLeast => L.F("At least {0} an hour · {1}", t.Count, t.CategoryName),
+        TargetKind.AtMost => L.F("At most {0} an hour · {1}", t.Count, t.CategoryName),
+        _ => L.F("At most {0} in a row · {1}", t.Count, t.CategoryName),
+    };
 
     // ───────────────────────── Ad breaks ─────────────────────────
 

@@ -2473,5 +2473,18 @@
  "Where the station is on air: its schedule, daily playlists, time signal, clock, logs and reports go by this time, whatever the computer's clock is set to (a studio or a server in another time zone). Each program takes a change the next time it starts; backups keep the computer's clock.": "Onde a estação está no ar: a programação, as playlists diárias, o sinal horário, o relógio, os registos e os relatórios seguem esta hora, seja qual for a hora do computador (um estúdio ou um servidor noutro fuso horário). Cada programa só passa a usar uma alteração quando voltar a arrancar; as cópias de segurança seguem a hora do computador.",
  "each computer's own": "o de cada computador",
  "Each computer's own (this one: {0})": "O de cada computador (este: {0})",
- "The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again": "O fuso horário da estação é agora {0}: a Sintoniza Pro e os estúdios passam a segui-lo quando voltarem a arrancar"
+ "The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again": "O fuso horário da estação é agora {0}: a Sintoniza Pro e os estúdios passam a segui-lo quando voltarem a arrancar",
+ "Targets for the hour": "Metas da hora",
+ "Add target": "Juntar meta",
+ "E.g. at least 4 songs of Portuguese music an hour, at most 2 of Slow, no more than 1 of 80s in a row (a category takes in the ones under it). The daily playlists are made to them where the template's lines have such songs; an hour that misses one says so. The ERC quotas come first.": "Por exemplo: pelo menos 4 músicas de Música portuguesa por hora, no máximo 2 de Lentas, não mais de 1 dos anos 80 seguidas (uma categoria inclui as que estão por baixo). As playlists diárias são feitas para as cumprir quando as linhas do modelo têm essas músicas; uma hora que falhe uma diz isso. As quotas da ERC vêm primeiro.",
+ "Choose the target's category first.": "Escolha primeiro a categoria da meta.",
+ "At least {0} an hour · {1}": "Pelo menos {0} por hora · {1}",
+ "At most {0} an hour · {1}": "No máximo {0} por hora · {1}",
+ "At most {0} in a row · {1}": "No máximo {0} seguidas · {1}",
+ "{0}: {1} songs, the target is at least {2}": "{0}: {1} músicas, a meta é pelo menos {2}",
+ "{0}: {1} songs, the target is at most {2}": "{0}: {1} músicas, a meta é no máximo {2}",
+ "{0}: {1} in a row, the target is at most {2}": "{0}: {1} seguidas, a meta é no máximo {2}",
+ "at least": "pelo menos",
+ "in a row, at most": "seguidas, no máximo",
+ "Daily playlist {0:dd/MM HH}:00: {1}": "Playlist diária {0:dd/MM HH}:00: {1}"
 }

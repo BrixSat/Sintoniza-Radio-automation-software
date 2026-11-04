@@ -733,6 +733,22 @@
                                 <TextBlock Classes="note"
                                            Text="0: the artist rest time of fill music (Settings → Safety); no album rule; any number of slow songs (tempo 1–2). The same song never comes back within the song rest time. A rule that leaves no song is let go (album first, then slow songs, then artist)." />
                             </StackPanel>
+                            <!-- The hour's targets: so many songs of a category -->
+                            <StackPanel Spacing="6">
+                                <TextBlock Classes="label" Text="Targets for the hour" />
+                                <ListBox x:Name="TargetList" MaxHeight="150" Background="#13161C" />
+                                <Grid ColumnDefinitions="Auto,6,70,6,*" RowDefinitions="Auto,6,Auto">
+                                    <ComboBox x:Name="TargetKindBox" MinWidth="150" />
+                                    <NumericUpDown Grid.Column="2" x:Name="TargetCountBox" Minimum="0" Maximum="30" Increment="1" FormatString="0" Value="1" />
+                                    <ComboBox Grid.Column="4" x:Name="TargetCategoryBox" HorizontalAlignment="Stretch" PlaceholderText="Library category" />
+                                    <StackPanel Grid.Row="2" Grid.ColumnSpan="5" Orientation="Horizontal" Spacing="6">
+                                        <Button x:Name="AddTargetButton" Content="Add target" />
+                                        <Button x:Name="RemoveTargetButton" Content="Remove" IsEnabled="False" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Classes="note"
+                                           Text="E.g. at least 4 songs of Portuguese music an hour, at most 2 of Slow, no more than 1 of 80s in a row (a category takes in the ones under it). The daily playlists are made to them where the template's lines have such songs; an hour that misses one says so. The ERC quotas come first." />
+                            </StackPanel>
                             <TextBlock Classes="note"
                                        Text="A library category's jingles and adverts are tagged as such; a folder's files go by the folder (Jingles, Ads…)." />
                         </StackPanel>

@@ -460,6 +460,7 @@ static class PlanMaker
             if (!store.Save(hour, items, unlessEdited: !evenIfEdited)) continue;
             count++;
             foreach (var t in trouble) problems.Add(L.F("Daily playlist {0:dd/MM HH}:00: nothing to play from {1}", h, t));
+            foreach (var m in generator.Missed) problems.Add(L.F("Daily playlist {0:dd/MM HH}:00: {1}", h, m));
         }
         return count;
     }

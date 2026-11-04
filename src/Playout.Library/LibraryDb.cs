@@ -108,7 +108,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 27;
+    public const int SchemaVersion = 28;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -819,6 +819,15 @@ public sealed partial class LibraryDb
     /// Songs that may be picked automatically from these categories (enabled, file not missing), with when each
     /// last went on air (null = never).
     /// </summary>
+    /// <summary>The ids of the songs that may play in these categories (and the ones under them): for the hour's targets.</summary>
+    public HashSet<long> TrackIdsIn(IReadOnlyCollection<long> categoryIds)
+    {
+        if (categoryIds.Count == 0) return new();
+        var categories = CategoryTree.WithDescendants(Categories(), categoryIds).ToArray();
+        using var c = Connect();
+        return c.Query<long>($"SELECT id FROM tracks WHERE enabled = 1 AND missing = 0 AND {InCategories}", new { categories }).ToHashSet();
+    }
+
     public List<RotationTrack> RotationTracks(IReadOnlyCollection<long> categoryIds)
     {
         if (categoryIds.Count == 0) return new();

@@ -2473,5 +2473,18 @@
  "Where the station is on air: its schedule, daily playlists, time signal, clock, logs and reports go by this time, whatever the computer's clock is set to (a studio or a server in another time zone). Each program takes a change the next time it starts; backups keep the computer's clock.": "Là où la station est à l'antenne : la programmation, les playlists du jour, le top horaire, l'horloge, les journaux et les rapports suivent cette heure, quelle que soit l'heure de l'ordinateur (un studio ou un serveur dans un autre fuseau horaire). Chaque programme ne prend un changement qu'à son prochain démarrage ; les sauvegardes gardent l'heure de l'ordinateur.",
  "each computer's own": "celui de chaque ordinateur",
  "Each computer's own (this one: {0})": "Celui de chaque ordinateur (celui-ci : {0})",
- "The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again": "Le fuseau horaire de la station est maintenant {0} : Sintoniza Pro et les studios le suivront à leur prochain démarrage"
+ "The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again": "Le fuseau horaire de la station est maintenant {0} : Sintoniza Pro et les studios le suivront à leur prochain démarrage",
+ "Targets for the hour": "Objectifs de l'heure",
+ "Add target": "Ajouter un objectif",
+ "E.g. at least 4 songs of Portuguese music an hour, at most 2 of Slow, no more than 1 of 80s in a row (a category takes in the ones under it). The daily playlists are made to them where the template's lines have such songs; an hour that misses one says so. The ERC quotas come first.": "Par exemple : au moins 4 chansons de Musique portugaise par heure, au plus 2 de Lentes, pas plus d'1 des années 80 à la suite (une catégorie comprend celles en dessous). Les playlists du jour sont faites pour les respecter quand les lignes du modèle ont de telles chansons ; une heure qui en manque une le dit. Les quotas de l'ERC passent d'abord.",
+ "Choose the target's category first.": "Choisissez d'abord la catégorie de l'objectif.",
+ "At least {0} an hour · {1}": "Au moins {0} par heure · {1}",
+ "At most {0} an hour · {1}": "Au plus {0} par heure · {1}",
+ "At most {0} in a row · {1}": "Au plus {0} à la suite · {1}",
+ "{0}: {1} songs, the target is at least {2}": "{0} : {1} chansons, l'objectif est au moins {2}",
+ "{0}: {1} songs, the target is at most {2}": "{0} : {1} chansons, l'objectif est au plus {2}",
+ "{0}: {1} in a row, the target is at most {2}": "{0} : {1} à la suite, l'objectif est au plus {2}",
+ "at least": "au moins",
+ "in a row, at most": "à la suite, au plus",
+ "Daily playlist {0:dd/MM HH}:00: {1}": "Playlist du jour {0:dd/MM HH}:00 : {1}"
 }

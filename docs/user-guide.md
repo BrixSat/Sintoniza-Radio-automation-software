@@ -571,6 +571,13 @@ The same song never comes back within the song rest time (Station settings → S
 it is let go for that song — the album first, then slow songs, then the artist — so the hour is always full; a line
 whose tempo or energy no song has plays from its whole category, and Daily playlists says so.
 
+**Targets for the hour** (under the music rules): by category (it takes in the ones under it), **at least N** songs an
+hour (at least 4 Portuguese), **at most N** (at most 2 slow ones), or **in a row, at most N** (1: never two 80s songs
+together) → **Add target**. The daily playlists are made to them where the template's lines have such songs (an *at
+least* spread over the hour, sooner as it runs out); an hour that misses one says so in Daily playlists
+(*Portugal: 3 songs, the target is at least 4*). The ERC quotas come first. Changing the targets makes the template's
+hours again (those not changed by hand).
+
 ### Daily playlists
 
 The hours as they will play, made from the templates:

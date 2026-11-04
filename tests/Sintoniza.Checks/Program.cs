@@ -600,6 +600,56 @@ Console.WriteLine("A restart (yesterday's playlist saved, a daily playlist for e
     Pump(10);
 }
 
+// ───────────────────────── The hour's targets ─────────────────────────
+
+Console.WriteLine("Hour templates' targets (at least, at most, in a row)");
+{
+    var tdb = LibraryDb.Open(new LibrarySettings { File = Path.Combine(work, "targets.db") });
+    string folder = Path.Combine(work, "targets");
+    Audio.Make(folder, 24, seconds: 200, rate: 8000, channels: 1);
+    LibraryScanner.Scan(tdb, [folder]);
+    long music = tdb.Categories().First(c => c.ParentId == null && c.Kind == "music").Id;
+    long pop = tdb.AddCategory("Pop", "music", null, music), portugal = tdb.AddCategory("Portugal", "music", null, music);
+    var all = tdb.Search(null, CategoryFilter.All).Tracks.OrderBy(t => t.Id).ToList();
+    tdb.SetCategory(all.Take(6).Select(t => t.Id), portugal); // 6 of 24: about one in four by chance
+    tdb.SetCategory(all.Skip(6).Select(t => t.Id), pop);
+    var portugueseIds = all.Take(6).Select(t => t.Id).ToHashSet();
+    var hour = DateTime.Today.AddDays(2).AddHours(10);
+    var options = new PlaylistGenerator.Options(0, 0, TimeSpan.FromHours(3), TimeSpan.FromMinutes(30));
+    (List<PlanItem> Items, List<string> Problems) Make(params HourTarget[] targets)
+    {
+        var template = new PlaylistTemplate { Name = "Hits", Lines = [new TemplateLine { CategoryId = music, CategoryName = "Music", Kind = "music" }],
+            Slots = [new WeekTime { Day = hour.DayOfWeek, Time = "10:00:00" }], Targets = targets.ToList() };
+        var data = new ScheduleData { Templates = { template } };
+        data.Normalize();
+        var generator = new PlaylistGenerator(tdb, data, options);
+        var (_, items, problems) = generator.Generate(hour);
+        return (items.Where(i => !i.Optional).ToList(), problems.Concat(generator.Missed).ToList());
+    }
+    int Portuguese(List<PlanItem> items) => items.Count(i => i.TrackId is { } id && portugueseIds.Contains(id));
+    int Run(List<PlanItem> items) => items.Aggregate((Best: 0, Now: 0), (r, i) => i.TrackId is { } id && portugueseIds.Contains(id) ? (Math.Max(r.Best, r.Now + 1), r.Now + 1) : (r.Best, 0)).Best;
+    var least = Make(new HourTarget { Kind = TargetKind.AtLeast, Count = 5, CategoryId = portugal, CategoryName = "Portugal" });
+    Check(Portuguese(least.Items) >= 5 && least.Problems.Count == 0, $"at least 5 Portuguese songs in the hour: {Portuguese(least.Items)} of {least.Items.Count}");
+    var most = Make(new HourTarget { Kind = TargetKind.AtMost, Count = 1, CategoryId = portugal, CategoryName = "Portugal" });
+    Check(Portuguese(most.Items) <= 1 && most.Items.Count >= 12, $"at most 1: {Portuguese(most.Items)} of {most.Items.Count}");
+    var row = Make(new HourTarget { Kind = TargetKind.AtLeast, Count = 6, CategoryId = portugal, CategoryName = "Portugal" },
+        new HourTarget { Kind = TargetKind.InRow, Count = 1, CategoryId = portugal, CategoryName = "Portugal" });
+    Check(Portuguese(row.Items) >= 6 && Run(row.Items) <= 1, $"at least 6 and never two in a row: {Portuguese(row.Items)}, at most {Run(row.Items)} in a row");
+    // One more song (Fill on air, Replace in Daily playlists): the hour isn't being made, so an at-least doesn't take over.
+    {
+        var template = new PlaylistTemplate { Name = "Hits", Lines = [new TemplateLine { CategoryId = music, CategoryName = "Music", Kind = "music" }],
+            Slots = [new WeekTime { Day = hour.DayOfWeek, Time = "10:00:00" }],
+            Targets = [new HourTarget { Kind = TargetKind.AtLeast, Count = 6, CategoryId = portugal, CategoryName = "Portugal" }] };
+        var data = new ScheduleData { Templates = { template } };
+        data.Normalize();
+        var generator = new PlaylistGenerator(tdb, data, options);
+        var picks = Enumerable.Range(0, 6).Select(i => generator.Another(template.Lines[0], template.Lines[0], hour.AddMinutes(4 * i), [], template)).OfType<PlanItem>().ToList();
+        Check(picks.Count == 6 && Portuguese(picks) < 6, $"one more song (Fill, Replace): not only from the at-least category ({Portuguese(picks)} of {picks.Count})");
+    }
+    var tooMany = Make(new HourTarget { Kind = TargetKind.AtLeast, Count = 12, CategoryId = portugal, CategoryName = "Portugal" });
+    Check(tooMany.Problems.Any(p => p.Contains("Portugal") && p.Contains("at least 12")), $"a target the library can't meet is said ({string.Join("; ", tooMany.Problems)})");
+}
+
 // ───────────────────────── Tomorrow's daily playlists ─────────────────────────
 
 Console.WriteLine("Tomorrow's daily playlists looked over (Pro's Home, the alerts)");

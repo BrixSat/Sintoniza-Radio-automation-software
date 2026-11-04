@@ -825,6 +825,13 @@ CHAPTERS = [
     ("tip", "If a rule would leave nothing to play, it is relaxed for that one song: first the album rule, then slow songs, then "
             "the artist. The hour is always full. If no song in a category has the tempo or energy a line asks for, the line "
             "plays from the whole category, and Daily playlists tells you so."),
+    ("p", "<b>Targets for the hour</b> say what the hour's music should come to, by category: <b>at least</b> so many songs "
+          "an hour (at least 4 Portuguese songs), <b>at most</b> so many (at most 2 slow ones), or <b>at most so many in a "
+          "row</b> (1: never two 80s songs together). Choose the kind, the number and the category, and click <b>Add "
+          "target</b>; a category takes in the ones under it. The daily playlists are made to the targets wherever the "
+          "template's lines have such songs, spreading an <i>at least</i> over the hour. An hour that misses one, because the "
+          "lines' categories have too few of those songs or they have all played recently, says so in Daily playlists. The "
+          "ERC quotas come first."),
     ("h2", "Daily playlists"),
     ("p", "The daily playlists are the hours exactly as they will play, made from the templates: every song, jingle and "
           "advert, in order, with its start time. Here you can check tomorrow's music, swap a song, or leave a note for the "

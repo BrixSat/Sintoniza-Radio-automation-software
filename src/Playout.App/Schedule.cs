@@ -565,11 +565,15 @@ public sealed class PlaylistTemplate : ScheduleEntry
     public double AlbumHours { get; set; }
     /// <summary>At most this many slow songs (tempo 1–2) in a row (0 = no limit).</summary>
     public int MaxSlowInRow { get; set; }
+    /// <summary>What the hour's music should come to: so many songs of a category at least or at most, or not more in a row.</summary>
+    public List<HourTarget> Targets { get; set; } = new();
 
     public override void Normalize()
     {
         base.Normalize();
         Lines ??= new();
+        Targets ??= new();
+        foreach (var t in Targets) t.CategoryName ??= "";
         foreach (var l in Lines)
         {
             l.Folder ??= "";
@@ -577,6 +581,25 @@ public sealed class PlaylistTemplate : ScheduleEntry
             l.Kind ??= "music";
         }
     }
+}
+
+/// <summary>What a target asks of the hour's songs of its category.</summary>
+public enum TargetKind { AtLeast, AtMost, InRow }
+
+/// <summary>
+/// A target of an hour template, over the songs of a library category (and the ones under it): at least or at most
+/// <see cref="Count"/> in the hour ("at least 4 Portuguese songs"), or not more than that many in a row ("no two 80s
+/// in a row": 1). The daily playlists are made to it where the lines' categories have such songs; an hour that misses it
+/// says so.
+/// </summary>
+public sealed class HourTarget
+{
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public TargetKind Kind { get; set; }
+    public int Count { get; set; } = 1;
+    public long CategoryId { get; set; }
+    /// <summary>The category's name when it was chosen, to show.</summary>
+    public string CategoryName { get; set; } = "";
 }
 
 /// <summary>Where a template line's item comes from: a library category, a folder, or a take (put together on air).</summary>
