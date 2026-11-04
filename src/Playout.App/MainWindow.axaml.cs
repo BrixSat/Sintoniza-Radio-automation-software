@@ -360,6 +360,10 @@ public partial class MainWindow : Window, IShowsProblems
         };
         Closed += (_, _) => _rds?.Dispose();
         Closed += (_, _) => StudioSign.Clear(); // the studio clock's sign goes out with the on-air program
+        // This computer's log, for Sintoniza Pro → Station → Studios.
+        var lib = _settings.Library;
+        _logShipper = new LogShipper(() => _library.Db, $"{CurrentStation.Id}|{(lib.IsMySql ? $"{lib.Server}/{lib.Database}" : lib.SqliteFile)}");
+        Closed += (_, _) => _logShipper.Dispose();
         Closed += (_, _) => StopGpio();
         Closed += (_, _) => _web?.Dispose();
         Closed += (_, _) => _listeners?.Dispose();
@@ -2068,6 +2072,7 @@ public partial class MainWindow : Window, IShowsProblems
     Backups? _backups;
 
     HealthMonitor? _health;
+    LogShipper _logShipper = null!;
 
     void StartBackups()
     {

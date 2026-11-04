@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:Playout.App"
+             x:Class="Playout.App.StudiosLogView">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+    </UserControl.Styles>
+    <DockPanel>
+        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="8" Margin="0,0,0,10">
+            <ComboBox x:Name="ComputerBox" MinWidth="180" PlaceholderText="Computer" />
+            <Button x:Name="BackButton" Content="◀" ToolTip.Tip="The day before" />
+            <CalendarDatePicker x:Name="DayBox" Width="160" SelectedDateFormat="Short" />
+            <Button x:Name="ForwardButton" Content="▶" ToolTip.Tip="The day after" />
+            <Button x:Name="TodayButton" Content="Today" />
+            <CheckBox x:Name="ProblemsBox" Content="Only problems" />
+            <TextBox x:Name="SearchBox" Width="220" PlaceholderText="Search" />
+            <Button x:Name="ReloadButton" Content="Refresh" />
+            <Button x:Name="SaveButton" Content="Save as file…" ToolTip.Tip="The lines shown, as a text file (to send to whoever looks after the station)" />
+        </WrapPanel>
+        <TextBlock DockPanel.Dock="Top" x:Name="StatusText" Classes="note" Margin="0,0,0,6" />
+        <TextBlock DockPanel.Dock="Bottom" Classes="note" Margin="0,8,0,0"
+                   Text="Each computer on air sends its log here every 15 seconds (also what its watchdog, Sintoniza Rec and Pro write on it), and what it couldn't send while the database was away once it is back. Problems are in red: the sound stalling, the database or the stream lost, silence, restarts, alerts and errors. Kept 14 days; each computer also keeps its own log files (Settings → Safety → Open log folder)." />
+        <ListBox x:Name="LineList" Background="#13161C">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="app:LogRow">
+                    <Grid ColumnDefinitions="70,*">
+                        <TextBlock Text="{Binding Time}" FontFamily="monospace" Foreground="{Binding Brush}" />
+                        <SelectableTextBlock Grid.Column="1" Text="{Binding Text}" TextWrapping="Wrap" Foreground="{Binding Brush}" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

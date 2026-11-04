@@ -80,7 +80,8 @@ they are changed in Pro only.
   moves when it lights.
 - **Status line** (bottom): **Settings**, **Reports**, **Log out**, the **status lamps** and the last thing that
   happened (also in the log, Settings → Safety → Open log folder). The lamps are **STUDIO** (this computer on air, and
-  the standby ones), **STREAM**, **RDS**, **WEBSITE**, **REC** (Sintoniza Rec on this computer: green recording, amber
+  the standby ones; amber, named on the lamp, when its setup is risky: on Wi-Fi with no cable, on battery, a Wi-Fi
+  adapter Windows may switch off to save power — point at it for what to do), **STREAM**, **RDS**, **WEBSITE**, **REC** (Sintoniza Rec on this computer: green recording, amber
   recording silence, red open but not recording, grey not running), **LIBRARY**, **TODAY'S PLAYLIST** (red when an hour
   coming up has an hour template but no daily playlist), **DEAD AIR**, **MIC**, **GPIO** and **ALERTS** (red while a
   problem is going on). Green working, amber a warning, red a problem, grey off; point at one for the whole story,
@@ -383,6 +384,16 @@ number now (point at it for the server, or why it can't be read).
 
 **Station → Listeners** shows a day hour by hour (the bar is the average; point at it for the most and fewest), and for
 the hour clicked what played in it with the listeners when each item started. Home shows the listeners now.
+
+### The studios' logs
+
+Each studio computer (on air or standby) sends its log to the library every 15 seconds (also what its watchdog, Sintoniza Rec and Pro
+write in it on that computer), and what it couldn't send while the database was away once it is back. **Station →
+Studios**: a computer and a day, its lines with the problems in red (the sound stalling, the database or the stream
+lost, silence, restarts, alerts, errors), **Only problems**, a search, and **Save as file…** to send them on. Kept 14
+days (each computer keeps its own files too). Home → *Needs attention* lists each computer with problems in the last
+hour, and what is risky in a studio's setup (on Wi-Fi, on battery); with a shared library, the studios in the status
+bar say it too.
 
 ### ERC quotas (Portuguese music)
 

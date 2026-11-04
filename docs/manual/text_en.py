@@ -160,8 +160,8 @@ CHAPTERS = [
     ("p", "The colours always mean the same: <b>green</b> is working, <b>amber</b> is a warning, <b>red</b> is a problem, and "
           "<b>grey</b> means that part is switched off or not used on this computer. This is what each lamp watches:"),
     ("table", ["Lamp", "What it is", "What the colours say"], [
-        ["STUDIO", "Only shown when the station has more than one computer: which of them is on air.",
-         "Green: this computer is on air (it says how many are standing by). Amber: this one is standby, another is on air."],
+        ["STUDIO", "Which computer is on air, when the station has more than one, and anything risky in how this one is set up: on Wi-Fi with no network cable, on battery, a Wi-Fi adapter Windows may switch off to save power.",
+         "Green: this computer is on air (it says how many are standing by). Amber: this one is standby, another is on air; or something risky in its setup, named on the lamp (point at it for what to do)."],
         ["STREAM", "The station's internet stream, which this computer sends to the Icecast or Shoutcast server.",
          "Green: sending, and for how long. Amber: connecting to the server. Red: it can't connect. Grey: off, or not set up."],
         ["LISTENERS", "How many people are listening to the stream, read from the server every minute. The number shows next to the lamp.",
@@ -660,6 +660,14 @@ CHAPTERS = [
           "which shows and which songs keep people listening. The Home page shows the listeners now too."),
     ("tip", "A standby computer doesn't count, so the same listeners are never counted twice. If the computer on air stops, the "
             "one that takes over starts counting."),
+    ("h2", "The studios' logs"),
+    ("p", "Each studio computer, on air or standby, sends its log to the database every 15 seconds, including what its watchdog, Sintoniza Rec "
+          "and Pro write in it. In <b>Station → Studios</b>, choose the computer and the day to read what happened there "
+          "without going to the studio. Problems are in red: the sound stalling, the database or the stream lost, silence, "
+          "restarts, alerts and errors. <b>Only problems</b> and the search help you find things, and <b>Save as file…</b> "
+          "makes a file to send to whoever looks after the station. Lines are kept for 14 days."),
+    ("p", "On the Home page, <i>Needs attention</i> lists each computer with problems in the last hour, and anything risky in "
+          "a studio's setup, such as being on Wi-Fi or on battery."),
     ("h2", "Song restrictions"),
     ("p", "Restrictions say when a song may be picked automatically. A Christmas song only in December, say, or a song with "
           "strong lyrics only after 22:00. In <b>Songs</b>, right-click and choose <b>Restrictions…</b>."),

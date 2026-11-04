@@ -218,16 +218,25 @@ public partial class MainWindow
                 _gpio.Count >= wanted ? L.T("Ready") : L.F("{0} of {1} open", _gpio.Count, wanted),
                 _gpio.Count >= wanted ? L.T("GPIO: the desk's lines are open") : L.T("GPIO: some can't be opened (the log says why)"), "GPIO"));
 
-        // Several computers for the station (a shared library): this one on air, and the standby ones.
+        // Several computers for the station (a shared library): this one on air, and the standby ones; and what is
+        // risky in how this one is set up (Wi-Fi, battery), amber with it, also for a computer on its own.
+        var setup = _setup;
+        string Risky(string text) => setup.Count == 0 ? text : text + "\n\n" + string.Join("\n", setup.Select(w => "⚠ " + w.Text));
+        string riskyShort = string.Join(", ", setup.Select(w => w.Short).Distinct());
         if (IsStandby)
-            Show(new Lamp("studio", L.T("STUDIO"), LampState.Warn, L.T("Standby"), L.T("Another computer is on air. This one plays nothing until it goes on air.")));
+            Show(new Lamp("studio", L.T("STUDIO"), LampState.Warn, L.T("Standby"), Risky(L.T("Another computer is on air. This one plays nothing until it goes on air."))));
         else if (_role?.Studios is { } studios)
         {
             var standby = studios.Studios.Where(x => !x.OnAir && studios.Silent(x) < TimeSpan.FromMinutes(1)).Select(x => x.Computer).ToList();
-            Show(new Lamp("studio", L.T("STUDIO"), LampState.Ok, standby.Count > 0 ? L.F("Standby: {0}", standby.Count) : L.T("On air"),
-                standby.Count > 0 ? L.F("This computer is on air. Standby: {0}", string.Join(", ", standby))
-                    : L.T("This computer is on air. No other computer is standby.")));
+            Show(new Lamp("studio", L.T("STUDIO"), setup.Count > 0 ? LampState.Warn : LampState.Ok,
+                setup.Count > 0 ? riskyShort : standby.Count > 0 ? L.F("Standby: {0}", standby.Count) : L.T("On air"),
+                Risky(standby.Count > 0 ? L.F("This computer is on air. Standby: {0}", string.Join(", ", standby))
+                    : L.T("This computer is on air. No other computer is standby."))));
         }
+        else if (setup.Count > 0)
+            Show(new Lamp("studio", L.T("STUDIO"), LampState.Warn, riskyShort, string.Join("\n", setup.Select(w => "⚠ " + w.Text))));
+        else if (_lamps.TryGetValue("studio", out var studioLamp))
+            studioLamp.Box.IsVisible = false; // a computer on its own, nothing risky (any more): no lamp, as before
 
         var problems = _health?.Active ?? [];
         var alerts = _settings.Alerts;

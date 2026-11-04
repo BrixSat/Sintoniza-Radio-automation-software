@@ -23,7 +23,11 @@ public partial class MainWindow
         _role = new StudioRole(_library, _settings.WasStandby && _settings.Library.IsMySql,
             () => _playingText, // kept by the screen each second: the check never waits on the engine
             () => (_settings.TakeOver, _settings.TakeOverSeconds),
-            () => _streamingNow < 0 ? null : _streamingNow == 1);
+            () => _streamingNow < 0 ? null : _streamingNow == 1,
+            () => string.Join("\n", _setup.Select(w => w.Text)));
+        // How this computer is set up for being on air (Wi-Fi, battery…): every minute, off the screen.
+        _setupTimer = new Timer(_ => CheckSetup(), null, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(1));
+        Closed += (_, _) => _setupTimer.Dispose();
         SetStandby(_role.Standby);
         _role.Changed += (standby, why) => Dispatcher.UIThread.Post(() => ApplyRole(standby, why));
         _role.Seen += () => Dispatcher.UIThread.Post(ShowStudios);
@@ -140,5 +144,28 @@ public partial class MainWindow
             ? L.F("This computer goes on air automatically if the master stops answering for {0} s.", Math.Max(5, _settings.TakeOverSeconds))
             : L.T("This computer goes on air only when you press Take on air.");
         StandbyText.Text = $"{state}\n{then}"; // what is on air on the first line, what this computer does on the second
+    }
+
+    /// <summary>What is risky in this computer's setup now (the STUDIO lamp, the studios' heartbeat, Pro).</summary>
+    volatile List<SetupWarning> _setup = new();
+    Timer _setupTimer = null!;
+
+    int _checkingSetup;
+
+    void CheckSetup()
+    {
+        if (Interlocked.Exchange(ref _checkingSetup, 1) == 1) return; // the last one still going
+        try { CheckSetupNow(); }
+        finally { Volatile.Write(ref _checkingSetup, 0); }
+    }
+
+    void CheckSetupNow()
+    {
+        var now = SetupCheck.Now();
+        string before = string.Join("\n", _setup.Select(w => w.Text)), after = string.Join("\n", now.Select(w => w.Text));
+        _setup = now;
+        if (before == after) return;
+        // In the log when it changes (Pro sees it there too, and in the studios' list).
+        AppLog.Write(now.Count > 0 ? L.F("This computer: {0}", string.Join(" ", now.Select(w => w.Text))) : L.T("This computer: nothing risky in its setup any more"));
     }
 }

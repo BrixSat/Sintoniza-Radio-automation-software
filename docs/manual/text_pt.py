@@ -158,8 +158,8 @@ CHAPTERS = [
           "<b>âmbar</b> é um aviso, <b>vermelho</b> é um problema e <b>cinzento</b> quer dizer que essa parte está desligada ou "
           "não é usada neste computador. Eis o que cada uma vigia:"),
     ("table", ["Luz", "O que é", "O que as cores dizem"], [
-        ["ESTÚDIO", "Só aparece quando há mais de um computador para a estação: qual deles está no ar.",
-         "Verde: este computador está no ar (e diz quantos estão de reserva). Âmbar: este está de reserva, outro está no ar."],
+        ["ESTÚDIO", "Que computador está no ar, quando a estação tem mais de um, e o que há de arriscado na configuração deste: em Wi-Fi sem cabo de rede, na bateria, uma placa Wi-Fi que o Windows pode desligar para poupar energia.",
+         "Verde: este computador está no ar (e diz quantos estão de reserva). Âmbar: este está de reserva, outro está no ar; ou algo arriscado na configuração, com o nome na luz (passe o rato para saber o que fazer)."],
         ["STREAM", "O stream da rádio na internet, que este computador envia para o servidor Icecast ou Shoutcast.",
          "Verde: a enviar, com há quanto tempo. Âmbar: a ligar ao servidor. Vermelho: não consegue ligar. Cinzento: desligado ou não configurado."],
         ["OUVINTES", "Quantas pessoas estão a ouvir o stream, lido do servidor a cada minuto. O número aparece ao lado da luz.",
@@ -607,6 +607,14 @@ CHAPTERS = [
           "programas e que músicas seguram os ouvintes. A página Início também mostra os ouvintes de agora."),
     ("tip", "Um computador de reserva não conta, para os mesmos ouvintes nunca serem contados duas vezes. Se o computador no ar "
             "parar, o que fica no ar passa a contar."),
+    ("h2", "Os registos dos estúdios"),
+    ("p", "Cada computador de estúdio, no ar ou de reserva, envia o seu registo para a base de dados a cada 15 segundos, incluindo o que escrevem nele o "
+          "vigilante, a Sintoniza Rec e a Pro. Em <b>Estação → Estúdios</b>, escolha o computador e o dia para ler o que lá se "
+          "passou, sem ir ao estúdio. Os problemas aparecem a vermelho: o som a encravar, a base de dados ou o stream perdidos, "
+          "silêncio, reinícios, alertas e erros. <b>Só problemas</b> e a procura ajudam a encontrar, e <b>Guardar em ficheiro…</b> "
+          "faz um ficheiro para enviar a quem cuida da estação. Guarda-se 14 dias."),
+    ("p", "Na página Início, em <i>Precisa de atenção</i>, aparece cada computador com problemas na última hora, e o que um "
+          "estúdio tem de arriscado na configuração, como estar em Wi-Fi ou na bateria."),
     ("h2", "Restrições das músicas"),
     ("p", "As restrições dizem quando uma música pode ser escolhida automaticamente. Uma canção de Natal só em dezembro, uma "
           "música mais pesada só à noite. Abra-as em <b>Músicas</b>, com o botão direito e <b>Restrições…</b>."),

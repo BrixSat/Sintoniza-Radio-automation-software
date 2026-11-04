@@ -134,6 +134,7 @@
                 <MenuItem x:Name="MenuCartwalls" Header="Cartwalls" />
                 <MenuItem x:Name="MenuUsers" Header="Users" />
                 <MenuItem x:Name="MenuListeners" Header="Listeners" />
+                <MenuItem x:Name="MenuStudios" Header="Studios" />
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem x:Name="MenuManual" Header="User manual" />
@@ -227,6 +228,7 @@
                         <Button x:Name="NavCartwalls" Classes="nav" Content="▣   Cartwalls" />
                         <Button x:Name="NavUsers" Classes="nav" Content="👤   Users" />
                         <Button x:Name="NavListeners" Classes="nav" Content="📈   Listeners" />
+                        <Button x:Name="NavStudios" Classes="nav" Content="🖥   Studios" />
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -909,6 +911,7 @@
             <TabItem Header="Users" x:Name="UsersTab" />
             <TabItem Header="ERC quotas" x:Name="ErcTab" />
             <TabItem Header="Listeners" x:Name="ListenersTab" />
+            <TabItem Header="Studios" x:Name="StudiosTab" />
             <!-- ───────── The library: every song ───────── -->
             <TabItem Header="Songs" x:Name="SongsTab">
                 <DockPanel>

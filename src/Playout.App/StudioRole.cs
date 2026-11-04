@@ -16,6 +16,7 @@ sealed class StudioRole : IDisposable
     readonly LibraryService _library;
     readonly Func<string> _playing;
     readonly Func<bool?> _streaming;
+    readonly Func<string> _warnings;
     readonly Func<(bool Auto, int Seconds)> _takeOver;
     Thread? _thread;
     volatile bool _stopped;
@@ -28,8 +29,10 @@ sealed class StudioRole : IDisposable
     readonly object _gate = new(); // one look at the database, or one Take on air, at a time
     readonly TaskCompletionSource _known = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public StudioRole(LibraryService library, bool standby, Func<string> playing, Func<(bool Auto, int Seconds)> takeOver, Func<bool?>? streaming = null)
+    public StudioRole(LibraryService library, bool standby, Func<string> playing, Func<(bool Auto, int Seconds)> takeOver, Func<bool?>? streaming = null,
+        Func<string>? warnings = null)
     {
+        _warnings = warnings ?? (() => "");
         _library = library;
         Standby = standby;
         _playing = playing;
@@ -130,7 +133,7 @@ sealed class StudioRole : IDisposable
                 return;
             }
             var started = DateTime.UtcNow;
-            try { db.StudioSeen(StationStore.Station, Me, _playing(), Updates.CurrentText, _streaming()); }
+            try { db.StudioSeen(StationStore.Station, Me, _playing(), Updates.CurrentText, _streaming(), _warnings()); }
             catch (Exception ex)
             {
                 Note(ex.Message, DateTime.UtcNow - started);

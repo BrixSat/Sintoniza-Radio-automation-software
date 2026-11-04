@@ -25,6 +25,8 @@ public partial class ScheduleWindow
     List<(string Client, int Missed)> _missedYesterday = new();
     DateTime _nextMissedCheck;
     List<string> _breakWarnings = new();
+    volatile List<string> _studioProblems = new();
+    volatile List<string> _studioSetup = new();
     /// <summary>The station's time zone last taken (or tried: one this computer doesn't know is said once).</summary>
     string? _zoneTried;
     /// <summary>What isn't ready in tomorrow's daily playlists, and the day it was checked on (every 10 minutes, and after midnight).</summary>
@@ -61,6 +63,7 @@ public partial class ScheduleWindow
             (NavCartwalls, CartwallsButton, MenuCartwalls, CartwallsTab, L.T("Station ›"), L.T("Cartwalls")),
             (NavUsers, null, MenuUsers, UsersTab, L.T("Station ›"), L.T("Users")),
             (NavListeners, null, MenuListeners, ListenersTab, L.T("Station ›"), L.T("Listeners")),
+            (NavStudios, null, MenuStudios, StudiosTab, L.T("Station ›"), L.T("Studios")),
         };
         _gates = pages.Select(p => (p.Nav, p.Tool, p.Menu, p.Tab)).ToList();
         foreach (var (nav, tool, menu, tab, _, _) in pages)
@@ -209,6 +212,12 @@ public partial class ScheduleWindow
                     _tomorrowChecking = Task.Run(() => _tomorrow = new DayLines(day, TomorrowWarnings(db, data, station, day)));
                 }
                 var studios = db.IsMySql ? db.Studios(StationStore.Station) : null;
+                // The studios' problems in the last hour (their logs), a line per computer.
+                try { _studioProblems = StudioProblemLines(db.StudioProblems(StationStore.Station, now.AddHours(-1))); }
+                catch (Exception) { _studioProblems = new(); } // a library before the studios' logs
+                // What is risky in a studio's setup (Wi-Fi, battery), as it says in its heartbeat.
+                _studioSetup = studios?.Studios.Where(st => st.Warnings.Length > 0 && studios.Silent(st) < TimeSpan.FromMinutes(2))
+                    .SelectMany(st => st.Warnings.Split('\n').Select(w => L.F("🖥 {0}: {1}", st.Computer, w))).ToList() ?? new();
                 var listening = ListenersDb.Now(db, now);
                 return (stats, categories.Count, last, hours, items, station, studios, listening);
             });
@@ -235,6 +244,17 @@ public partial class ScheduleWindow
             _figuresBusy = false;
         }
     }
+
+    /// <summary>"YOGA: 3 problems in the last hour, the latest at 14:21: …" for each computer that had some.</summary>
+    static List<string> StudioProblemLines(List<StudioLogLine> problems) => problems.GroupBy(p => p.Computer).Select(g =>
+    {
+        var last = g.Last();
+        string what = last.Line.Split('\n')[0];
+        if (what.Length > 90) what = what[..90] + "…";
+        return g.Count() == 1
+            ? L.F("🖥 {0}: a problem in the last hour, at {1:HH:mm}: {2} (Station › Studios)", g.Key, last.At, what)
+            : L.F("🖥 {0}: {1} problems in the last hour, the latest at {2:HH:mm}: {3} (Station › Studios)", g.Key, g.Count(), last.At, what);
+    }).ToList();
 
     /// <summary>Tomorrow's daily playlists: what isn't ready (none when the playouts don't make them a day ahead).</summary>
     static List<string> TomorrowWarnings(LibraryDb db, ScheduleData data, StationSettings? station, DateTime now)
@@ -345,6 +365,8 @@ public partial class ScheduleWindow
         if (_defaultPasswords.Count > 0) warnings.Add(L.F("🔑 Change the first password of {0} (Station › Users)", string.Join(", ", _defaultPasswords)));
         if (_tomorrow is { } tomorrow && tomorrow.Day == now.Date) warnings.AddRange(tomorrow.Lines); // yesterday's "tomorrow" is today
         warnings.AddRange(ShowCheck.Problems(data, now.Date, 7).Select(p => "🎙 " + p));
+        // What went wrong in a studio, and what is risky there, first (for whoever may open Station › Studios).
+        if (May(Permission.Station) || May(Permission.Computer)) warnings.InsertRange(0, _studioProblems.Concat(_studioSetup));
         if (stats.Missing > 0) warnings.Add(L.F("⚠ {0:N0} songs whose file is missing", stats.Missing));
         if (stats.Uncategorised > 0) warnings.Add(L.F("⚠ {0:N0} songs without a category", stats.Uncategorised));
         int noTemplate = Enumerable.Range(now.Hour, 24 - now.Hour).Count(h => data.TemplateAt(now.Date.AddHours(h)) == null);
@@ -465,6 +487,7 @@ public partial class ScheduleWindow
             : tab == UsersTab ? May(Permission.Users) && _store != null
             : tab == ErcTab ? May(Permission.Programming) && _store != null
             : tab == ListenersTab ? _store != null
+            : tab == StudiosTab ? _store != null && (May(Permission.Station) || May(Permission.Computer))
             : true;
         foreach (var (nav, tool, menu, tab) in _gates)
         {
@@ -666,7 +689,8 @@ public partial class ScheduleWindow
             : L.T("● Nothing on air");
         StatusStudios.Text = standby.Count > 0 ? onAir + " · " + L.F("standby: {0}", string.Join(", ", standby)) : onAir;
         ToolTip.SetTip(StatusStudios, string.Join("\n", list.Studios.Select(st =>
-            $"{st.Computer}: {(st.OnAir ? L.T("on air") : L.T("standby"))}, {Seen(list.Silent(st))}" + (st.Version.Length > 0 ? $", Sintoniza Emi {st.Version}" : ""))));
+            $"{st.Computer}: {(st.OnAir ? L.T("on air") : L.T("standby"))}, {Seen(list.Silent(st))}" + (st.Version.Length > 0 ? $", Sintoniza Emi {st.Version}" : "")
+            + string.Concat(st.Warnings.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(w => "\n   ⚠ " + w)))));
 
         static string Seen(TimeSpan ago) => ago < TimeSpan.FromSeconds(10) ? L.T("answering")
             : ago < TimeSpan.FromHours(1) ? L.F("last seen {0:0} min ago", Math.Max(1, ago.TotalMinutes))

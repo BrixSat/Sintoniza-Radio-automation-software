@@ -9,7 +9,11 @@ public static class Program
     public static int Main(string[] args)
     {
         GraphicsDriver.Prepare(); // before any graphics library is loaded
-        if (Watchdog.ShouldSupervise(args)) return Watchdog.Supervise(args);
+        if (Watchdog.ShouldSupervise(args))
+        {
+            App.UseStationTime(AppSettings.Load()); // its lines in the log in the station's time, as the program's
+            return Watchdog.Supervise(args);
+        }
 
         AppLog.CleanUp();
         AppDomain.CurrentDomain.UnhandledException += (_, e) => AppLog.Write($"Crash: {e.ExceptionObject}");

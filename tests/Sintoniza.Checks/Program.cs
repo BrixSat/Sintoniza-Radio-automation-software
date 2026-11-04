@@ -1443,6 +1443,53 @@ Console.WriteLine("Sintoniza Tempo (the studio clock)");
     Pump(5);
 }
 
+Console.WriteLine("The studios' logs in Sintoniza Pro, and what is risky in a setup");
+{
+    var ldb = LibraryDb.Open(new LibrarySettings { File = Path.Combine(work, "studio-log.db") });
+    Directory.CreateDirectory(AppLog.Folder);
+    var today = StationTime.Today;
+    string logFile = Path.Combine(AppLog.Folder, $"{today:yyyy-MM-dd}.log");
+    File.WriteAllLines(logFile, [
+        "09:54:41  No ar: Laginha - No Escurinho do Cinema",
+        "09:57:18  Display: the position isn't moving: state Playing, card queue 0 bytes",
+        "09:57:20  Error: System.IO.IOException: the network name is no longer available",
+        "   at Playout.Engine.Something()",
+        "09:58:34  No ar: Comercial",
+    ]);
+    var shipper = new LogShipper(() => ldb, "checks|studio-log");
+    foreach (var old in Directory.GetFiles(AppLog.Folder, "sent-*.json")) File.Delete(old); // from the beginning of the file written here
+    var ship = typeof(LogShipper).GetMethod("Ship", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    ship.Invoke(shipper, null);
+    // Other checks may write to the same log meanwhile: these lines are looked for, not counted with the rest.
+    List<StudioLogLine> Mine() => ldb.StudioLog(StationStore.Station, AppInfo.ComputerName, today)
+        .Where(l => l.Line.Contains("Laginha") || l.Line.Contains("position isn't moving") || l.Line.Contains("network name") || l.Line.Contains("Comercial") || l.Line.Contains("Sweeper")).ToList();
+    var sentLines = Mine();
+    Check(sentLines.Count == 4 && sentLines.Count(l => l.Problem) == 2 && sentLines.Any(l => l.Problem && l.Line.Contains("Something()")),
+        $"a computer's log is sent to the library, the problems marked, an error with its details as one ({sentLines.Count} lines, {sentLines.Count(l => l.Problem)} problems)");
+    File.AppendAllText(logFile, "10:00:01  No ar: Sweeper" + Environment.NewLine + "10:00:0");
+    ship.Invoke(shipper, null);
+    var again = Mine();
+    Check(again.Count == 5 && again.Count(l => l.Line == "No ar: Sweeper") == 1, $"…then only the new whole lines, none twice (a line being written waits) ({again.Count})");
+    shipper.Dispose();
+    var problems = ldb.StudioProblems(StationStore.Station, today).Where(l => l.Line.Contains("position isn't moving") || l.Line.Contains("network name")).ToList();
+    Check(problems.Count == 2 && LogShipper.IsProblem("Watchdog: the app stopped unexpectedly (exit code 3)") && !LogShipper.IsProblem("No ar: HRS14"),
+        "…the station's problems read back (Home: Needs attention)");
+    var view = new StudiosLogView(ldb);
+    var host = new Window { Content = view, Width = 900, Height = 600 };
+    host.Show();
+    Pump(10);
+    var reading = view.Reload(computers: true);
+    WaitUi(() => reading.IsCompleted, 10);
+    var list = view.FindControl<ListBox>("LineList")!;
+    int all = list.ItemCount;
+    view.FindControl<CheckBox>("ProblemsBox")!.IsChecked = true;
+    Pump(3);
+    Check(all >= 5 && list.ItemCount >= 2 && list.ItemCount < all, $"Sintoniza Pro → Station → Studios shows them, only the problems when asked ({list.ItemCount} of {all})");
+    host.Close();
+    var setup = SetupCheck.Now();
+    Check(setup.All(w => w.Short.Length > 0 && w.Text.Length > 0), $"what is risky in this computer's setup is looked at ({(setup.Count == 0 ? "nothing" : string.Join("; ", setup.Select(w => w.Short)))})");
+}
+
 Console.WriteLine("Release notes in the update window");
 {
     const string body = "## What's new\n- **Website**: files by FTP\n- See [the manual](https://example.org)\n\n**Full Changelog**: https://github.com/x/y/compare/v1...v2\n\n"

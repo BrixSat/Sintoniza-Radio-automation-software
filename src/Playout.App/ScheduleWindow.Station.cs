@@ -41,6 +41,7 @@ public partial class ScheduleWindow
             else if (tab == UsersTab && tab.Content == null) tab.Content = new UsersView(new UserStore(db), _user);
             else if (tab == ErcTab && tab.Content == null) tab.Content = new ErcView(db, Who);
             else if (tab == ListenersTab && tab.Content == null) tab.Content = new ListenersView(db);
+            else if (tab == StudiosTab && tab.Content == null) tab.Content = new StudiosLogView(db);
         };
         Closed += (_, _) => { foreach (var page in _pages.Values) page.Discard(); };
     }

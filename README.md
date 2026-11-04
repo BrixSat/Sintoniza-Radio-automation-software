@@ -264,6 +264,13 @@ engine for decoding, mixing and streaming.
   for a stream from another encoder) and keeps it in the database; the status bar shows the number now, and Sintoniza
   Pro → Station → **Listeners** shows a day hour by hour (average, most, fewest) with what played in each hour and the
   listeners when each item started. Reports has *Listeners per hour*, and the as-run log a listeners column.
+- **The studios' logs in Sintoniza Pro** (Station → **Studios**): each studio computer (on air or standby) sends its log to the database every
+  15 seconds (also its watchdog's, and Rec's and Pro's on that computer; what it couldn't send while the database was
+  away, once it is back), kept 14 days: a computer and a day, the problems in red (the sound stalling, the database or
+  the stream lost, silence, restarts, alerts, errors), only the problems, a search, saved as a file. Home → *Needs
+  attention* lists each computer with problems in the last hour.
+- **A risky setup is said**: on Wi-Fi with no network cable, on battery, or (Windows) a Wi-Fi adapter Windows may switch
+  off to save power — the STUDIO lamp turns amber with what to do, the log says it, and Pro's Home (and, with a shared library, its studios list) shows it.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
   Click the STREAM button to start and stop (also while it is still connecting), or right-click it for Start / Stop;
   after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.

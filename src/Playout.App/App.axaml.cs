@@ -194,7 +194,7 @@ public partial class App : Application
     /// The station's clock from the start: its time zone as this computer's copy of its settings says (only if that
     /// copy is this station's; Sintoniza Pro on another station takes that one's once it has read its settings).
     /// </summary>
-    static void UseStationTime(AppSettings settings)
+    internal static void UseStationTime(AppSettings settings)
     {
         bool ours = settings.StationSettingsStation == CurrentStation.Id || settings.StationSettingsStation == 0 && CurrentStation.Id <= 1;
         string zone = ours ? settings.TimeZone : "";
