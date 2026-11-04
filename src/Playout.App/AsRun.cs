@@ -70,7 +70,7 @@ sealed class AsRunLog
         lock (_lock) _onAir = (track, startedUtc, source);
         Queue(() =>
         {
-            var entry = Entry(track, startedUtc.ToLocalTime(), null, source);
+            var entry = Entry(track, StationTime.FromUtc(startedUtc), null, source);
             Directory.CreateDirectory(_folder);
             File.WriteAllText(PendingFile, JsonSerializer.Serialize(entry));
         });
@@ -84,7 +84,7 @@ sealed class AsRunLog
         // The engine reports an item ending before the next one starts, so the remembered one is this one.
         Queue(() =>
         {
-            Append(Entry(track, startedUtc.ToLocalTime(), endedUtc.ToLocalTime(), source));
+            Append(Entry(track, StationTime.FromUtc(startedUtc), StationTime.FromUtc(endedUtc), source));
             DeletePending();
         });
     }
@@ -107,7 +107,7 @@ sealed class AsRunLog
             try { tags = Tags.Read(path); } catch { }
             string title = string.IsNullOrWhiteSpace(tags?.Title) ? Path.GetFileNameWithoutExtension(path) : tags.Title.Trim();
             var track = new Track(Guid.NewGuid(), path, tags?.Artist.Trim() ?? "", title, seconds, TrackClassifier.Classify(path));
-            Append(Entry(track, startedUtc.ToLocalTime(), startedUtc.ToLocalTime().AddSeconds(seconds), "cart"));
+            Append(Entry(track, StationTime.FromUtc(startedUtc), StationTime.FromUtc(startedUtc).AddSeconds(seconds), "cart"));
         });
     }
 
@@ -158,8 +158,8 @@ sealed class AsRunLog
         _nextSync = DateTime.UtcNow.AddMinutes(10);
         Queue(() =>
         {
-            DateTime from = _historySynced ? DateTime.Today.AddDays(-2) : FirstDay() ?? DateTime.Today;
-            int added = AsRunDb.Add(db, Read(_folder, from, DateTime.Today));
+            DateTime from = _historySynced ? StationTime.Today.AddDays(-2) : FirstDay() ?? StationTime.Today;
+            int added = AsRunDb.Add(db, Read(_folder, from, StationTime.Today));
             _historySynced = true;
             if (added > 0) AppLog.Write($"As-run: {added} put in the database from the files");
         });

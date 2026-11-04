@@ -2464,5 +2464,14 @@
  "{0} is on air until {1:HH:mm}. Are you presenting it? Until you say so, AUTO goes on.": "{0} está no ar até às {1:HH:mm}. É você quem o apresenta? Até dizer que sim, continua em AUTO.",
  "Live shows: up to {0:0.#} hours a day (ASSISTED while the presenter is there)": "Programas ao vivo: até {0:0.#} horas por dia (ASSISTIDO enquanto o locutor estiver)",
  "No live shows: AUTO all day.": "Nenhum programa ao vivo: AUTO todo o dia.",
- "automated": "automático"
+ "automated": "automático",
+ "Time zone": "Fuso horário",
+ "{0} (not known on this computer)": "{0} (desconhecido neste computador)",
+ "The station's time zone ({0}) isn't known on this computer: its own clock is used": "O fuso horário da estação ({0}) não é conhecido neste computador: usa-se o relógio dele",
+ "The station's time zone is now {0}: Sintoniza Emi goes by it when it starts again": "O fuso horário da estação é agora {0}: a Sintoniza Emi passa a segui-lo quando voltar a arrancar",
+ "this computer's": "o deste computador",
+ "Where the station is on air: its schedule, daily playlists, time signal, clock, logs and reports go by this time, whatever the computer's clock is set to (a studio or a server in another time zone). Each program takes a change the next time it starts; backups keep the computer's clock.": "Onde a estação está no ar: a programação, as playlists diárias, o sinal horário, o relógio, os registos e os relatórios seguem esta hora, seja qual for a hora do computador (um estúdio ou um servidor noutro fuso horário). Cada programa só passa a usar uma alteração quando voltar a arrancar; as cópias de segurança seguem a hora do computador.",
+ "each computer's own": "o de cada computador",
+ "Each computer's own (this one: {0})": "O de cada computador (este: {0})",
+ "The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again": "O fuso horário da estação é agora {0}: a Sintoniza Pro e os estúdios passam a segui-lo quando voltarem a arrancar"
 }

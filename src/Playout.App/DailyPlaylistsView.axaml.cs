@@ -54,7 +54,7 @@ public partial class DailyPlaylistsView : UserControl
     ScheduleData _schedule;
     long _scheduleVersion = -1;
     IReadOnlyList<LibraryCategory> _categories = [];
-    DateTime _day = DateTime.Today;
+    DateTime _day = StationTime.Today;
     Dictionary<DateTime, PlanHour> _hours = new();
     Dictionary<DateTime, double> _lengths = new();
     DateTime? _hour;
@@ -93,7 +93,7 @@ public partial class DailyPlaylistsView : UserControl
         DayBox.SelectedDateChanged += (_, _) => { if (DayBox.SelectedDate is { } d && d.Date != _day) ShowDay(d.Date).Report(); };
         PrevDayButton.Click += (_, _) => DayBox.SelectedDate = _day.AddDays(-1);
         NextDayButton.Click += (_, _) => DayBox.SelectedDate = _day.AddDays(1);
-        TodayButton.Click += (_, _) => DayBox.SelectedDate = DateTime.Today;
+        TodayButton.Click += (_, _) => DayBox.SelectedDate = StationTime.Today;
         HourList.SelectionChanged += (_, _) => { if (HourList.SelectedItem is PlanHourRow r && r.Start != _hour) ShowHour(r.Start).Report(); };
         GenerateDayButton.Click += async (_, _) => await GenerateDay();
         GenerateHourButton.Click += async (_, _) => await GenerateHour();
@@ -120,7 +120,7 @@ public partial class DailyPlaylistsView : UserControl
             if (e.Key != Key.Delete) return;
             e.Handled = true;
             if (RemoveButton.IsVisible && RemoveButton.IsEnabled) await RemoveSelected();
-            else if (!RemoveButton.IsVisible || !(_hour is { } h && h >= Hour(DateTime.Now)))
+            else if (!RemoveButton.IsVisible || !(_hour is { } h && h >= Hour(StationTime.Now)))
                 StatusText.Text = L.T("This can't be removed here (an hour that has played, or not allowed for this user).");
             else StatusText.Text = L.T("Select what to remove first.");
         };
@@ -132,7 +132,7 @@ public partial class DailyPlaylistsView : UserControl
         {
             if (_busy) return;
             if (++ticks % 4 == 0) await ShowDay(_day, quiet: true);
-            else if (_hour is { } h && h <= DateTime.Now.AddHours(1) && h.AddHours(2) > DateTime.Now && _db is { } db)
+            else if (_hour is { } h && h <= StationTime.Now.AddHours(1) && h.AddHours(2) > StationTime.Now && _db is { } db)
             {
                 // Only when something new went on air.
                 var latest = await Task.Run(() => db.PlayedFiles(DateTime.UtcNow.AddHours(-1), DateTime.UtcNow.AddMinutes(1)).LastOrDefault());
@@ -372,7 +372,7 @@ public partial class DailyPlaylistsView : UserControl
                 db.SetCues(path, cues);
             }
             double length = FileLength(db, path);
-            if (length > 0) new PlanStore(db).UpdateSeconds(path, Plays(cues, length, kindOf(path)), Hour(DateTime.Now));
+            if (length > 0) new PlanStore(db).UpdateSeconds(path, Plays(cues, length, kindOf(path)), Hour(StationTime.Now));
         }),
         LoadWaveform = Waveforms.LoadAsync,
         Crossfade = CrossfadeBetween,
@@ -506,7 +506,7 @@ public partial class DailyPlaylistsView : UserControl
             {
                 ReloadSchedule();
                 var store = new PlanStore(db);
-                var now = DateTime.Now;
+                var now = StationTime.Now;
                 var from = day.AddDays(1) <= Hour(now) ? day.AddDays(1) : day < Hour(now) ? Hour(now) : day;
                 var problems = new List<string>();
                 int made = from < day.AddDays(1)
@@ -522,11 +522,11 @@ public partial class DailyPlaylistsView : UserControl
             _hours = hours;
             _lengths = lengths;
             _categories = categories;
-            DayText.Text = day == DateTime.Today ? L.T("today") : day == DateTime.Today.AddDays(1) ? L.T("tomorrow") : "";
+            DayText.Text = day == StationTime.Today ? L.T("today") : day == StationTime.Today.AddDays(1) ? L.T("tomorrow") : "";
             var rows = Enumerable.Range(0, 24).Select(h => new PlanHourRow(day.AddHours(h), _hours.GetValueOrDefault(day.AddHours(h)),
                 _schedule.TemplateAt(day.AddHours(h)), _lengths.GetValueOrDefault(day.AddHours(h)))).ToList();
             HourList.ItemsSource = rows;
-            var select = _hour is { } h0 && h0.Date == day ? h0 : day == DateTime.Today ? Hour(DateTime.Now) : day.AddHours(7);
+            var select = _hour is { } h0 && h0.Date == day ? h0 : day == StationTime.Today ? Hour(StationTime.Now) : day.AddHours(7);
             HourList.SelectedItem = rows.FirstOrDefault(r => r.Start == select);
             if (_hour != null && _hour.Value.Date == day) await ShowHour(_hour.Value, quiet);
             if (!quiet)
@@ -571,7 +571,7 @@ public partial class DailyPlaylistsView : UserControl
         try
         {
             var (items, entries, plays) = await Task.Run(() => (new PlanStore(db).Items(hour), new PlaylistGenerator(db, _schedule, Options).Entries(hour),
-                db.PlayedFiles(hour.AddHours(-3).ToUniversalTime(), hour.AddHours(3).ToUniversalTime())));
+                db.PlayedFiles(StationTime.ToUtc(hour.AddHours(-3)), StationTime.ToUtc(hour.AddHours(3)))));
             if (_hour != hour) return; // another hour chosen meanwhile
             var selected = SelectedItems().Select(i => i.Id).ToHashSet();
             _items = items;
@@ -587,12 +587,12 @@ public partial class DailyPlaylistsView : UserControl
             HourInfo.Text = (template != null ? L.F("Template {0}", TemplateName(template)) : L.T("No template placed here: fill music plays"))
                 + (record?.Edited == true ? " · " + L.T("changed by hand") : "")
                 + (record != null && !record.Edited && record.Signature != PlaylistGenerator.Signature(template) ? " · " + L.T("its template changed since it was made") : "")
-                + (record != null ? " · " + L.F("made {0:dd/MM HH:mm} on {1}", record.GeneratedAt.ToLocalTime(), record.GeneratedBy) : "");
+                + (record != null ? " · " + L.F("made {0:dd/MM HH:mm} on {1}", StationTime.FromUtc(record.GeneratedAt), record.GeneratedBy) : "");
             double songs = items.Where(i => !i.Optional).Sum(i => i.Seconds), breaks = entries.Sum(e => e.Seconds);
             TotalText.Text = items.Count == 0 && entries.Count == 0 ? "" : L.F("Songs and jingles {0} + ad breaks and events {1} = {2} (optional at the end: {3})",
                 Format.Duration(songs), Format.Duration(breaks), Format.Duration(songs + breaks), Format.Duration(items.Where(i => i.Optional).Sum(i => i.Seconds)))
                 + (rows.Count(r => r.IsOver) is > 0 and var over ? " · " + L.F(over == 1 ? "{0} item past the end of the hour won't play" : "{0} items past the end of the hour won't play", over) : "");
-            EmptyText.Text = record == null ? (hour < Hour(DateTime.Now) ? L.T("Not made: it was before this playlist manager ran.") : L.T("Not made yet."))
+            EmptyText.Text = record == null ? (hour < Hour(StationTime.Now) ? L.T("Not made: it was before this playlist manager ran.") : L.T("Not made yet."))
                 : L.T("Nothing planned in this hour: the playout plays fill music.");
             EmptyText.IsVisible = rows.Count == 0;
         }
@@ -653,7 +653,7 @@ public partial class DailyPlaylistsView : UserControl
     /// </summary>
     static List<(string Path, DateTime At)> Around(DateTime hour, List<(string Path, DateTime At)> plays)
     {
-        DateTime from = hour.AddMinutes(-20).ToUniversalTime(), to = hour.AddHours(1).AddMinutes(20).ToUniversalTime();
+        DateTime from = StationTime.ToUtc(hour.AddMinutes(-20)), to = StationTime.ToUtc(hour.AddHours(1).AddMinutes(20));
         return plays.Where(p => p.At >= from && p.At < to).ToList();
     }
 
@@ -667,12 +667,12 @@ public partial class DailyPlaylistsView : UserControl
             if (i < 0) continue;
             used[i] = true;
             last = plays[i].At;
-            row.PlayedAt = plays[i].At.ToLocalTime();
+            row.PlayedAt = StationTime.FromUtc(plays[i].At);
         }
         if (plays.Count == 0) return "";
         var latest = plays[^1];
-        var onAir = rows.LastOrDefault(r => r.PlayedAt != null && r.Path == latest.Path && r.PlayedAt == latest.At.ToLocalTime());
-        if (onAir == null || DateTime.Now - onAir.PlayedAt!.Value > TimeSpan.FromSeconds(onAir.Seconds + 30)) return "";
+        var onAir = rows.LastOrDefault(r => r.PlayedAt != null && r.Path == latest.Path && r.PlayedAt == StationTime.FromUtc(latest.At));
+        if (onAir == null || StationTime.Now - onAir.PlayedAt!.Value > TimeSpan.FromSeconds(onAir.Seconds + 30)) return "";
         onAir.IsOnAir = true;
         double minutes = (onAir.Start - onAir.PlayedAt.Value).TotalMinutes;
         string drift = Math.Abs(minutes) < 1.5 ? L.T("on time")
@@ -707,7 +707,7 @@ public partial class DailyPlaylistsView : UserControl
     void ShowButtons()
     {
         var selected = SelectedItems();
-        bool open = _hour is { } h && h >= Hour(DateTime.Now) && _db != null;
+        bool open = _hour is { } h && h >= Hour(StationTime.Now) && _db != null;
         UpButton.IsEnabled = DownButton.IsEnabled = open && selected.Count > 0;
         RemoveButton.IsEnabled = open && (selected.Count > 0 || (_changeSchedule != null && SelectedOnce().Count > 0));
         NoteButton.IsEnabled = open && selected.Count == 1;
@@ -719,7 +719,7 @@ public partial class DailyPlaylistsView : UserControl
         MixButton.IsEnabled = _hour != null && _items.Count > 1;
         VoiceButton.IsEnabled = open && VoiceRows() != null;
         GenerateHourButton.IsEnabled = open;
-        GenerateDayButton.IsEnabled = _db != null && _day.AddDays(1) > DateTime.Now;
+        GenerateDayButton.IsEnabled = _db != null && _day.AddDays(1) > StationTime.Now;
         Tracks.IsEnabled = open && !_voiceOnly;
     }
 
@@ -759,7 +759,7 @@ public partial class DailyPlaylistsView : UserControl
         {
             await Task.Run(() => new PlanStore(db).Save(record, items));
             _hours[hour] = record;
-            StatusText.Text = hour <= DateTime.Now.AddMinutes(30)
+            StatusText.Text = hour <= StationTime.Now.AddMinutes(30)
                 ? L.T("Saved. This hour may be in the on-air playlist already: changes there are made in the playout.")
                 : L.T("Saved.");
         }
@@ -893,7 +893,7 @@ public partial class DailyPlaylistsView : UserControl
             await Task.Run(() => new PlanStore(db).SetHourNote(hour, text));
             record.Note = text.Length > 0 ? text : null;
             UpdateHourRow(hour);
-            StatusText.Text = hour <= DateTime.Now.AddMinutes(30)
+            StatusText.Text = hour <= StationTime.Now.AddMinutes(30)
                 ? L.T("Saved. This hour may be in the on-air playlist already: changes there are made in the playout.")
                 : L.T("Saved.");
         }
@@ -970,7 +970,7 @@ public partial class DailyPlaylistsView : UserControl
     async Task GenerateDay()
     {
         if (_db is null) return;
-        var from = _day > Hour(DateTime.Now) ? _day : Hour(DateTime.Now);
+        var from = _day > Hour(StationTime.Now) ? _day : Hour(StationTime.Now);
         var hours = Enumerable.Range(0, 24).Select(h => _day.AddHours(h)).Where(h => h >= from).ToList();
         int edited = hours.Count(h => _hours.GetValueOrDefault(h)?.Edited == true);
         string message = L.F("Make the {0} hours from {1:HH}:00 again from their templates (a new choice of songs)?", hours.Count, from)
@@ -1016,10 +1016,10 @@ public sealed class PlanHourRow(DateTime start, PlanHour? hour, PlaylistTemplate
     public string Mark => (hour == null ? "" : hour.Edited ? "✎" : hour.Signature != PlaylistGenerator.Signature(template) ? "↻" : "")
                           + (string.IsNullOrWhiteSpace(hour?.Note) ? "" : " 📝");
     public string LengthText => hour == null ? "" : Format.Duration(seconds);
-    public string Tip => (hour == null ? L.T("Not made") : hour.Edited ? L.T("Changed by hand") : L.F("Made {0:dd/MM HH:mm}", hour.GeneratedAt.ToLocalTime()))
+    public string Tip => (hour == null ? L.T("Not made") : hour.Edited ? L.T("Changed by hand") : L.F("Made {0:dd/MM HH:mm}", StationTime.FromUtc(hour.GeneratedAt)))
                          + (string.IsNullOrWhiteSpace(hour?.Note) ? "" : "\n📝 " + hour.Note);
     /// <summary>Hours gone by are dimmed.</summary>
-    public double Opacity => Start.AddHours(1) <= DateTime.Now ? 0.45 : 1;
+    public double Opacity => Start.AddHours(1) <= StationTime.Now ? 0.45 : 1;
 }
 
 /// <summary>A row of the hour: a planned song or jingle, or an item of a break or event from the schedule.</summary>

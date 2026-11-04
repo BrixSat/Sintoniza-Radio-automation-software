@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
 using Playout.Library;
+using Playout.Engine;
 
 namespace Playout.App;
 
@@ -194,7 +195,7 @@ public sealed class ListenerCounter : IDisposable
                     AppLog.Write($"Listeners: {ex.Message}");
                 }
                 // On the minute, so each count is for its own minute.
-                var now = DateTime.Now;
+                var now = StationTime.Now;
                 await Task.Delay(TimeSpan.FromSeconds(60 - now.Second) - TimeSpan.FromMilliseconds(now.Millisecond) + TimeSpan.FromSeconds(2), token);
             }
         }
@@ -226,7 +227,7 @@ public sealed class ListenerCounter : IDisposable
                 if (reading?.Count is not { } count) { error ??= reading?.Problem ?? L.T("the server's statistics weren't understood"); continue; }
                 _answered = page;
                 Count = count;
-                CountedAt = DateTime.Now;
+                CountedAt = StationTime.Now;
                 Error = null;
                 Store(count, CountedAt);
                 return;

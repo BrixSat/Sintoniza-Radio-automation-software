@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Playout.Engine;
 using Playout.Library;
 
 namespace Playout.App;
@@ -26,6 +27,7 @@ public partial class App : Application
                 AppSettings.ForPro = true;
                 CurrentStation.Id = settings.ProStation > 0 ? settings.ProStation : settings.Station;
             }
+            UseStationTime(settings);
             // The import program (its own menu entry): folders of audio into the library, in categories.
             bool import = !schedule && desktop.Args?.Contains(AppInfo.ImportArg) == true;
             // The recorder (its own program, Sintoniza Rec): the station's sound, kept as the law asks.
@@ -113,6 +115,7 @@ public partial class App : Application
             {
                 long chosen = login.ChosenStation;
                 CurrentStation.Id = chosen;
+                UseStationTime(settings);
                 settings.ProStation = chosen == settings.Station ? 0 : chosen;
                 AppSettings.Change(s => s.ProStation = chosen == s.Station ? 0 : chosen);
                 AppLog.Write($"{program}: working on station {chosen}");
@@ -140,6 +143,15 @@ public partial class App : Application
         try
         {
             new ScheduleSource(() => db).Version(); // imports the old schedule files the first time
+            // Its station's clock, from the station's own settings (the copy here may be another station's), before
+            // any window works out what "today" is.
+            try
+            {
+                string zone = (new StationStore(db).Load().Settings?.TimeZone ?? "").Trim();
+                if (!StationTime.Use(zone)) AppLog.Write($"Sintoniza Pro: the station's time zone ({zone}) isn't known on this computer: its own clock is used");
+                else if (!StationTime.IsComputers) AppLog.Write($"Sintoniza Pro: the station's time: {StationTime.Name}, {StationTime.Now:HH:mm}");
+            }
+            catch (Exception ex) { AppLog.Write($"Sintoniza Pro: the station's time zone not read ({ex.Message}): as the settings here say"); }
             var store = new ScheduleStore(db);
             var (data, version) = store.Load();
             // The music library: the daily playlists' library panel (songs to put in, listen to, tag).
@@ -161,5 +173,17 @@ public partial class App : Application
         AppLog.Write($"Schedule program: database unavailable: {error}");
         return new ScheduleWindow(ScheduleSource.LoadLocal(), settings.Library.Folders.FirstOrDefault() ?? settings.MusicFolder, null, 0,
             L.F("The database can't be reached ({0}). This is the playout's last copy; it can't be saved until the database is back.", error));
+    }
+
+    /// <summary>
+    /// The station's clock from the start: its time zone as this computer's copy of its settings says (only if that
+    /// copy is this station's; Sintoniza Pro on another station takes that one's once it has read its settings).
+    /// </summary>
+    static void UseStationTime(AppSettings settings)
+    {
+        bool ours = settings.StationSettingsStation == CurrentStation.Id || settings.StationSettingsStation == 0 && CurrentStation.Id <= 1;
+        string zone = ours ? settings.TimeZone : "";
+        if (!StationTime.Use(zone)) AppLog.Write($"The station's time zone ({zone}) isn't known on this computer: its own clock is used");
+        else if (!StationTime.IsComputers) AppLog.Write($"The station's time: {StationTime.Name}, {StationTime.Now:HH:mm} (this computer: {DateTime.Now:HH:mm})");
     }
 }

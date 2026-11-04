@@ -59,7 +59,7 @@ public partial class PresenterWindow : Window
     void Refresh()
     {
         var s = _main.PresenterNow();
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         ShowText.Text = s.ShowName.Length > 0 ? s.ShowName : L.T("No show on air");
         PresenterText.Text = s.Presenter;
         ShowEndsText.Text = s.ShowEnds is { } ends && ends > now ? Clock(ends - now) : "—";

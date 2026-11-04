@@ -318,10 +318,14 @@ computer is on air and which are standby.
 
 ### The station (Station and Library, on the left)
 
-- **Station settings** — name and logo, genre, website, FM or web radio, money sign; crossfades and loudness; time
-  signal; silence detection and fill music; other music folders; streaming server; RDS texts (PS, radio text, RT+);
+- **Station settings** — name and logo, **time zone**, genre, website, FM or web radio, money sign; crossfades and
+  loudness; time signal; silence detection and fill music; other music folders; streaming server; RDS texts (PS, radio text, RT+);
   website now playing; alerts; **takes** (below); days of daily playlists made ahead and row colours. Saved for every studio: each
-  playout takes them within a minute.
+  playout takes them within a minute. The **time zone** is where the station is on air (*Each computer's own* by
+  default): with one set, the schedule, daily playlists, time signal and takes, clock, logs, as-run and reports go by
+  the station's time whatever a studio's or server's clock says, and the date line shows it (*· Atlantic/Azores*);
+  each program takes a change the next time it starts (Emi and Pro say so), and backups keep the computer's clock.
+  History kept before the zone was set stays in the computer's time it was written in.
 - **Categories** — the library's categories. Every station has the same eight at the top, which can't be renamed,
   moved or deleted: **Music**, **Jingles**, **Promos**, **ProgAutor** (shows recorded outside), **Fillers**,
   **Redação** (news), **Spots** (adverts) and **Takes** (voice inserts: the time, the temperature… as if a host were

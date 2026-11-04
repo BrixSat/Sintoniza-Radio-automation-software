@@ -271,6 +271,32 @@ Console.WriteLine("Translations");
 
 // ───────────────────────── The on-air program ─────────────────────────
 
+Console.WriteLine("The station's time zone");
+{
+    var sample = new DateTime(2026, 7, 1, 12, 0, 0, DateTimeKind.Utc);
+    Check(StationTime.Use("") && StationTime.IsComputers && Math.Abs((StationTime.Now - DateTime.Now).TotalSeconds) < 2
+          && StationTime.FromUtc(sample) == sample.ToLocalTime() && StationTime.ToUtc(sample.ToLocalTime()) == sample,
+        "no time zone of its own: the computer's clock, exactly");
+    // A zone that isn't this computer's: Kiritimati (UTC+14) is nobody's computer.
+    bool known = StationTime.Use("Pacific/Kiritimati");
+    var expected = DateTime.UtcNow.AddHours(14);
+    Check(known && !StationTime.IsComputers && Math.Abs((StationTime.Now - expected).TotalSeconds) < 2 && StationTime.Today == expected.Date,
+        $"a station on another time zone: its time and date ({StationTime.Now:yyyy-MM-dd HH:mm}, UTC {DateTime.UtcNow:HH:mm})");
+    var noon = StationTime.Today.AddHours(12);
+    Check(StationTime.ToUtc(noon) == DateTime.SpecifyKind(noon.AddHours(-14), DateTimeKind.Utc) && StationTime.FromUtc(StationTime.ToUtc(noon)) == noon,
+        "…its times to UTC and back");
+    // Sydney in spring: 02:30 on 4 October 2026 doesn't happen (the clocks go 02:00 → 03:00): 03:30 AEDT, 16:30 UTC the day before.
+    StationTime.Use("Australia/Sydney");
+    var spring = new DateTime(2026, 10, 4, 2, 30, 0);
+    Check(StationTime.IsComputers || StationTime.ToUtc(spring) == new DateTime(2026, 10, 3, 16, 30, 0, DateTimeKind.Utc),
+        $"a time the clocks skip counts as the one after the jump ({StationTime.ToUtc(spring):yyyy-MM-dd HH:mm}Z)");
+    Check(!StationTime.Use("Nowhere/Atlantis") && StationTime.IsComputers && StationTime.Name == "", "a time zone this computer doesn't know: the computer's clock");
+    var copy = new AppSettings();
+    new StationSettings { TimeZone = "Atlantic/Azores" }.ApplyTo(copy);
+    Check(copy.TimeZone == "Atlantic/Azores" && StationSettings.From(copy).TimeZone == "Atlantic/Azores", "the time zone goes with the station's settings to every studio");
+    StationTime.Use("");
+}
+
 Console.WriteLine("Shows: one after the other, at the same time, live without a presenter");
 {
     // Every half hour from 11:00 to 12:30, an hour each (as made by hand): one show from 11:00 to 13:30.

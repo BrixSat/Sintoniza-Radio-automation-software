@@ -2,6 +2,7 @@ using System.Text;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Playout.Library;
+using Playout.Engine;
 
 namespace Playout.App;
 
@@ -31,8 +32,8 @@ public partial class ReportsWindow : Window
         _folder = folder;
         _station = station;
         // This month so far.
-        FromBox.SelectedDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-        ToBox.SelectedDate = DateTime.Today;
+        FromBox.SelectedDate = new DateTime(StationTime.Today.Year, StationTime.Today.Month, 1);
+        ToBox.SelectedDate = StationTime.Today;
 
         KindBox.SelectionChanged += async (_, _) => await Reload();
         FromBox.SelectedDateChanged += async (_, _) => await Reload();
@@ -116,7 +117,7 @@ public partial class ReportsWindow : Window
             _ => "as-run",
         };
         if (Kind == ReportKind.Adverts && AdvertiserBox.SelectedItem is string a && a != AllAdvertisers) name += "-" + string.Concat(a.Split(Path.GetInvalidFileNameChars()));
-        var (from, to) = (FromBox.SelectedDate ?? DateTime.Today, ToBox.SelectedDate ?? DateTime.Today);
+        var (from, to) = (FromBox.SelectedDate ?? StationTime.Today, ToBox.SelectedDate ?? StationTime.Today);
         if (to < from) (from, to) = (to, from);
         string days = from.Date == to.Date ? $"{from:yyyy-MM-dd}" : $"{from:yyyy-MM-dd}_{to:yyyy-MM-dd}";
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
@@ -130,7 +131,7 @@ public partial class ReportsWindow : Window
         try
         {
             if (csv) await File.WriteAllTextAsync(path, report.ToCsv(SeparatorBox.SelectedIndex == 1 ? ';' : ','), new UTF8Encoding(true));
-            else await File.WriteAllTextAsync(path, report.ToHtml(L.F("Made by {0} on {1:yyyy-MM-dd HH:mm}", AppInfo.Name, DateTime.Now)), new UTF8Encoding(false));
+            else await File.WriteAllTextAsync(path, report.ToHtml(L.F("Made by {0} on {1:yyyy-MM-dd HH:mm}", AppInfo.Name, StationTime.Now)), new UTF8Encoding(false));
             SummaryText.Text = L.F("Saved {0}", Path.GetFileName(path));
         }
         catch (Exception ex)

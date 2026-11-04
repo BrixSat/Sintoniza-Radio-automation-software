@@ -17,6 +17,8 @@ public sealed class StationSettings
     static readonly JsonSerializerOptions Json = new() { WriteIndented = false };
 
     public string StationName { get; set; } = "";
+    /// <summary>Where the station is on air (IANA, e.g. "Atlantic/Azores"); "" = each computer's own (see <see cref="StationTime"/>).</summary>
+    public string TimeZone { get; set; } = "";
     public string StationGenre { get; set; } = "Various";
     public string StationUrl { get; set; } = "";
     public string CurrencySign { get; set; } = "";
@@ -93,7 +95,7 @@ public sealed class StationSettings
         catch { /* no logo */ }
         return new StationSettings
         {
-            StationName = s.StationName, StationGenre = s.StationGenre, StationUrl = s.StationUrl, CurrencySign = s.CurrencySign,
+            StationName = s.StationName, TimeZone = s.TimeZone, StationGenre = s.StationGenre, StationUrl = s.StationUrl, CurrencySign = s.CurrencySign,
             StationType = s.StationType, Logo = logo,
             Crossfade = s.Crossfade, OtherCrossfade = s.OtherCrossfade, PlaylistColors = s.PlaylistColors, PlanDaysAhead = s.PlanDaysAhead,
             TimeSignal = s.TimeSignal, Loudness = s.Loudness, Silence = s.Silence,
@@ -111,7 +113,7 @@ public sealed class StationSettings
     /// <summary>Puts the station's settings over this computer's (in memory; the caller saves them as its copy).</summary>
     public void ApplyTo(AppSettings s)
     {
-        s.StationName = StationName; s.StationGenre = StationGenre; s.StationUrl = StationUrl; s.CurrencySign = CurrencySign;
+        s.StationName = StationName; s.TimeZone = TimeZone ?? ""; s.StationGenre = StationGenre; s.StationUrl = StationUrl; s.CurrencySign = CurrencySign;
         s.StationType = StationType;
         s.LogoPath = SaveLogo();
         s.Crossfade = Crossfade; s.OtherCrossfade = OtherCrossfade; s.PlaylistColors = PlaylistColors ?? new(); s.PlanDaysAhead = PlanDaysAhead;
@@ -191,7 +193,7 @@ public sealed class StationStore(LibraryDb db)
             "SELECT version, updated_at, updated_by FROM station_settings WHERE station_id = @Station" + db.ForUpdate, new { Station }, tx);
         if (expected is { } want && (current?.Version ?? 0) != want)
             throw new ScheduleStore.ChangedException(
-                DateTime.TryParse(current?.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? at.ToLocalTime() : DateTime.Now,
+                DateTime.TryParse(current?.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? StationTime.FromUtc(at) : StationTime.Now,
                 current?.UpdatedBy ?? "");
         long version = (current?.Version ?? 0) + 1;
         string now = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
@@ -203,6 +205,8 @@ public sealed class StationStore(LibraryDb db)
         // The stations list (the station pickers) goes by the name in its settings.
         try { db.RenameStation(Station, settings.StationName); }
         catch (Exception) { /* a name another station has: the list keeps the one it had */ }
+        try { db.SetStationTimeZone(Station, settings.TimeZone ?? ""); }
+        catch (Exception) { /* only the list's copy: the settings, saved, are what counts */ }
         return version;
     }
 

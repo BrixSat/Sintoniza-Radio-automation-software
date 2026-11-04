@@ -13,7 +13,7 @@ sealed class RecService : IDisposable
     RecSettings _s;
     StationRecorder? _recorder;
     int _main = -1, _archive = -1;
-    DateTime _segment, _fileStarted, _nextSegment = DateTime.MaxValue, _nextClean = DateTime.MinValue, _aliveSent = DateTime.Today;
+    DateTime _segment, _fileStarted, _nextSegment = DateTime.MaxValue, _nextClean = DateTime.MinValue, _aliveSent = StationTime.Today;
     DateTime? _silentSince, _startedAt;
     bool _silenceReported, _writeReported, _diskReported;
     double _levelDb = -90;
@@ -30,7 +30,7 @@ sealed class RecService : IDisposable
     public string? CurrentFile { get; private set; }
     public DateTime? StartedAt => _startedAt;
     /// <summary>Seconds of silence so far (0: sound).</summary>
-    public double SilentSeconds => _silentSince is { } since ? (DateTime.Now - since).TotalSeconds : 0;
+    public double SilentSeconds => _silentSince is { } since ? (StationTime.Now - since).TotalSeconds : 0;
 
     public RecSettings Settings
     {
@@ -56,9 +56,9 @@ sealed class RecService : IDisposable
             _recorder.Log += m => Message?.Invoke(m);
             _recorder.Start();
             _recorder.SetMonitor(_s.Monitor ? _s.MonitorOutput : null);
-            _startedAt = DateTime.Now;
+            _startedAt = StationTime.Now;
             _silentSince = null;
-            NewSegment(DateTime.Now);
+            NewSegment(StationTime.Now);
         }
         catch (Exception ex)
         {
@@ -180,7 +180,7 @@ sealed class RecService : IDisposable
 
     public void Tick()
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         if (IsRecording && now >= _nextSegment) NewSegment(now);
         if (IsRecording) Watch(now);
         if (now >= _nextStatus)
@@ -256,7 +256,7 @@ sealed class RecService : IDisposable
         {
             Directory.CreateDirectory(AppSettings.DataFolder);
             string tmp = StatusFile + ".tmp";
-            File.WriteAllText(tmp, System.Text.Json.JsonSerializer.Serialize(new Status(now, IsRecording, SilentSeconds, CurrentFile)));
+            File.WriteAllText(tmp, System.Text.Json.JsonSerializer.Serialize(new Status(DateTime.UtcNow, IsRecording, SilentSeconds, CurrentFile)));
             File.Move(tmp, StatusFile, overwrite: true);
         }
         catch { /* the light shows it as not running */ }
@@ -269,7 +269,7 @@ sealed class RecService : IDisposable
         {
             if (!File.Exists(StatusFile)) return null;
             var status = System.Text.Json.JsonSerializer.Deserialize<Status>(File.ReadAllText(StatusFile));
-            return status != null && (DateTime.Now - status.At).Duration() < TimeSpan.FromSeconds(20) ? status : null;
+            return status != null && (DateTime.UtcNow - StationTime.ToUtc(status.At)).Duration() < TimeSpan.FromSeconds(20) ? status : null;
         }
         catch { return null; }
     }
@@ -296,13 +296,13 @@ sealed class RecService : IDisposable
                 try
                 {
                     Directory.Delete(day, recursive: true);
-                    Message?.Invoke(L.F("Deleted the recordings of {0:yyyy-MM-dd} (kept {1} days)", d, (DateTime.Today - before).Days));
+                    Message?.Invoke(L.F("Deleted the recordings of {0:yyyy-MM-dd} (kept {1} days)", d, (StationTime.Today - before).Days));
                 }
                 catch (Exception ex) { Message?.Invoke(L.F("Can't delete {0}: {1}", day, ex.Message)); }
             }
         }
-        Older(s.Folder, DateTime.Today.AddDays(-Math.Max(1, s.KeepDays)));
-        if (s.Archive && s.ArchiveKeepMonths > 0) Older(s.ArchiveFolder, DateTime.Today.AddMonths(-s.ArchiveKeepMonths));
+        Older(s.Folder, StationTime.Today.AddDays(-Math.Max(1, s.KeepDays)));
+        if (s.Archive && s.ArchiveKeepMonths > 0) Older(s.ArchiveFolder, StationTime.Today.AddMonths(-s.ArchiveKeepMonths));
     }
 
     void Alert(string kind, bool ok, string message)

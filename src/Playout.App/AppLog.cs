@@ -1,3 +1,4 @@
+using Playout.Engine;
 namespace Playout.App;
 
 /// <summary>
@@ -14,7 +15,7 @@ static class AppLog
     /// <summary>Adds a line; a time of day is put in front unless it starts with one (engine messages do).</summary>
     public static void Write(string message)
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         string line = message.Length >= 8 && TimeOnly.TryParseExact(message[..8], "HH:mm:ss", out _)
             ? message
             : $"{now:HH:mm:ss}  {message}";
@@ -37,7 +38,7 @@ static class AppLog
     {
         try
         {
-            var oldest = DateTime.Today.AddDays(-KeepDays);
+            var oldest = StationTime.Today.AddDays(-KeepDays);
             foreach (var file in Directory.EnumerateFiles(Folder, "*.log"))
                 if (DateTime.TryParseExact(Path.GetFileNameWithoutExtension(file), "yyyy-MM-dd", null,
                         System.Globalization.DateTimeStyles.None, out var day) && day < oldest)

@@ -75,7 +75,7 @@ public partial class MainWindow : IRemoteHandler
         {
             station = _settings.StationName,
             logo = LogoImage.Source != null,
-            clock = DateTime.Now.ToString("HH:mm:ss"),
+            clock = StationTime.Now.ToString("HH:mm:ss"),
             date = DateText.Text,
             topOfHour = TopOfHourText.Text,
             playlistEnds = PlaylistEndsText.Text,

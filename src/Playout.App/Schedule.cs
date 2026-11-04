@@ -299,11 +299,11 @@ public abstract class ScheduleEntry
     public EventTiming Timing(DateTime at, DateTime? now = null) => Start switch
     {
         EventStart.Hard => EventTiming.Hard,
-        EventStart.EndAt => new EventTiming(EventStart.EndAt, EndsAt: at.ToUniversalTime()),
+        EventStart.EndAt => new EventTiming(EventStart.EndAt, EndsAt: StationTime.ToUtc(at)),
         // Gone in late (the app restarted): at least a moment for the song on air before it fades.
         _ => new EventTiming(EventStart.Soft, MaxDelayMinutes > 0
             ? TimeSpan.FromMinutes(MaxDelayMinutes) + (at - (now ?? at)) is var wait && wait > TimeSpan.FromSeconds(15) ? wait : TimeSpan.FromSeconds(15)
-            : null, NotBefore: now is { } n && n < at ? at.ToUniversalTime() : null),
+            : null, NotBefore: now is { } n && n < at ? StationTime.ToUtc(at) : null),
     };
 
     /// <summary>Turns <see cref="Times"/> and <see cref="Days"/> into slots.</summary>
@@ -800,7 +800,7 @@ sealed class Scheduler : IDisposable
         data.Normalize();
         _data = data;
         _source = source;
-        _timer = new Timer(_ => Check(DateTime.Now), null, TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(250));
+        _timer = new Timer(_ => Check(StationTime.Now), null, TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(250));
         // The database is read on its own timer: a slow or unreachable server never holds up an event that is due.
         if (source != null) _reloadTimer = new Timer(_ => ReloadIfSaved(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2));
     }
@@ -823,7 +823,7 @@ sealed class Scheduler : IDisposable
         lock (_lock)
         {
             _prepared = DateTime.MinValue; // what is coming is looked at again (and told to the engine) straight away
-            var now = DateTime.Now;
+            var now = StationTime.Now;
             var copy = data.Clone();
             foreach (var entry in Entries(copy))
             {
@@ -1022,7 +1022,7 @@ sealed class Scheduler : IDisposable
         foreach (var entry in Entries(_data).Where(e => e.Enabled && e.Start != EventStart.EndAt))
             foreach (var at in entry.TimesOn(now.Date).Concat(entry.TimesOn(now.Date.AddDays(1)))
                          .Where(t => entry.Opens(t) > now && entry.Opens(t) - now <= Expect && t > _data.LastStarted.GetValueOrDefault(entry.Id, DateTime.MinValue)))
-                if (entry is not AdBreak b || _data.InBreak(b, at).Count > 0) expected.Add(entry.Opens(at).ToUniversalTime()); // a window: when it opens
+                if (entry is not AdBreak b || _data.InBreak(b, at).Count > 0) expected.Add(StationTime.ToUtc(entry.Opens(at))); // a window: when it opens
         _engine.ExpectedEvents = expected;
         var files = new List<string>();
         foreach (var entry in Entries(_data).Where(e => e.Enabled))
@@ -1059,7 +1059,7 @@ sealed class Scheduler : IDisposable
         return ScheduleItems.For(data, entry, at, quiet ? null : Say, _source?.Db is { } db ? ScheduleItems.CategoryPicker(db) : null);
     }
 
-    void Say(string message) => Message?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
+    void Say(string message) => Message?.Invoke($"{StationTime.Now:HH:mm:ss}  {message}");
 
     public void Dispose()
     {

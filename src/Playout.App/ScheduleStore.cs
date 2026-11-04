@@ -284,7 +284,7 @@ sealed class ScheduleStore(LibraryDb db)
             "SELECT version AS Version, updated_at AS UpdatedAt, updated_by AS UpdatedBy FROM schedule_versions WHERE station_id = @Station" + db.ForUpdate,
             new { Station }, tx);
         if (expected is { } want && (current?.Version ?? 0) != want)
-            throw new ChangedException(DateTime.TryParse(current?.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? at.ToLocalTime() : DateTime.Now,
+            throw new ChangedException(DateTime.TryParse(current?.UpdatedAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var at) ? StationTime.FromUtc(at) : StationTime.Now,
                 current?.UpdatedBy ?? "");
 
         c.Execute("DELETE FROM schedule_entries WHERE station_id = @Station", new { Station }, tx);

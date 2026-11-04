@@ -11,6 +11,8 @@ public sealed class AppSettings
     public const int CartCount = 12;
 
     public string StationName { get; set; } = "";
+    /// <summary>The station's time zone (IANA, e.g. "Atlantic/Azores"); "" = this computer's. A station setting (Sintoniza Pro); from the next start.</summary>
+    public string TimeZone { get; set; } = "";
     /// <summary>Interface language: "en", "pt", "fr"; "" = the computer's (Portuguese, French, else English). From the next start.</summary>
     public string Language { get; set; } = "";
     public string? LogoPath { get; set; }

@@ -1,3 +1,4 @@
+using Playout.Engine;
 namespace Playout.App;
 
 /// <summary>Sintoniza Pro → Shows: the shows in the week, live or automated, with their presenter, length and notes, and what is wrong with them.</summary>
@@ -47,7 +48,7 @@ public partial class ScheduleWindow
     /// <summary>Over the show shows that start again before they end or are on at the same time, live ones without a presenter, and how long the live ones are on.</summary>
     void ShowProblems()
     {
-        var today = DateTime.Today;
+        var today = StationTime.Today;
         var problems = ShowCheck.Problems(_data, today, 7);
         ShowWarnings.Text = string.Join("\n", problems.Select(p => "⚠ " + p));
         ShowWarnings.IsVisible = problems.Count > 0;

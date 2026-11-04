@@ -25,6 +25,8 @@ public partial class ScheduleWindow
     List<(string Client, int Missed)> _missedYesterday = new();
     DateTime _nextMissedCheck;
     List<string> _breakWarnings = new();
+    /// <summary>The station's time zone last taken (or tried: one this computer doesn't know is said once).</summary>
+    string? _zoneTried;
     /// <summary>What isn't ready in tomorrow's daily playlists, and the day it was checked on (every 10 minutes, and after midnight).</summary>
     volatile DayLines _tomorrow = new(DateTime.MinValue, []);
     sealed record DayLines(DateTime Day, List<string> Lines);
@@ -149,10 +151,10 @@ public partial class ScheduleWindow
 
     void Tick(ScheduleStore? store)
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         StatusClock.Text = now.ToString("ddd dd/MM/yyyy  HH:mm:ss");
         HomeClock.Text = now.ToString("HH:mm:ss");
-        HomeDate.Text = now.ToString("dddd, d MMMM yyyy");
+        HomeDate.Text = now.ToString("dddd, d MMMM yyyy") + MainWindow.ZoneSuffix;
         bool changed = Changed;
         StatusChanges.Text = changed ? L.T("● Unsaved changes") : "";
         // Save is for changes to the schedule: nothing to save, nothing to press.
@@ -211,6 +213,15 @@ public partial class ScheduleWindow
                 return (stats, categories.Count, last, hours, items, station, studios, listening);
             });
             _station = f.station;
+            // Another time zone for the station (set here or by another Pro): from the next start, as in the studios
+            // (every time worked out here, and the timers, would jump).
+            if (f.station is { } read && (read.TimeZone ?? "").Trim() is var zone && zone != StationTime.Name && zone != _zoneTried)
+            {
+                _zoneTried = zone;
+                AppLog.Write($"Sintoniza Pro: the station's time zone is now {(zone.Length > 0 ? zone : "each computer's own")}: from the next start");
+                SavedText.Text = L.F("The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again",
+                    zone.Length > 0 ? zone : L.T("each computer's own"));
+            }
             _listening = f.listening;
             ShowFigures(data, now, f.stats, f.Item2, f.last, f.hours, f.items);
             ShowStudios(f.studios);
@@ -310,7 +321,7 @@ public partial class ScheduleWindow
         string artist = recent ? last!.Value.Artist : "";
         NowTitleText.Text = HomeNowTitle.Text = title;
         NowArtistText.Text = HomeNowArtist.Text = artist;
-        NowAtText.Text = recent ? last!.Value.At.ToLocalTime().ToString("HH:mm") : "";
+        NowAtText.Text = recent ? StationTime.FromUtc(last!.Value.At).ToString("HH:mm") : "";
         NowTemplateText.Text = L.F("{0:HH}:00 · {1}", hour, Template(hour));
         HomeNowHour.Text = L.F("This hour: {0}", Template(hour)) + "\n" + L.F("Next hour: {0}", Template(hour.AddHours(1)))
             + (_listening is { } listening ? "\n" + L.F("📈 {0} listening to the stream (Listeners)", listening.Listeners) : "");
@@ -534,7 +545,7 @@ public partial class ScheduleWindow
         if (_library != null) _library.NotifyChanged();
         else LibraryChanged();
         if (_daily != null) _daily.Refresh().Report();
-        SavedText.Text = L.F("Refreshed at {0:HH:mm:ss}.", DateTime.Now);
+        SavedText.Text = L.F("Refreshed at {0:HH:mm:ss}.", StationTime.Now);
     }
 
     DateTime _categoriesRead;
@@ -543,9 +554,9 @@ public partial class ScheduleWindow
     {
         _takeLines.Clear(); // a category's songs may have changed: looked at again
         // The templates' category list (not more than every few seconds: a scan may change things often).
-        if (DateTime.Now - _categoriesRead > TimeSpan.FromSeconds(3))
+        if (StationTime.Now - _categoriesRead > TimeSpan.FromSeconds(3))
         {
-            _categoriesRead = DateTime.Now;
+            _categoriesRead = StationTime.Now;
             LoadCategories().Report();
         }
         foreach (var page in _pages.Values)
@@ -616,7 +627,7 @@ public partial class ScheduleWindow
             {
                 db.SetCues(file, cues);
                 double length = track?.Duration is > 0 and var d ? d : AudioProbe.Duration(file) ?? 0;
-                if (length > 0) new PlanStore(db).UpdateSeconds(file, DailyPlaylistsView.Plays(cues, length, Crossfade(kind, kind)), DateTime.Now.Date.AddHours(DateTime.Now.Hour));
+                if (length > 0) new PlanStore(db).UpdateSeconds(file, DailyPlaylistsView.Plays(cues, length, Crossfade(kind, kind)), StationTime.Now.Date.AddHours(StationTime.Now.Hour));
             }),
             LoadWaveform = DailyPlaylistsView.Waveforms.LoadAsync,
             Crossfade = Crossfade,
@@ -659,6 +670,6 @@ public partial class ScheduleWindow
 
         static string Seen(TimeSpan ago) => ago < TimeSpan.FromSeconds(10) ? L.T("answering")
             : ago < TimeSpan.FromHours(1) ? L.F("last seen {0:0} min ago", Math.Max(1, ago.TotalMinutes))
-            : L.F("last seen {0:dd/MM HH:mm}", DateTime.Now - ago);
+            : L.F("last seen {0:dd/MM HH:mm}", StationTime.Now - ago);
     }
 }

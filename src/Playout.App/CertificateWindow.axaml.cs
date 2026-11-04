@@ -101,14 +101,14 @@ public partial class CertificateWindow : Window
     /// <summary>A month: 0 this one (to today), -1 the one before.</summary>
     void SetMonth(int offset)
     {
-        var first = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(offset);
+        var first = new DateTime(StationTime.Today.Year, StationTime.Today.Month, 1).AddMonths(offset);
         FromBox.SelectedDate = first;
-        ToBox.SelectedDate = offset == 0 ? DateTime.Today : first.AddMonths(1).AddDays(-1);
+        ToBox.SelectedDate = offset == 0 ? StationTime.Today : first.AddMonths(1).AddDays(-1);
     }
 
     (DateTime From, DateTime To) Period()
     {
-        var (from, to) = (FromBox.SelectedDate ?? DateTime.Today, ToBox.SelectedDate ?? DateTime.Today);
+        var (from, to) = (FromBox.SelectedDate ?? StationTime.Today, ToBox.SelectedDate ?? StationTime.Today);
         return to < from ? (to.Date, from.Date) : (from.Date, to.Date);
     }
 
@@ -127,7 +127,7 @@ public partial class CertificateWindow : Window
                 if (version != _version) return;
                 (_asRun, _read) = (entries, (from, to));
             }
-            _lines = Certificates.Build(_client, Campaign, _asRun, from, to, DateTime.Now);
+            _lines = Certificates.Build(_client, Campaign, _asRun, from, to, StationTime.Now);
             LineList.ItemsSource = _lines.Select(l => new CertificateRow(l)).ToList();
             SummaryText.Text = _lines.Count == 0 ? L.T("Nothing booked nor on air in these days.") : Certificates.Summary(_lines);
             SummaryText.Foreground = _lines.Any(l => l.Status == CertificateStatus.Missed) ? new SolidColorBrush(Color.Parse("#E5484D")) : Brushes.White;
@@ -267,7 +267,7 @@ public partial class CertificateWindow : Window
             if (csv) await File.WriteAllTextAsync(path, report.ToCsv(';'), new UTF8Encoding(true));
             else
             {
-                await File.WriteAllTextAsync(path, report.ToHtml(L.F("Made by {0} on {1:yyyy-MM-dd HH:mm}", AppInfo.ScheduleName, DateTime.Now)), new UTF8Encoding(false));
+                await File.WriteAllTextAsync(path, report.ToHtml(L.F("Made by {0} on {1:yyyy-MM-dd HH:mm}", AppInfo.ScheduleName, StationTime.Now)), new UTF8Encoding(false));
                 Updates.OpenInBrowser(path);
             }
             SummaryText.Text = L.F("Saved {0}", Path.GetFileName(path)) + " · " + Certificates.Summary(_lines);

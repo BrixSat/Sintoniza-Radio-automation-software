@@ -86,6 +86,9 @@ CHAPTERS = [
     ("p", "O resto define-se na <b>Sintoniza Pro</b>, em <b>Definições da estação</b>. Entre como <b>admin</b> com a "
           "palavra-passe <b>admin</b> e, antes de mais nada, mude essa palavra-passe em Estação → Utilizadores."),
     ("fig", "station-station", "Definições da estação → Estação", [("StationNameBox", "O <b>nome da estação</b>, o <b>logótipo</b>, o género e o site. Aparecem ao lado do relógio e seguem para o stream e o RDS. "
+        "Por baixo, o <b>fuso horário</b>: onde a estação está no ar. Deixe <i>O de cada computador</i> quando os relógios dos estúdios estão na hora da estação; "
+        "escolha um quando um estúdio ou um servidor está noutro sítio, e a programação, o sinal horário, o relógio, os registos e os relatórios seguem a hora da estação. "
+        "Cada programa só passa a usar uma alteração quando voltar a arrancar (a Emi e a Pro avisam); as cópias de segurança seguem a hora do computador. "
         "Em <b>Tipo de estação</b>, escolha <i>Rádio FM</i> se o microfone passa pela mesa de mistura, ou <i>Rádio web</i> se passa pelo computador.")]),
     ("fig", "station-audio", "Definições da estação → Áudio", [("CrossfadeBox", "Quantos segundos uma música se cruza com a seguinte."),
         ("OtherCrossfadeBox", "O crossfade à entrada e à saída de jingles, anúncios e programas. Com 0, a música acaba e o jingle entra limpo."),

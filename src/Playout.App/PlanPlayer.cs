@@ -58,7 +58,7 @@ sealed class PlanPlayer
         _options = options;
         _daysAhead = daysAhead;
         // At start the hour now goes in first; making the coming days' hours (which can take a while) after it.
-        _nextKeep = DateTime.Now + FirstKeep;
+        _nextKeep = StationTime.Now + FirstKeep;
     }
 
     static readonly TimeSpan FirstKeep = TimeSpan.FromSeconds(20);
@@ -72,7 +72,7 @@ sealed class PlanPlayer
     /// <summary>The hour now, from the item planned for now, in the playlist (this computer has just gone on air).</summary>
     public Task LoadNow()
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         _pending = (Hour(now), now.AddSeconds(20));
         return _busy = Task.Run(() => Load(Hour(now), now));
     }
@@ -99,7 +99,7 @@ sealed class PlanPlayer
     /// </summary>
     public void Check(DateTime? ends, bool auto, IReadOnlyList<PlaylistRow> rows)
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         if (Standby || now < _nextCheck || _busy is { IsCompleted: false }) return;
         _nextCheck = now.AddSeconds(2);
 
@@ -226,13 +226,13 @@ sealed class PlanPlayer
         items ??= PlanCache.Items(hour);
         if ((items == null || items.Count == 0) && notYet)
         {
-            lock (_empty) _empty[hour] = DateTime.Now.AddSeconds(3);
+            lock (_empty) _empty[hour] = StationTime.Now.AddSeconds(3);
             _pending = null;
             return;
         }
         if (items == null || items.Count == 0)
         {
-            lock (_empty) _empty[hour] = DateTime.Now.AddMinutes(1);
+            lock (_empty) _empty[hour] = StationTime.Now.AddMinutes(1);
             _pending = null; // nothing is on its way
             if (Reported("empty:" + hour)) Say(L.F("Daily playlist {0:dd/MM HH}:00: nothing planned; fill music plays", hour));
             return;
@@ -358,7 +358,7 @@ sealed class PlanPlayer
             double length = r.Track.PlayLength;
             while (last + 1 < rows.Count && rows[last + 1].Track.Event == r.Track.Event && rows[last + 1].Track.StartBy == null)
                 length += rows[++last].Track.PlayLength;
-            var ends = by.ToLocalTime().AddSeconds(length);
+            var ends = StationTime.FromUtc(by).AddSeconds(length);
             var hour = Hour(ends.AddSeconds(30));
             if ((hour - ends).TotalSeconds is >= -5 and <= 20) return (hour, i, last);
             i = last;
@@ -416,7 +416,7 @@ sealed class PlanPlayer
         catch (Exception ex) { Say(L.F("Daily playlist: {0}", ex.Message)); }
     }
 
-    void Say(string message) => Message?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
+    void Say(string message) => Message?.Invoke($"{StationTime.Now:HH:mm:ss}  {message}");
 }
 
 /// <summary>Makes the hours of the daily playlists that are missing or out of date (for the playout and the manager).</summary>

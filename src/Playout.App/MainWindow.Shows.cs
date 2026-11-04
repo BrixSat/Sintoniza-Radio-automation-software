@@ -34,7 +34,7 @@ public partial class MainWindow
     internal ShowInfo? WebShow => ShowNow;
     internal Track? WebNext => NextItem();
 
-    ShowInfo? ShowNow => _show is { } s ? new ShowInfo(s.Show.Name.Trim(), s.Show.Presenter.Trim(), s.End.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")) : null;
+    ShowInfo? ShowNow => _show is { } s ? new ShowInfo(s.Show.Name.Trim(), s.Show.Presenter.Trim(), StationTime.ToUtc(s.End).ToString("yyyy-MM-ddTHH:mm:ssZ")) : null;
 
     static string ShowName(LiveShow show) => show.Name.Trim().Length > 0 ? show.Name.Trim() : L.T("Show");
 

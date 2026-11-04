@@ -36,7 +36,7 @@ public partial class MainWindow : Window, IShowsProblems
     int _slowTick;
     StreamState? _lastStreamState;
     DateTime _streamSince;
-    DateTime _playedDay = DateTime.Today;
+    DateTime _playedDay = StationTime.Today;
     int _playedToday;
     bool _settingsOpen;
     DateTime? _playlistEnds;
@@ -139,7 +139,7 @@ public partial class MainWindow : Window, IShowsProblems
                 Dispatcher.UIThread.Post(() => LastLog.Text = message);
             };
             // Saved in the schedule program: show what is coming up now.
-            _scheduler.Reloaded += () => Dispatcher.UIThread.Post(() => ReadUpcoming(DateTime.Now, force: true));
+            _scheduler.Reloaded += () => Dispatcher.UIThread.Post(() => ReadUpcoming(StationTime.Now, force: true));
             var scheduler = _scheduler;
             // The daily playlists: made ahead, put in the playlist as their hours come.
             _plan = new PlanPlayer(_engine, _library, () => scheduler.Current, PlanOptions, () => Math.Clamp(_settings.PlanDaysAhead, 0, 14));
@@ -618,7 +618,7 @@ public partial class MainWindow : Window, IShowsProblems
     void Tick()
     {
         Volatile.Write(ref _lastTick, Environment.TickCount64);
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         Clock.Text = now.ToString("HH:mm:ss");
 
         if (_engine == null) return;
@@ -702,7 +702,7 @@ public partial class MainWindow : Window, IShowsProblems
         // Once a second is plenty for the date, ETA column and station info.
         if (_slowTick-- > 0) return;
         _slowTick = 30;
-        Part("date", () => DateText.Text = now.ToString("dddd, d MMMM yyyy"));
+        Part("date", () => DateText.Text = now.ToString("dddd, d MMMM yyyy") + ZoneSuffix);
         Part("upcoming", () => ReadUpcoming(now));
         Part("as-run", () => _asRun.Sync()); // every ten minutes: what the database missed
         Part("start times", () => UpdateStartTimes(st));
@@ -881,7 +881,7 @@ public partial class MainWindow : Window, IShowsProblems
 
         // A stream that plays until Stop has no end, so nothing after it has a start time.
         DateTime? at = st.State == PlayerState.Playing && current >= 0 && st.Current is { IsOpenEnded: false }
-            ? DateTime.Now.AddSeconds(Math.Max(0, MixOf(st.Current, nextUp) - st.Position))
+            ? StationTime.Now.AddSeconds(Math.Max(0, MixOf(st.Current, nextUp) - st.Position))
             : null;
 
         var order = new List<PlaylistRow>(items.Count + _upcoming.Count);
@@ -898,14 +898,15 @@ public partial class MainWindow : Window, IShowsProblems
             row.HourMark = "";
             row.IsOverHour = false;
             var played = items[i].PlayedAt!.Value;
-            var local = played.ToLocalTime();
-            row.StartTime = local.Date == DateTime.Today ? local.ToString("HH:mm:ss") : local.ToString("ddd HH:mm");
+            var local = StationTime.FromUtc(played);
+            row.StartTime = local.Date == StationTime.Today ? local.ToString("HH:mm:ss") : local.ToString("ddd HH:mm");
             row.StartAt = local;
             var h = new DateTime(local.Year, local.Month, local.Day, local.Hour, 0, 0);
-            if (pastHour is { } ph && h > ph) row.HourMark = h.Date == DateTime.Today ? h.ToString("HH:mm") : h.ToString("HH:mm  ddd");
+            if (pastHour is { } ph && h > ph) row.HourMark = h.Date == StationTime.Today ? h.ToString("HH:mm") : h.ToString("HH:mm  ddd");
             if (pastHour == null || h > pastHour) pastHour = h;
         }
-        var lastHour = pastHour ?? new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, DateTime.Now.Hour, 0, 0);
+        var clock = StationTime.Now;
+        var lastHour = pastHour ?? new DateTime(clock.Year, clock.Month, clock.Day, clock.Hour, 0, 0);
         void Show(PlaylistRow row, DateTime t)
         {
             row.StartTime = t.ToString("HH:mm:ss");
@@ -913,15 +914,15 @@ public partial class MainWindow : Window, IShowsProblems
             row.IsOverHour = PlanPlayer.OverHour(row, t);
             // The first ad break still to come (shown ahead, or already in the playlist), for the countdown.
             // The first thing with a fixed time still to come (an event shown ahead, an ad break, a timed item), for NEXT EVENT.
-            if (_nextFixed == null && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now
+            if (_nextFixed == null && !row.IsPlaying && !row.IsPlayed && t > StationTime.Now
                 && (row.IsPreview || row.IsTimed || (row.IsAdBreak && !row.IsEmptyBreak)))
                 _nextFixed = (t, row.Track.Event ?? (row.IsAdBreak ? L.T("Ad break") : row.Title));
-            if (_nextBreak == null && row.IsAdBreak && !row.IsEmptyBreak && !row.IsPlaying && !row.IsPlayed && t > DateTime.Now)
+            if (_nextBreak == null && row.IsAdBreak && !row.IsEmptyBreak && !row.IsPlaying && !row.IsPlayed && t > StationTime.Now)
                 _nextBreak = (t, row.Track.Event ?? (row.IsPreview ? row.Title : L.T("Ad break")),
                     row.IsPreview ? _upcoming.FirstOrDefault(u => u.Label == (row.Track.Event ?? row.Title))?.How ?? "" : BreakHow(row.Track));
             var hour = new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0);
             if (hour <= lastHour) return;
-            row.HourMark = hour.Date == DateTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
+            row.HourMark = hour.Date == StationTime.Today ? hour.ToString("HH:mm") : hour.ToString("HH:mm  ddd");
             lastHour = hour;
         }
         // Scheduled events due by the time the playlist reaches t go in there: a soft one when the item before it
@@ -949,7 +950,7 @@ public partial class MainWindow : Window, IShowsProblems
         (string Name, DateTime At)? NextTimed(int i)
         {
             for (int k = i + 1; k < items.Count; k++)
-                if (items[k].StartBy is { } by && !PlayedRow(k)) return (items[k].Event ?? items[k].Display, by.ToLocalTime());
+                if (items[k].StartBy is { } by && !PlayedRow(k)) return (items[k].Event ?? items[k].Display, StationTime.FromUtc(by));
             return null;
         }
 
@@ -966,7 +967,7 @@ public partial class MainWindow : Window, IShowsProblems
             {
                 at = Scheduled(at.Value);
                 // An item with a latest start starts then at the latest (what is on air is faded).
-                if (items[i].StartBy is { } by && by.ToLocalTime() < at) at = by.ToLocalTime();
+                if (items[i].StartBy is { } by && StationTime.FromUtc(by) < at) at = StationTime.FromUtc(by);
                 var t = at.Value;
                 Show(row, t);
                 // One that would only start once a timed item ahead has to have started won't play here (jumped over).
@@ -984,7 +985,7 @@ public partial class MainWindow : Window, IShowsProblems
             {
                 row.StartTime = "";
                 row.IsOverHour = false;
-                row.StartAt = i == current && items[i].PlayedAt is { } on ? on.ToLocalTime() : null;
+                row.StartAt = i == current && items[i].PlayedAt is { } on ? StationTime.FromUtc(on) : null;
             }
             order.Add(row);
         }
@@ -1011,7 +1012,7 @@ public partial class MainWindow : Window, IShowsProblems
 
     /// <summary>How a break already in the playlist starts (from its first item).</summary>
     static string BreakHow(Track first) => first.StartBy is { } by
-        ? first.Backtime ? L.T("ends on time") : L.F("can wait until {0:HH:mm:ss}", by.ToLocalTime())
+        ? first.Backtime ? L.T("ends on time") : L.F("can wait until {0:HH:mm:ss}", StationTime.FromUtc(by))
         : L.T("after the song");
 
     /// <summary>
@@ -1023,14 +1024,14 @@ public partial class MainWindow : Window, IShowsProblems
         // An ad break due while the player is stopped or paused: it goes on air in a few seconds all the same.
         if (_engine?.StoppedBreak is { } due)
         {
-            var wait = due.At.ToLocalTime() - now;
+            var wait = StationTime.FromUtc(due.At) - now;
             BreakBadge.IsVisible = true;
             BreakSign.Text = PlaylistRow.Currency;
             BreakTime.Text = (wait > TimeSpan.Zero ? wait : TimeSpan.Zero).ToString(@"mm\:ss");
             BreakHowText.Text = "· " + (_engine?.State == PlayerState.Paused ? L.T("PLAYER PAUSED: IT PLAYS ANYWAY") : L.T("PLAYER STOPPED: IT PLAYS ANYWAY"));
             BreakBadge.Classes.Set("soon", true);
             ToolTip.SetTip(BreakBadge, L.F("{0}: due while the player is stopped; it goes on air at {1:HH:mm:ss} and the player stops again after it. Play starts it now, and the playlist goes on after it.",
-                due.What, due.At.ToLocalTime()));
+                due.What, StationTime.FromUtc(due.At)));
             return;
         }
         var left = _nextBreak is { } b ? b.At - now : TimeSpan.MaxValue;
@@ -1144,7 +1145,7 @@ public partial class MainWindow : Window, IShowsProblems
     /// </summary>
     List<PlaylistRow> Visible(List<PlaylistRow> order)
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         var hour = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0);
         var from = hour.AddHours(-1);
         DateTime? to = _settings.PlaylistHourView && order.Any(r => r.IsPlaying)
@@ -1269,7 +1270,7 @@ public partial class MainWindow : Window, IShowsProblems
     void UpdateStreamStatus(PlayerStatus st)
     {
         if (st.Stream == _lastStreamState) return;
-        if (st.Stream == StreamState.OnAir) _streamSince = DateTime.Now;
+        if (st.Stream == StreamState.OnAir) _streamSince = StationTime.Now;
         _lastStreamState = st.Stream;
         ShowStreaming();
 
@@ -1328,7 +1329,7 @@ public partial class MainWindow : Window, IShowsProblems
         LightOff = new SolidColorBrush(Color.Parse("#4A5060")), LightBad = new SolidColorBrush(Color.Parse("#E5484D"));
     void CountPlayed()
     {
-        if (_playedDay != DateTime.Today) { _playedDay = DateTime.Today; _playedToday = 0; }
+        if (_playedDay != StationTime.Today) { _playedDay = StationTime.Today; _playedToday = 0; }
         _playedToday++;
     }
 
@@ -1523,7 +1524,7 @@ public partial class MainWindow : Window, IShowsProblems
         var items = _settings.PlaylistItems;
         int onAir = Math.Min(_settings.OnAirIndex, items.Count - 1);
         bool old = _settings.SavedAtUtc is { } saved && DateTime.UtcNow - saved > TimeSpan.FromHours(1);
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         int left = 0;
         for (int i = items.Count - 1; i > onAir; i--)
         {
@@ -1535,7 +1536,7 @@ public partial class MainWindow : Window, IShowsProblems
         }
         if (left > 0)
             AppLog.Write(old
-                ? L.F("The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now", _settings.SavedAtUtc!.Value.ToLocalTime(), left)
+                ? L.F("The playlist is from {0:dd/MM HH:mm}, when the program last ran: its {1} items still to play were left out; the daily playlist carries on from now", StationTime.FromUtc(_settings.SavedAtUtc!.Value), left)
                 : L.F("{0} items of daily playlist hours that have ended were left out", left));
         // What already played: the last few, to see what just went on air (each one put back is a file opened
         // again, slow over a network share; the as-run log has the rest).
@@ -1554,7 +1555,7 @@ public partial class MainWindow : Window, IShowsProblems
         int last = Math.Min(onAirIndex, items.Count - 1);
         if (last < 0 || items.Take(last + 1).All(e => e.PlayedAt != null)) return;
         List<AsRunEntry> log;
-        try { log = AsRunLog.Read(AsRunLog.DefaultFolder, DateTime.Today.AddDays(-7), DateTime.Today).Where(e => e.Source != "cart").ToList(); }
+        try { log = AsRunLog.Read(AsRunLog.DefaultFolder, StationTime.Today.AddDays(-7), StationTime.Today).Where(e => e.Source != "cart").ToList(); }
         catch { return; }
         var before = DateTime.MaxValue;
         var used = new HashSet<AsRunEntry>();
@@ -1563,7 +1564,7 @@ public partial class MainWindow : Window, IShowsProblems
             var e = items[i];
             if (e.PlayedAt is { } known)
             {
-                before = known.ToLocalTime();
+                before = StationTime.FromUtc(known);
                 continue;
             }
             if (log.LastOrDefault(x => x.Start < before && x.File == e.Path && !used.Contains(x)) is { } play)
@@ -1574,7 +1575,7 @@ public partial class MainWindow : Window, IShowsProblems
             else if (log.LastOrDefault(x => x.File == e.Path && !used.Contains(x)) is not { } other) continue;
             else play = other;
             used.Add(play);
-            e.PlayedAt = play.Start.ToUniversalTime();
+            e.PlayedAt = StationTime.ToUtc(play.Start);
         }
     }
 
@@ -1653,7 +1654,7 @@ public partial class MainWindow : Window, IShowsProblems
         {
             Title = L.T("Save playlist"),
             DefaultExtension = "m3u8",
-            SuggestedFileName = $"playlist-{DateTime.Now:yyyyMMdd-HHmm}.m3u8",
+            SuggestedFileName = $"playlist-{StationTime.Now:yyyyMMdd-HHmm}.m3u8",
         });
         if (file?.TryGetLocalPath() is not { } path) return;
 
@@ -2256,7 +2257,7 @@ public partial class MainWindow : Window, IShowsProblems
         // After the time signal the new hour starts: songs left from the hour before don't.
         _engine.OldHour = t =>
         {
-            var soon = DateTime.Now.AddSeconds(30);
+            var soon = StationTime.Now.AddSeconds(30);
             var hour = new DateTime(soon.Year, soon.Month, soon.Day, soon.Hour, 0, 0);
             return PlanPlayer.ReadTag(t.Tag) is { } tag && tag.Hour < hour
                    && t.Kind == TrackKind.Music && t.Lock == ItemLock.Free && !t.InBreak && t.Event == null;

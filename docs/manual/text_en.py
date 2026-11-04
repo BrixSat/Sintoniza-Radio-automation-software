@@ -87,7 +87,10 @@ CHAPTERS = [
     ("p", "Open <b>Sintoniza Pro</b> and go to <b>Station settings</b>. Log in as <b>admin</b> with the password <b>admin</b>, "
           "and change that password straight away in Station → Users."),
     ("fig", "station-station", "Station settings → Station", [("StationNameBox", "The <b>station name</b>, <b>logo</b>, genre and website. They appear next to the clock and go out with the stream and RDS. "
-        "Below them, the <b>station type</b>: <i>FM radio</i> if the microphones go through a mixing desk, <i>Web radio</i> if they go through the computer.")]),
+        "Below them, the <b>time zone</b>: where the station is on air. Leave it at <i>Each computer's own</i> when the studios' clocks are set to the station's time; "
+        "choose one when a studio or a server is somewhere else, and the schedule, the time signal, the clock, the logs and the reports go by the station's time. "
+        "Each program takes a change the next time it starts (Emi and Pro say so); backups keep the computer's clock. "
+        "Then the <b>station type</b>: <i>FM radio</i> if the microphones go through a mixing desk, <i>Web radio</i> if they go through the computer.")]),
     ("fig", "station-audio", "Station settings → Audio", [("CrossfadeBox", "How long one song overlaps the next, in seconds."),
         ("OtherCrossfadeBox", "The crossfade into or out of jingles, adverts and programmes. Zero gives a clean cut, which is usual."),
         ("LoudnessBox", "Plays every item at the same loudness, measured to the EBU R128 standard. Your files are never changed.")]),

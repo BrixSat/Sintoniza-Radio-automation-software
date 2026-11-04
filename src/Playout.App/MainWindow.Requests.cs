@@ -43,7 +43,7 @@ public partial class MainWindow
     public string? AddRequest(string path, string title, string artist, string listener, string message, string takenBy)
     {
         if (!SharedPaths.FileExists(path)) return L.F("Not found: {0}", path);
-        var request = new SongRequest(Guid.NewGuid(), path, title.Trim(), artist.Trim(), listener.Trim(), message.Trim(), takenBy, DateTime.Now);
+        var request = new SongRequest(Guid.NewGuid(), path, title.Trim(), artist.Trim(), listener.Trim(), message.Trim(), takenBy, StationTime.Now);
         _requests.Add(request);
         ShowMessage(L.F("Request taken: {0} ({1})", request.Display, request.Dedication));
         RequestsChanged?.Invoke();

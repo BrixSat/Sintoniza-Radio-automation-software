@@ -63,14 +63,14 @@ public partial class ErcView : UserControl
     /// <summary>A month: 0 this one, -1 the one before.</summary>
     void SetMonth(int offset)
     {
-        var first = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(offset);
+        var first = new DateTime(StationTime.Today.Year, StationTime.Today.Month, 1).AddMonths(offset);
         FromBox.SelectedDate = first;
-        ToBox.SelectedDate = offset == 0 ? DateTime.Today : first.AddMonths(1).AddDays(-1);
+        ToBox.SelectedDate = offset == 0 ? StationTime.Today : first.AddMonths(1).AddDays(-1);
     }
 
     (DateTime From, DateTime To) Period()
     {
-        var (from, to) = (FromBox.SelectedDate ?? DateTime.Today, ToBox.SelectedDate ?? DateTime.Today);
+        var (from, to) = (FromBox.SelectedDate ?? StationTime.Today, ToBox.SelectedDate ?? StationTime.Today);
         return to < from ? (to.Date, from.Date) : (from.Date, to.Date);
     }
 
@@ -84,7 +84,7 @@ public partial class ErcView : UserControl
         StatusText.Text = L.T("Counting…");
         try
         {
-            var now = DateTime.Now;
+            var now = StationTime.Now;
             var (played, planned) = await Task.Run(() => Load(db, from, to, now));
             _played = played;
             _checked = (from, to);
@@ -421,7 +421,7 @@ public partial class ErcView : UserControl
             });
             _countries = countries;
             ShowCountries();
-            DetailsText.Text = L.F("Saved at {0:HH:mm:ss}.", DateTime.Now);
+            DetailsText.Text = L.F("Saved at {0:HH:mm:ss}.", StationTime.Now);
             await Check();
         }
         catch (Exception ex)

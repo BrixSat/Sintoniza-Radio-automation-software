@@ -1,4 +1,5 @@
 using Playout.Library;
+using Playout.Engine;
 
 namespace Playout.App;
 
@@ -75,7 +76,7 @@ sealed class LibraryFill
             // A song whose file isn't there (moved or deleted since the last scan) is set aside, and another picked:
             // it would only be skipped on air. It comes back with the next reload if the file does.
             // Songs whose dates, days or hours don't allow them now are left out (unless that leaves nothing: never silence).
-            var local = DateTime.Now;
+            var local = StationTime.Now;
             for (int tries = 0; tries < 50 && _tracks.Length > 0; tries++)
             {
                 var pool = _tracks.Where(t => t.Track.Rules?.AllowsAt(local) != false).ToArray();

@@ -237,7 +237,7 @@ public sealed class PlayoutEngine : IDisposable
     /// </summary>
     public void PreviewTimeSignal(TimeSignalSettings settings)
     {
-        var hour = TopOfHour(DateTime.Now);
+        var hour = TopOfHour(StationTime.Now);
         var (signal, announcement) = SignalFiles(settings, hour);
         int h = signal == null ? 0 : TimeSignal.Open(signal, Emit, out _, out double length);
         if (h != 0 && !BassMix.MixerAddChannel(_graph.PreviewBus, h, BassFlags.AutoFree)) { Bass.StreamFree(h); return; }
@@ -472,11 +472,11 @@ public sealed class PlayoutEngine : IDisposable
         {
             // On the hour with a time signal that stops what plays: it ends as the signal starts (the signal takes it
             // to the hour), not cut by it.
-            var localEnd = endsAt.ToLocalTime();
+            var localEnd = StationTime.FromUtc(endsAt);
             if (_timeSignal.Mode == TimeSignalMode.Stop && localEnd.Minute == 0 && localEnd.Second == 0)
             {
                 endsAt = endsAt.AddSeconds(-(LeadFor(localEnd) + SignalFadeSeconds));
-                Emit(L.F("{0}: ends at {1:HH:mm:ss}, as the time signal for {2:HH:mm} starts", label, endsAt.ToLocalTime(), localEnd));
+                Emit(L.F("{0}: ends at {1:HH:mm:ss}, as the time signal for {2:HH:mm} starts", label, StationTime.FromUtc(endsAt), localEnd));
             }
             var startAt = endsAt - TimeSpan.FromSeconds(ChainLength(tracks));
             tracks[0] = tracks[0] with { StartBy = startAt, Backtime = true };
@@ -497,7 +497,7 @@ public sealed class PlayoutEngine : IDisposable
                 _playlist.InsertRange(at, tracks);
                 if (at <= _cursorIndex) _cursorIndex += tracks.Count;
             }
-            Emit(L.F("{0}: starts at {1:HH:mm:ss} to end at {2:HH:mm:ss}", label, startAt.ToLocalTime(), endsAt.ToLocalTime()));
+            Emit(L.F("{0}: starts at {1:HH:mm:ss} to end at {2:HH:mm:ss}", label, StationTime.FromUtc(startAt), StationTime.FromUtc(endsAt)));
             PlaylistUpdated();
             return;
         }
@@ -1164,7 +1164,7 @@ public sealed class PlayoutEngine : IDisposable
     {
         if (Takes.KindOf(take.Path) is not { } kind || TakeSource?.Invoke() is not var (folder, temperature)) return [];
         var parts = new List<Track>();
-        foreach (var file in Takes.Files(folder, kind, DateTime.Now, temperature))
+        foreach (var file in Takes.Files(folder, kind, StationTime.Now, temperature))
             if (SafeProbe(file, exact: true) is { } t)
                 parts.Add(t with
                 {
@@ -1174,7 +1174,7 @@ public sealed class PlayoutEngine : IDisposable
         if (parts.Count == 0) return parts;
         string played = L.F("{0}: {1}", take.Title, string.Join(" + ", parts.Select(p => Path.GetFileNameWithoutExtension(p.Path))));
         // The time without its temperature: say why, so the file to add (or the place to set) is known.
-        if (kind == TakeKind.TimeAndTemperature && Takes.Missing(folder, TakeKind.Temperature, DateTime.Now, temperature) is { } why)
+        if (kind == TakeKind.TimeAndTemperature && Takes.Missing(folder, TakeKind.Temperature, StationTime.Now, temperature) is { } why)
             played += " — " + L.F("without the temperature: {0}", why);
         Emit(played);
         return parts;
@@ -1276,7 +1276,7 @@ public sealed class PlayoutEngine : IDisposable
             {
                 var source = TakeSource?.Invoke();
                 Skip(track, outgoingFade, Takes.KindOf(track.Path) is { } kind && source is var (folder, temperature)
-                    ? Takes.Missing(folder, kind, DateTime.Now, temperature) ?? L.T("no take files for it")
+                    ? Takes.Missing(folder, kind, StationTime.Now, temperature) ?? L.T("no take files for it")
                     : L.T("no take files for it"));
                 return;
             }
@@ -1904,10 +1904,10 @@ public sealed class PlayoutEngine : IDisposable
         var now = DateTime.UtcNow;
         (DateTime At, string What)? moment = null;
         foreach (var at in _expected)
-            if (at > now && (moment == null || at < moment.Value.At)) moment = (at, L.F("the event at {0:HH:mm:ss}", at.ToLocalTime()));
+            if (at > now && (moment == null || at < moment.Value.At)) moment = (at, L.F("the event at {0:HH:mm:ss}", StationTime.FromUtc(at)));
         if (_timeSignal.Mode != TimeSignalMode.Off && _signalHour is { } hour)
         {
-            var signal = hour.ToUniversalTime().AddSeconds(-LeadFor(hour));
+            var signal = StationTime.ToUtc(hour).AddSeconds(-LeadFor(hour));
             if (signal > now && (moment == null || signal < moment.Value.At)) moment = (signal, L.F("the time signal for {0:HH:mm}", hour));
         }
         return moment;
@@ -2109,7 +2109,7 @@ public sealed class PlayoutEngine : IDisposable
     void CheckTimeSignal()
     {
         if (_timeSignal.Mode == TimeSignalMode.Off || _standby) return;
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         // The first hour that still leaves time to prepare (switched on at 59:58, it starts with the next hour). How
         // early it starts depends on that hour's sound (an hour announcement in place of the signal has its own length).
         if (_signalHour == null)
@@ -2323,5 +2323,5 @@ public sealed class PlayoutEngine : IDisposable
         }
     }
 
-    void Emit(string message) => Log?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
+    void Emit(string message) => Log?.Invoke($"{StationTime.Now:HH:mm:ss}  {message}");
 }

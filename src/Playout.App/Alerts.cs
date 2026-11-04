@@ -60,7 +60,7 @@ static class AlertSender
     /// <summary>Sends to every channel; returns the problems ("" when all went).</summary>
     public static async Task<string> SendAsync(AlertSettings s, string station, string kind, bool ok, string message)
     {
-        string text = $"{(ok ? "✅" : "⚠️")} {station}: {message} ({DateTime.Now:HH:mm:ss})";
+        string text = $"{(ok ? "✅" : "⚠️")} {station}: {message} ({StationTime.Now:HH:mm:ss})";
         var problems = new List<string>();
         if (s.HasTelegram)
             try
@@ -74,7 +74,7 @@ static class AlertSender
             try
             {
                 using var r = await Http.PostAsJsonAsync(s.WebhookUrl.Trim(),
-                    new { station, kind, ok, message, time = DateTimeOffset.Now.ToString("o", CultureInfo.InvariantCulture) });
+                    new { station, kind, ok, message, time = DateTimeOffset.UtcNow.ToOffset(StationTime.Zone.GetUtcOffset(DateTime.UtcNow)).ToString("o", CultureInfo.InvariantCulture) });
                 if (!r.IsSuccessStatusCode) problems.Add($"Webhook: {(int)r.StatusCode}");
             }
             catch (Exception ex) { problems.Add("Webhook: " + ex.Message); }
@@ -242,7 +242,7 @@ sealed class HealthMonitor : IDisposable
     /// </summary>
     void CheckTomorrow(AppSettings settings, AlertSettings a)
     {
-        var local = DateTime.Now;
+        var local = StationTime.Now;
         bool wanted = a.Tomorrow && local.Hour >= Math.Clamp(a.TomorrowHour, 0, 23) && settings.PlanDaysAhead >= 1 && Standby?.Invoke() != true;
         lock (_active)
             // Not wanted now (after midnight, switched off, standby): what was reported goes quietly.
@@ -265,7 +265,7 @@ sealed class HealthMonitor : IDisposable
                 lock (_active)
                 {
                     // Finished after midnight, or after this computer went standby: about a day that isn't tomorrow any more.
-                    if (DateTime.Now.Date.AddDays(1) != tomorrow || Standby?.Invoke() == true) return;
+                    if (StationTime.Now.Date.AddDays(1) != tomorrow || Standby?.Invoke() == true) return;
                     _tomorrowFor = tomorrow;
                     Problem("tomorrow", lines.Count > 0, () => text, L.T("Tomorrow's daily playlists are ready"));
                     // Still wrong, but something else now: the ALERTS lamp says what (no new alert for it).
@@ -359,7 +359,7 @@ sealed class HealthMonitor : IDisposable
         catch { return null; }
     }
 
-    void Say(string message) => Message?.Invoke($"{DateTime.Now:HH:mm:ss}  {message}");
+    void Say(string message) => Message?.Invoke($"{StationTime.Now:HH:mm:ss}  {message}");
 
     public void Dispose() => _timer.Dispose();
 }

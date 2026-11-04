@@ -44,9 +44,9 @@ public partial class RecWindow : Window
         _service = new RecService(_settings);
         _service.Message += m => Dispatcher.UIThread.Post(() => Log(m));
 
-        DayBox.SelectedDate = ExportDayBox.SelectedDate = DateTime.Today;
+        DayBox.SelectedDate = ExportDayBox.SelectedDate = StationTime.Today;
         DayBox.SelectedDateChanged += (_, _) => ShowDay();
-        TodayButton.Click += (_, _) => DayBox.SelectedDate = DateTime.Today;
+        TodayButton.Click += (_, _) => DayBox.SelectedDate = StationTime.Today;
         RecButton.Click += async (_, _) => await ToggleRecording();
         MonitorButton.IsChecked = _settings.Monitor;
         MonitorButton.IsCheckedChanged += (_, _) =>
@@ -98,7 +98,7 @@ public partial class RecWindow : Window
 
     void Log(string message)
     {
-        LastLog.Text = $"{DateTime.Now:HH:mm:ss}  {message}";
+        LastLog.Text = $"{StationTime.Now:HH:mm:ss}  {message}";
         AppLog.Write("Rec: " + message);
     }
 
@@ -131,7 +131,7 @@ public partial class RecWindow : Window
 
     void Tick()
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         _service.Level(_secondPeak);
         _secondPeak = 0;
         _service.Tick();
@@ -174,8 +174,8 @@ public partial class RecWindow : Window
 
     void ShowDay()
     {
-        _nextList = DateTime.Now.AddSeconds(30);
-        var day = DayBox.SelectedDate?.Date ?? DateTime.Today;
+        _nextList = StationTime.Now.AddSeconds(30);
+        var day = DayBox.SelectedDate?.Date ?? StationTime.Today;
         var selected = (FileList.SelectedItem as RecFile)?.Path;
         var files = Files(_settings.Folder, day);
         FileList.ItemsSource = files;
@@ -220,7 +220,7 @@ public partial class RecWindow : Window
 
     async Task Export()
     {
-        var day = ExportDayBox.SelectedDate?.Date ?? DateTime.Today;
+        var day = ExportDayBox.SelectedDate?.Date ?? StationTime.Today;
         if (Time(FromBox.Text) is not { } from || Time(ToBox.Text) is not { } to)
         {
             ExportText.Text = L.T("Write the times as 10:00 or 10:00:00.");

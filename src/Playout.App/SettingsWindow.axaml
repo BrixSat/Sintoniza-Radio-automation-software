@@ -45,6 +45,13 @@
                         <TextBox x:Name="StationNameBox" PlaceholderText="e.g. Rádio Exemplo 99.9 FM" />
                     </StackPanel>
 
+                    <StackPanel Classes="station" Spacing="4">
+                        <TextBlock Classes="label" Text="Time zone" />
+                        <ComboBox x:Name="TimeZoneBox" HorizontalAlignment="Stretch" MaxDropDownHeight="420" />
+                        <TextBlock Classes="note" TextWrapping="Wrap"
+                                   Text="Where the station is on air: its schedule, daily playlists, time signal, clock, logs and reports go by this time, whatever the computer's clock is set to (a studio or a server in another time zone). Each program takes a change the next time it starts; backups keep the computer's clock." />
+                    </StackPanel>
+
                     <StackPanel Classes="station">
                         <TextBlock Classes="label" Text="Logo" />
                         <Grid ColumnDefinitions="Auto,*">

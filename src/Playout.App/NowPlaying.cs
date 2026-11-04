@@ -215,7 +215,7 @@ public static class MetadataTemplate
         };
         var now = info.Now;
         string started = now?.Started is { } s && DateTime.TryParse(s, null, System.Globalization.DateTimeStyles.AdjustToUniversal, out var at)
-            ? at.ToLocalTime().ToString("HH:mm") : "";
+            ? StationTime.FromUtc(at).ToString("HH:mm") : "";
         var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["artist"] = now?.Artist ?? "",

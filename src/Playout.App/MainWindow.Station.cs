@@ -8,6 +8,11 @@ namespace Playout.App;
 public partial class MainWindow
 {
     long _stationVersion = -1;
+    /// <summary>After the date: the station's time zone, when its time isn't this computer's.</summary>
+    internal static string ZoneSuffix => StationTime.IsComputers ? "" : " · " + StationTime.Name;
+
+    /// <summary>The station's time zone changed in Pro: said until Emi starts again with it.</summary>
+    string? _zoneNote;
     DateTime _nextStationCheck;
     bool _stationBusy;
 
@@ -45,9 +50,22 @@ public partial class MainWindow
             if (station == null) { StartHeldStream(); ApplyListeners(); return; }
             bool first = known < 0;
             station.ApplyTo(_settings);
+            // Another time zone for the station: not halfway through the day on air (every time would jump), from the
+            // next start.
+            string zone = _settings.TimeZone.Trim();
+            if (zone == StationTime.Name) _zoneNote = null; // set back as it is: nothing to say
+            else
+            {
+                string text = StationTime.Find(zone) == null
+                    ? L.F("The station's time zone ({0}) isn't known on this computer: its own clock is used", zone)
+                    : L.F("The station's time zone is now {0}: Sintoniza Emi goes by it when it starts again", zone.Length > 0 ? zone : L.T("this computer's"));
+                AppLog.Write(text);
+                _zoneNote = text;
+            }
             _settings.Save(); // this computer's copy, for when the database can't be reached
             ApplyStationSettings();
             if (!first) LastLog.Text = L.T("The station's settings changed (Sintoniza Pro)");
+            if (_zoneNote != null) LastLog.Text = _zoneNote;
             StartHeldStream();
         }));
     }

@@ -156,7 +156,7 @@ public partial class MainWindow
             : new Lamp("stream", L.T("STREAM"), st switch { StreamState.OnAir => LampState.Ok, StreamState.Connecting => LampState.Warn, StreamState.Failed => LampState.Bad, _ => LampState.Off },
                 st switch
                 {
-                    StreamState.OnAir => Format.Duration((DateTime.Now - _streamSince).TotalSeconds),
+                    StreamState.OnAir => Format.Duration((StationTime.Now - _streamSince).TotalSeconds),
                     StreamState.Connecting => L.T("Connecting…"),
                     StreamState.Failed => L.T("Can't connect"),
                     _ => L.T("Off"),
@@ -246,7 +246,7 @@ public partial class MainWindow
                 IsStandby ? L.T("The computer on air counts the listeners")
                     : L.T("Listeners aren't counted (Sintoniza Pro → Station settings → Streaming)"));
         // A count that is minutes old: the counting stopped (the log says why).
-        if (counter.Count != null && DateTime.Now - counter.CountedAt > TimeSpan.FromMinutes(3))
+        if (counter.Count != null && StationTime.Now - counter.CountedAt > TimeSpan.FromMinutes(3))
             return new Lamp("listeners", L.T("LISTENERS"), LampState.Warn, "?", L.F("Listeners: not counted since {0:HH:mm}", counter.CountedAt));
         if (counter.Count is { } count)
             return new Lamp("listeners", L.T("LISTENERS"), LampState.Ok, count.ToString(System.Globalization.CultureInfo.CurrentCulture),
@@ -259,7 +259,7 @@ public partial class MainWindow
     /// <summary>Today's daily playlists: the hours left today that have an hour template should have one made.</summary>
     Lamp PlanLamp()
     {
-        var now = DateTime.Now;
+        var now = StationTime.Now;
         // Checked before midnight: yesterday's answer isn't today's.
         if (_planCheck is { } old && old.At.Date != now.Date) _planCheck = null;
         if (_planCheck is not { } check || now - check.At > TimeSpan.FromMinutes(1))

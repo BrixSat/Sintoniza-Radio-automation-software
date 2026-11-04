@@ -51,7 +51,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
     readonly Dictionary<string, double> _lengths = new(); // advert file → seconds
     List<ScheduleRow> _eventRows = new(), _breakRows = new(), _clientRows = new(), _campaignRows = new(), _templateRows = new();
     List<LibraryCategory> _categories = new();
-    DateTime _week = Monday(DateTime.Today);
+    DateTime _week = Monday(StationTime.Today);
     List<double> _spotTimes = new();
     List<AdPlacement>? _spotSnapshot;
     bool _loading, _closing;
@@ -766,7 +766,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
         : p.Kind == PartKind.Jingle
         ? ("♪  " + (Path.GetFileNameWithoutExtension(p.Path) is { Length: > 0 } n ? n : L.T("Jingle")),
             (p.OnlyWithAdverts ? L.T("jingle · only when the section after it has adverts") : L.T("jingle")) + (SharedPaths.FileExists(p.Path) ? "" : L.T(" · not found")), true)
-        : ("€  " + p.Section, L.F("advert section · {0} today", Plural(b.TimesOn(DateTime.Today).Sum(t => _data.InSection(b, p.Section, t).Count), "{0} advert", "{0} adverts")), true));
+        : ("€  " + p.Section, L.F("advert section · {0} today", Plural(b.TimesOn(StationTime.Today).Sum(t => _data.InSection(b, p.Section, t).Count), "{0} advert", "{0} adverts")), true));
 
     /// <summary>The section names offered when adding a section and booking a campaign, after they changed.</summary>
     void SectionsChanged()
@@ -799,7 +799,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
     }
 
     /// <summary>How many adverts the break plays today, at all its times.</summary>
-    int BookedToday(AdBreak b) => b.TimesOn(DateTime.Today).Sum(t => _data.InBreak(b, t).Count);
+    int BookedToday(AdBreak b) => b.TimesOn(StationTime.Today).Sum(t => _data.InBreak(b, t).Count);
 
     ScheduleRow BreakRow(AdBreak b) => new(b, () =>
         (EntryName(b), L.F("{0} · {1} · {2} today", SlotsSummary(b), StartText(b), Plural(BookedToday(b), "{0} advert", "{0} adverts")), b.Enabled));
@@ -853,7 +853,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
         AddCampaignButton.Click += async (_, _) =>
         {
             if (SelectedClient is not { } c || await PickFile(L.T("Advert")) is not { } path) return;
-            var k = new AdCampaign { Name = Path.GetFileNameWithoutExtension(path), Files = [path], From = DateTime.Today };
+            var k = new AdCampaign { Name = Path.GetFileNameWithoutExtension(path), Files = [path], From = StationTime.Today };
             c.Campaigns.Add(k);
             _campaignRows = _campaignRows.Append(CampaignRow(k)).ToList();
             CampaignList.ItemsSource = _campaignRows;
@@ -948,7 +948,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
         SpotGrid.PaintEnded += () => Edit<AdCampaign>(CampaignList, _ => { });
         WeekBackButton.Click += (_, _) => { _week = _week.AddDays(-7); ShowSpotWeek(); };
         WeekNextButton.Click += (_, _) => { _week = _week.AddDays(7); ShowSpotWeek(); };
-        ThisWeekButton.Click += (_, _) => { _week = Monday(DateTime.Today); ShowSpotWeek(); };
+        ThisWeekButton.Click += (_, _) => { _week = Monday(StationTime.Today); ShowSpotWeek(); };
     }
 
     static AdPlacement Copy(AdPlacement p) => new() { Day = p.Day, Date = p.Date, Time = p.Time };
@@ -1038,7 +1038,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
 
     /// <summary>The campaigns with places where there is no break: they don't play there (for Home).</summary>
     internal List<(AdClient Client, AdCampaign Campaign, int Places)> Unplaced() =>
-        _data.Clients.Where(c => c.Enabled).SelectMany(c => c.Campaigns.Where(k => k.Enabled && (k.To == null || k.To >= DateTime.Today))
+        _data.Clients.Where(c => c.Enabled).SelectMany(c => c.Campaigns.Where(k => k.Enabled && (k.To == null || k.To >= StationTime.Today))
             .Select(k => (c, k, k.Placements.Count(p => !HasBreak(k, p))))).Where(x => x.Item3 > 0).ToList();
 
     /// <summary>Whether there is a break at a place of the campaign that has its section.</summary>
@@ -1065,7 +1065,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
         SpotNoBreaks.IsVisible = _spotTimes.Count == 0;
         var culture = CultureInfo.CurrentCulture;
         WeekText.Text = L.F("Week {0}: {1} – {2}", ISOWeek.GetWeekOfYear(_week), _week.ToString("d MMM", culture), _week.AddDays(6).ToString("d MMM yyyy", culture));
-        Header(SpotHeader, days.Select(d => ($"{DayShort(d.DayOfWeek)} {d.ToString("d/M", culture)}", d == DateTime.Today)).ToList());
+        Header(SpotHeader, days.Select(d => ($"{DayShort(d.DayOfWeek)} {d.ToString("d/M", culture)}", d == StationTime.Today)).ToList());
         SpotGrid.Refresh();
     }
 
@@ -1104,7 +1104,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
 
     ScheduleRow ClientRow(AdClient c) => new(c, () =>
     {
-        int running = c.Campaigns.Count(k => k.Enabled && k.Placements.Count > 0 && !(k.To is { } to && to.Date < DateTime.Today));
+        int running = c.Campaigns.Count(k => k.Enabled && k.Placements.Count > 0 && !(k.To is { } to && to.Date < StationTime.Today));
         string detail = L.F("{0} · {1} running", Plural(c.Campaigns.Count, "{0} campaign", "{0} campaigns"), running);
         return (ClientName(c), c.Sector.Trim() is { Length: > 0 } sector ? sector + " · " + detail : detail, c.Enabled);
     });
@@ -1118,7 +1118,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
             (null, { } t) => L.F("until {0:yyyy-MM-dd}", t),
             ({ } f, { } t) => L.F("{0:yyyy-MM-dd} to {1:yyyy-MM-dd}", f, t),
         };
-        bool over = k.To is { } to && to.Date < DateTime.Today;
+        bool over = k.To is { } to && to.Date < StationTime.Today;
         string where = k.Section.Length > 0 ? k.Section : L.T("first section");
         string position = k.Position == 0 ? "" : L.F(" · position {0}", k.Position);
         return (CampaignName(k), L.F("{0}{1} · {2}{3} · {4}", dates, (over ? L.T(" (ended)") : ""), where, position, Plural(k.Placements.Count, "{0} place", "{0} places")),
@@ -1369,7 +1369,7 @@ public partial class ScheduleWindow : Window, IShowsProblems
     static string DatesSummary(ScheduleEntry e)
     {
         var dates = e.Dates.Order().ToList();
-        var coming = dates.Where(d => d >= DateTime.Now.AddHours(-1)).ToList();
+        var coming = dates.Where(d => d >= StationTime.Now.AddHours(-1)).ToList();
         var shown = (coming.Count > 0 ? coming : dates.TakeLast(1)).ToList();
         string text = string.Join(", ", shown.Take(3).Select(d => d.ToString(d.Second == 0 ? "dd/MM HH:mm" : "dd/MM HH:mm:ss")));
         return L.F("once: {0}", shown.Count > 3 ? text + "…" : text);
@@ -1492,9 +1492,9 @@ public partial class ScheduleWindow : Window, IShowsProblems
             _version = _store!.Save(_data, expected, Who);
             _saved = Snapshot();
             ErrorText.Text = "";
-            SavedText.Text = L.F("Saved at {0:HH:mm:ss}. The playout takes it within a few seconds.", DateTime.Now);
+            SavedText.Text = L.F("Saved at {0:HH:mm:ss}. The playout takes it within a few seconds.", StationTime.Now);
             // Shows that would be on at the same time, or live without a presenter: said when saved, not only on Home.
-            if (ShowCheck.Problems(_data, DateTime.Today, 7) is { Count: > 0 } shows)
+            if (ShowCheck.Problems(_data, StationTime.Today, 7) is { Count: > 0 } shows)
                 SavedText.Text += " " + Plural(shows.Count, "⚠ {0} problem with the shows (Shows)", "⚠ {0} problems with the shows (Shows)");
             if (_daily != null) _daily.ScheduleSaved().Report(); // the hours whose template changed are made again
         }

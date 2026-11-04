@@ -52,7 +52,7 @@ public partial class SettingsWindow : PageWindow
         TakesFolderText.Text = _takesFolder.Length > 0 ? _takesFolder : L.T("(none)");
         ClearTakesFolderButton.IsEnabled = _takesFolder.Length > 0;
         if (_takesFolder.Length == 0 || !SharedPaths.DirectoryExists(_takesFolder)) { TakesFolderNote.Text = _takesFolder.Length > 0 ? L.T("Folder not found.") : ""; return; }
-        var day = DateTime.Today;
+        var day = StationTime.Today;
         int hours = Enumerable.Range(0, 24).Count(h => Takes.Files(_takesFolder, TakeKind.Time, day.AddHours(h), null).Count > 0);
         int minutes = Enumerable.Range(1, 59).Count(m => Takes.Files(_takesFolder, TakeKind.Time, day.AddHours(10).AddMinutes(m), null).Count > 0);
         int temperatures = Enumerable.Range(-20, 66).Count(t => Takes.Files(_takesFolder, TakeKind.Temperature, day, t).Count > 0);
@@ -94,6 +94,7 @@ public partial class SettingsWindow : PageWindow
         ShowUpdateButton.Click += async (_, _) => { if (_update != null && _main != null) await _main.ShowUpdate(_update, this); };
 
         StationNameBox.Text = settings.StationName;
+        LoadTimeZones(settings.TimeZone);
         GenreBox.Text = settings.StationGenre;
         UrlBox.Text = settings.StationUrl;
         CurrencyBox.Text = settings.CurrencySign;
@@ -902,7 +903,7 @@ public partial class SettingsWindow : PageWindow
         ToolTip.SetTip(HourFolderText, set ? _hourFolder : null);
         ClearHourFolderButton.IsEnabled = HourAtBox.IsEnabled = set;
         if (!set) { HourFolderNote.Text = ""; return; }
-        var missing = Enumerable.Range(0, 24).Where(h => TimeSignal.HourFile(_hourFolder, DateTime.Today.AddHours(h)) == null).ToList();
+        var missing = Enumerable.Range(0, 24).Where(h => TimeSignal.HourFile(_hourFolder, StationTime.Today.AddHours(h)) == null).ToList();
         HourFolderNote.Text = !SharedPaths.DirectoryExists(_hourFolder) ? L.T("The folder isn't there.")
             : missing.Count == 0 ? L.T("A file for every hour.")
             : missing.Count == 24 ? L.T("No hour files found (e.g. HRS05.mp3).")
@@ -951,6 +952,7 @@ public partial class SettingsWindow : PageWindow
     {
         _settings.CheckForUpdates = AutoUpdateBox.IsChecked == true;
         _settings.StationName = StationNameBox.Text?.Trim() ?? "";
+        if (TimeZoneBox.SelectedIndex >= 0 && TimeZoneBox.SelectedIndex < _zones.Count) _settings.TimeZone = _zones[TimeZoneBox.SelectedIndex].Id;
         _settings.StationGenre = GenreBox.Text?.Trim() ?? "";
         _settings.StationUrl = UrlBox.Text?.Trim() ?? "";
         _settings.CurrencySign = CurrencyBox.Text?.Trim() ?? "";
@@ -1065,6 +1067,29 @@ public partial class SettingsWindow : PageWindow
         OnAirSign = OnAirSignBox.IsChecked == true,
         HiddenLamps = _lampBoxes.Where(b => b.Value.IsChecked != true).Select(b => b.Key).ToList(),
     };
+
+    /// <summary>The time zones to choose from: IANA name ("" = each computer's own) and what is shown.</summary>
+    List<(string Id, string Name)> _zones = new();
+
+    /// <summary>Every time zone this computer knows, by how far from UTC, under IANA names (the same on Windows, Mac and Linux).</summary>
+    void LoadTimeZones(string current)
+    {
+        _zones = [("", L.F("Each computer's own (this one: {0})", TimeZoneInfo.Local.DisplayName))];
+        foreach (var z in TimeZoneInfo.GetSystemTimeZones().OrderBy(z => z.BaseUtcOffset).ThenBy(z => z.Id))
+        {
+            string id = z.HasIanaId ? z.Id : TimeZoneInfo.TryConvertWindowsIdToIanaId(z.Id, out var iana) ? iana : z.Id;
+            if (id is "UTC" or "Etc/UTC" or "Etc/Universal") id = "Etc/UTC"; // UTC itself (a server's): kept, the other Etc/ ones aren't places
+            else if (id.StartsWith("Etc/", StringComparison.Ordinal)) continue;
+            if (_zones.Any(x => x.Id == id)) continue;
+            string offset = z.BaseUtcOffset < TimeSpan.Zero ? "-" + z.BaseUtcOffset.ToString(@"hh\:mm") : "+" + z.BaseUtcOffset.ToString(@"hh\:mm");
+            _zones.Add((id, $"UTC{offset}  {id.Replace('_', ' ')}"));
+        }
+        // One this computer doesn't know (set on another): kept as it is.
+        if (current.Trim().Length > 0 && !_zones.Any(x => x.Id == current.Trim()))
+            _zones.Add((current.Trim(), L.F("{0} (not known on this computer)", current.Trim())));
+        TimeZoneBox.ItemsSource = _zones.Select(z => z.Name).ToList();
+        TimeZoneBox.SelectedIndex = Math.Max(0, _zones.FindIndex(z => z.Id == current.Trim()));
+    }
 
     List<StationInfo> _stations = new();
 

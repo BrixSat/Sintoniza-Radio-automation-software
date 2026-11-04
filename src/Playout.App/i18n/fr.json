@@ -2464,5 +2464,14 @@
  "{0} is on air until {1:HH:mm}. Are you presenting it? Until you say so, AUTO goes on.": "{0} est à l'antenne jusqu'à {1:HH:mm}. Est-ce vous qui l'animez ? Tant que vous ne le dites pas, AUTO continue.",
  "Live shows: up to {0:0.#} hours a day (ASSISTED while the presenter is there)": "Émissions en direct : jusqu'à {0:0.#} heures par jour (ASSISTÉ tant que l'animateur est là)",
  "No live shows: AUTO all day.": "Aucune émission en direct : AUTO toute la journée.",
- "automated": "automatique"
+ "automated": "automatique",
+ "Time zone": "Fuseau horaire",
+ "{0} (not known on this computer)": "{0} (inconnu sur cet ordinateur)",
+ "The station's time zone ({0}) isn't known on this computer: its own clock is used": "Le fuseau horaire de la station ({0}) est inconnu sur cet ordinateur : son horloge à lui est utilisée",
+ "The station's time zone is now {0}: Sintoniza Emi goes by it when it starts again": "Le fuseau horaire de la station est maintenant {0} : Sintoniza Emi le suivra à son prochain démarrage",
+ "this computer's": "celui de cet ordinateur",
+ "Where the station is on air: its schedule, daily playlists, time signal, clock, logs and reports go by this time, whatever the computer's clock is set to (a studio or a server in another time zone). Each program takes a change the next time it starts; backups keep the computer's clock.": "Là où la station est à l'antenne : la programmation, les playlists du jour, le top horaire, l'horloge, les journaux et les rapports suivent cette heure, quelle que soit l'heure de l'ordinateur (un studio ou un serveur dans un autre fuseau horaire). Chaque programme ne prend un changement qu'à son prochain démarrage ; les sauvegardes gardent l'heure de l'ordinateur.",
+ "each computer's own": "celui de chaque ordinateur",
+ "Each computer's own (this one: {0})": "Celui de chaque ordinateur (celui-ci : {0})",
+ "The station's time zone is now {0}: Sintoniza Pro and the studios go by it when they start again": "Le fuseau horaire de la station est maintenant {0} : Sintoniza Pro et les studios le suivront à leur prochain démarrage"
 }

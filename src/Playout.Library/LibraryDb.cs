@@ -925,7 +925,7 @@ public sealed partial class LibraryDb
 
     public static string Now() => Time(DateTime.UtcNow);
 
-    public static string Time(DateTime utc) => utc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+    public static string Time(DateTime utc) => StationTime.ToUtc(utc).ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 
     /// <summary>What search matches against: lower case, accents removed ("Canção" → "cancao").</summary>
     public static string Normalize(string text)

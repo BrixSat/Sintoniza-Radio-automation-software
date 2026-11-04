@@ -127,7 +127,9 @@ engine for decoding, mixing and streaming.
   daily playlists, settings, cartwalls, studios and history. Sintoniza Pro makes stations (Station → New station…,
   starting from a copy of the settings, without the stream server, RDS name or website upload) and works on one at a time (chosen in its log-in, or Station → Work on, still logged in), without moving a studio's
   on-air program; each studio chooses the station it puts on air (Settings → General → Station). A user can be
-  limited to some stations (Users).
+  limited to some stations (Users). Each station has its **time zone** (Station settings; each computer's own by
+  default): its schedule, time signal, clock, logs and reports go by the station's time, whatever the clock of the
+  studio or server playing it says.
 - **Users and permissions**: the on-air program, Sintoniza Pro, Sintoniza Import, the playout's Settings and the web
   remote log in with the station's users (kept in the library, the same in every studio; passwords only as a salted PBKDF2 hash). Each user
   gets what they may do — on air, library, programming, voice tracks, traffic, station, users, this computer's settings, web

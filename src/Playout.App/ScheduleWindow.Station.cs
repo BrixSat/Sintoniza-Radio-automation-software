@@ -1,6 +1,7 @@
 using Playout.Library;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Playout.Engine;
 namespace Playout.App;
 
 /// <summary>Sintoniza Pro's station tools: its settings, categories, cartwalls and music import.</summary>
@@ -71,7 +72,7 @@ public partial class ScheduleWindow
         }, () => store.Db);
         window.Finished += async saved =>
         {
-            if (saved is true) SavedText.Text = L.F("Station settings saved at {0:HH:mm:ss}. The playouts take them within a minute.", DateTime.Now);
+            if (saved is true) SavedText.Text = L.F("Station settings saved at {0:HH:mm:ss}. The playouts take them within a minute.", StationTime.Now);
             await ShowStationSettings(store); // as saved now (or undone)
         };
         // The Test buttons of the website: what the studios played last, if it is still on air.
@@ -101,7 +102,7 @@ public partial class ScheduleWindow
         });
         window.Finished += async saved =>
         {
-            if (saved is true) SavedText.Text = L.F("Cartwalls saved at {0:HH:mm:ss}. The playouts take them within a minute.", DateTime.Now);
+            if (saved is true) SavedText.Text = L.F("Cartwalls saved at {0:HH:mm:ss}. The playouts take them within a minute.", StationTime.Now);
             await ShowCartwalls(store);
         };
         Show(CartwallsTab, window);

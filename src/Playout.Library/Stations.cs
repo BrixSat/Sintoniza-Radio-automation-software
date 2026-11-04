@@ -33,6 +33,13 @@ public sealed partial class LibraryDb
         return id;
     }
 
+    /// <summary>A station's time zone (IANA; "" = each computer's own), as its settings say: for the stations list.</summary>
+    public void SetStationTimeZone(long id, string zone)
+    {
+        using var c = Connect();
+        c.Execute("UPDATE stations SET time_zone = @zone WHERE id = @id", new { zone = zone.Trim(), id });
+    }
+
     /// <summary>A station's name (the one its settings give it); a name another station has gets a number after it.</summary>
     public void RenameStation(long id, string name)
     {

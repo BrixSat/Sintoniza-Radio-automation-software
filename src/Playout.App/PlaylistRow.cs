@@ -43,7 +43,7 @@ public sealed class PlaylistRow : INotifyPropertyChanged
             string text = Track.IsPause ? L.T("Pause: no sound, the presenter talks") : Track.IsStream ? Track.Path : Track.Kind == TrackKind.Commercial && Track.Advertiser is { } a ? a : Track.Artist;
             if (Track.StartBy is { } by)
             {
-                string how = Track.Backtime ? L.F("timed to start at {0:HH:mm:ss} and end on time", by.ToLocalTime()) : L.F("can wait until {0:HH:mm:ss}", by.ToLocalTime());
+                string how = Track.Backtime ? L.F("timed to start at {0:HH:mm:ss} and end on time", StationTime.FromUtc(by)) : L.F("can wait until {0:HH:mm:ss}", StationTime.FromUtc(by));
                 text = text.Length > 0 ? $"{text} · {how}" : how;
             }
             return text;
@@ -66,8 +66,8 @@ public sealed class PlaylistRow : INotifyPropertyChanged
     public bool IsTimed => Track.StartBy != null;
     public string? TimedTip => Track.StartBy is { } at
         ? Track.Backtime
-            ? L.F("Starts at {0:HH:mm:ss} to end on time: the songs before it are adjusted, and what is on air then fades out", at.ToLocalTime())
-            : L.F("Starts by {0:HH:mm:ss} at the latest: what is on air then fades out", at.ToLocalTime())
+            ? L.F("Starts at {0:HH:mm:ss} to end on time: the songs before it are adjusted, and what is on air then fades out", StationTime.FromUtc(at))
+            : L.F("Starts by {0:HH:mm:ss} at the latest: what is on air then fades out", StationTime.FromUtc(at))
         : null;
     public bool IsMusic => Track.Kind == TrackKind.Music;
     public bool IsJingle => Track.Kind == TrackKind.Jingle;

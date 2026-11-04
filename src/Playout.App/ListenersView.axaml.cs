@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Playout.Library;
+using Playout.Engine;
 
 namespace Playout.App;
 
@@ -26,16 +27,16 @@ public partial class ListenersView : UserControl
         InitializeComponent();
         Localization.Apply(this);
         _db = db;
-        DayBox.SelectedDate = DateTime.Today;
+        DayBox.SelectedDate = StationTime.Today;
         DayBox.SelectedDateChanged += async (_, _) => await Reload();
         BackButton.Click += (_, _) => DayBox.SelectedDate = Day.AddDays(-1);
         ForwardButton.Click += (_, _) => DayBox.SelectedDate = Day.AddDays(1);
-        TodayButton.Click += (_, _) => DayBox.SelectedDate = DateTime.Today;
+        TodayButton.Click += (_, _) => DayBox.SelectedDate = StationTime.Today;
         ReloadButton.Click += async (_, _) => await Reload();
         AttachedToVisualTree += async (_, _) => await Reload();
     }
 
-    DateTime Day => (DayBox.SelectedDate ?? DateTime.Today).Date;
+    DateTime Day => (DayBox.SelectedDate ?? StationTime.Today).Date;
 
     /// <summary>The day's counts and as-run log, read in the background.</summary>
     internal async Task Reload()
@@ -46,7 +47,7 @@ public partial class ListenersView : UserControl
         StatusText.Text = L.T("Reading…");
         try
         {
-            var (samples, played, now) = await Task.Run(() => (ListenersDb.Read(db, day, day), AsRunDb.Read(db, day, day), ListenersDb.Now(db, DateTime.Now)));
+            var (samples, played, now) = await Task.Run(() => (ListenersDb.Read(db, day, day), AsRunDb.Read(db, day, day), ListenersDb.Now(db, StationTime.Now)));
             if (version != _loadVersion) return;
             _samples = samples;
             _played = played;
@@ -62,7 +63,7 @@ public partial class ListenersView : UserControl
     {
         var hours = ListenersDb.Hours(_samples).ToDictionary(h => h.Hour.Hour);
         var parts = new List<string>();
-        if (day == DateTime.Today) parts.Add(now is { } n ? L.F("Now: {0} listening ({1:HH:mm})", n.Listeners, n.At) : L.T("Now: not counted"));
+        if (day == StationTime.Today) parts.Add(now is { } n ? L.F("Now: {0} listening ({1:HH:mm})", n.Listeners, n.At) : L.T("Now: not counted"));
         if (_samples.Count > 0)
         {
             var peak = _samples.MaxBy(s => s.Listeners);
@@ -105,7 +106,7 @@ public partial class ListenersView : UserControl
                 HourLabels.Children.Add(label);
             }
         }
-        if (_hour < 0) _hour = day == DateTime.Today ? DateTime.Now.Hour : hours.Count > 0 ? hours.Values.MaxBy(x => x.Average)!.Hour.Hour : 8;
+        if (_hour < 0) _hour = day == StationTime.Today ? StationTime.Now.Hour : hours.Count > 0 ? hours.Values.MaxBy(x => x.Average)!.Hour.Hour : 8;
         ShowHour(_hour, redraw: false);
     }
 

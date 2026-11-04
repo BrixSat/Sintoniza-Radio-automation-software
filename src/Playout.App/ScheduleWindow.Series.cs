@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Playout.Engine;
 
 namespace Playout.App;
 
@@ -13,7 +14,7 @@ public partial class ScheduleWindow
 
     void WireSeries()
     {
-        EventSeriesDateBox.SelectedDate = DateTime.Today;
+        EventSeriesDateBox.SelectedDate = StationTime.Today;
         EventSeriesDateButton.Click += (_, _) =>
         {
             if (SelectedEvent is not { } e || EventSeriesDateBox.SelectedDate is not { } picked) return;
@@ -25,7 +26,7 @@ public partial class ScheduleWindow
         EventSeriesPastButton.Click += (_, _) =>
         {
             if (SelectedEvent is not { } e) return;
-            Edit<ScheduledEvent>(EventList, ev => ev.Series.RemoveAll(f => f.Date < DateTime.Today));
+            Edit<ScheduledEvent>(EventList, ev => ev.Series.RemoveAll(f => f.Date < StationTime.Today));
             ShowSeriesDates(e);
         };
     }
@@ -56,13 +57,13 @@ public partial class ScheduleWindow
     void ShowSeriesDates(ScheduledEvent? e, DateTime? focus = null)
     {
         EventSeriesDates.Children.Clear();
-        EventSeriesPastButton.IsVisible = e?.Series.Any(f => f.Date < DateTime.Today) == true;
+        EventSeriesPastButton.IsVisible = e?.Series.Any(f => f.Date < StationTime.Today) == true;
         if (e == null) return;
         TextBox? toFocus = null;
         foreach (var file in e.Series.Where(f => f.Date != null).OrderBy(f => f.Date).ToList())
         {
             var date = file.Date!.Value;
-            var row = SeriesRow(date.ToString(date.Year == DateTime.Today.Year ? "ddd d MMM" : "d MMM yyyy", CultureInfo.CurrentUICulture), file.Path, date < DateTime.Today,
+            var row = SeriesRow(date.ToString(date.Year == StationTime.Today.Year ? "ddd d MMM" : "d MMM yyyy", CultureInfo.CurrentUICulture), file.Path, date < StationTime.Today,
                 path => Edit<ScheduledEvent>(EventList, _ => file.Path = path),
                 () =>
                 {

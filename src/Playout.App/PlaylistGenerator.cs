@@ -144,8 +144,8 @@ public sealed class PlaylistGenerator
         {
             // Back to the Monday too, for songs that may play only so many times a week.
             var since = new[] { from - window, SongRestrictions.WeekStart(from) }.Min();
-            foreach (var p in _db.PlaysSince(since.ToUniversalTime()))
-                Note(p.TrackId, p.Artist, null, p.At.ToLocalTime(), p.Album, p.Tempo, p.TrackId != null);
+            foreach (var p in _db.PlaysSince(StationTime.ToUtc(since)))
+                Note(p.TrackId, p.Artist, null, StationTime.FromUtc(p.At), p.Album, p.Tempo, p.TrackId != null);
         }
         catch { /* no history: the rest times count only what is planned */ }
         Dictionary<long, (string Album, int? Tempo)> songs;
@@ -363,7 +363,7 @@ public sealed class PlaylistGenerator
         TimeSpan SongAway(RotationTrack t)
         {
             var away = new[] { _trackTimes.Away(t.Id, at), _pathTimes.Away(t.Path, at) }.Min();
-            return t.LastPlayed is { } played && (at - played.ToLocalTime()).Duration() < away ? (at - played.ToLocalTime()).Duration() : away;
+            return t.LastPlayed is { } played && (at - StationTime.FromUtc(played)).Duration() < away ? (at - StationTime.FromUtc(played)).Duration() : away;
         }
         TimeSpan ArtistAway(RotationTrack t) => ArtistKey(t.Artist) is { } a ? _artistTimes.Away(a, at) : TimeSpan.MaxValue;
         bool SongRested(RotationTrack t) => SongAway(t) >= songGap;
