@@ -162,7 +162,9 @@ public partial class App : Application
             // any window works out what "today" is.
             try
             {
-                string zone = (new StationStore(db).Load().Settings?.TimeZone ?? "").Trim();
+                var station = new StationStore(db).Load().Settings;
+                LibraryDb.UseAutoCues = station?.AutoCue == true; // the daily playlists' lengths from auto cue's cue points, or not
+                string zone = (station?.TimeZone ?? "").Trim();
                 if (!StationTime.Use(zone)) AppLog.Write($"Sintoniza Pro: the station's time zone ({zone}) isn't known on this computer: its own clock is used");
                 else if (!StationTime.IsComputers) AppLog.Write($"Sintoniza Pro: the station's time: {StationTime.Name}, {StationTime.Now:HH:mm}");
             }

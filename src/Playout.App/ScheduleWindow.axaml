@@ -114,6 +114,7 @@
                 <MenuItem x:Name="MenuSongs" Header="Songs" />
                 <MenuItem x:Name="MenuCategories" Header="Categories" />
                 <MenuItem x:Name="MenuImport" Header="Import music" />
+                <MenuItem x:Name="MenuMusicReport" Header="Music report" />
             </MenuItem>
             <MenuItem Header="_Programming">
                 <MenuItem x:Name="MenuTemplates" Header="Hour templates" />
@@ -132,6 +133,7 @@
                 <Separator />
                 <MenuItem x:Name="MenuStationSettings" Header="Station settings" />
                 <MenuItem x:Name="MenuCartwalls" Header="Cartwalls" />
+                <MenuItem x:Name="MenuDownloads" Header="Downloads" />
                 <MenuItem x:Name="MenuUsers" Header="Users" />
                 <MenuItem x:Name="MenuListeners" Header="Listeners" />
                 <MenuItem x:Name="MenuStudios" Header="Studios" />
@@ -214,6 +216,7 @@
                         <Button x:Name="NavSongs" Classes="nav" Content="♫   Songs" />
                         <Button x:Name="NavCategories" Classes="nav" Content="🏷   Categories" />
                         <Button x:Name="NavImport" Classes="nav" Content="⇪   Import music" />
+                        <Button x:Name="NavMusicReport" Classes="nav" Content="📊   Music report" />
                         <TextBlock Classes="navgroup" Text="PROGRAMMING" />
                         <Button x:Name="NavTemplates" Classes="nav" Content="▦   Hour templates" />
                         <Button x:Name="NavDaily" Classes="nav" Content="☰   Daily playlists" />
@@ -226,6 +229,7 @@
                         <TextBlock Classes="navgroup" Text="STATION" />
                         <Button x:Name="NavStationSettings" Classes="nav" Content="⚙   Station settings" />
                         <Button x:Name="NavCartwalls" Classes="nav" Content="▣   Cartwalls" />
+                        <Button x:Name="NavDownloads" Classes="nav" Content="⇩   Downloads" />
                         <Button x:Name="NavUsers" Classes="nav" Content="👤   Users" />
                         <Button x:Name="NavListeners" Classes="nav" Content="📈   Listeners" />
                         <Button x:Name="NavStudios" Classes="nav" Content="🖥   Studios" />
@@ -912,6 +916,8 @@
             <TabItem Header="ERC quotas" x:Name="ErcTab" />
             <TabItem Header="Listeners" x:Name="ListenersTab" />
             <TabItem Header="Studios" x:Name="StudiosTab" />
+            <TabItem Header="Music report" x:Name="MusicReportTab" />
+            <TabItem Header="Downloads" x:Name="DownloadsTab" />
             <!-- ───────── The library: every song ───────── -->
             <TabItem Header="Songs" x:Name="SongsTab">
                 <DockPanel>

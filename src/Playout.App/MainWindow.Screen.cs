@@ -151,7 +151,12 @@ public partial class MainWindow
     void UpdateLights()
     {
         var st = _lastStreamState;
-        Show(!_settings.UsesStreaming
+        var kept = _engine?.GetStatus() is { Stream: StreamState.OnAir, StreamStalled: > 0 } now ? now : (PlayerStatus?)null;
+        if (kept is { } k)
+            Show(new Lamp("stream", L.T("STREAM"), LampState.Warn, k.StreamOnFallback ? L.T("Fallback") : L.T("No sound"),
+                L.F("The sound card has sent no sound for {0}: the stream goes on with {1}", Format.Duration(k.StreamStalled),
+                    k.StreamOnFallback ? L.T("the fallback file") : L.T("silence"))));
+        else Show(!_settings.UsesStreaming
             ? new Lamp("stream", L.T("STREAM"), LampState.Off, L.T("Not set up"), L.T("No stream set up (Sintoniza Pro → Station settings → Streaming)"))
             : new Lamp("stream", L.T("STREAM"), st switch { StreamState.OnAir => LampState.Ok, StreamState.Connecting => LampState.Warn, StreamState.Failed => LampState.Bad, _ => LampState.Off },
                 st switch

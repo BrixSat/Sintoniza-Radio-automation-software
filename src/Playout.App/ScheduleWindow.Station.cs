@@ -42,6 +42,8 @@ public partial class ScheduleWindow
             else if (tab == ErcTab && tab.Content == null) tab.Content = new ErcView(db, Who);
             else if (tab == ListenersTab && tab.Content == null) tab.Content = new ListenersView(db);
             else if (tab == StudiosTab && tab.Content == null) tab.Content = new StudiosLogView(db);
+            else if (tab == DownloadsTab && tab.Content == null) tab.Content = new DownloadsView(new StationStore(db), Who, () => StationSettings.From(_settings ?? AppSettings.Load()));
+            else if (tab == MusicReportTab && tab.Content == null) tab.Content = new MusicReportView(db, () => _data);
         };
         Closed += (_, _) => { foreach (var page in _pages.Values) page.Discard(); };
     }
@@ -69,7 +71,10 @@ public partial class ScheduleWindow
             updated.ErcAlias = station.ErcAlias; // and on the ERC page
             updated.ErcCountries = station.ErcCountries;
             updated.ErcPlan = station.ErcPlan;
-            return SaveStation(store, updated, version);
+            updated.Downloads = station.Downloads; // on their own page (Downloads)
+            var problem = SaveStation(store, updated, version);
+            if (problem == null) LibraryDb.UseAutoCues = updated.AutoCue;
+            return problem;
         }, () => store.Db);
         window.Finished += async saved =>
         {

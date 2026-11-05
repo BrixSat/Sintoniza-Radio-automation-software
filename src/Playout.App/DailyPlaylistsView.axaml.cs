@@ -363,8 +363,9 @@ public partial class DailyPlaylistsView : UserControl
     {
         Open = deck.Open,
         GetCues = db.GetCues,
-        SaveCues = (path, cues) => Task.Run(() =>
+        SaveCues = (path, edited) => Task.Run(() =>
         {
+            var cues = edited with { Auto = false, FileSize = null }; // set by hand now, also if they started as auto cue's
             // A file outside the library is added to it, so its cue points are kept (and shared).
             if (!db.SetCues(path, cues) && !cues.IsEmpty)
             {

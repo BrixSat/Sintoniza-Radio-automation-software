@@ -60,6 +60,13 @@ public sealed class StationSettings
     public int StreamFormat { get; set; }
     public int StreamBitrateIndex { get; set; } = 2;
     public bool Shoutcast { get; set; }
+    /// <summary>Files fetched again and again, such as the news (Sintoniza Pro → Station → Downloads).</summary>
+    public List<DownloadSettings> Downloads { get; set; } = new();
+    /// <summary>Auto cue: songs with no cue points get them from their sound.</summary>
+    public bool AutoCue { get; set; }
+    /// <summary>Sent on the stream while a studio's sound card has stopped (empty: silence), after so many seconds.</summary>
+    public string StreamFallback { get; set; } = "";
+    public double StreamFallbackSeconds { get; set; } = 10;
     /// <summary>How many listen to the stream, read from the server every minute.</summary>
     public ListenerSettings Listeners { get; set; } = new();
 
@@ -106,6 +113,8 @@ public sealed class StationSettings
             WebNowPlaying = s.WebNowPlaying, Alerts = s.Alerts,
             StreamHost = s.StreamHost, StreamPort = s.StreamPort, StreamMount = s.StreamMount, StreamPassword = s.StreamPassword,
             StreamFormat = s.StreamFormat, StreamBitrateIndex = s.StreamBitrateIndex, Shoutcast = s.Shoutcast, Listeners = s.Listeners.Clone(),
+            StreamFallback = s.StreamFallback, StreamFallbackSeconds = s.StreamFallbackSeconds, AutoCue = s.AutoCue,
+            Downloads = s.Downloads.Select(d => d.Clone()).ToList(),
             Cartwalls = s.Cartwalls, LibraryFolders = s.Library.Folders.ToList(), VoiceTrackFolder = s.VoiceTrackFolder, Takes = s.Takes, FillerGapSeconds = s.FillerGapSeconds,
         };
     }
@@ -125,6 +134,9 @@ public sealed class StationSettings
         s.WebNowPlaying = WebNowPlaying ?? new(); s.Alerts = Alerts ?? new();
         s.StreamHost = StreamHost; s.StreamPort = StreamPort; s.StreamMount = StreamMount; s.StreamPassword = StreamPassword;
         s.StreamFormat = StreamFormat; s.StreamBitrateIndex = StreamBitrateIndex; s.Shoutcast = Shoutcast;
+        s.StreamFallback = StreamFallback ?? ""; s.StreamFallbackSeconds = StreamFallbackSeconds;
+        s.AutoCue = AutoCue;
+        s.Downloads = Downloads?.Select(d => d.Clone()).ToList() ?? new();
         s.Listeners = Listeners?.Clone() ?? new();
         s.Cartwalls = Cartwalls is { Count: > 0 } pages ? pages : s.Cartwalls;
         if (s.ActiveCartwall is { } active && s.Cartwalls.All(c => c.Name != active)) s.ActiveCartwall = s.Cartwalls.FirstOrDefault()?.Name;

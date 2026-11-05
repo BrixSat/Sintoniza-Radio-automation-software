@@ -30,7 +30,42 @@ public sealed class CueStore
             foreach (var (path, cues) in saved) _cues[path] = cues;
     }
 
-    public CuePoints? Get(string path)
+    /// <summary>The station works with auto cue's cue points: off, <see cref="Get"/> leaves them out.</summary>
+    public bool UseAuto { get; set; }
+
+    /// <summary>A file's cue points (auto cue's only while <see cref="UseAuto"/>; never its mark that there is nothing to cut).</summary>
+    public CuePoints? Get(string path) => GetAny(path) is { } cues && (!cues.Auto || UseAuto && cues.HasValues) ? cues : null;
+
+    /// <summary>Stores auto cue's cue points only if the file has none (set by hand meanwhile: those stay). Whether it did.</summary>
+    public bool SetIfNone(string path, CuePoints cues)
+    {
+        lock (_lock)
+        {
+            if (_cues.ContainsKey(path)) return false;
+            _cues[path] = cues;
+        }
+        Task.Run(Save);
+        Edited?.Invoke(path, cues);
+        return true;
+    }
+
+    /// <summary>
+    /// Takes out auto cue's cue points for a file (they were made for another file under its name), if they are still
+    /// there, so they are made again. Not sent to the library: the new ones go over them there (each studio and Sintoniza
+    /// Pro see by the length that the old ones aren't the file's).
+    /// </summary>
+    public void DropAuto(string path, CuePoints cues)
+    {
+        lock (_lock)
+        {
+            if (_cues.GetValueOrDefault(path) != cues) return;
+            _cues.Remove(path);
+        }
+        Task.Run(Save);
+    }
+
+    /// <summary>A file's cue points, set by hand or by auto cue (or the mark that auto cue found nothing to cut).</summary>
+    public CuePoints? GetAny(string path)
     {
         lock (_lock) return _cues.GetValueOrDefault(path);
     }
@@ -136,5 +171,24 @@ public static class CueDetector
             CueOut = Math.Round(cueOut, 2),
             Mix = Math.Round(Math.Clamp(mix, cueIn, cueOut), 2),
         };
+    }
+
+    /// <summary>
+    /// Auto cue's cue points for a song (<see cref="CuePoints.Auto"/>): only what is worth cutting. Cue In past
+    /// silence at the start (up to 10 s of it), Cue Out before silence at the end, and Mix on a fade-out (on a hard
+    /// ending none: the station's crossfade, from the new Cue Out). None of them: nothing to cut (and it is not looked
+    /// at again).
+    /// </summary>
+    /// <param name="size">The file's size (bytes), kept with them.</param>
+    public static CuePoints Auto(Waveform w, long? size = null)
+    {
+        var found = Detect(w, CuePoints.None);
+        double length = w.Duration;
+        double? cueIn = found.CueIn is > 0.05 and < 10 ? found.CueIn : null;
+        double start = cueIn ?? 0;
+        double? cueOut = found.CueOut is { } o && o < length - 0.1 && o - start > 20 ? o : null;
+        double end = cueOut ?? length;
+        double? mix = found.Mix is { } m && m < end - 0.5 && m - start > 20 ? m : null;
+        return new CuePoints(CueIn: cueIn, Mix: mix, CueOut: cueOut, Auto: true, FileSize: size);
     }
 }

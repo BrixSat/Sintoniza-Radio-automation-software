@@ -56,6 +56,8 @@ public sealed class RecSettings
     public AlertSettings Alerts { get; set; } = new();
     /// <summary>"Still recording" once a day at this hour (null: not sent): no message one day means something is wrong.</summary>
     public int? AliveHour { get; set; } = 9;
+    /// <summary>The shows made into podcast episodes from the recordings.</summary>
+    public PodcastSettings Podcasts { get; set; } = new();
 
     public static string DefaultFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic, Environment.SpecialFolderOption.Create) is { Length: > 0 } music
         ? music : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Sintoniza Rec");

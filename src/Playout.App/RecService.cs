@@ -18,7 +18,15 @@ sealed class RecService : IDisposable
     bool _silenceReported, _writeReported, _diskReported;
     double _levelDb = -90;
 
-    public RecService(RecSettings settings) => _s = settings;
+    public RecService(RecSettings settings)
+    {
+        _s = settings;
+        Podcasts = new PodcastMaker(() => _s, m => Message?.Invoke(m));
+    }
+
+    /// <summary>The shows made into podcast episodes, a few minutes after each ends.</summary>
+    internal PodcastMaker Podcasts { get; }
+    DateTime _nextPodcasts = DateTime.MinValue;
 
     /// <summary>What happened, for the window and the log.</summary>
     public event Action<string>? Message;
@@ -187,6 +195,11 @@ sealed class RecService : IDisposable
         {
             _nextStatus = now.AddSeconds(5);
             WriteStatus(now);
+        }
+        if (now >= _nextPodcasts)
+        {
+            _nextPodcasts = now.AddMinutes(1);
+            Podcasts.Check(now);
         }
         if (now >= _nextClean)
         {

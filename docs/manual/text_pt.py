@@ -161,7 +161,7 @@ CHAPTERS = [
         ["ESTÚDIO", "Que computador está no ar, quando a estação tem mais de um, e o que há de arriscado na configuração deste: em Wi-Fi sem cabo de rede, na bateria, uma placa Wi-Fi que o Windows pode desligar para poupar energia.",
          "Verde: este computador está no ar (e diz quantos estão de reserva). Âmbar: este está de reserva, outro está no ar; ou algo arriscado na configuração, com o nome na luz (passe o rato para saber o que fazer)."],
         ["STREAM", "O stream da rádio na internet, que este computador envia para o servidor Icecast ou Shoutcast.",
-         "Verde: a enviar, com há quanto tempo. Âmbar: a ligar ao servidor. Vermelho: não consegue ligar. Cinzento: desligado ou não configurado."],
+         "Verde: a enviar, com há quanto tempo. Âmbar: a ligar ao servidor, ou a placa de som parou e o stream continua sem ela (silêncio, depois o ficheiro de recurso). Vermelho: não consegue ligar. Cinzento: desligado ou não configurado."],
         ["OUVINTES", "Quantas pessoas estão a ouvir o stream, lido do servidor a cada minuto. O número aparece ao lado da luz.",
          "Verde: o número de agora. Âmbar (?): não consegue ler o servidor, ou deixou de contar. Cinzento: a contagem está desligada."],
         ["RDS", "O texto que aparece nos rádios FM (o nome da estação e a música), enviado para o codificador RDS.",
@@ -287,6 +287,9 @@ CHAPTERS = [
           "onde entra o item seguinte; e o <b>Cue Out</b>, onde a música para."),
     ("p", "<i>Detetar</i> encontra o primeiro e o último som e propõe um bom ponto de Mix. A barra de espaços toca e pausa na "
           "saída de pré-escuta, as setas avançam um segundo, ou uma décima com Shift, e a roda do rato faz zoom."),
+    ("tip", "Com o <b>auto cue</b> ligado (Sintoniza Pro → Definições da estação → Áudio), as músicas que aí vêm sem pontos de cue "
+            "recebem-nos sozinhas, a partir do som: Cue In, Cue Out e, num fade-out, Mix. Os pontos de cue que marcar à mão ficam "
+            "sempre, e editar os do auto cue torna-os seus. Para deixar uma música exatamente como está, escreva 0:00 no Cue In, no editor de pontos de cue."),
     ("h2", "Transições"),
     ("p", "Uma transição é a forma como uma música passa para a seguinte. Abra-a com o botão direito num item da playlist e "
           "<i>Transição para o seguinte…</i> (Ctrl/Cmd+G), ou com <b>Transição…</b> nas Playlists diárias."),
@@ -395,12 +398,12 @@ CHAPTERS = [
     ("p", "As da estação ficam na <b>Sintoniza Pro → Definições da estação</b>:"),
     ("table", ["Separador", "Para que serve"], [
         ["Estação", "Nome, logótipo, género, site, rádio FM ou web, símbolo da moeda"],
-        ["Áudio", "Os crossfades e o nivelamento de volume"],
+        ["Áudio", "Os crossfades, o auto cue (as músicas sem pontos de cue recebem-nos a partir do som) e o nivelamento de volume"],
         ["Sinal horário", "Os bips ou um ficheiro à hora certa, e as horas faladas, como HRS05.mp3 às 05:00"],
         ["Takes", "A pasta dos takes da hora e da temperatura, e onde fica a estação"],
         ["Segurança", "A deteção de silêncio e a música de enchimento"],
         ["Biblioteca", "Outras pastas de música, para músicas sem categoria"],
-        ["Streaming", "O servidor Icecast ou Shoutcast, o formato e o bitrate, e a contagem de ouvintes"],
+        ["Streaming", "O servidor Icecast ou Shoutcast, o formato e o bitrate, a contagem de ouvintes, e o que o stream envia quando a placa de som parar (silêncio, depois um ficheiro de recurso)"],
         ["RDS", "O PS, o radiotexto e o RT+"],
         ["Site", "O que está a tocar, enviado para o site da estação"],
         ["Alertas", "Avisos por Telegram, e-mail ou web: silêncio, stream em baixo, falhas, disco cheio, relógio, cópias, playlists de amanhã por preparar"],
@@ -607,6 +610,13 @@ CHAPTERS = [
           "programas e que músicas seguram os ouvintes. A página Início também mostra os ouvintes de agora."),
     ("tip", "Um computador de reserva não conta, para os mesmos ouvintes nunca serem contados duas vezes. Se o computador no ar "
             "parar, o que fica no ar passa a contar."),
+    ("h2", "O relatório de música"),
+    ("p", "<b>Biblioteca → Relatório de música</b> mostra como correu de facto a música, nos últimos 7, 30 ou 90 dias: as "
+          "músicas e os artistas que mais tocaram, segundo o registo de emissão, e a parte de cada categoria nas músicas "
+          "tocadas. Em <i>Metas da hora cumpridas</i>, cada meta de um modelo de hora diz em quantas das horas em que esteve, já passadas, "
+          "a música que tocou de facto a cumpriu."),
+    ("p", "<i>Sem tocar há algum tempo</i> encontra as músicas de uma categoria que não tocam há tantos dias, ou nunca, as "
+          "paradas há mais tempo primeiro: as que convém trazer de volta, ou tirar da rotação."),
     ("h2", "Os registos dos estúdios"),
     ("p", "Cada computador de estúdio, no ar ou de reserva, envia o seu registo para a base de dados a cada 15 segundos, incluindo o que escrevem nele o "
           "vigilante, a Sintoniza Rec e a Pro. Em <b>Estação → Estúdios</b>, escolha o computador e o dia para ler o que lá se "
@@ -615,6 +625,21 @@ CHAPTERS = [
           "faz um ficheiro para enviar a quem cuida da estação. Guarda-se 14 dias."),
     ("p", "Na página Início, em <i>Precisa de atenção</i>, aparece cada computador com problemas na última hora, e o que um "
           "estúdio tem de arriscado na configuração, como estar em Wi-Fi ou na bateria."),
+    ("h2", "Transferências"),
+    ("p", "Há ficheiros que vêm de fora e mudam a cada hora, como o noticiário que uma agência põe no site. Em "
+          "<b>Estação → Transferências</b>, diga de onde vem cada um e onde é guardado: sempre com o mesmo nome, para que os "
+          "modelos de hora e os eventos que tocam esse ficheiro tenham sempre o mais recente."),
+    ("list", [
+        "<b>Uma página com uma ligação para o ficheiro</b>: a página é lida e descarrega-se a primeira ligação que corresponder. "
+        "Tal como está, é o primeiro endereço da página que acaba em .mp3.",
+        "<b>O endereço do próprio ficheiro</b>, ou <b>um servidor FTP</b>, com utilizador e palavra-passe se pedir.",
+        "<b>Quando</b>: a cada tantos minutos, ou a minutos certos de cada hora, um pouco depois de a fonte pôr um novo.",
+    ]),
+    ("p", "<b>Testar</b> descarrega-o logo e diz o que encontrou e quanto dura. Quem descarrega é o computador no ar, nunca um "
+          "de reserva. O que descarrega tem de durar pelo menos o tempo mínimo que definir, e só é posto no lugar quando não "
+          "está no ar. Se falhar, tenta de novo a cada 2 minutos e fica o ficheiro anterior."),
+    ("tip", "Se um ficheiro não for descarregado durante o seu tempo de <b>validade</b>, é saltado no ar, para nunca se ouvirem as "
+            "notícias de ontem, e um alerta avisa."),
     ("h2", "Restrições das músicas"),
     ("p", "As restrições dizem quando uma música pode ser escolhida automaticamente. Uma canção de Natal só em dezembro, uma "
           "música mais pesada só à noite. Abra-as em <b>Músicas</b>, com o botão direito e <b>Restrições…</b>."),
@@ -913,6 +938,17 @@ CHAPTERS = [
         ("TestAlertButton", "<b>Enviar um teste</b>."),
     ]),
     ("p", "O Rec também avisa quando uma gravação não pode ser escrita, por causa de um disco cheio ou em falta ou de uma partilha que desapareceu, e nesse caso tenta outra vez com um ficheiro novo. Avisa ainda quando restam menos de 2 GB livres."),
+    ("h2", "Programas em podcast"),
+    ("p", "O Rec pode fazer um podcast com os seus programas. Em <b>Definições → Podcasts</b>, marque <b>Fazer episódios de "
+          "podcast com os programas</b>. Uns minutos depois de um programa acabar, o Rec guarda esse troço das gravações em MP3 "
+          "na pasta dos podcasts e escreve o <code>podcast.xml</code>, o feed que as aplicações de podcasts subscrevem, com os "
+          "últimos episódios. Os mais antigos são apagados, aqui e onde estão publicados, para a pasta nunca crescer sem fim. "
+          "Um episódio é feito quando o ficheiro da gravação que tem o fim do programa fecha; com ficheiros de uma hora, pode "
+          "demorar até uma hora."),
+    ("p", "Marque os programas que quer, ou nenhum para todos. São os programas da programação que o programa de emissão deste "
+          "computador tem, como definidos na Sintoniza Pro → Programas. Dê um nome ao feed e o endereço web onde a pasta está "
+          "publicada, para as ligações funcionarem. Para o publicar, o Rec pode enviar cada episódio e o feed para uma pasta FTP "
+          "ou uma pasta partilhada. <b>Fazer já o último</b> faz o último programa que acabou, para experimentar logo."),
 ]),
 
 ("Sintoniza Tempo", "tempo", [

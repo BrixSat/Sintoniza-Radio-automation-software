@@ -38,6 +38,13 @@ public sealed class WaveformLoader
         }
     }
 
+    /// <summary>Forgets a file's waveform (the file was replaced): read again next time.</summary>
+    public void Forget(string path)
+    {
+        lock (_lock)
+            if (_cache.Remove(path)) _order.Remove(path);
+    }
+
     static Waveform? Build(string path)
     {
         int h = Bass.CreateStream(SharedPaths.ToLocal(path), 0, 0, BassFlags.Decode | BassFlags.Float);

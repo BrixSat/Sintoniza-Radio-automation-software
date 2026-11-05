@@ -269,6 +269,27 @@ engine for decoding, mixing and streaming.
   away, once it is back), kept 14 days: a computer and a day, the problems in red (the sound stalling, the database or
   the stream lost, silence, restarts, alerts, errors), only the problems, a search, saved as a file. Home → *Needs
   attention* lists each computer with problems in the last hour.
+- **Downloads** (Sintoniza Pro → Station → **Downloads**): files fetched again and again, such as the news bulletin an
+  agency puts on its website every hour, always saved under the same name, so the playlists and events that play that
+  file get the latest. From the file's own address, from a **page** with a link to it (the first link on the page
+  that matches a pattern, by default the first address ending in `.mp3`, also when it is written in the page's
+  script), or from an **FTP** server; a user and password if it asks for one. Every so many minutes, or at set minutes
+  past each hour. The computer on air fetches them (never a standby one): into a temporary file next to its own,
+  checked (it must play, and for at least so many seconds), then put in its place when it isn't on air (never under
+  the player; the copy read ahead is let go, and auto cue's cue points made again); the same file again only counts as
+  fresh. A failed fetch is tried again every 2 minutes, and the old file stays. Not fetched for its *too old* time
+  (90 minutes by default), it is passed over on air (no yesterday's news), the log says so and an alert goes out
+  (Station settings → Alerts). **Test** fetches it in Pro and says what it found and how long it plays. A fetch takes
+  at most 5 minutes and 200 MB (a live stream behind the link isn't a bulletin). `ftps://` is FTP with explicit TLS.
+  On a Windows computer on air writing to a share, the file is put in place only when no other computer has it open
+  (else tried again).
+- **Music report** (Sintoniza Pro → Library → Music report): for the last 7, 30 or 90 days, the songs and artists played
+  most (from the as-run log), each category's share of the songs played, how many hours of the daily playlists kept
+  each hour template's targets (by what played in each hour that went by), and the songs of a category not played for so many days (or never).
+- **Shows as podcasts** (Sintoniza Rec → Settings → Podcasts): once a show has ended and the recording file holding its
+  end has closed, its stretch of the recordings is saved as an MP3 in the podcast folder, a feed (`podcast.xml`, with the iTunes tags podcast apps read)
+  lists the latest episodes (older ones deleted), and both can be sent to an FTP folder or a folder; which shows, how
+  many kept, the bitrate, the feed's name and the address it is published at; **Make the last one now** to try it.
 - **A risky setup is said**: on Wi-Fi with no network cable, on battery, or (Windows) a Wi-Fi adapter Windows may switch
   off to save power — the STUDIO lamp turns amber with what to do, the log says it, and Pro's Home (and, with a shared library, its studios list) shows it.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
@@ -276,7 +297,12 @@ engine for decoding, mixing and streaming.
   after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.
   One click on the **STREAM** badge next to ON AIR starts or stops it. The badge and the stream time show on a web
   radio, or on an FM station once a streaming server is set up (a source password is entered); otherwise they are
-  hidden.
+  hidden. The stream has a **clock of its own**: what the music card plays is copied to it, half a second behind, and
+  sent in real time; if the card stops being fed (a network share that doesn't answer, a USB card pulled out), the
+  stream goes on with silence, so the server keeps its listeners, and after so many seconds with a fallback file (a
+  station ID or "we'll be right back", looped, read into memory when the stream starts: Station settings → Streaming →
+  *When the sound card stops*). Once the card plays again the stream follows it; the STREAM lamp is amber meanwhile
+  and the log (and Pro's studios' logs) says it.
 - **Separate outputs for the mixing desk**: music and cartwall can each go to their own sound card or output pair
   (Out 1–2, 3–4, …), so they come up on separate desk faders. A test tone helps you find which fader is which.
   The stream always carries music and cartwall together. A third output, **Preview**, is for pre-listening in the
@@ -416,6 +442,18 @@ library share them: an edit in one studio reaches the others within half a minut
 folders is added to the library for this. Each computer also keeps its own copy in `cues.json` next to the
 settings, which is used while the library can't be reached. Cue points apply wherever the file is used, and
 changes to the item on air take effect straight away.
+
+**Auto cue** (Sintoniza Pro → Station settings → Audio, off by default): the computer on air gives the songs coming
+up that have no cue points theirs from their sound, one at a time in the background (from the waveform it reads
+anyway): Cue In past silence at the start (up to 10 s), Cue Out before silence at the end, and Mix where a fade-out
+has gone quiet (on a hard ending none: the crossfade, from the new Cue Out). They are kept in the library like the
+rest, marked as auto cue's (`cues_auto`, with the file's size: another file under the same name, such as a news
+bulletin fetched again, has them made again; schema 30), so every studio has them and the daily playlists
+made after count them. Only the computer on air looks at the songs (a standby one has them from the library).
+Cue points set by hand are never touched (auto cue never writes over them, also in the library), and editing auto
+cue's makes them set by hand. With it off, auto cue's cue points are left out (in the studios and in Pro). A file
+whose cue points are all cleared gets auto cue's again; to keep a song as it is, type 0:00 as its Cue In in the cue
+editor.
 
 > Give Preview its own output, such as the desk's PFL/cue input or a headphone card. If it shares an output with
 > Music or Cartwall, the editor warns you that what you play will be heard on air.
@@ -560,9 +598,10 @@ or `docs/manual/make-manual.sh en` / `pt`.
 src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
                      Runs on its own thread; the UI only calls its public API.
 src/Playout.Library  The database (SQLite / MySQL): music library, schema, backups, and the folder scanner.
-src/Playout.App      Avalonia desktop UI: every window of Sintoniza Emi, Pro, Rec and Import.
+src/Playout.App      Avalonia desktop UI: every window of Sintoniza Emi, Pro, Rec, Tempo and Import.
 src/Sintoniza.Pro    Starts Playout.App as Sintoniza Pro (SintonizaPro).
 src/Sintoniza.Rec    Starts Playout.App as Sintoniza Rec (SintonizaRec).
+src/Sintoniza.Tempo  Starts Playout.App as Sintoniza Tempo, the studio clock (SintonizaTempo).
 src/Sintoniza.Import radio-import: command-line library scanner.
 scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
 native/<platform>/   BASS libraries (downloaded, not committed).
@@ -578,7 +617,6 @@ The same folder has the schedule (`schedule.json`), the as-run log (`as-run`), t
 
 ## Roadmap
 
-- Auto cue (silence trimming) for files without cue points
 - News and network programmes fetched by FTP/HTTP before air time, checked to be new, with a fallback
 
 ## Support

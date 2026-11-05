@@ -287,7 +287,8 @@ public partial class RecWindow : Window
 
     async Task OpenSettings()
     {
-        var window = new RecSettingsWindow(_settings.Clone());
+        // With the settings saved (not those being tried in the window: its Keep would delete episodes before Save).
+        var window = new RecSettingsWindow(_settings.Clone(), _ => _service.Podcasts.MakeLatestAsync(_service.Settings.Clone()));
         if (await window.ShowDialog<RecSettings?>(this) is not { } changed) return;
         changed.Monitor = MonitorButton.IsChecked == true;
         changed.Save();

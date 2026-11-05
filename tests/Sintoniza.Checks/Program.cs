@@ -160,6 +160,258 @@ string? OnAir(PlayoutEngine e) => e.GetStatus().Current?.Path;
     e.Dispose();
 }
 
+{
+    // The stream's own clock: the music card stops being fed for 4 s (its output paused, as when a file read hangs):
+    // the stream server still gets data all along, the status says so, the fallback file goes on after 1 s, and the
+    // stream follows the card again after.
+    var any = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+    var server = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    server.Start();
+    int port = ((System.Net.IPEndPoint)server.LocalEndpoint).Port;
+    long received = 0;
+    var serving = Task.Run(() =>
+    {
+        try
+        {
+            using var client = server.AcceptTcpClient();
+            var net = client.GetStream();
+            var buffer = new byte[8192];
+            var head = new List<byte>();
+            while (!System.Text.Encoding.ASCII.GetString(head.ToArray()).Contains("\r\n\r\n") && net.Read(buffer, 0, 1) is 1) head.Add(buffer[0]);
+            net.Write("HTTP/1.0 200 OK\r\n\r\n"u8);
+            while (net.Read(buffer, 0, buffer.Length) is var n and > 0) Interlocked.Add(ref received, n);
+        }
+        catch (Exception) { /* the stream stopped */ }
+    });
+    string fallback = Audio.Make(Path.Combine(work, "fallback"), 1, seconds: 2, rate: 22050, channels: 1)[0];
+    var e = NewEngine();
+    var said = new List<string>();
+    e.Log += m => { lock (said) said.Add(m); };
+    e.AddFiles([songs[0], songs[1], songs[2], songs[3]]);
+    Thread.Sleep(300);
+    e.Play();
+    e.StartStreaming(new StreamSettings("127.0.0.1", port, "/check", "secret", Fallback: fallback, FallbackSeconds: 1));
+    bool onAir = Wait(() => e.GetStatus().Stream == StreamState.OnAir, 5);
+    Thread.Sleep(1500);
+    var graph = typeof(PlayoutEngine).GetField("_graph", any)!.GetValue(e)!;
+    int card = (int)graph.GetType().GetField("_musicDeviceMixer", any)!.GetValue(graph)!;
+    long normalFrom = Interlocked.Read(ref received);
+    Thread.Sleep(2000);
+    double normalRate = (Interlocked.Read(ref received) - normalFrom) / 2.0;
+    long before = Interlocked.Read(ref received);
+    var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+    ManagedBass.Bass.ChannelPause(card);
+    bool stalled = Wait(() => e.GetStatus().StreamStalled > 0, 3);
+    bool fell = Wait(() => e.GetStatus().StreamOnFallback, 3);
+    Thread.Sleep(1000);
+    long during = Interlocked.Read(ref received) - before;
+    double duringRate = during / stopwatch.Elapsed.TotalSeconds;
+    ManagedBass.Bass.ChannelPlay(card);
+    bool back = Wait(() => e.GetStatus().StreamStalled == 0 && !e.GetStatus().StreamOnFallback, 3);
+    Thread.Sleep(300);
+    string log;
+    lock (said) log = string.Join(" | ", said.Where(m => m.Contains("Stream:")));
+    Check(onAir && stalled && fell && back, $"the music card stopped: the stream goes on without it, the fallback file after 1 s, then it follows the card again (on air {onAir}, stalled {stalled}, fallback {fell}, back {back})");
+    Check(normalRate > 10_000 && duringRate > normalRate * 0.8,
+        $"the stream server got the stream as fast while the card was stopped ({duringRate:0} bytes a second, {normalRate:0} before)");
+    Check(log.Contains("it stopped for 3 s") || log.Contains("it stopped for 4 s"), "the log says for how long the card had stopped (from its last sound)");
+    Check(log.Contains("no sound from the sound card") && log.Contains("fallback file is on the stream") && log.Contains("plays again"),
+        $"the log says the card stopped, the fallback and the card back ({log})");
+    e.StopStreaming();
+    int saidBefore;
+    lock (said) saidBefore = said.Count(m => m.Contains("no sound from the sound card"));
+    ManagedBass.Bass.ChannelPause(card);
+    Thread.Sleep(2500);
+    ManagedBass.Bass.ChannelPlay(card);
+    Thread.Sleep(300);
+    int saidAfter;
+    lock (said) saidAfter = said.Count(m => m.Contains("no sound from the sound card"));
+    Check(saidAfter == saidBefore && e.GetStatus().StreamStalled == 0, "with the stream off, the card stopping isn't said as a stream problem");
+    e.Dispose();
+    server.Stop();
+    serving.Wait(2000);
+}
+
+{
+    // Auto cue: a song with 2 s of silence, 28 s of tone, a 6 s fade-out and 3 s of silence gets Cue In, Cue Out and
+    // Mix from its sound, marked as auto cue's; one with cue points set by hand keeps them; off, auto cue's are left out.
+    string folder = Path.Combine(work, "autocue");
+    Directory.CreateDirectory(folder);
+    string Song(string name, int tone = 28, string? to = null)
+    {
+        string file = to ?? Path.Combine(folder, name + ".wav");
+        const int rate = 22050;
+        var samples = new List<short>();
+        for (int i = 0; i < rate * 2; i++) samples.Add(0);
+        for (int i = 0; i < rate * (tone + 6); i++)
+        {
+            double t = i / (double)rate, gain = t < tone ? 1 : Math.Max(0, 1 - (t - tone) / 6);
+            samples.Add((short)(Math.Sin(2 * Math.PI * 440 * t) * 8000 * gain));
+        }
+        for (int i = 0; i < rate * 3; i++) samples.Add(0);
+        using var w = new BinaryWriter(File.Create(file));
+        w.Write("RIFF"u8); w.Write(36 + samples.Count * 2); w.Write("WAVE"u8);
+        w.Write("fmt "u8); w.Write(16); w.Write((short)1); w.Write((short)1); w.Write(rate); w.Write(rate * 2); w.Write((short)2); w.Write((short)16);
+        w.Write("data"u8); w.Write(samples.Count * 2);
+        foreach (var v in samples) w.Write(v);
+        return file;
+    }
+    string auto = Song("Auto - Fades"), hand = Song("Hand - Set");
+    var e = NewEngine();
+    e.SetCues(hand, new CuePoints(CueIn: 0.5));
+    PlaylistSnapshot? snap = null;
+    e.PlaylistChanged += x => snap = x;
+    e.ConfigureAutoCue(true);
+    e.AddFiles([auto, hand]);
+    bool made = Wait(() => e.GetCues(auto).Auto, 15);
+    var c = e.GetCues(auto);
+    Check(made && c.CueIn is > 1.9 and < 2.1 && c.CueOut is > 35 and < 36.5 && c.Mix is > 34 and < 35.6,
+        $"auto cue: Cue In past the silence, Cue Out before it, Mix on the fade-out ({c})");
+    Check(Wait(() => snap?.Items.FirstOrDefault(t => t.Path == auto)?.Cues?.Auto == true, 3), "the playlist item plays with them");
+    Thread.Sleep(500);
+    Check(e.GetCues(hand) == new CuePoints(CueIn: 0.5), "cue points set by hand are left as they are");
+    Check(snap?.Items.FirstOrDefault(t => t.Path == hand)?.Cues?.Auto == false, "…and play with them");
+    // The file fetched again, longer, under the same name: auto cue's made again for it.
+    string longer = Song("longer", tone: 48, to: Path.Combine(work, "longer.wav"));
+    e.ReplaceFileAsync(auto, () => File.Copy(longer, auto, overwrite: true)).Wait(5000);
+    Check(Wait(() => e.GetCues(auto) is { Auto: true, CueOut: > 55 }, 15), $"a file replaced by another under its name (a longer one): auto cue's made again for it ({e.GetCues(auto)})");
+    e.SetCues(auto, e.GetCues(auto) with { CueIn = 1.5 });
+    Check(e.GetCues(auto) is { Auto: false, CueIn: 1.5 }, "editing auto cue's cue points makes them set by hand");
+    e.SetCues(auto, CuePoints.None);
+    Wait(() => e.GetCues(auto).Auto, 15);
+    e.ConfigureAutoCue(false);
+    Check(Wait(() => e.GetCues(auto) == CuePoints.None && snap?.Items.FirstOrDefault(t => t.Path == auto)?.Cues == null, 3),
+        "auto cue off: its cue points are left out, also in the playlist");
+    e.Dispose();
+
+    // The library: auto cue's never go over cue points set by hand; a station with auto cue off doesn't see them.
+    var adb = LibraryDb.Open(new LibrarySettings { File = Path.Combine(work, "autocue.db") });
+    LibraryScanner.Scan(adb, [folder]);
+    adb.SetCues(hand, new CuePoints(CueIn: 0.5));
+    adb.SetCues(hand, new CuePoints(CueIn: 2, Auto: true));
+    adb.SetCues(auto, new CuePoints(CueIn: 2, CueOut: 35.7, Auto: true, FileSize: new FileInfo(auto).Length));
+    LibraryDb.UseAutoCues = false;
+    var offHand = adb.GetCues(hand);
+    var off = adb.GetCues(auto);
+    long musicRoot = adb.Categories().First(x => x.ParentId == null && x.Kind == "music").Id;
+    adb.SetCategory(adb.Search(null, CategoryFilter.All).Tracks.Select(t => t.Id), musicRoot);
+    var rotationOff = adb.RotationTracks([musicRoot]).First(t => t.Path == auto);
+    LibraryDb.UseAutoCues = true;
+    var on = adb.GetCues(auto);
+    var rotationOn = adb.RotationTracks([musicRoot]).First(t => t.Path == auto);
+    var synced = adb.CueChanges(null).First(x => x.Path == auto).Cues;
+    adb.SetCues(auto, new CuePoints(CueIn: 2, CueOut: 35.7, Auto: true, FileSize: 12345)); // made for another file of that name
+    var another = adb.GetCues(auto);
+    var rotationAnother = adb.RotationTracks([musicRoot]).First(t => t.Path == auto);
+    LibraryDb.UseAutoCues = false;
+    Check(another == CuePoints.None && rotationAnother.CueOut == null, "the library: auto cue's made for another file of that name (another size) are left out");
+    Check(offHand == new CuePoints(CueIn: 0.5), "the library: auto cue's cue points never go over ones set by hand");
+    Check(off == CuePoints.None && rotationOff.CueIn == null && on is { Auto: true, CueIn: 2 } && rotationOn.CueOut == 35.7 && synced.Auto,
+        $"the library: auto cue's only for a station with auto cue on, marked as such for the studios ({off}, {on})");
+}
+
+Console.WriteLine("Downloads (the news)");
+{
+    // A page with the link to the bulletin (as a news agency's website has it), the bulletin, and a page with no link.
+    var port = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    port.Start();
+    int free = ((System.Net.IPEndPoint)port.LocalEndpoint).Port;
+    port.Stop();
+    string bulletin = Audio.Make(Path.Combine(work, "bulletin"), 1, seconds: 3, rate: 8000, channels: 1)[0];
+    int version = 1;
+    using var site = new System.Net.HttpListener();
+    site.Prefixes.Add($"http://127.0.0.1:{free}/");
+    site.Start();
+    _ = Task.Run(async () =>
+    {
+        while (site.IsListening)
+        {
+            System.Net.HttpListenerContext ctx;
+            try { ctx = await site.GetContextAsync(); } catch { break; }
+            string path = ctx.Request.Url!.AbsolutePath;
+            byte[] body = path == "/news"
+                ? System.Text.Encoding.UTF8.GetBytes($"<html><a href=\"/other.txt\">x</a><script>var f=\"http:\\/\\/127.0.0.1:{free}\\/audio\\/news-{version}.mp3\";</script></html>")
+                : path == "/empty" ? "<html>nothing</html>"u8.ToArray()
+                : path.StartsWith("/audio/") ? File.ReadAllBytes(bulletin) : [];
+            ctx.Response.StatusCode = body.Length > 0 ? 200 : 404;
+            ctx.Response.OutputStream.Write(body);
+            ctx.Response.Close();
+        }
+    });
+    string dest = Path.Combine(work, "news", "news.mp3");
+    var d = new DownloadSettings { Name = "News", Source = DownloadSource.Page, Address = $"http://127.0.0.1:{free}/news", SaveAs = dest, ShortestSeconds = 1, TooOldMinutes = 60 };
+    string temp = Path.Combine(work, "news-test.mp3");
+    var got = Task.Run(() => Download.FetchAsync(d, temp)).GetAwaiter().GetResult();
+    Check(got.Url == $"http://127.0.0.1:{free}/audio/news-1.mp3" && got.Seconds is > 2.9 and < 3.1,
+        $"a page: the first link that matches (written as a page's script has it), fetched and checked ({got.Url}, {got.Seconds:0.0} s)");
+    string Fails(DownloadSettings x)
+    {
+        try { Task.Run(() => Download.FetchAsync(x, temp)).GetAwaiter().GetResult(); return ""; }
+        catch (Exception ex) { return ex.Message; }
+    }
+    string tooShort = Fails(new DownloadSettings { Source = DownloadSource.Link, Address = got.Url, ShortestSeconds = 10 });
+    string noLink = Fails(new DownloadSettings { Source = DownloadSource.Page, Address = $"http://127.0.0.1:{free}/empty" });
+    string notThere = Fails(new DownloadSettings { Source = DownloadSource.Link, Address = $"http://127.0.0.1:{free}/gone.mp3" });
+    Check(tooShort.Contains("3 s") && noLink.Length > 0 && notThere.Contains("404"), $"…too short, no link on the page, not there: not taken, and why ({tooShort} | {noLink} | {notThere})");
+
+    var at = new DownloadSettings { EveryMinutes = 0, AtMinutes = "2, 32" };
+    DateTime U(int h, int m) => StationTime.ToUtc(new DateTime(2026, 11, 5, h, m, 0)); // the station's time, in UTC
+    var ten40 = U(10, 40);
+    Check(new DownloadSettings { EveryMinutes = 15 }.DueAfter(ten40.AddMinutes(-20), ten40) == ten40.AddMinutes(-5)
+          && at.DueAfter(U(10, 31), ten40) == U(10, 32)
+          && at.DueAfter(U(10, 33), ten40) == DateTime.MaxValue
+          && at.DueAfter(U(9, 50), U(10, 1)) == DateTime.MaxValue
+          && at.DueAfter(U(9, 30), U(10, 1)) == U(9, 32)
+          && at.IntervalMinutes() == 30 && new DownloadSettings { EveryMinutes = 0, AtMinutes = "5" }.IntervalMinutes() == 60,
+        "when it is due: every so many minutes, or at the minutes past the hour (the latest one gone by, if not fetched since)");
+
+    // The computer on air fetches it into its place; the same again only counts as fresh; too old: passed over on air.
+    var e = NewEngine();
+    var said = new List<string>();
+    e.Log += m => { lock (said) said.Add(m); };
+    bool onAir = true;
+    var settings = new AppSettings { Downloads = [d] };
+    var alerts = new List<string>();
+    var downloader = new Downloader(() => settings, () => onAir, e, (kind, text) => { lock (alerts) alerts.Add(kind + ": " + text); });
+    var tick = typeof(Downloader).GetMethod("Tick", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+    tick.Invoke(downloader, null);
+    Check(File.Exists(dest) && Download.SameFile(dest, bulletin) && !File.Exists(dest + ".download"), "the computer on air fetches it into its place");
+    File.SetLastWriteTimeUtc(dest, DateTime.UtcNow.AddHours(-3));
+    var standby = new Downloader(() => settings, () => false, e, (_, _) => { });
+    tick.Invoke(standby, null);
+    string? stale = standby.Stale(dest);
+    Check(stale != null && File.GetLastWriteTimeUtc(dest) < DateTime.UtcNow.AddHours(-2),
+        $"a standby computer fetches nothing, and sees by the file's time that it is too old ({stale})");
+    e.Veto = standby.Stale;
+    e.AddFiles([dest, songs[0]]);
+    Thread.Sleep(300);
+    e.Play();
+    Check(Wait(() => e.GetStatus().Current?.Path == songs[0], 5), "too old: passed over on air, the next item plays");
+    lock (said) Check(said.Any(m => m.Contains("Cannot play") && m.Contains("News is out of date")), "…and the log says why");
+    e.Stop();
+    standby.Dispose();
+    // Fetched again (the computer on air, once it is due): the same file, so only its time; fresh again.
+    var states = (System.Collections.IDictionary)typeof(Downloader).GetField("_states", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(downloader)!;
+    states.Clear(); // as after a restart: what it knows is the file's time (too old: due)
+    tick.Invoke(downloader, null);
+    Check(downloader.Stale(dest) == null && File.GetLastWriteTimeUtc(dest) > DateTime.UtcNow.AddMinutes(-1), "the same file fetched again: fresh again (its time)");
+    // A new bulletin while the old one is on air: not put in place under the player.
+    e.Veto = downloader.Stale;
+    version = 2;
+    e.AddFiles([dest]);
+    Thread.Sleep(300);
+    e.Play();
+    bool onAirNow = Wait(() => e.GetStatus().Current?.Path == dest, 5);
+    bool refused = false;
+    try { Task.Run(() => e.ReplaceFileAsync(dest, () => { })).GetAwaiter().GetResult(); }
+    catch (FilePlayingException) { refused = true; }
+    Check(onAirNow && refused, $"a file on air isn't replaced (the download waits until it isn't) (on air {onAirNow})");
+    downloader.Dispose();
+    e.Dispose();
+    site.Stop();
+    lock (alerts) Check(alerts.Count == 0, "no alert while it was fetched in time");
+}
+
 // ───────────────────────── Fillers: one, for a small gap ─────────────────────────
 
 Console.WriteLine("Fillers (one, only for a small gap)");
@@ -559,7 +811,7 @@ Console.WriteLine("The on-air program (a library of its own)");
             {
                 engine.Next();
                 bool plays = WaitUi(() => engine.GetStatus() is { State: PlayerState.Playing, Current: { } on } && on.Path == nextPath, 8);
-                Pump(10);
+                WaitUi(() => engine.GetStatus().Position > 0, 3); // the sound card's delay before it is heard
                 var st = engine.GetStatus();
                 Check(plays && st.State == PlayerState.Playing && st.Current?.Path == nextPath && st.Position > 0,
                     $"…and plays from it with its file gone (a share that stopped answering): {st.State}, {Path.GetFileName(st.Current?.Path ?? "")} at {st.Position:0.0} s");
@@ -681,6 +933,27 @@ Console.WriteLine("Hour templates' targets (at least, at most, in a row)");
     }
     var tooMany = Make(new HourTarget { Kind = TargetKind.AtLeast, Count = 12, CategoryId = portugal, CategoryName = "Portugal" });
     Check(tooMany.Problems.Any(p => p.Contains("Portugal") && p.Contains("at least 12")), $"a target the library can't meet is said ({string.Join("; ", tooMany.Problems)})");
+
+    // The music report (Sintoniza Pro → Library → Music report): an hour made to its target, counted; what played most;
+    // the songs not played for a while.
+    {
+        // Yesterday at 10: an hour gone by, with five Portuguese songs in it (its target: at least 5).
+        var past = DateTime.Today.AddDays(-1).AddHours(10);
+        var target = new HourTarget { Kind = TargetKind.AtLeast, Count = 5, CategoryId = portugal, CategoryName = "Portugal" };
+        var template = new PlaylistTemplate { Name = "Hits", Lines = [new TemplateLine { CategoryId = music, CategoryName = "Music", Kind = "music" }],
+            Slots = [new WeekTime { Day = past.DayOfWeek, Time = "10:00:00" }], Targets = [target] };
+        var data = new ScheduleData { Templates = { template } };
+        data.Normalize();
+        var played = all.Take(3).Select(t => t.Path).Concat([all[0].Path, all[0].Path]).Select((path, n) =>
+            new AsRunEntry(past.AddMinutes(4 * n), past.AddMinutes(4 * n + 3), "Music", "playlist", "", "", "Check", Path.GetFileNameWithoutExtension(path), "", "", "", "", "", path)).ToList();
+        AsRunDb.Add(tdb, played);
+        var report = MusicReport.Make(tdb, data, past.Date, past.Date);
+        Check(report.Plays == 5 && report.Songs.FirstOrDefault()?.Count == "3" && report.Categories.Any(c => c.Text.Contains("Portugal")),
+            $"the music report: the songs played most, from the as-run log, and each category's share ({report.Plays} plays; {string.Join(", ", report.Categories.Select(c => c.Text))})");
+        Check(report.Targets.Count == 1 && report.Targets[0].Text.Contains("1 of 1"), $"…how many hours kept each target ({string.Join("; ", report.Targets.Select(t => $"{t.Count} {t.Text}"))})");
+        var (rested, lines) = MusicReport.NotPlayed(tdb, pop, 30, StationTime.Now);
+        Check(rested == 18 && lines.All(l => l.Count == L.T("never")), $"…and the songs of a category not played for a while ({rested})");
+    }
 }
 
 // ───────────────────────── Tomorrow's daily playlists ─────────────────────────
@@ -1488,6 +1761,60 @@ Console.WriteLine("The studios' logs in Sintoniza Pro, and what is risky in a se
     host.Close();
     var setup = SetupCheck.Now();
     Check(setup.All(w => w.Short.Length > 0 && w.Text.Length > 0), $"what is risky in this computer's setup is looked at ({(setup.Count == 0 ? "nothing" : string.Join("; ", setup.Select(w => w.Short)))})");
+}
+
+Console.WriteLine("Shows as podcasts (Sintoniza Rec)");
+{
+    string recFolder = Path.Combine(work, "rec-podcast"), podFolder = Path.Combine(work, "podcasts");
+    if (Directory.Exists(podFolder)) Directory.Delete(podFolder, true);
+    var clock = StationTime.Now;
+    // A five-minute show that ended a quarter of an hour ago, and ten minutes of recording around it.
+    var showStart = new DateTime(clock.Year, clock.Month, clock.Day, clock.Hour, clock.Minute, 0).AddMinutes(-20);
+    string recFile = RecService.FileFor(recFolder, "RE_", showStart.AddMinutes(-2), ".wav");
+    Directory.CreateDirectory(Path.GetDirectoryName(recFile)!);
+    File.Copy(Audio.Make(Path.Combine(work, "podcast-tone"), 1, seconds: 600, rate: 8000, channels: 1)[0], recFile, overwrite: true);
+    string cache = AppSettings.StationFile("schedule-cache.json");
+    string? cacheBefore = File.Exists(cache) ? File.ReadAllText(cache) : null;
+    var podData = new ScheduleData { Shows = { new LiveShow { Name = "Brunch", Minutes = 5, Slots = [new WeekTime { Day = showStart.DayOfWeek, Time = showStart.ToString("HH:mm:ss") }] } } };
+    podData.Normalize();
+    podData.WriteFile(cache); // as the on-air program on this computer keeps it
+    try
+    {
+        string stateFile = Path.Combine(AppSettings.DataFolder, "podcasts.json");
+        if (File.Exists(stateFile)) File.Delete(stateFile);
+        // A new file every minute here: the one holding the show's end is closed by now (an episode waits for that).
+        var recSettings = new RecSettings { Folder = recFolder, Prefix = "RE_", StationName = "Rádio Exemplo", FileMinutes = 1,
+            Podcasts = new PodcastSettings { Enabled = true, Folder = podFolder, Address = "https://example.com/pod/", Keep = 5 } };
+        var said = new List<string>();
+        // The recording file holding the show's end still open (an hour-long file started a minute before it ended):
+        // not made yet, and Make the last one now says when.
+        var open = recSettings.Clone();
+        open.FileMinutes = 60;
+        open.StartMinute = (showStart.AddMinutes(5).Minute + 59) % 60;
+        var waiting = new PodcastMaker(() => open, m => { lock (said) said.Add(m); });
+        var answer = waiting.MakeLatestAsync(open);
+        WaitUi(() => answer.IsCompleted, 30);
+        Check(answer.IsCompleted && answer.Result.Contains("once its recording file has closed") && !Directory.Exists(podFolder),
+            $"a show whose last recording file is still being written isn't made yet ({(answer.IsCompleted ? answer.Result : "…")})");
+        var maker = new PodcastMaker(() => recSettings, m => { lock (said) said.Add(m); });
+        maker.Check(clock);
+        bool made = WaitUi(() => File.Exists(Path.Combine(podFolder, "podcast.xml")), 60);
+        var episodes = Directory.Exists(podFolder) ? Directory.GetFiles(podFolder, "Brunch *.mp3") : [];
+        double length = episodes.Length == 1 ? AudioProbe.Duration(episodes[0]) ?? 0 : 0;
+        Check(made && episodes.Length == 1 && Math.Abs(length - 300) < 3,
+            $"a show that ended is made into an episode, its stretch of the recordings ({episodes.Length} file, {length:0} s; {string.Join(" | ", said)})");
+        string feed = made ? File.ReadAllText(Path.Combine(podFolder, "podcast.xml")) : "";
+        Check(feed.Contains("<enclosure url=\"https://example.com/pod/Brunch%20") && feed.Contains("<itunes:duration>00:05:00") && feed.Contains("Rádio Exemplo"),
+            "…and the feed links it where the folder is published");
+        maker.Check(clock);
+        Thread.Sleep(1500);
+        Pump(5);
+        Check(Directory.GetFiles(podFolder, "*.mp3").Length == 1 && PodcastMaker.Made().Count(e => e.File.Length > 0) == 1, "…and never made twice");
+    }
+    finally
+    {
+        if (cacheBefore != null) File.WriteAllText(cache, cacheBefore); else File.Delete(cache);
+    }
 }
 
 Console.WriteLine("Release notes in the update window");

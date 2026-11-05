@@ -393,6 +393,15 @@ sealed class LibraryService
             lock (_pendingCues)
                 if (_pendingCues.TryGetValue(path, out var pending) && pending == cues) _pendingCues.Remove(path);
             _lastCueError = null;
+            // Auto cue's never go over cue points set by hand in the library (another studio's, not here yet): those
+            // are taken here too, so this studio plays what the others do.
+            if (cues.Auto && _cues is { } store && db.GetCues(path) is { Auto: false, IsEmpty: false } hand)
+            {
+                HashSet<string> keep;
+                lock (_pendingCues) keep = _pendingCues.Keys.ToHashSet(PathComparer); // edited here since: those stay
+                var changed = store.Apply([(path, hand)], keep);
+                if (changed.Count > 0) Dispatcher.UIThread.Post(() => _cuesChanged?.Invoke(changed));
+            }
         }
         catch (Exception ex)
         {

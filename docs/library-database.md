@@ -9,7 +9,7 @@ is the contract they rely on.
 What stays on each computer: its settings (audio devices, the database login…), and, so the station keeps playing
 when the database can't be reached, the playout's playlist and a copy of the last schedule it read.
 
-Schema version **19**. The scripts that create the tables are
+Schema version **30**. The scripts that create the tables are
 [`sqlite-1.sql`](../src/Playout.Library/Schema/sqlite-1.sql) and
 [`mysql-1.sql`](../src/Playout.Library/Schema/mysql-1.sql), then
 [`sqlite-2.sql`](../src/Playout.Library/Schema/sqlite-2.sql) and
@@ -141,6 +141,8 @@ One row per audio file.
 | `play_days` | text, null | 7 characters, Monday to Sunday, `1` = may be picked (null: every day) |
 | `play_hours` | text, null | 24 characters, 00h to 23h, `1` = may be picked (null: every hour) |
 | `max_day`, `max_week` | integer, null | picked automatically at most this many times a day / a week (Monday to Sunday) |
+| `cues_auto` | 0/1 | 1 = the cue points were made by auto cue (from the sound), not set by hand: used only by stations with auto cue on, and replaced by a hand edit; set it to 0 when your program sets cue points (from schema 30) |
+| `cues_auto_size` | integer, null | the file's size (bytes) auto cue's cue points were made for: another file under the same path (`file_size` different) has them made again (from schema 30) |
 | `cues_updated_at` | time, null | when the cue points were last set or cleared, by the **database server's** clock; null = never |
 
 The app reads the cue points of files whose `cues_updated_at` changed every 30 seconds. A program that changes cue

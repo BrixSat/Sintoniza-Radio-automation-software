@@ -326,8 +326,14 @@ computer is on air and which are standby.
 
 ### The station (Station and Library, on the left)
 
-- **Station settings** — name and logo, **time zone**, genre, website, FM or web radio, money sign; crossfades and
-  loudness; time signal; silence detection and fill music; other music folders; streaming server; RDS texts (PS, radio text, RT+);
+- **Station settings** — name and logo, **time zone**, genre, website, FM or web radio, money sign; crossfades,
+  **auto cue** (on: the computer on air gives the songs coming up with no cue points theirs from their sound — Cue In
+  past the silence at the start, Cue Out before the silence at the end, Mix where a fade-out has gone quiet — kept in
+  the library for every studio and counted by the daily playlists; hand-set cue points always stay, and editing auto
+  cue's makes them yours; off: auto cue's are left out) and
+  loudness; time signal; silence detection and fill music; other music folders; streaming server (and *When the sound
+  card stops*: so many seconds after the sound card stops, the stream sends a fallback file, a station ID or "we'll be right back",
+  looped, until the card plays again: the stream has a clock of its own, so the listeners stay connected); RDS texts (PS, radio text, RT+);
   website now playing; alerts; **takes** (below); days of daily playlists made ahead and row colours. Saved for every studio: each
   playout takes them within a minute. The **time zone** is where the station is on air (*Each computer's own* by
   default): with one set, the schedule, daily playlists, time signal and takes, clock, logs, as-run and reports go by
@@ -385,6 +391,14 @@ number now (point at it for the server, or why it can't be read).
 **Station → Listeners** shows a day hour by hour (the bar is the average; point at it for the most and fewest), and for
 the hour clicked what played in it with the listeners when each item started. Home shows the listeners now.
 
+### Music report
+
+**Library → Music report**: for the last 7, 30 or 90 days, the **most played songs** and **artists** (what really went
+on air: the as-run log), the **songs played by category** (each one's share, by the song's own category), the **hour
+targets kept** (for each target of a template, how many of the hours it was on that went by kept it, by what played,
+e.g. *Hits · at least 4 an hour of Music › Portugal: 118 of 124 hours*) and **not played for a while**: a category and
+a number of days, the songs not played in that time or never, those rested longest first — to refresh the rotation.
+
 ### The studios' logs
 
 Each studio computer (on air or standby) sends its log to the library every 15 seconds (also what its watchdog, Sintoniza Rec and Pro
@@ -394,6 +408,20 @@ lost, silence, restarts, alerts, errors), **Only problems**, a search, and **Sav
 days (each computer keeps its own files too). Home → *Needs attention* lists each computer with problems in the last
 hour, and what is risky in a studio's setup (on Wi-Fi, on battery); with a shared library, the studios in the status
 bar say it too.
+
+### Downloads (the news)
+
+**Station → Downloads**: files fetched again and again, such as the news bulletin an agency puts on its website
+every hour. Each has a name, where it comes from — **a page with a link to the file** (the first link on it that
+matches the pattern; as it is, the first address ending in `.mp3`), **the file's own address**, or **an FTP server**
+(a user and password if it asks for one) — where it is **saved** (always the same file: put that file in the hour
+templates and events), and **when**: every so many minutes, or at set minutes past each hour (e.g. *2, 32*, a little
+after the source puts a new one up). **Test** fetches it here and says what it found and how long it plays.
+
+The computer on air fetches them (a standby one never does): checked first (it must play, for at least the shortest
+time set), then put in place when it isn't on air; the same file again only counts as fresh, and a failed fetch is
+tried again every 2 minutes, the old file staying. A file not fetched for its **too old** time is passed over on air
+(no yesterday's news), with a line in the log and an alert.
 
 ### ERC quotas (Portuguese music)
 
@@ -691,6 +719,18 @@ stopped is left out and said so).
 **Alerts** (Settings → Alerts): silence (or a stream that dropped) for longer than set, a recording that can't be
 written, less than 2 GB free, and a "still recording" message once a day if wanted; by Telegram, e-mail or a web
 address (**Send a test**). Closing the window asks first, because it stops the recording.
+
+**Podcasts** (Settings → Podcasts): *Make the shows into podcast episodes* — once a show has ended and the recording
+file that holds its end has closed (with hour-long files, up to an hour later; its times one after the other are one
+show), its stretch of the recordings is saved as an MP3 (`Brunch 2026-11-04 11-00.mp3`) in
+the podcast folder (*Podcasts* in the recordings' folder unless set), and `podcast.xml`, the feed podcast apps
+subscribe to, lists the latest episodes (**Keep the latest** N; older ones are deleted, also where it is sent). Tick the shows wanted (none:
+every show); the shows are those of the schedule the on-air program on this computer has. The feed's name, and the web
+address where the folder is published, for its links. **Send each episode and the feed to** an FTP folder
+(`ftp://server/podcasts/`, a folder that already exists) or a folder, with its user and password; one not sent (the
+server away) is sent with the next check. **Make the last one now** makes the latest show that ended, with the saved
+settings, to try it. What was made is remembered: nothing twice; a show with no recording is said in the log. Set the
+feed's web address: podcast apps need it for the episodes' links.
 
 ---
 

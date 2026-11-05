@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="using:Playout.App"
+             x:Class="Playout.App.MusicReportView">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#1A1D24" />
+            <Setter Property="BorderBrush" Value="#2A2F3A" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style Selector="TextBlock.cardtitle">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="LetterSpacing" Value="1.2" />
+            <Setter Property="Foreground" Value="#7D8594" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+    </UserControl.Styles>
+    <UserControl.DataTemplates>
+        <DataTemplate x:DataType="app:ReportLine">
+            <Grid ColumnDefinitions="64,*" Margin="0,1">
+                <TextBlock Text="{Binding Count}" FontWeight="SemiBold" HorizontalAlignment="Right" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+    <DockPanel>
+        <WrapPanel DockPanel.Dock="Top" ItemSpacing="8" LineSpacing="8" Margin="0,0,0,12">
+            <ComboBox x:Name="PeriodBox" MinWidth="170" />
+            <Button x:Name="ReloadButton" Content="Refresh" />
+            <TextBlock x:Name="StatusText" Classes="note" VerticalAlignment="Center" MaxWidth="600" />
+        </WrapPanel>
+        <ScrollViewer>
+            <StackPanel Margin="0,0,14,0">
+                <Grid ColumnDefinitions="*,12,*">
+                    <Border Classes="card">
+                        <StackPanel>
+                            <TextBlock Classes="cardtitle" Text="MOST PLAYED SONGS" />
+                            <ItemsControl x:Name="SongsList" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Grid.Column="2">
+                        <Border Classes="card">
+                            <StackPanel>
+                                <TextBlock Classes="cardtitle" Text="MOST PLAYED ARTISTS" />
+                                <ItemsControl x:Name="ArtistsList" />
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="card">
+                            <StackPanel>
+                                <TextBlock Classes="cardtitle" Text="SONGS PLAYED BY CATEGORY" />
+                                <ItemsControl x:Name="CategoriesList" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+                <Border Classes="card">
+                    <StackPanel>
+                        <TextBlock Classes="cardtitle" Text="HOUR TARGETS KEPT (BY WHAT PLAYED)" />
+                        <ItemsControl x:Name="TargetsList" />
+                        <TextBlock x:Name="NoTargetsText" Classes="note" Text="No hour template has targets (Playlists → a template → Targets for the hour)." IsVisible="False" />
+                    </StackPanel>
+                </Border>
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
+                        <TextBlock Classes="cardtitle" Text="NOT PLAYED FOR A WHILE" />
+                        <WrapPanel ItemSpacing="8" LineSpacing="8">
+                            <ComboBox x:Name="CategoryBox" MinWidth="240" PlaceholderText="Library category" />
+                            <TextBlock Text="not played for" VerticalAlignment="Center" />
+                            <NumericUpDown x:Name="DaysBox" Minimum="1" Maximum="3650" Increment="7" FormatString="0" Width="110" Value="30" />
+                            <TextBlock Text="days, or never" VerticalAlignment="Center" />
+                            <Button x:Name="NotPlayedButton" Content="Look" />
+                        </WrapPanel>
+                        <TextBlock x:Name="NotPlayedText" Classes="note" />
+                        <ItemsControl x:Name="NotPlayedList" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

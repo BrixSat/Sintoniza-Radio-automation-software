@@ -1858,7 +1858,9 @@ public partial class MainWindow : Window, IShowsProblems
             StationName: string.IsNullOrWhiteSpace(_settings.StationName) ? AppInfo.Name : _settings.StationName,
             Genre: _settings.StationGenre,
             Shoutcast: _settings.Shoutcast,
-            Url: string.IsNullOrWhiteSpace(_settings.StationUrl) ? null : _settings.StationUrl));
+            Url: string.IsNullOrWhiteSpace(_settings.StationUrl) ? null : _settings.StationUrl,
+            Fallback: string.IsNullOrWhiteSpace(_settings.StreamFallback) ? null : _settings.StreamFallback,
+            FallbackSeconds: Math.Clamp(_settings.StreamFallbackSeconds, 2, 600)));
     }
 
     // ───────────────────────── Settings ─────────────────────────
@@ -2073,6 +2075,7 @@ public partial class MainWindow : Window, IShowsProblems
 
     HealthMonitor? _health;
     LogShipper _logShipper = null!;
+    Downloader? _downloader;
 
     void StartBackups()
     {
@@ -2087,6 +2090,10 @@ public partial class MainWindow : Window, IShowsProblems
                 AppLog.Write(message);
                 Dispatcher.UIThread.Post(() => LastLog.Text = message);
             };
+            // The station's downloads (the news), fetched by the computer on air; too old, passed over on air.
+            _downloader = new Downloader(() => _settings, () => !IsStandby, _engine, (kind, text) => _health?.Report(kind, text));
+            _engine.Veto = _downloader.Stale;
+            Closed += (_, _) => _downloader?.Dispose();
         }
         _backups = new Backups(() => _settings.Backup, () => _library.Db);
         _backups.Failed += error => _health?.Report("backup", L.F("The backup failed: {0}", error));
@@ -2454,6 +2461,9 @@ public partial class MainWindow : Window, IShowsProblems
     void ApplyLoudness()
     {
         if (_engine == null) return;
+        // Auto cue with it: also what the songs play for, from the cue points.
+        LibraryDb.UseAutoCues = _settings.AutoCue;
+        _engine.ConfigureAutoCue(_settings.AutoCue);
         _engine.ConfigureLoudness(_settings.Loudness);
         _engine.MeasureLoudness(_settings.Cartwalls.SelectMany(c => c.Carts).Select(c => c.Path).OfType<string>().Where(SharedPaths.FileExists).Distinct().ToList());
     }

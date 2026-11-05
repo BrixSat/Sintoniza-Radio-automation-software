@@ -284,6 +284,7 @@ public partial class SettingsWindow : PageWindow
 
         CrossfadeBox.Value = (decimal)settings.Crossfade;
         OtherCrossfadeBox.Value = (decimal)settings.OtherCrossfade;
+        AutoCueBox.IsChecked = settings.AutoCue;
         _colors = new PlaylistColors
         {
             AdBreak = settings.PlaylistColors?.AdBreak, Jingle = settings.PlaylistColors?.Jingle, Programme = settings.PlaylistColors?.Programme,
@@ -308,6 +309,11 @@ public partial class SettingsWindow : PageWindow
         FormatBox.SelectedIndex = settings.StreamFormat;
         BitrateBox.SelectedIndex = settings.StreamBitrateIndex;
         MountPanel.IsEnabled = !settings.Shoutcast;
+        _streamFallback = settings.StreamFallback ?? "";
+        StreamFallbackSecondsBox.Value = (decimal)Math.Clamp(settings.StreamFallbackSeconds, 2, 600);
+        ShowStreamFallback();
+        StreamFallbackButton.Click += async (_, _) => await ChooseStreamFallback();
+        StreamFallbackClearButton.Click += (_, _) => { _streamFallback = ""; ShowStreamFallback(); };
         ServerTypeBox.SelectionChanged += (_, _) => MountPanel.IsEnabled = ServerTypeBox.SelectedIndex == 0;
         var listeners = settings.Listeners ?? new();
         ListenersBox.IsChecked = listeners.Enabled;
@@ -745,6 +751,7 @@ public partial class SettingsWindow : PageWindow
         AlertBackupBox.IsChecked = a.Backup;
         AlertTomorrowBox.IsChecked = a.Tomorrow;
         AlertShowBox.IsChecked = a.Show;
+        AlertDownloadBox.IsChecked = a.Download;
         AlertTomorrowHourBox.Value = Math.Clamp(a.TomorrowHour, 0, 23);
         TelegramTokenBox.Text = a.TelegramToken;
         TelegramChatBox.Text = a.TelegramChat;
@@ -789,6 +796,7 @@ public partial class SettingsWindow : PageWindow
         Backup = AlertBackupBox.IsChecked == true,
         Tomorrow = AlertTomorrowBox.IsChecked == true,
         Show = AlertShowBox.IsChecked == true,
+        Download = AlertDownloadBox.IsChecked == true,
         TomorrowHour = (int)(AlertTomorrowHourBox.Value ?? 18),
         TelegramToken = TelegramTokenBox.Text?.Trim() ?? "",
         TelegramChat = TelegramChatBox.Text?.Trim() ?? "",
@@ -910,6 +918,26 @@ public partial class SettingsWindow : PageWindow
             : L.F("No file for: {0}", string.Join(", ", missing.Select(h => h.ToString("00"))));
     }
 
+    string _streamFallback = "";
+
+    void ShowStreamFallback()
+    {
+        StreamFallbackText.Text = _streamFallback.Length > 0 ? Path.GetFileName(_streamFallback) : L.T("Silence (no file)");
+        StreamFallbackClearButton.IsEnabled = _streamFallback.Length > 0;
+    }
+
+    async Task ChooseStreamFallback()
+    {
+        var files = await Storage.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = L.T("Choose the file for the stream"),
+            FileTypeFilter = [new FilePickerFileType(L.T("Audio")) { Patterns = AudioFiles.Patterns }],
+        });
+        if (files.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+        _streamFallback = SharedPaths.ToLibrary(path);
+        ShowStreamFallback();
+    }
+
     async Task ChooseSignalFile()
     {
         var files = await Storage.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -1001,6 +1029,7 @@ public partial class SettingsWindow : PageWindow
 
         _settings.Crossfade = (double)(CrossfadeBox.Value ?? 0);
         _settings.OtherCrossfade = (double)(OtherCrossfadeBox.Value ?? 0);
+        _settings.AutoCue = AutoCueBox.IsChecked == true;
         _settings.PlaylistColors = _colors;
         _settings.PlaylistNextMinutes = (int)(NextMinutesBox.Value ?? 30);
         _settings.PlanDaysAhead = (int)(PlanDaysBox.Value ?? 2);
@@ -1023,6 +1052,8 @@ public partial class SettingsWindow : PageWindow
         _settings.StreamPassword = PasswordBox.Text ?? "";
         _settings.StreamFormat = Math.Max(0, FormatBox.SelectedIndex);
         _settings.StreamBitrateIndex = Math.Max(0, BitrateBox.SelectedIndex);
+        _settings.StreamFallback = _streamFallback;
+        _settings.StreamFallbackSeconds = (double)(StreamFallbackSecondsBox.Value ?? 10);
         _settings.Listeners = new ListenerSettings
         {
             Enabled = ListenersBox.IsChecked == true, Server = ListenersServerBox.Text?.Trim() ?? "", Mounts = ListenersMountsBox.Text?.Trim() ?? "",

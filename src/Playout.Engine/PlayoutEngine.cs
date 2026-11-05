@@ -51,6 +51,11 @@ public sealed class PlayoutEngine : IDisposable
     readonly LoudnessStore _loudnessStore;
     readonly LoudnessWorker _loudnessWorker;
     volatile LoudnessSettings _loudness = new();
+    bool _autoCue;                       // auto cue on (engine thread)
+    string? _autoCueing;                 // the file auto cue is looking at now (one at a time)
+    Task? _autoCueLoad;                  // its waveform being read (may still hang after its minute)
+    readonly WaveformLoader _autoCueWaves = new();
+    readonly HashSet<string> _autoCueFailed = new(); // files whose sound couldn't be read: not tried again
 
     // Engine-thread state.
     readonly List<Track> _playlist = new();
@@ -149,6 +154,8 @@ public sealed class PlayoutEngine : IDisposable
     volatile Deck? _current;
     volatile int _state = (int)PlayerState.Stopped;
     volatile int _encoder;
+    bool _closed;                        // Dispose has run: no keeper made after it (guarded by _streamLock)
+    volatile StreamKeeper? _keeper;            // the stream's own clock, made the first time the stream starts (guarded by _streamLock)
     volatile int _streamState = (int)StreamState.Off;
     volatile string? _streamError;
     int _streamAttempt;
@@ -298,8 +305,9 @@ public sealed class PlayoutEngine : IDisposable
     /// Saves cue points for a file and applies them to every playlist item of that file. If the file is on air,
     /// the new Mix and Cue Out take effect straight away (if they are still ahead).
     /// </summary>
-    public void SetCues(string path, CuePoints cues)
+    public void SetCues(string path, CuePoints edited)
     {
+        var cues = edited with { Auto = false, FileSize = null }; // set by hand now, also if they started as auto cue's
         _cues.Set(path, cues);
         Post(() =>
         {
@@ -320,13 +328,13 @@ public sealed class PlayoutEngine : IDisposable
         var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
         for (int i = 0; i < _playlist.Count; i++)
             if (string.Equals(_playlist[i].Path, path, comparer))
-                _playlist[i] = _playlist[i] with { Cues = cues.IsEmpty ? null : cues };
+                _playlist[i] = _playlist[i] with { Cues = cues.HasValues ? cues : null };
 
         if (_current is { } deck && string.Equals(deck.Track.Path, path, comparer))
         {
             if (deck.MixSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.MixSync);
             if (deck.CueOutSync != 0) BassMix.ChannelRemoveSync(deck.Handle, deck.CueOutSync);
-            _current = Arm(deck.Handle, deck.Track with { Cues = cues.IsEmpty ? null : cues }, deck.Length) with { Started = deck.Started, GainDb = deck.GainDb };
+            _current = Arm(deck.Handle, deck.Track with { Cues = cues.HasValues ? cues : null }, deck.Length) with { Started = deck.Started, GainDb = deck.GainDb };
         }
     }
 
@@ -373,6 +381,68 @@ public sealed class PlayoutEngine : IDisposable
         });
         return done.Task;
     }
+
+    /// <summary>
+    /// Puts a new file in the place of one the playlist may use (a news bulletin downloaded again): <paramref name="replace"/>
+    /// runs off the engine thread once the file is let go (the copy read ahead and the one opened ahead). Refused while
+    /// it can be heard (try again later). After it, auto cue's cue points for it are dropped (they were the old file's)
+    /// and its playlist items take the new length.
+    /// </summary>
+    public Task ReplaceFileAsync(string path, Action replace)
+    {
+        var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var comparer = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+        Post(() =>
+        {
+            // As the playlist has it, and as the sound library opened it (this computer's path).
+            if (IsAudible(path, comparer) || IsAudible(SharedPaths.ToLocal(path), comparer) || _tagWriting.Contains(path))
+            {
+                done.SetException(new FilePlayingException());
+                return;
+            }
+            _tagWriting.Add(path); // not opened ahead meanwhile
+            _cache.Forget(SharedPaths.ToLocal(path));
+            if (_preload is { } p && _playlist.Find(t => t.Id == p.Id) is { } pre && string.Equals(pre.Path, path, comparer))
+            {
+                Bass.StreamFree(p.Handle);
+                _preload = null;
+            }
+            Task.Run(() =>
+            {
+                replace();
+                return AudioProbe.Duration(path);
+            }).ContinueWith(run => Post(() =>
+            {
+                _tagWriting.Remove(path);
+                _cache.Forget(SharedPaths.ToLocal(path));
+                if (run.IsCompletedSuccessfully)
+                {
+                    _waveforms.Forget(path);
+                    _autoCueWaves.Forget(path);
+                    _autoCueFailed.Remove(path);
+                    if (_cues.GetAny(path) is { Auto: true } old)
+                    {
+                        _cues.DropAuto(path, old);
+                        ApplyCues(path, CuePoints.None);
+                    }
+                    if (run.Result is > 0 and var seconds)
+                        for (int i = 0; i < _playlist.Count; i++)
+                            if (string.Equals(_playlist[i].Path, path, comparer) && _playlist[i].Id != _current?.Track.Id)
+                                _playlist[i] = _playlist[i] with { Duration = seconds };
+                }
+                PlaylistUpdated(); // opens the next item again
+                if (run.IsCompletedSuccessfully) done.SetResult();
+                else done.SetException(run.Exception!.InnerException ?? run.Exception);
+            }));
+        });
+        return done.Task;
+    }
+
+    /// <summary>
+    /// Called on the engine thread before an item starts: a reason it mustn't go on air (a news bulletin too old), and
+    /// it is passed over as a file that can't be played; null: it plays. Must be quick (no disk or network).
+    /// </summary>
+    public Func<string, string?>? Veto { get; set; }
 
     /// <summary>The file is being heard: on air, still fading or playing out under the next item, or on a cart.</summary>
     bool IsAudible(string path, StringComparison comparer)
@@ -438,6 +508,66 @@ public sealed class PlayoutEngine : IDisposable
         if (!settings.Enabled) return;
         foreach (var t in _playlist.Skip(Math.Max(0, _cursorIndex))) if (!t.IsStream && !t.IsTake) _loudnessWorker.Add(t.Path);
     });
+
+    /// <summary>
+    /// Auto cue: on, the songs coming up that have no cue points get them from their sound, one at a time in the
+    /// background (Cue In past silence at the start, Cue Out before silence at the end, Mix on a fade-out), kept like
+    /// cue points set by hand (shared through the library) but marked as auto cue's; hand-set ones are never touched.
+    /// Off, auto cue's cue points are left out.
+    /// </summary>
+    public void ConfigureAutoCue(bool enabled) => Post(() =>
+    {
+        bool changed = _autoCue != enabled;
+        _autoCue = enabled;
+        _cues.UseAuto = enabled;
+        if (!changed) return;
+        var comparer = OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+        foreach (var path in _playlist.Where(t => !t.IsStream).Select(t => t.Path).Distinct(comparer).ToList())
+            if (_cues.GetAny(path) is { Auto: true }) ApplyCues(path, _cues.Get(path) ?? CuePoints.None);
+        PlaylistUpdated();
+    });
+
+    static long? FileSize(string path)
+    {
+        try { return new FileInfo(SharedPaths.ToLocal(path)).Length; }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>How many coming items auto cue looks ahead to.</summary>
+    const int AutoCueAhead = 10;
+
+    /// <summary>The next coming song with no cue points at all looked at (its waveform, off this thread), if auto cue is on and nothing is being looked at.</summary>
+    void AutoCueNext()
+    {
+        // Only the computer on air (a standby one has the same from the library); and not while a load that ran out
+        // of time (a share that doesn't answer) still hangs.
+        if (!_autoCue || _standby || _autoCueing != null || _autoCueLoad is { IsCompleted: false }) return;
+        // The ones after the item on air (that one has started from where it was).
+        var song = _playlist.Skip(_cursorIndex + 1).Take(AutoCueAhead)
+            .FirstOrDefault(t => t.Kind == TrackKind.Music && !t.IsTake && !IsUrl(t.Path) && _cues.GetAny(t.Path) == null && !_autoCueFailed.Contains(t.Path));
+        if (song == null) return;
+        string path = song.Path;
+        _autoCueing = path;
+        // A loader of its own: the screen's waveforms (the item on air, the next) stay in theirs.
+        var wave = _autoCueWaves.LoadAsync(path);
+        // With the file's size: another file under its name later (fetched again) has them made again.
+        var load = wave.ContinueWith(w => (Wave: w.Result, Size: FileSize(path)), TaskScheduler.Default);
+        _autoCueLoad = load;
+        load.ContinueWith(_ => Post(AutoCueNext), TaskScheduler.Default); // also after it ran out of time
+        // A file on a share that doesn't answer: passed over after a minute, so the others still get theirs.
+        Task.WhenAny(load, Task.Delay(TimeSpan.FromMinutes(1))).ContinueWith(_ => Post(() =>
+        {
+            _autoCueing = null;
+            if (load.IsCompletedSuccessfully && load.Result is { Wave.Peak.Length: > 0 } got)
+            {
+                // Only if it still has none: set by hand (here or in another studio) meanwhile, those stay.
+                var cues = CueDetector.Auto(got.Wave!, got.Size);
+                if (_autoCue && _cues.SetIfNone(path, cues)) ApplyCues(path, cues);
+            }
+            else _autoCueFailed.Add(path);
+            PlaylistUpdated(); // and the next one
+        }), TaskScheduler.Default);
+    }
 
     /// <summary>Measures these files' loudness in the background (carts, scheduled items), if levelling is on.</summary>
     public void MeasureLoudness(IEnumerable<string> paths)
@@ -964,8 +1094,11 @@ public sealed class PlayoutEngine : IDisposable
         left = Math.Min(1, left + mic);
         right = Math.Min(1, right + mic);
 
+        var keeper = _keeper;
+        bool streaming = (StreamState)_streamState == StreamState.OnAir && keeper != null;
         return new PlayerStatus(State, deck?.Track, pos, len, left, right,
-            (StreamState)_streamState, _streamError, Volatile.Read(ref _silenceSeconds));
+            (StreamState)_streamState, _streamError, Volatile.Read(ref _silenceSeconds),
+            streaming ? keeper!.Stalled : 0, streaming && keeper!.OnFallback);
     }
 
     public PlayerState State => (PlayerState)_state;
@@ -1012,9 +1145,37 @@ public sealed class PlayoutEngine : IDisposable
         // CastInit blocks while connecting, so keep it off the engine thread.
         Task.Run(() =>
         {
+            StreamKeeper? keeper;
+            try
+            {
+                // Stopped or started again meanwhile, or the engine closed: not this attempt's to go on.
+                lock (_streamLock)
+                {
+                    if (attempt != _streamAttempt || _closed) return;
+                    keeper = _keeper;
+                }
+                if (keeper == null)
+                {
+                    // Made outside the lock: it waits for Program, which a card stuck on a share holds (a click on
+                    // STREAM meanwhile must not wait with it).
+                    var made = new StreamKeeper(_graph.Program, Emit, () => _encoder != 0);
+                    bool keep;
+                    lock (_streamLock)
+                    {
+                        keep = !_closed && attempt == _streamAttempt && _keeper == null;
+                        if (keep) _keeper = made;
+                        keeper = _keeper;
+                    }
+                    if (!keep) made.Dispose();
+                    if (keeper == null || attempt != Volatile.Read(ref _streamAttempt)) return;
+                }
+                keeper.SetFallback(s.Fallback, TimeSpan.FromSeconds(s.FallbackSeconds)); // read in the background
+            }
+            catch (Exception ex) { FailStream(L.F("Encoder start failed: {0}", ex.Message), attempt); return; }
+            // On the stream's own clock, not the card's: the stream goes on when the card stops.
             int enc = s.Format == StreamFormat.Mp3
-                ? BassEnc_Mp3.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero)
-                : BassEnc_Ogg.Start(_graph.Program, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero);
+                ? BassEnc_Mp3.Start(keeper.Handle, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero)
+                : BassEnc_Ogg.Start(keeper.Handle, $"-b {s.Bitrate}", EncodeFlags.Default, null, IntPtr.Zero);
             if (enc == 0) { FailStream(L.F("Encoder start failed: {0}", Bass.LastError), attempt); return; }
 
             string mount = s.Mount.StartsWith('/') ? s.Mount : "/" + s.Mount;
@@ -1068,6 +1229,12 @@ public sealed class PlayoutEngine : IDisposable
     {
         _exactTimer?.Dispose();
         StopStreaming();
+        lock (_streamLock)
+        {
+            _closed = true;
+            _keeper?.Dispose();
+            _keeper = null;
+        }
         _commands.CompleteAdding();
         _thread.Join(2000);
         _loudnessWorker.Dispose();
@@ -1292,6 +1459,11 @@ public sealed class PlayoutEngine : IDisposable
             track = parts[0];
         }
 
+        if (Veto?.Invoke(track.Path) is { } vetoed)
+        {
+            Skip(track, outgoingFade, vetoed);
+            return;
+        }
         int handle = TakePreload(track.Id) ?? OpenForPlay(track.Path);
         if (handle == 0)
         {
@@ -1300,6 +1472,14 @@ public sealed class PlayoutEngine : IDisposable
         }
 
         double length = Bass.ChannelBytes2Seconds(handle, Bass.ChannelGetLength(handle, PositionFlags.Bytes));
+        // Auto cue's for another file of the same name (fetched again): not this one's, made again.
+        if (track.Cues is { } made && made.MadeForAnother(Bass.StreamGetFilePosition(handle, FileStreamPosition.End)))
+        {
+            _autoCueWaves.Forget(track.Path);
+            _cues.DropAuto(track.Path, made);
+            ApplyCues(track.Path, CuePoints.None);
+            track = track with { Cues = null };
+        }
         // The prescanned length is exact; the one from adding the file may be an estimate.
         if (Math.Abs(track.Duration - length) > 0.001)
         {
@@ -2240,6 +2420,7 @@ public sealed class PlayoutEngine : IDisposable
         }
         if (_streamConnection is { } sc && sc.Id != next?.Id) DropConnection();
         PreloadNext(next);
+        AutoCueNext();
 
         PlaylistChanged?.Invoke(new PlaylistSnapshot(
             _playlist.ToList(), _current?.Track.Id, next?.Id, _played.ToHashSet()));
@@ -2379,3 +2560,6 @@ public sealed class PlayoutEngine : IDisposable
 
     void Emit(string message) => Log?.Invoke($"{StationTime.Now:HH:mm:ss}  {message}");
 }
+
+/// <summary>A file can't be replaced now: it is being heard (<see cref="PlayoutEngine.ReplaceFileAsync"/>).</summary>
+public sealed class FilePlayingException() : InvalidOperationException(L.T("This file is playing."));

@@ -59,8 +59,10 @@ public partial class ScheduleWindow
             (NavClients, null, MenuClients, (TabItem)Tabs.Items[2]!, L.T("Traffic ›"), L.T("Clients and campaigns")),
             (NavCategories, CategoriesButton, MenuCategories, CategoriesTab, L.T("Library ›"), L.T("Categories")),
             (NavImport, ImportButton, MenuImport, ImportTab, L.T("Library ›"), L.T("Import music")),
+            (NavMusicReport, null, MenuMusicReport, MusicReportTab, L.T("Library ›"), L.T("Music report")),
             (NavStationSettings, StationSettingsButton, MenuStationSettings, StationSettingsTab, L.T("Station ›"), L.T("Station settings")),
             (NavCartwalls, CartwallsButton, MenuCartwalls, CartwallsTab, L.T("Station ›"), L.T("Cartwalls")),
+            (NavDownloads, null, MenuDownloads, DownloadsTab, L.T("Station ›"), L.T("Downloads")),
             (NavUsers, null, MenuUsers, UsersTab, L.T("Station ›"), L.T("Users")),
             (NavListeners, null, MenuListeners, ListenersTab, L.T("Station ›"), L.T("Listeners")),
             (NavStudios, null, MenuStudios, StudiosTab, L.T("Station ›"), L.T("Studios")),
@@ -484,10 +486,12 @@ public partial class ScheduleWindow
             : tab == Tabs.Items[3] || tab == Tabs.Items[0] || tab == ShowsTab ? May(Permission.Programming)
             : tab == Tabs.Items[1] || tab == Tabs.Items[2] ? May(Permission.Traffic)
             : tab == StationSettingsTab || tab == CartwallsTab ? May(Permission.Station)
+            : tab == DownloadsTab ? May(Permission.Station) && _store != null
             : tab == UsersTab ? May(Permission.Users) && _store != null
             : tab == ErcTab ? May(Permission.Programming) && _store != null
             : tab == ListenersTab ? _store != null
             : tab == StudiosTab ? _store != null && (May(Permission.Station) || May(Permission.Computer))
+            : tab == MusicReportTab ? _store != null && (May(Permission.Library) || May(Permission.Programming))
             : true;
         foreach (var (nav, tool, menu, tab) in _gates)
         {
@@ -646,8 +650,9 @@ public partial class ScheduleWindow
         {
             Open = deck.Open,
             GetCues = db.GetCues,
-            SaveCues = (file, cues) => Task.Run(() =>
+            SaveCues = (file, edited) => Task.Run(() =>
             {
+                var cues = edited with { Auto = false, FileSize = null }; // set by hand now, also if they started as auto cue's
                 db.SetCues(file, cues);
                 double length = track?.Duration is > 0 and var d ? d : AudioProbe.Duration(file) ?? 0;
                 if (length > 0) new PlanStore(db).UpdateSeconds(file, DailyPlaylistsView.Plays(cues, length, Crossfade(kind, kind)), StationTime.Now.Date.AddHours(StationTime.Now.Hour));

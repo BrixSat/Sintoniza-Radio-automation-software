@@ -136,6 +136,11 @@
                         <TextBlock Classes="note" Margin="0,4,0,0"
                                    Text="Into or out of a jingle, promo, advert or programme. 0 (the default) = no fade: the song ends and the jingle starts clean, and the jingle plays to its end." />
                     </StackPanel>
+                    <StackPanel Classes="station">
+                        <CheckBox x:Name="AutoCueBox" Content="Auto cue: songs with no cue points get them from their sound" FontWeight="SemiBold" />
+                        <TextBlock Classes="note" Margin="0,4,0,0"
+                                   Text="The computer on air looks at the songs coming up that have none: Cue In past the silence at the start, Cue Out before the silence at the end, and Mix where a fade-out has gone quiet (the next song starts there; on a hard ending the crossfade above, from the new Cue Out). Kept in the library for every studio, and the daily playlists made after count them; another file under the same name (a news bulletin fetched again) has them made again. Cue points set by hand always stay, and editing auto cue's makes them yours. Off: auto cue's are left out. To keep a song as it is, type 0:00 as its Cue In in the cue editor." />
+                    </StackPanel>
                     <StackPanel Classes="computer">
                         <TextBlock Classes="label" Text="Outputs (one desk channel each)" />
                         <Grid ColumnDefinitions="90,*,10,110,10,Auto" RowDefinitions="Auto,8,Auto,8,Auto">
@@ -570,6 +575,16 @@
                         </StackPanel>
                     </Grid>
                     <TextBlock Classes="note" Text="Start and stop the stream with the STREAM button next to ON AIR. On FM, the button shows once a source password is set. Changes here apply the next time the stream starts." />
+                    <TextBlock Classes="label" Text="When the sound card stops" Margin="0,8,0,0" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="After" VerticalAlignment="Center" />
+                        <NumericUpDown x:Name="StreamFallbackSecondsBox" Minimum="2" Maximum="600" Increment="5" FormatString="0" Width="120" />
+                        <TextBlock Text="s after it stops, send:" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StreamFallbackText" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis" />
+                        <Button x:Name="StreamFallbackButton" Content="Choose…" />
+                        <Button x:Name="StreamFallbackClearButton" Content="None" />
+                    </StackPanel>
+                    <TextBlock Classes="note" Text="The stream has a clock of its own: if the sound card stops being fed (a network share that doesn't answer, a USB card pulled out), the stream goes on with silence so the listeners stay connected, and after these seconds with this file (a station ID or &quot;we'll be right back&quot;, looped; read into memory when the stream starts). When the card plays again the stream follows it. The STREAM lamp turns amber meanwhile, and the log says it." />
                     <CheckBox x:Name="ListenersBox" Content="Count the listeners (asked of the server every minute)" FontWeight="SemiBold" Margin="0,8,0,0" />
                     <Grid x:Name="ListenersPanel" ColumnDefinitions="*,12,*">
                         <StackPanel>
@@ -796,6 +811,7 @@
                                 </WrapPanel>
                                 <CheckBox x:Name="AlertBackupBox" Content="A backup fails" />
                                 <CheckBox x:Name="AlertShowBox" Content="A live show started and nobody said they are presenting it within 2 minutes" />
+                                <CheckBox x:Name="AlertDownloadBox" Content="A download (the news) hasn't been fetched for its too-old time, and is passed over on air" />
                                 <WrapPanel ItemSpacing="6" LineSpacing="4">
                                     <CheckBox x:Name="AlertTomorrowBox" Content="Tomorrow's daily playlists aren't ready (hours missing or short, files not found, shows at the same time), from" VerticalAlignment="Center" />
                                     <NumericUpDown x:Name="AlertTomorrowHourBox" Minimum="0" Maximum="23" Increment="1" FormatString="00':00'" Width="120" />

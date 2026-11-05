@@ -108,7 +108,7 @@ public sealed record TrackAttributes(int? Tempo = null, string? Voice = null, st
 /// </summary>
 public sealed partial class LibraryDb
 {
-    public const int SchemaVersion = 29;
+    public const int SchemaVersion = 30;
 
     /// <summary>Longest path the library takes (the MySQL unique index limit); longer ones are skipped by scans.</summary>
     public const int MaxPathLength = 760;
@@ -756,32 +756,46 @@ public sealed partial class LibraryDb
     {
         using var c = Connect();
         string condition = since == null ? "IS NOT NULL" : ">= @since";
-        return c.Query<(string Path, double? CueIn, double? Intro, double? Outro, double? Mix, double? CueOut)>(
-                $"SELECT path, cue_in, intro, outro, mix, cue_out FROM tracks WHERE cues_updated_at {condition}", new { since })
-            .Select(r => (r.Path, new CuePoints(r.CueIn, r.Intro, r.Outro, r.Mix, r.CueOut)))
+        return c.Query<(string Path, double? CueIn, double? Intro, double? Outro, double? Mix, double? CueOut, long Auto, long? Size)>(
+                $"SELECT path, cue_in, intro, outro, mix, cue_out, cues_auto, cues_auto_size FROM tracks WHERE cues_updated_at {condition}", new { since })
+            .Select(r => (r.Path, new CuePoints(r.CueIn, r.Intro, r.Outro, r.Mix, r.CueOut, r.Auto != 0, r.Auto != 0 ? r.Size : null)))
             .ToList();
     }
+
+    /// <summary>
+    /// The station works with the cue points auto cue made (its setting, set when its settings are read). Off: they
+    /// are left out where cue points are read (<see cref="GetCues"/>, <see cref="RotationTracks"/>).
+    /// </summary>
+    public static bool UseAutoCues { get; set; }
 
     /// <summary>A file's cue points in the library (empty if none, or not in the library).</summary>
     public CuePoints GetCues(string path)
     {
         using var c = Connect();
         if (TrackIdByPath(c, path) is not { } id) return new CuePoints();
-        var r = c.QueryFirstOrDefault<(double? CueIn, double? Intro, double? Outro, double? Mix, double? CueOut)>(
-            "SELECT cue_in, intro, outro, mix, cue_out FROM tracks WHERE id = @id", new { id });
-        return new CuePoints(r.CueIn, r.Intro, r.Outro, r.Mix, r.CueOut);
+        var r = c.QueryFirstOrDefault<(double? CueIn, double? Intro, double? Outro, double? Mix, double? CueOut, long Auto, long? Size, long FileSize)>(
+            "SELECT cue_in, intro, outro, mix, cue_out, cues_auto, cues_auto_size, file_size FROM tracks WHERE id = @id", new { id });
+        var cues = new CuePoints(r.CueIn, r.Intro, r.Outro, r.Mix, r.CueOut, r.Auto != 0, r.Auto != 0 ? r.Size : null);
+        // Auto cue's: only for a station with it on, and only the file's own (not made for another of the same name).
+        if (cues.Auto && (!UseAutoCues || cues.MadeForAnother(r.FileSize))) return new CuePoints();
+        return cues;
     }
 
-    /// <summary>Saves a file's cue points (empty clears them). False if the file isn't in the library.</summary>
+    /// <summary>
+    /// Saves a file's cue points (empty clears them). False if the file isn't in the library. Ones auto cue made
+    /// (<see cref="CuePoints.Auto"/>) never go over cue points set by hand: then nothing changes (and true).
+    /// </summary>
     public bool SetCues(string path, CuePoints cues)
     {
         using var c = Connect();
         if (TrackIdByPath(c, path) is not { } id) return false;
-        return c.Execute($"""
-            UPDATE tracks SET cue_in = @CueIn, intro = @Intro, outro = @Outro, mix = @Mix, cue_out = @CueOut,
+        c.Execute($"""
+            UPDATE tracks SET cue_in = @CueIn, intro = @Intro, outro = @Outro, mix = @Mix, cue_out = @CueOut, cues_auto = @auto, cues_auto_size = @size,
                 cues_updated_at = {NowSql}
             WHERE id = @id
-            """, new { id, cues.CueIn, cues.Intro, cues.Outro, cues.Mix, cues.CueOut }) > 0;
+            """ + (cues.Auto ? " AND (cues_auto = 1 OR (cue_in IS NULL AND intro IS NULL AND outro IS NULL AND mix IS NULL AND cue_out IS NULL))" : ""),
+            new { id, cues.CueIn, cues.Intro, cues.Outro, cues.Mix, cues.CueOut, auto = cues.Auto ? 1 : 0, size = cues.Auto ? cues.FileSize : null });
+        return true;
     }
 
     // ───────────────────────── History ─────────────────────────
@@ -835,7 +849,7 @@ public sealed partial class LibraryDb
         using var c = Connect();
         return c.Query<RotationRow>("""
                 SELECT t.id AS Id, t.path AS Path, t.artist AS Artist, t.title AS Title, t.duration AS Duration,
-                       t.cue_in AS CueIn, t.cue_out AS CueOut, t.mix AS Mix, t.album AS Album, t.tempo AS Tempo, t.energy AS Energy,
+                       t.cue_in AS CueIn, t.cue_out AS CueOut, t.mix AS Mix, t.cues_auto AS CuesAuto, t.cues_auto_size AS CuesAutoSize, t.file_size AS FileSize, t.album AS Album, t.tempo AS Tempo, t.energy AS Energy,
                        t.play_from AS PlayFrom, t.play_until AS PlayUntil, t.play_days AS PlayDays, t.play_hours AS PlayHours,
                        t.max_day AS MaxDay, t.max_week AS MaxWeek,
                        (SELECT MAX(p.started_at) FROM plays p WHERE p.track_id = t.id AND p.station_id = @station) AS Last
@@ -843,12 +857,14 @@ public sealed partial class LibraryDb
                 WHERE t.enabled = 1 AND t.missing = 0
                   AND (t.category_id IN @categories OR t.id IN (SELECT track_id FROM track_categories WHERE category_id IN @categories))
                 """, new { categories, station = CurrentStation.Id })
+            .Select(r => r.CuesAuto != 0 && (!UseAutoCues || r.CuesAutoSize is { } made && r.FileSize > 0 && made != r.FileSize)
+                ? r with { CueIn = null, CueOut = null, Mix = null } : r)
             .Select(r => new RotationTrack(r.Id, r.Path, r.Artist, r.Last == null ? null : ParseTime(r.Last), r.Title, r.Duration, r.CueIn, r.CueOut, r.Mix,
                 r.Album, r.Tempo, r.Energy, SongRestrictions.Make(r.PlayFrom, r.PlayUntil, r.PlayDays, r.PlayHours, r.MaxDay, r.MaxWeek)))
             .ToList();
     }
 
-    sealed class RotationRow
+    sealed record RotationRow
     {
         public long Id { get; set; }
         public string Path { get; set; } = "";
@@ -858,6 +874,9 @@ public sealed partial class LibraryDb
         public double? CueIn { get; set; }
         public double? CueOut { get; set; }
         public double? Mix { get; set; }
+        public long CuesAuto { get; set; }
+        public long? CuesAutoSize { get; set; }
+        public long FileSize { get; set; }
         public string Album { get; set; } = "";
         public int? Tempo { get; set; }
         public int? Energy { get; set; }

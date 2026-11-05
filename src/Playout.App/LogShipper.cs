@@ -158,7 +158,8 @@ sealed class LogShipper : IDisposable
             "Studios: can't tell the database this computer is running ({0}); {1:0} s since it last could", "Alert: {0}",
             "Connection to the streaming server was lost", "Silence on air for {0:0} s", "Engine error: {0}", "Cannot play {0}: {1}; skipping",
             "Could not connect to {0} ({1}); check host, port, mount and password", "Encoder start failed: {0}", "Cart failed: {0} ({1})",
-            "Skipped {0}: {1}",
+            "Skipped {0}: {1}", "Stream: no sound from the sound card; the stream goes on without it",
+            "Download failed: {0}: {1}",
         ];
         static string Before(string text) => text.IndexOf('{') is var i and > 0 ? text[..i] : text;
         return literal.Concat(keys.Select(Before)).Concat(keys.Select(k => Before(L.T(k)))).Where(m => m.Trim().Length > 3).Distinct().ToArray();

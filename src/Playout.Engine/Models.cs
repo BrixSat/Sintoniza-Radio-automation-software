@@ -20,13 +20,25 @@ public enum TrackKind { Music, Jingle, Commercial, Stream, Programme, Voice, Pau
 ///   Without it, the next item starts one crossfade before Cue Out and this one fades out.</item>
 /// <item><b>Cue Out</b>: where playback stops (cuts silence or a long fade).</item>
 /// </list>
+/// <b>Auto</b>: made by auto cue from the sound, not set by hand (all of them; none at all: the file was looked at and
+/// has nothing to cut). Used only where the station has auto cue on; a hand edit replaces them. <b>FileSize</b>: the
+/// file's size (bytes) they were made for: another file under the same name (a news bulletin fetched again) has them
+/// made again.
 /// </summary>
-public sealed record CuePoints(double? CueIn = null, double? Intro = null, double? Outro = null, double? Mix = null, double? CueOut = null)
+public sealed record CuePoints(double? CueIn = null, double? Intro = null, double? Outro = null, double? Mix = null, double? CueOut = null, bool Auto = false,
+    long? FileSize = null)
 {
     public static readonly CuePoints None = new();
 
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsEmpty => this == None;
+
+    /// <summary>Any cue point set (not only auto cue's mark that there is nothing to cut).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool HasValues => CueIn != null || Intro != null || Outro != null || Mix != null || CueOut != null;
+
+    /// <summary>Auto cue's, made for a file of another size than <paramref name="size"/> (bytes): no longer this file's.</summary>
+    public bool MadeForAnother(long size) => Auto && FileSize is { } made && size > 0 && made != size;
 }
 
 /// <summary>An audio file or internet stream known to the engine. Immutable; the playlist holds these.</summary>
@@ -178,7 +190,11 @@ public sealed record PlaylistSnapshot(
     Guid? NextId,
     IReadOnlySet<Guid> Played);
 
-/// <summary>Cheap, poll-able view of the on-air player (the UI reads it ~30 times a second). Silence: seconds of dead air so far (0 = sound).</summary>
+/// <summary>
+/// Cheap, poll-able view of the on-air player (the UI reads it ~30 times a second). Silence: seconds of dead air so far
+/// (0 = sound). StreamStalled: seconds the stream has gone on without sound from the card (0 = it follows the card);
+/// StreamOnFallback: it sends the fallback file meanwhile.
+/// </summary>
 public readonly record struct PlayerStatus(
     PlayerState State,
     Track? Current,
@@ -188,7 +204,9 @@ public readonly record struct PlayerStatus(
     float LevelRight,
     StreamState Stream,
     string? StreamError,
-    double Silence);
+    double Silence,
+    double StreamStalled = 0,
+    bool StreamOnFallback = false);
 
 /// <summary>
 /// Dead air: while an item is playing and the output stays under <paramref name="ThresholdDb"/> (peak, dBFS) for
@@ -208,4 +226,6 @@ public sealed record StreamSettings(
     string StationName = "Sintoniza",
     string Genre = "Various",
     bool Shoutcast = false,
-    string? Url = null);
+    string? Url = null,
+    string? Fallback = null,
+    double FallbackSeconds = 10);

@@ -198,6 +198,13 @@ public sealed class AppSettings
     public int StreamFormat { get; set; }
     public int StreamBitrateIndex { get; set; } = 2;
     public bool Shoutcast { get; set; }
+    /// <summary>Files fetched again and again (the news), by the computer on air (the station's; see <see cref="Downloader"/>).</summary>
+    public List<DownloadSettings> Downloads { get; set; } = new();
+    /// <summary>Songs with no cue points get them from their sound (the station's setting; see <see cref="PlayoutEngine.ConfigureAutoCue"/>).</summary>
+    public bool AutoCue { get; set; }
+    /// <summary>Sent on the stream while the sound card has stopped, <see cref="StreamFallbackSeconds"/> after it stopped (empty: silence).</summary>
+    public string StreamFallback { get; set; } = "";
+    public double StreamFallbackSeconds { get; set; } = 10;
     /// <summary>The station's listener counts (see <see cref="ListenerSettings"/>).</summary>
     public ListenerSettings Listeners { get; set; } = new();
 

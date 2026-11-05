@@ -17,7 +17,10 @@ public partial class RecSettingsWindow : Window
     // Parameterless constructor for the XAML previewer.
     public RecSettingsWindow() : this(new RecSettings()) { }
 
-    public RecSettingsWindow(RecSettings settings)
+    static readonly int[] PodcastBitrates = [64, 96, 128, 192];
+    readonly Dictionary<string, CheckBox> _podcastShows = new();
+
+    public RecSettingsWindow(RecSettings settings, Func<RecSettings, Task<string>>? makeLatest = null)
     {
         InitializeComponent();
         Localization.Apply(this);
@@ -71,6 +74,37 @@ public partial class RecSettingsWindow : Window
         MailFromBox.Text = a.MailFrom;
         MailToBox.Text = a.MailTo;
         WebhookBox.Text = a.WebhookUrl;
+
+        // Podcasts: the shows as the on-air program on this computer has the schedule.
+        var p = _s.Podcasts;
+        PodcastBox.IsChecked = p.Enabled;
+        PodcastFolderBox.Text = p.Folder;
+        PodcastKeepBox.Value = p.Keep;
+        PodcastBitrateBox.ItemsSource = PodcastBitrates.Select(b => b.ToString()).ToList();
+        PodcastBitrateBox.SelectedIndex = Array.IndexOf(PodcastBitrates, p.Bitrate) is var at and >= 0 ? at : Array.IndexOf(PodcastBitrates, 128);
+        PodcastTitleBox.Text = p.Title;
+        PodcastAddressBox.Text = p.Address;
+        PodcastUploadBox.Text = p.UploadTo;
+        PodcastUserBox.Text = p.UploadUser;
+        PodcastPasswordBox.Text = p.UploadPassword;
+        var shows = ScheduleSource.LoadLocal().Shows.Select(x => x.Name.Trim()).Where(n => n.Length > 0).Distinct().Order().ToList();
+        foreach (var name in shows.Concat(p.Shows.Where(n => !shows.Contains(n))))
+        {
+            var box = new CheckBox { Content = name, IsChecked = p.Shows.Contains(name) };
+            _podcastShows[name] = box;
+            PodcastShows.Children.Add(box);
+        }
+        PodcastShowsNote.Text = shows.Count == 0 ? L.T("No shows here yet: the on-air program on this computer brings them from the schedule (Sintoniza Pro → Shows).") : "";
+        PodcastFolderButton.Click += async (_, _) => { if (await Pick(L.T("Folder for the podcast episodes")) is { } f) PodcastFolderBox.Text = f; };
+        PodcastMakeButton.IsVisible = makeLatest != null;
+        PodcastMakeButton.Click += async (_, _) =>
+        {
+            if (makeLatest == null) return;
+            PodcastMakeButton.IsEnabled = false;
+            PodcastMakeText.Text = L.T("Making it (a few seconds for an hour)…");
+            try { PodcastMakeText.Text = await makeLatest(FromUi()); }
+            finally { PodcastMakeButton.IsEnabled = true; }
+        };
 
         foreach (var c in new Control[] { FormatBox, BitrateBox, MonoBox, KeepDaysBox })
             c.PropertyChanged += (_, e) => { if (e.Property.Name is "SelectedIndex" or "IsChecked" or "Value") ShowSpace(); };
@@ -129,6 +163,14 @@ public partial class RecSettingsWindow : Window
         s.SilenceDb = (double)(SilenceDbBox.Value ?? -45);
         s.SilenceSeconds = (double)(SilenceSecondsBox.Value ?? 60);
         s.AliveHour = AliveBox.IsChecked == true ? (int)(AliveHourBox.Value ?? 9) : null;
+        s.Podcasts = new PodcastSettings
+        {
+            Enabled = PodcastBox.IsChecked == true, Folder = PodcastFolderBox.Text?.Trim() ?? "",
+            Shows = _podcastShows.Where(kv => kv.Value.IsChecked == true).Select(kv => kv.Key).ToList(),
+            Keep = (int)(PodcastKeepBox.Value ?? 20), Bitrate = PodcastBitrates[Math.Max(0, PodcastBitrateBox.SelectedIndex)],
+            Title = PodcastTitleBox.Text?.Trim() ?? "", Address = PodcastAddressBox.Text?.Trim() ?? "",
+            UploadTo = PodcastUploadBox.Text?.Trim() ?? "", UploadUser = PodcastUserBox.Text?.Trim() ?? "", UploadPassword = PodcastPasswordBox.Text ?? "",
+        };
         s.Alerts = new AlertSettings
         {
             Enabled = true,

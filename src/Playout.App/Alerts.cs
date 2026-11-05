@@ -29,6 +29,8 @@ public sealed class AlertSettings
     public bool Restart { get; set; } = true;
     /// <summary>Tomorrow's daily playlists aren't ready (hours missing, empty or short, files not found), from this hour on.</summary>
     public bool Tomorrow { get; set; } = true;
+    /// <summary>A download (the news) not fetched for its too-old time: passed over on air.</summary>
+    public bool Download { get; set; } = true;
     public int TomorrowHour { get; set; } = 18;
 
     public string TelegramToken { get; set; } = "";
@@ -162,7 +164,7 @@ sealed class HealthMonitor : IDisposable
     public void Report(string kind, string message)
     {
         var a = _settings().Alerts;
-        if (!a.Enabled || !a.HasChannel || (kind == "backup" && !a.Backup) || (kind == "show" && !a.Show)) return;
+        if (!a.Enabled || !a.HasChannel || (kind == "backup" && !a.Backup) || (kind == "show" && !a.Show) || (kind == "download" && !a.Download)) return;
         _ = Send(kind, false, message);
     }
 

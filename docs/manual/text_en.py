@@ -163,7 +163,7 @@ CHAPTERS = [
         ["STUDIO", "Which computer is on air, when the station has more than one, and anything risky in how this one is set up: on Wi-Fi with no network cable, on battery, a Wi-Fi adapter Windows may switch off to save power.",
          "Green: this computer is on air (it says how many are standing by). Amber: this one is standby, another is on air; or something risky in its setup, named on the lamp (point at it for what to do)."],
         ["STREAM", "The station's internet stream, which this computer sends to the Icecast or Shoutcast server.",
-         "Green: sending, and for how long. Amber: connecting to the server. Red: it can't connect. Grey: off, or not set up."],
+         "Green: sending, and for how long. Amber: connecting to the server, or the sound card has stopped and the stream goes on without it (silence, then the fallback file). Red: it can't connect. Grey: off, or not set up."],
         ["LISTENERS", "How many people are listening to the stream, read from the server every minute. The number shows next to the lamp.",
          "Green: the number now. Amber (?): the server can't be read, or counting stopped. Grey: counting is off."],
         ["RDS", "The text FM radios show (the station's name and the song), sent to the RDS encoder.",
@@ -282,6 +282,9 @@ CHAPTERS = [
     ]),
     ("p", "<b>Auto-detect</b> finds the first and last sound and a good Mix point for you. Space plays and pauses on the Preview "
           "output. The arrow keys move one second, or a tenth with Shift held, and the mouse wheel zooms."),
+    ("tip", "With <b>auto cue</b> on (Sintoniza Pro → Station settings → Audio), the songs coming up that have no cue points get "
+            "them by themselves, from their sound: Cue In, Cue Out and, on a fade-out, Mix. Cue points you set by hand always stay, "
+            "and editing auto cue's makes them yours. To keep a song exactly as it is, type 0:00 as its Cue In in the cue editor."),
     ("h2", "Segues"),
     ("p", "The segue editor shows exactly how one song runs into the next, and lets you shape the join by ear. Right-click a "
           "playlist item and choose <b>Segue with the next…</b> (Ctrl+G). In Sintoniza Pro, the same editor is under "
@@ -433,12 +436,12 @@ CHAPTERS = [
     ("p", "These belong to the whole station, in <b>Sintoniza Pro → Station settings</b>:"),
     ("table", ["Tab", "What it is for"], [
         ["Station", "Name, logo, genre, website, FM or web radio, and the money sign"],
-        ["Audio", "Crossfades and loudness levelling"],
+        ["Audio", "Crossfades, auto cue (songs with no cue points get them from their sound) and loudness levelling"],
         ["Time signal", "The pips or your own file at the top of the hour, and hour announcements such as HRS05.mp3 at 05:00"],
         ["Takes", "The folder of takes for the time and temperature, and where the station is"],
         ["Safety", "Silence detection and fill music"],
         ["Library", "Other music folders, and the voice tracks folder"],
-        ["Streaming", "The Icecast or Shoutcast server, format and bitrate, and counting the listeners"],
+        ["Streaming", "The Icecast or Shoutcast server, format and bitrate, counting the listeners, and what the stream sends when the sound card stops (silence, then a fallback file)"],
         ["RDS", "PS, radio text and RT+"],
         ["Website", "Now playing for the station's website, as JSON, files or FTP"],
         ["Alerts", "Telegram, e-mail or web alerts for silence, a stream down, a crash, a full disk, the clock, backups, or tomorrow's daily playlists not ready"],
@@ -660,6 +663,13 @@ CHAPTERS = [
           "which shows and which songs keep people listening. The Home page shows the listeners now too."),
     ("tip", "A standby computer doesn't count, so the same listeners are never counted twice. If the computer on air stops, the "
             "one that takes over starts counting."),
+    ("h2", "The music report"),
+    ("p", "<b>Library → Music report</b> shows how the music really went, for the last 7, 30 or 90 days: the songs and "
+          "artists played most, taken from the as-run log, and each category's share of the songs played. Under <i>Hour "
+          "targets kept</i>, every target of an hour template says in how many of the hours it was on, that have "
+          "gone by, the music that really played kept it."),
+    ("p", "<i>Not played for a while</i> finds the songs of a category that haven't played for so many days, or ever, those "
+          "rested longest first: the ones to bring back, or to take out of the rotation."),
     ("h2", "The studios' logs"),
     ("p", "Each studio computer, on air or standby, sends its log to the database every 15 seconds, including what its watchdog, Sintoniza Rec "
           "and Pro write in it. In <b>Station → Studios</b>, choose the computer and the day to read what happened there "
@@ -668,6 +678,21 @@ CHAPTERS = [
           "makes a file to send to whoever looks after the station. Lines are kept for 14 days."),
     ("p", "On the Home page, <i>Needs attention</i> lists each computer with problems in the last hour, and anything risky in "
           "a studio's setup, such as being on Wi-Fi or on battery."),
+    ("h2", "Downloads"),
+    ("p", "Some files come from outside and change every hour, such as the news bulletin a news agency puts on its website. In "
+          "<b>Station → Downloads</b>, say where each one comes from and where it is saved: always under the same name, so "
+          "the hour templates and events that play that file always get the latest."),
+    ("list", [
+        "<b>A page with a link to the file</b>: the page is read and the first link that matches is fetched. As it is, that is "
+        "the first address on the page that ends in .mp3.",
+        "<b>The file's own address</b>, or <b>an FTP server</b>, with a user and password if it asks for one.",
+        "<b>When</b>: every so many minutes, or at set minutes past each hour, a little after the source puts a new one up.",
+    ]),
+    ("p", "<b>Test</b> fetches it straight away and says what it found and how long it plays. The computer on air does the "
+          "fetching, never a standby one. What it fetches must play for at least the shortest time you set, and it is put in "
+          "place only when it isn't on air. If fetching fails, it is tried again every 2 minutes and the old file stays."),
+    ("tip", "If a file hasn't been fetched for its <b>too old</b> time, it is passed over on air, so yesterday's news is never "
+            "heard, and an alert tells you."),
     ("h2", "Song restrictions"),
     ("p", "Restrictions say when a song may be picked automatically. A Christmas song only in December, say, or a song with "
           "strong lyrics only after 22:00. In <b>Songs</b>, right-click and choose <b>Restrictions…</b>."),
@@ -992,6 +1017,16 @@ CHAPTERS = [
     ]),
     ("p", "Rec also warns you when a recording can't be written, for example because a disk is full or a shared folder has "
           "gone away. It keeps trying with a new file. And it warns you when there is less than 2 GB free."),
+    ("h2", "Shows as podcasts"),
+    ("p", "Rec can turn your shows into a podcast. In <b>Settings → Podcasts</b>, tick <b>Make the shows into podcast "
+          "episodes</b>. A few minutes after a show ends, Rec saves its stretch of the recordings as an MP3 in the podcast "
+          "folder and writes <code>podcast.xml</code>, the feed that podcast apps subscribe to, with the latest episodes. Older "
+          "ones are deleted, here and where it is published, so the folder never grows without end. An episode is made once "
+          "the recording file that holds the show's end has closed, so with hour-long files it can take up to an hour."),
+    ("p", "Tick the shows you want, or none for every show. They are the shows of the schedule that the on-air program on "
+          "this computer has, as set in Sintoniza Pro → Shows. Give the feed a name and the web address where the folder is "
+          "published, so its links work. To publish it, Rec can send each episode and the feed to an FTP folder or to a shared "
+          "folder. <b>Make the last one now</b> makes the latest show that ended, so you can try it straight away."),
 ]),
 
 ("Sintoniza Tempo", "tempo", [

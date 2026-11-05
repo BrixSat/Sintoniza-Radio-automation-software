@@ -110,6 +110,52 @@
                     <TextBlock Classes="note" Text="Headphones or a monitor speaker: never an output that goes on air." />
                 </StackPanel>
             </TabItem>
+            <TabItem Header="Podcasts">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Spacing="14" Margin="0,12,16,0">
+                    <CheckBox x:Name="PodcastBox" Content="Make the shows into podcast episodes" />
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Folder for the episodes and the feed (podcast.xml)" />
+                        <Grid ColumnDefinitions="*,8,Auto">
+                            <TextBox x:Name="PodcastFolderBox" PlaceholderText="(Podcasts, in the recordings' folder)" />
+                            <Button Grid.Column="2" x:Name="PodcastFolderButton" Content="Choose…" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Shows (none ticked: every show)" />
+                        <WrapPanel x:Name="PodcastShows" ItemSpacing="14" LineSpacing="4" />
+                        <TextBlock x:Name="PodcastShowsNote" Classes="note" />
+                    </StackPanel>
+                    <WrapPanel ItemSpacing="8" LineSpacing="8">
+                        <TextBlock Text="Keep the latest" VerticalAlignment="Center" />
+                        <NumericUpDown x:Name="PodcastKeepBox" Minimum="1" Maximum="500" Increment="1" FormatString="0" Width="110" />
+                        <TextBlock Text="episodes, MP3 at" VerticalAlignment="Center" />
+                        <ComboBox x:Name="PodcastBitrateBox" Width="110" />
+                        <TextBlock Text="kbps" VerticalAlignment="Center" />
+                    </WrapPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="The feed's name, and the web address where the folder is published (for the links in the feed)" />
+                        <Grid ColumnDefinitions="*,8,*">
+                            <TextBox x:Name="PodcastTitleBox" PlaceholderText="(the station's name)" />
+                            <TextBox Grid.Column="2" x:Name="PodcastAddressBox" PlaceholderText="https://www.example.com/podcasts/" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Classes="label" Text="Send each episode and the feed to (an FTP folder or a folder; empty: not sent), user, password" />
+                        <Grid ColumnDefinitions="*,8,140,8,140">
+                            <TextBox x:Name="PodcastUploadBox" PlaceholderText="ftp://ftp.example.com/podcasts/" />
+                            <TextBox Grid.Column="2" x:Name="PodcastUserBox" PlaceholderText="user" />
+                            <TextBox Grid.Column="4" x:Name="PodcastPasswordBox" PasswordChar="•" PlaceholderText="password" />
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Button x:Name="PodcastMakeButton" Content="Make the last one now" ToolTip.Tip="With the settings as saved (Save first after changing them)" />
+                        <TextBlock x:Name="PodcastMakeText" Classes="note" VerticalAlignment="Center" MaxWidth="460" />
+                    </StackPanel>
+                    <TextBlock Classes="note" Text="A few minutes after a show ends (its times one after the other are one show), its stretch of the recordings is saved as an MP3 and the feed is written with the latest episodes; older ones are deleted. The shows are those of the schedule the on-air program on this computer has (Sintoniza Pro → Shows). Podcast apps subscribe to the feed's address (the folder's address + podcast.xml)." />
+                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
             <TabItem Header="Alerts">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Spacing="14" Margin="0,12,16,0">
