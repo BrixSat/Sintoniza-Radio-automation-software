@@ -283,13 +283,24 @@ SPEC
 # Developer ID (MAC_SIGN_IDENTITY="Developer ID Application: Name (TEAMID)") and the hardened runtime, for
 # notarization; without one, ad hoc (macOS then asks once before opening them, see the README).
 sign_bundle() { # $1 = .app
-  local identity=${MAC_SIGN_IDENTITY:--} f
-  local args=(--force --sign "$identity")
-  [[ $identity != - ]] && args+=(--options runtime --timestamp --entitlements "$ROOT/packaging/macos/entitlements.plist")
+  local identity=${MAC_SIGN_IDENTITY:--} f ftype bundle_exec
+  local base_args=(--force --sign "$identity")
+  local macho_args=("${base_args[@]}")
+  [[ $identity != - ]] && {
+    base_args+=(--timestamp)
+    macho_args+=(--options runtime --timestamp --entitlements "$ROOT/packaging/macos/entitlements.plist")
+  }
+  bundle_exec=$(/usr/libexec/PlistBuddy -c "Print CFBundleExecutable" "$1/Contents/Info.plist" 2>/dev/null || true)
   while IFS= read -r -d '' f; do
-    codesign "${args[@]}" "$f" 2>/dev/null || codesign "${args[@]}" "$f"
+    [[ -n $bundle_exec && "$(basename "$f")" == "$bundle_exec" ]] && continue
+    ftype=$(file -b "$f")
+    if grep -q "Mach-O" <<<"$ftype"; then
+      codesign "${macho_args[@]}" "$f" 2>/dev/null || codesign "${macho_args[@]}" "$f"
+    else
+      codesign "${base_args[@]}" "$f" 2>/dev/null || codesign "${base_args[@]}" "$f"
+    fi
   done < <(find "$1/Contents/MacOS" -type f -print0)
-  codesign "${args[@]}" "$1"
+  codesign "${macho_args[@]}" "$1"
   codesign --verify --strict "$1" || { echo "⚠ $1: the signature doesn't verify" >&2; return 1; }
 }
 
