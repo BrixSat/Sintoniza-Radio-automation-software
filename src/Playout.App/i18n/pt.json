@@ -1069,6 +1069,8 @@
  "{0:N0} added": "{0:N0} adicionados",
  "{0:N0} missing": "{0:N0} em falta",
  "{0:N0} moved": "{0:N0} movidos",
+ "{0:N0} put in their folder's category": "{0:N0} colocados na categoria da sua pasta",
+ "This computer can't reach these folders: Sintoniza Emi on the studio computer that has them finds the new songs at its next scan.": "Este computador não chega a estas pastas: o Sintoniza Emi no computador do estúdio que as tem encontra as músicas novas na próxima análise.",
  "{0:N0} of {1:N0}": "{0:N0} de {1:N0}",
  "{0:N0} removed (no longer on disk)": "{0:N0} removidas (já não estão no disco)",
  "{0:N0} songs": "{0:N0} músicas",

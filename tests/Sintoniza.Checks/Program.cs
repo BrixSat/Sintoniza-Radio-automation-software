@@ -1080,6 +1080,44 @@ Console.WriteLine("Sintoniza Pro");
     Pump(10);
 }
 
+// ───────────────────────── Folders inside a category's folder ─────────────────────────
+
+Console.WriteLine("A folder with its own category inside another category's folder");
+{
+    var settings = AppSettings.Load();
+    var db = LibraryDb.Open(settings.Library);
+    var categories = db.Categories();
+    long outer = categories.First(c => c.Role == "promos").Id, inner = categories.First(c => c.Role == "fillers").Id;
+    string top = Path.Combine(work, "nested"), sub = Path.Combine(top, "Inner");
+    Directory.CreateDirectory(sub);
+    var tones = Audio.Make(Path.Combine(work, "tones-nested"), 3);
+    File.Copy(tones[0], Path.Combine(top, "outer 1.wav"), true);
+    File.Copy(tones[1], Path.Combine(sub, "inner 1.wav"), true);
+    LibraryScanner.Scan(db, [top]);
+    long? Of(string folder, string name) => db.GetByPath(Path.Combine(folder, name))?.CategoryId;
+    // The outer folder given its category while the inner one had none (or a scan that found the inner songs first).
+    db.SetFolderRule(top, outer);
+    db.SetFolderCategory(top, outer);
+    db.SetFolderRule(sub, inner);
+    File.Copy(tones[2], Path.Combine(sub, "inner 2.wav"), true);
+    LibraryScanner.Scan(db, [top]);
+    db.SetFolderCategory(top, outer, onlyWithout: true); // after a scan, whichever rule comes first
+    Check(Of(sub, "inner 2.wav") == null, "a new song in a folder with its own category isn't given the outer folder's");
+    db.SetFolderCategory(sub, inner, onlyWithout: true);
+    db.SetAlsoIn([db.GetByPath(Path.Combine(sub, "inner 1.wav"))!.Id], inner, true);
+    Check(Of(sub, "inner 1.wav") == outer, "before: the inner folder's songs in the outer folder's category");
+    int moved = db.FolderCategoriesOverParents();
+    Check(moved == 1 && Of(sub, "inner 1.wav") == inner && Of(sub, "inner 2.wav") == inner && Of(top, "outer 1.wav") == outer,
+        "songs of a folder with its own category, in the one of the folder above: moved to their folder's");
+    Check(db.FolderCategoriesOverParents() == 0, "and nothing to move a second time");
+    db.SetFolderCategory(top, outer);
+    Check(Of(sub, "inner 1.wav") == inner && Of(top, "outer 1.wav") == outer,
+        "giving the outer folder its category again leaves the inner folder's songs in theirs");
+    db.SetFolderRule(top, null);
+    db.SetFolderRule(sub, null);
+    db.SetFolderCategory(top, null); // the categories borrowed are left as they were for the checks after
+}
+
 // ───────────────────────── Ad breaks ─────────────────────────
 
 Console.WriteLine("Ad breaks (parts taken from a category)");

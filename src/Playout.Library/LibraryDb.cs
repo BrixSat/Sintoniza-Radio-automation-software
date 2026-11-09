@@ -538,17 +538,62 @@ public sealed partial class LibraryDb
     /// Puts the songs of a folder (and its subfolders) in a category (null = none); with <paramref name="onlyWithout"/>,
     /// only those that have none yet (new songs found by a scan). Returns how many changed.
     /// </summary>
-    public int SetFolderCategory(string folder, long? categoryId, bool onlyWithout = false) =>
-        categoryId is { } id
-            ? AssignFolder(folder, [], id, onlyWithout ? FolderAssign.OnlyWithout : FolderAssign.Replace)
-            : ClearFolderCategory(folder);
+    /// <remarks>Folders under it given a category of their own keep theirs (Music/Jingle in Jingles, not Music).</remarks>
+    public int SetFolderCategory(string folder, long? categoryId, bool onlyWithout = false)
+    {
+        var inside = FoldersInside(folder, FolderCategories().Keys);
+        return categoryId is { } id
+            ? AssignFolder(folder, inside, id, onlyWithout ? FolderAssign.OnlyWithout : FolderAssign.Replace)
+            : ClearFolderCategory(folder, inside);
+    }
 
-    int ClearFolderCategory(string folder)
+    int ClearFolderCategory(string folder, IReadOnlyCollection<string> except)
     {
         var args = new DynamicParameters();
-        string under = Under(folder, "f", args);
+        string condition = Under(folder, "f", args);
+        int n = 0;
+        foreach (var other in except) condition += $" AND NOT {Under(other, "x" + n++, args)}";
         using var c = Connect();
-        return c.Execute($"UPDATE tracks SET category_id = NULL WHERE {under}", args);
+        return c.Execute($"UPDATE tracks SET category_id = NULL WHERE {condition}", args);
+    }
+
+    /// <summary>The folders of <paramref name="folders"/> under <paramref name="folder"/> (not itself), at any depth.</summary>
+    internal static List<string> FoldersInside(string folder, IEnumerable<string> folders)
+    {
+        static string Plain(string p) => SharedPaths.ToLibrary(p).Replace('\\', '/').TrimEnd('/');
+        string root = Plain(folder) + "/";
+        return folders.Where(f => Plain(f).StartsWith(root, StringComparison.OrdinalIgnoreCase)).ToList();
+    }
+
+    /// <summary>
+    /// Songs in a folder given a category that have the category of a folder above it instead (Music/Jingle's songs in
+    /// Music: found by a scan before its folder had its own, or given Music's when that folder was set) go in their
+    /// folder's. Songs put by hand in any other category are left as they are. Returns how many changed.
+    /// </summary>
+    public int FolderCategoriesOverParents()
+    {
+        var rules = FolderCategories();
+        int changed = 0;
+        foreach (var (folder, id) in rules)
+        {
+            var above = rules.Where(r => r.Value != id && FoldersInside(r.Key, [folder]).Count > 0).Select(r => r.Value).Distinct().ToList();
+            if (above.Count == 0) continue;
+            var args = new DynamicParameters();
+            args.Add("category", id);
+            args.Add("above", above);
+            args.Add("now", Now());
+            string condition = Under(folder, "f", args);
+            int n = 0;
+            foreach (var other in FoldersInside(folder, rules.Keys)) condition += $" AND NOT {Under(other, "x" + n++, args)}";
+            using var c = Connect();
+            using var tx = c.BeginTransaction();
+            int moved = c.Execute($"UPDATE tracks SET category_id = @category, updated_at = @now WHERE {condition} AND category_id IN @above", args, tx);
+            if (moved > 0)
+                c.Execute($"DELETE FROM track_categories WHERE category_id = @category AND track_id IN (SELECT id FROM tracks WHERE {condition} AND category_id = @category)", args, tx);
+            tx.Commit();
+            changed += moved;
+        }
+        return changed;
     }
 
     /// <summary>
@@ -635,8 +680,9 @@ public sealed partial class LibraryDb
     internal static string Under(string folder, string name, DynamicParameters args)
     {
         // As the scanner stores paths: full, without "." or ".." in them.
-        // (A path the library keeps for another computer's form — /mnt/radio on Windows — is normalised as this one's.)
-        if (!System.IO.Path.IsPathFullyQualified(SharedPaths.ToLocal(folder)) || folder.Contains("/.") || folder.Contains("\\."))
+        // A path of the other system (D:\Music read on Linux, /mnt/radio on Windows, with no mapping) is kept as it is:
+        // made full here it would be one no song has.
+        if (System.IO.Path.IsPathFullyQualified(SharedPaths.ToLocal(folder)) && (folder.Contains("/.") || folder.Contains("\\.")))
             folder = SharedPaths.ToLibrary(System.IO.Path.GetFullPath(SharedPaths.ToLocal(folder)));
         else folder = SharedPaths.ToLibrary(folder);
         string like = folder.TrimEnd('/', '\\').Replace("!", "!!").Replace("%", "!%").Replace("_", "!_");

@@ -268,6 +268,20 @@ sealed class LibraryService
     {
         if (Db is not { } db || _scan != null) return;
         folders = onlyThese ? folders.Where(SharedPaths.DirectoryExists).ToList() : WithCategoryFolders(folders);
+        if (folders.Count == 0 && onlyThese)
+        {
+            // A category's folders this computer can't reach (Pro away from the studios): its songs already in the
+            // library still go in their folder's category; the studio that has the folders finds the new ones.
+            try
+            {
+                int n = await Task.Run(db.FolderCategoriesOverParents);
+                Message?.Invoke(L.T("This computer can't reach these folders: Sintoniza Emi on the studio computer that has them finds the new songs at its next scan.")
+                    + (n > 0 ? " " + L.F("{0:N0} put in their folder's category", n) : ""));
+                if (n > 0) Changed?.Invoke();
+            }
+            catch (Exception ex) { Message?.Invoke(L.F("Library scan failed: {0}", ex.Message)); }
+            return;
+        }
         if (folders.Count == 0)
         {
             if (!automatic) Message?.Invoke(L.T("Choose the music folders to scan in Settings → Library"));
@@ -293,16 +307,21 @@ sealed class LibraryService
             var r = await Task.Run(() => LibraryScanner.Scan(db, folders, progress, token));
             // Folders given a category: the songs found there that have none yet get it. The deepest folders first, so
             // Music/80s gives its songs 80s before Music gives the rest of them Music.
-            await Task.Run(() =>
+            int recategorised = await Task.Run(() =>
             {
                 foreach (var (folder, id) in db.FolderCategories().OrderByDescending(r => r.Key.Length))
                     db.SetFolderCategory(folder, id, onlyWithout: true);
+                // Those of a folder with a category of its own still in the one of a folder above it: in their folder's.
+                // Only in a scan started by hand (the category's Scan button among them): an automatic one never
+                // undoes a song put in the folder above's category on purpose.
+                return automatic ? 0 : db.FolderCategoriesOverParents();
             });
             var parts = new List<string> { L.F("{0:N0} added", r.Added), L.F("{0:N0} updated", r.Updated) };
             if (r.Moved > 0) parts.Add(L.F("{0:N0} moved", r.Moved));
             if (r.Removed > 0) parts.Add(L.F("{0:N0} removed (no longer on disk)", r.Removed));
+            if (recategorised > 0) parts.Add(L.F("{0:N0} put in their folder's category", recategorised));
             if (r.SkippedFolders.Count > 0) parts.Add(L.F("skipped {0} (not found)", string.Join(", ", r.SkippedFolders)));
-            bool found = r.Added + r.Updated + r.Moved + r.Removed > 0;
+            bool found = r.Added + r.Updated + r.Moved + r.Removed + recategorised > 0;
             if (!automatic || found || r.Cancelled)
                 Message?.Invoke(L.F(automatic ? r.Cancelled ? "Library auto scan stopped: {0}" : "Library auto scan done: {0}"
                     : r.Cancelled ? "Library scan stopped: {0}" : "Library scan done: {0}", string.Join(", ", parts)));

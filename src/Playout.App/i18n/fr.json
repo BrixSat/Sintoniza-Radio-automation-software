@@ -1069,6 +1069,8 @@
  "{0:N0} added": "{0:N0} ajoutés",
  "{0:N0} missing": "{0:N0} manquants",
  "{0:N0} moved": "{0:N0} déplacés",
+ "{0:N0} put in their folder's category": "{0:N0} placés dans la catégorie de leur dossier",
+ "This computer can't reach these folders: Sintoniza Emi on the studio computer that has them finds the new songs at its next scan.": "Cet ordinateur n'atteint pas ces dossiers : Sintoniza Emi, sur l'ordinateur du studio qui les a, trouve les nouvelles chansons à sa prochaine analyse.",
  "{0:N0} of {1:N0}": "{0:N0} sur {1:N0}",
  "{0:N0} removed (no longer on disk)": "{0:N0} retirés (plus sur le disque)",
  "{0:N0} songs": "{0:N0} titres",
