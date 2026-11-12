@@ -304,7 +304,8 @@ CHAPTERS = [
     ("p", "A transição fica guardada nos pontos de cue das duas músicas, por isso vale onde quer que elas toquem e em todos os estúdios que partilham a biblioteca."),
     ("h2", "Etiquetas"),
     ("fig", "tag-editor", "Editar etiquetas…", []),
-    ("p", "Aqui muda o título, o artista, o álbum, o género, o ano, o número da faixa, o comentário e a capa, que ficam gravados no próprio ficheiro. Um ficheiro que está no ar só pode ser alterado depois de acabar."),
+    ("p", "Aqui muda o título, o artista, o álbum, o género, o ano, o número da faixa, o comentário e a capa, que ficam gravados no próprio ficheiro. Um ficheiro que está no ar só pode ser alterado depois de acabar. Com várias músicas escolhidas na biblioteca, só as caixas que mudar são escritas em cada uma (um álbum, um género, uma capa para todas); o resto, e o título e o número da faixa de cada música, ficam como estão."),
+    ("p", "<b>Pontos de cue automáticos…</b>, no menu do botão direito da biblioteca, faz o Cue In, o Cue Out e o Mix das músicas escolhidas a partir do som, como o auto cue faz no ar, e guarda-os como pontos de cue marcados à mão, usados em todos os estúdios. As músicas com pontos de cue marcados à mão ficam com eles, a não ser que marque a caixa para essas também; o Intro e o Outro ficam sempre."),
     ("h2", "Relatórios"),
     ("fig", "reports-adverts", "Relatórios", [
         ("KindBox", "Escolha o relatório: <b>Música emitida</b> para os direitos de autor, <b>Totais de música por canção</b>, <b>Anúncios</b> para o comprovativo de emissão, <b>Tudo</b>, o registo de emissão completo (com os ouvintes quando cada item começou, se forem contados), ou <b>Ouvintes por hora</b>."),

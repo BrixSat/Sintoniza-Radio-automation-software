@@ -82,6 +82,11 @@
             </StackPanel>
         </Grid>
 
+        <TextBlock x:Name="ManyText" Classes="note" IsVisible="False"
+                   Text="Only the boxes you change are written, in every song; the others keep each song's own. A box left empty where the songs differ keeps theirs." />
+
+        <TextBlock x:Name="ProgressText" Classes="note" IsVisible="False" />
+
         <TextBlock x:Name="ErrorText" Foreground="{StaticResource OnAir}" FontSize="12" IsVisible="False" TextWrapping="Wrap" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">

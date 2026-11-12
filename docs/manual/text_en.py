@@ -301,7 +301,12 @@ CHAPTERS = [
     ("h2", "Tags"),
     ("fig", "tag-editor", "Edit tags…", []),
     ("p", "<b>Edit tags…</b> (Ctrl+T) changes the title, artist, album, genre, year, track number, comment and cover picture "
-          "stored in the file itself. A file that is on air can't be changed until it has finished."),
+          "stored in the file itself. A file that is on air can't be changed until it has finished. With several songs selected in "
+          "the library, only the boxes you change are written in each (an album, a genre, a cover for all of them); the rest, and "
+          "each song's title and track number, stay its own."),
+    ("p", "<b>Auto cue points…</b> in the library's right-click menu makes the selected songs' Cue In, Cue Out and Mix from their "
+          "sound, as auto cue does on air, and saves them as cue points set by hand, used in every studio. Songs whose cue points "
+          "were set by hand keep them unless you tick the box to do those too; Intro and Outro always stay."),
     ("h2", "Reports"),
     ("p", "Everything that goes on air is logged. Reports turns that log into the documents a station is asked for: the music "
           "list for the collecting society, and proof of broadcast for advertisers."),

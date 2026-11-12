@@ -26,7 +26,10 @@ public partial class TrackLibraryView : UserControl
     /// <summary>Paths to add; <c>asNext</c> means "play after the current item".</summary>
     public event Action<IReadOnlyList<string>, bool>? AddRequested;
     public event Action<string>? EditCuesRequested;
-    public event Action<string>? EditTagsRequested;
+    /// <summary>Edit the tags of the selected songs (one, or several at once).</summary>
+    public event Action<IReadOnlyList<string>>? EditTagsRequested;
+    /// <summary>Make the selected songs' cue points from their sound (offered only where something does it).</summary>
+    public event Action<IReadOnlyList<string>>? AutoCueRequested;
     /// <summary>Pre-listen to a song (offered in the menu only where something listens, e.g. the playlist manager).</summary>
     public event Action<string>? ListenRequested;
 
@@ -286,11 +289,12 @@ public partial class TrackLibraryView : UserControl
         menu.Items.Add(Item(Mark(L.T("Not on the website"), allHidden), () =>
             Edit(db => db.SetAttributes(ids, new TrackAttributes(NotForWeb: !allHidden)))));
 
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Edit tags") + many + "…", () => EditTagsRequested?.Invoke(paths)));
+        if (EditCuesRequested != null && rows.Count == 1) menu.Items.Add(Item(L.T("Edit cue points…"), () => EditCuesRequested?.Invoke(paths[0])));
+        if (AutoCueRequested != null) menu.Items.Add(Item(L.T("Auto cue points") + many + "…", () => AutoCueRequested?.Invoke(paths)));
         if (rows.Count == 1)
         {
-            menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.T("Edit tags…"), () => EditTagsRequested?.Invoke(paths[0])));
-            if (EditCuesRequested != null) menu.Items.Add(Item(L.T("Edit cue points…"), () => EditCuesRequested?.Invoke(paths[0])));
             menu.Items.Add(Item(L.T("Copy the file's path"), async () =>
             {
                 if (TopLevel.GetTopLevel(this)?.Clipboard is { } clipboard) await clipboard.SetTextAsync(paths[0]);

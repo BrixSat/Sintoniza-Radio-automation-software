@@ -288,7 +288,8 @@ public partial class MainWindow : Window, IShowsProblems
         Library.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1, reveal: true);
         Tracks.AddRequested += (paths, asNext) => AddPaths(paths, asNext ? NextInsertIndex() : -1, reveal: true);
         Tracks.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
-        Tracks.EditTagsRequested += async path => await EditTags(path);
+        Tracks.EditTagsRequested += async paths => await EditTags(paths);
+        Tracks.AutoCueRequested += async paths => await AutoCue(paths);
         // Clicking the open tab keeps it open (ShowSideTab sets all the buttons again).
         CartwallTab.Click += (_, _) => ShowSideTab("cartwall");
         LibraryTab.Click += (_, _) => ShowSideTab("library");
@@ -315,7 +316,7 @@ public partial class MainWindow : Window, IShowsProblems
         };
         Library.FolderCategoryRequested += async (folder, id) => await SetFolderCategory(folder, id);
         Library.EditCuesRequested += async path => await EditCues(path, Path.GetFileNameWithoutExtension(path));
-        Library.EditTagsRequested += async path => await EditTags(path);
+        Library.EditTagsRequested += async path => await EditTags([path]);
 
         StreamToggle.Click += (_, _) => { if (MayToggleStream()) ToggleStreaming(); };
         // Right-click: explicit start and stop; Stop also clears an error (a click on an error retries).
@@ -1746,6 +1747,24 @@ public partial class MainWindow : Window, IShowsProblems
         }
     }
 
+    /// <summary>Library → Auto cue points…: the songs' cue points made from their sound, saved as if set by hand here.</summary>
+    async Task AutoCue(IReadOnlyList<string> paths)
+    {
+        if (_engine is not { } engine) return;
+        if (_editorOpen) { LastLog.Text = L.T("Another editor is open: close it first."); return; }
+        _editorOpen = true;
+        try
+        {
+            // The library's first: another studio's cue points set by hand may not have reached this computer yet.
+            CuePoints Current(string path) => _library.Db?.GetCues(path) is { HasValues: true, Auto: false } shared ? shared : engine.GetCues(path);
+            await new AutoCueWindow(paths, Current, (path, cues) => { engine.SetCues(path, cues); return Task.CompletedTask; }).ShowDialog(this);
+        }
+        finally
+        {
+            _editorOpen = false;
+        }
+    }
+
     /// <summary>The segue editor for the selected item and the one after it in the playlist.</summary>
     async Task EditSelectedSegue()
     {
@@ -1806,17 +1825,19 @@ public partial class MainWindow : Window, IShowsProblems
 
     async Task EditSelectedTags()
     {
-        if (FileRow() is { } row) await EditTags(row.Track.Path);
+        if (FileRow() is { } row) await EditTags([row.Track.Path]);
     }
 
-    async Task EditTags(string path)
+    async Task EditTags(IReadOnlyList<string> paths)
     {
         if (_engine == null) return;
         if (_editorOpen) { LastLog.Text = L.T("Another editor is open: close it first."); return; }
         _editorOpen = true;
         try
         {
-            if (await new TagEditorWindow(_engine, path).ShowDialog<bool>(this)) _library.Refresh(path);
+            var editor = new TagEditorWindow(_engine, paths);
+            await editor.ShowDialog<bool>(this);
+            foreach (var path in editor.SavedPaths) _library.Refresh(path);
         }
         finally
         {

@@ -81,7 +81,8 @@ public partial class DailyPlaylistsView : UserControl
             Tracks.Attach(library);
             Tracks.AddRequested += (paths, asNext) => InsertFromLibrary(paths).Report();
             Tracks.ListenRequested += path => Listen(path, System.IO.Path.GetFileNameWithoutExtension(path));
-            Tracks.EditTagsRequested += path => EditTags(path).Report();
+            Tracks.EditTagsRequested += paths => EditTags(paths).Report();
+            Tracks.AutoCueRequested += paths => AutoCue(paths).Report();
             Tracks.EditCuesRequested += path => EditCues(path, System.IO.Path.GetFileNameWithoutExtension(path)).Report();
         }
         if (db == null)
@@ -110,7 +111,7 @@ public partial class DailyPlaylistsView : UserControl
         SegueButton.Click += async (_, _) => await EditSegue();
         MixButton.Click += async (_, _) => await EditMix();
         VoiceButton.Click += async (_, _) => await RecordVoiceTrack();
-        TagsButton.Click += async (_, _) => { if (SelectedRow() is { Path.Length: > 0 } row) await EditTags(row.Path); };
+        TagsButton.Click += async (_, _) => { if (SelectedRow() is { Path.Length: > 0 } row) await EditTags([row.Path]); };
         BuildItemMenu();
         Listening.Settings = _settings;
         Listening.Selected = () => SelectedRow() is { Path.Length: > 0 } row ? (row.Path, Display(row)) : null;
@@ -365,22 +366,25 @@ public partial class DailyPlaylistsView : UserControl
     {
         Open = deck.Open,
         GetCues = db.GetCues,
-        SaveCues = (path, edited) => Task.Run(() =>
-        {
-            var cues = edited with { Auto = false, FileSize = null }; // set by hand now, also if they started as auto cue's
-            // A file outside the library is added to it, so its cue points are kept (and shared).
-            if (!db.SetCues(path, cues) && !cues.IsEmpty)
-            {
-                db.Refresh(path);
-                db.SetCues(path, cues);
-            }
-            double length = FileLength(db, path);
-            if (length > 0) new PlanStore(db).UpdateSeconds(path, Plays(cues, length, kindOf(path)), Hour(StationTime.Now));
-        }),
+        SaveCues = CueSaver(db, kindOf),
         LoadWaveform = Waveforms.LoadAsync,
         Crossfade = CrossfadeBetween,
         PreviewIsOnAir = deck.PreviewIsOnAir,
     };
+
+    /// <summary>Saves cue points to the library as set by hand, and tells the planned hours from now on how long the file now plays.</summary>
+    Func<string, CuePoints, Task> CueSaver(LibraryDb db, Func<string, TrackKind> kindOf) => (path, edited) => Task.Run(() =>
+    {
+        var cues = edited with { Auto = false, FileSize = null }; // set by hand now, also if they started as auto cue's
+        // A file outside the library is added to it, so its cue points are kept (and shared).
+        if (!db.SetCues(path, cues) && !cues.IsEmpty)
+        {
+            db.Refresh(path);
+            db.SetCues(path, cues);
+        }
+        double length = FileLength(db, path);
+        if (length > 0) new PlanStore(db).UpdateSeconds(path, Plays(cues, length, kindOf(path)), Hour(StationTime.Now));
+    });
 
     static double FileLength(LibraryDb db, string path) => db.GetByPath(path)?.Duration is > 0 and var d ? d : AudioProbe.Duration(path) ?? 0;
 
@@ -462,7 +466,7 @@ public partial class DailyPlaylistsView : UserControl
                 if (!_voiceOnly) menu.Items.Add(Item(L.T("Edit cue points…"), _db != null, () => EditCues(row.Path, Display(row))));
             }
             menu.Items.Add(From(SegueButton, L.T("Segue…"), EditSegue));
-            menu.Items.Add(From(TagsButton, L.T("Edit tags…"), () => EditTags(row.Path)));
+            menu.Items.Add(From(TagsButton, L.T("Edit tags…"), () => EditTags([row.Path])));
             menu.Items.Add(From(VoiceButton, L.T("Voice track…"), RecordVoiceTrack));
             menu.Items.Add(new Separator());
             menu.Items.Add(From(ReplaceButton, L.T("Another song"), Replace));
@@ -522,19 +526,36 @@ public partial class DailyPlaylistsView : UserControl
 
     // ───────────────────────── Tags ─────────────────────────
 
-    async Task EditTags(string path)
+    async Task EditTags(IReadOnlyList<string> paths)
     {
-        if (!SharedPaths.FileExists(path))
+        if (paths.Count == 1 && !SharedPaths.FileExists(paths[0]))
         {
-            StatusText.Text = L.F("Not found: {0}", path);
+            StatusText.Text = L.F("Not found: {0}", paths[0]);
             return;
         }
-        if (Owner is { } owner && await new TagEditorWindow(SaveTags, path).ShowDialog<bool>(owner))
-        {
-            StatusText.Text = L.F("Tags saved: {0}", System.IO.Path.GetFileName(path));
-            _library?.NotifyChanged();
-            if (_hour is { } hour) await ShowHour(hour);
-        }
+        if (Owner is not { } owner) return;
+        var editor = new TagEditorWindow(SaveTags, paths);
+        await editor.ShowDialog<bool>(owner);
+        if (editor.SavedPaths.Count == 0) return;
+        StatusText.Text = editor.SavedPaths.Count == 1 ? L.F("Tags saved: {0}", System.IO.Path.GetFileName(editor.SavedPaths[0])) : L.F("Tags saved in {0} songs", editor.SavedPaths.Count);
+        _library?.NotifyChanged();
+        if (_hour is { } hour) await ShowHour(hour);
+    }
+
+    /// <summary>
+    /// Library → Auto cue points…: the songs' cue points made from their sound and saved to the library as if set by
+    /// hand (the playout takes them within a minute; the planned hours count the new lengths).
+    /// </summary>
+    async Task AutoCue(IReadOnlyList<string> paths)
+    {
+        if (_db is not { } db || Owner is not { } owner) return;
+        var save = CueSaver(db, path => TrackClassifier.Classify(path));
+        var window = new AutoCueWindow(paths, db.GetCues, save);
+        await window.ShowDialog(owner);
+        if (window.Saved == 0) return;
+        StatusText.Text = L.T("Cue points saved. The playout takes them within a minute.");
+        _library?.NotifyChanged();
+        if (_hour is { } hour) await ShowHour(hour);
     }
 
     async Task SaveTags(string path, TrackTags tags, byte[]? cover)

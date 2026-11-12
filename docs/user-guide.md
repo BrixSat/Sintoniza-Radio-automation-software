@@ -148,7 +148,14 @@ on air; the plan isn't changed by that, and the as-run log has what really playe
   (a category includes the ones under it).
 - **Double-click** or Enter: the song goes to the end of the playlist and is selected there. Right-click: *Add to
   playlist*, *Play next*, *Category*, *Also in* (a song can be in several categories), *Tempo*, *Energy*, *Voice*,
-  *Language…*, *Never pick automatically*, *Edit tags…*, *Edit cue points…*.
+  *Language…*, *Never pick automatically*, *Edit tags…*, *Edit cue points…*, *Auto cue points…*.
+- **Edit tags…** with several songs selected: only the boxes you change are written in each (an album, a genre, a
+  year, a cover for all of them); the rest, and each song's title and track number, stay its own.
+- **Auto cue points…** of the selected songs: Cue In past the silence at the start, Cue Out before the silence at the
+  end, Mix where a fade-out has gone quiet, made from each song's sound and saved as cue points set by hand (every
+  studio uses them, also with auto cue off). Songs whose cue points were set by hand keep them unless you tick
+  *Also songs whose cue points were set by hand*; Intro and Outro always stay. Also in the daily playlists' library and
+  Sintoniza Pro's Songs.
 - **✎** next to the filter: the categories editor. **Scan**: bring the library up to date now.
 
 ### Folders tab

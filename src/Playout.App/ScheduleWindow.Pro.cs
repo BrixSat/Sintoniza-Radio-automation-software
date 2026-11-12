@@ -92,7 +92,8 @@ public partial class ScheduleWindow
         if (_library != null)
         {
             SongsView.Attach(_library);
-            SongsView.EditTagsRequested += path => EditSongTags(path).Report();
+            SongsView.EditTagsRequested += paths => EditSongTags(paths).Report();
+            SongsView.AutoCueRequested += paths => AutoCueSongs(paths).Report();
             SongsView.EditCuesRequested += path => EditSongCues(path).Report();
             // Listening: on this computer's Preview output (Settings → Audio), never on air.
             SongsListening.Settings = _settings;
@@ -598,21 +599,56 @@ public partial class ScheduleWindow
     bool _tagsOpen;
 
     /// <summary>Songs → Edit tags…: written in the file, then the library and the planned hours show them.</summary>
-    async Task EditSongTags(string path)
+    async Task EditSongTags(IReadOnlyList<string> paths)
     {
         if (_tagsOpen) { SavedText.Text = L.T("Another editor is open: close it first."); return; }
-        if (!SharedPaths.FileExists(path))
+        if (paths.Count == 1 && !SharedPaths.FileExists(paths[0]))
         {
-            SavedText.Text = L.F("Not found: {0}", path);
+            SavedText.Text = L.F("Not found: {0}", paths[0]);
             return;
         }
         _tagsOpen = true;
         try
         {
-            if (await new TagEditorWindow((p, tags, cover) => DailyPlaylistsView.WriteTags(_library?.Db, p, tags, cover), path).ShowDialog<bool>(this))
+            var editor = new TagEditorWindow((p, tags, cover) => DailyPlaylistsView.WriteTags(_library?.Db, p, tags, cover), paths);
+            await editor.ShowDialog<bool>(this);
+            if (editor.SavedPaths.Count > 0)
             {
-                SavedText.Text = L.F("Tags saved: {0}", Path.GetFileName(path));
+                SavedText.Text = editor.SavedPaths.Count == 1 ? L.F("Tags saved: {0}", Path.GetFileName(editor.SavedPaths[0])) : L.F("Tags saved in {0} songs", editor.SavedPaths.Count);
                 _library?.NotifyChanged();
+            }
+        }
+        finally
+        {
+            _tagsOpen = false;
+        }
+    }
+
+    /// <summary>
+    /// Songs → Auto cue points…: the songs' cue points made from their sound and saved to the library as if set by hand
+    /// (every studio has them, the playout takes them within a minute; the planned hours count the new lengths).
+    /// </summary>
+    async Task AutoCueSongs(IReadOnlyList<string> paths)
+    {
+        if (_tagsOpen) { SavedText.Text = L.T("Another editor is open: close it first."); return; }
+        if (_library?.Db is not { } db) { ErrorText.Text = L.T("The library isn't open yet: try again in a moment."); return; }
+        double Crossfade(TrackKind kind) =>
+            kind is TrackKind.Music or TrackKind.Stream ? _settings?.Crossfade ?? 0 : _settings?.OtherCrossfade ?? 0;
+        _tagsOpen = true;
+        try
+        {
+            var window = new AutoCueWindow(paths, db.GetCues, (file, edited) => Task.Run(() =>
+            {
+                var cues = edited with { Auto = false, FileSize = null };
+                db.SetCues(file, cues);
+                double length = db.GetByPath(file)?.Duration is > 0 and var d ? d : AudioProbe.Duration(file) ?? 0;
+                if (length > 0) new PlanStore(db).UpdateSeconds(file, DailyPlaylistsView.Plays(cues, length, Crossfade(TrackClassifier.Classify(file))), StationTime.Now.Date.AddHours(StationTime.Now.Hour));
+            }));
+            await window.ShowDialog(this);
+            if (window.Saved > 0)
+            {
+                SavedText.Text = L.T("Cue points saved. The playout takes them within a minute.");
+                _library.NotifyChanged();
             }
         }
         finally
