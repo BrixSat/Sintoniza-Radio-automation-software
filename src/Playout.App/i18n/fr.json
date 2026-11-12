@@ -2646,5 +2646,12 @@
  "{0}: where it is saved must be a whole path (Choose…).": "{0} : où il est enregistré doit être un chemin complet (Choisir…).",
  "{0}: say at which minutes past the hour (0 to 59, e.g. 2, 32).": "{0} : dites à quelles minutes de chaque heure (de 0 à 59, p. ex. 2, 32).",
  "{0}: too old after {1} minutes, but it is fetched only every {2}: give it at least {3}.": "{0} : trop ancien après {1} minutes, mais il n'est téléchargé que toutes les {2} : donnez-lui au moins {3}.",
- "Two downloads are saved as {0}: one file each.": "Deux téléchargements sont enregistrés sous {0} : un fichier chacun."
+ "Two downloads are saved as {0}: one file each.": "Deux téléchargements sont enregistrés sous {0} : un fichier chacun.",
+ "WHEN A SONG PLAYED": "QUAND UN TITRE A ÉTÉ DIFFUSÉ",
+ "Artist or title": "Artiste ou titre",
+ "Type an artist or a title first.": "Saisissez d'abord un artiste ou un titre.",
+ "Nothing matching “{0}” went on air from {1:dd/MM/yyyy} to {2:dd/MM/yyyy}.": "Rien correspondant à « {0} » n'a été diffusé du {1:dd/MM/yyyy} au {2:dd/MM/yyyy}.",
+ "{0:dd/MM/yyyy} to {1:dd/MM/yyyy}: {2} plays of {3} songs, the most played first.": "Du {0:dd/MM/yyyy} au {1:dd/MM/yyyy} : {2} diffusions de {3} titres, les plus diffusés d'abord.",
+ "{0}:{1:00} on air": "{0}:{1:00} à l'antenne",
+ "Only the first {0} lines are shown: search with more words or fewer days.": "Seules les {0} premières lignes sont affichées : précisez la recherche ou réduisez la période."
 }

@@ -71,6 +71,31 @@
                 </Border>
                 <Border Classes="card">
                     <StackPanel Spacing="8">
+                        <TextBlock Classes="cardtitle" Text="WHEN A SONG PLAYED" />
+                        <WrapPanel ItemSpacing="8" LineSpacing="8">
+                            <TextBox x:Name="SongSearchBox" MinWidth="260" PlaceholderText="Artist or title" />
+                            <TextBlock Text="from" VerticalAlignment="Center" />
+                            <CalendarDatePicker x:Name="PlaysFromBox" Width="150" SelectedDateFormat="Custom" CustomDateFormatString="dd/MM/yyyy" />
+                            <TextBlock Text="to" VerticalAlignment="Center" />
+                            <CalendarDatePicker x:Name="PlaysToBox" Width="150" SelectedDateFormat="Custom" CustomDateFormatString="dd/MM/yyyy" />
+                            <Button x:Name="SongPlaysButton" Content="Look" />
+                        </WrapPanel>
+                        <TextBlock x:Name="SongPlaysText" Classes="note" />
+                        <ItemsControl x:Name="SongPlaysList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="app:PlayLine">
+                                    <Grid ColumnDefinitions="170,*" Margin="0,1">
+                                        <TextBlock Text="{Binding When}" FontWeight="{Binding Weight}" Margin="0,0,12,0" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Text}" FontWeight="{Binding Weight}" TextTrimming="CharacterEllipsis"
+                                                   Classes.muted="{Binding !IsSong}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Border Classes="card">
+                    <StackPanel Spacing="8">
                         <TextBlock Classes="cardtitle" Text="NOT PLAYED FOR A WHILE" />
                         <WrapPanel ItemSpacing="8" LineSpacing="8">
                             <ComboBox x:Name="CategoryBox" MinWidth="240" PlaceholderText="Library category" />

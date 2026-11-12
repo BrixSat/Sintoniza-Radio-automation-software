@@ -6,6 +6,12 @@ namespace Playout.App;
 /// <summary>A line of the music report: a number and what it counts.</summary>
 public sealed record ReportLine(string Count, string Text);
 
+/// <summary>A line of a song's plays: a song (how many times, and which) or one time it went on air.</summary>
+public sealed record PlayLine(string When, string Text, bool IsSong)
+{
+    public Avalonia.Media.FontWeight Weight => IsSong ? Avalonia.Media.FontWeight.SemiBold : Avalonia.Media.FontWeight.Normal;
+}
+
 /// <summary>
 /// Sintoniza Pro → Library → Music report, for a period: the songs and artists played most (the as-run log: what really
 /// went on air), each category's share of the songs played, and how many of the hours that went by kept each of the
@@ -101,6 +107,44 @@ public sealed class MusicReport
                 lines.Add(new ReportLine($"{100.0 * kept / hours.Count:0}%", L.F("{0} · {1} of {2}: {3} of {4} hours", template.Name.Trim(), what, target.CategoryName, kept, hours.Count)));
             }
         return lines;
+    }
+
+    /// <summary>
+    /// When the songs matching <paramref name="search"/> (words of the artist, title or file name, accents and case
+    /// ignored) went on air between two days (the station's time, both included), by the as-run log: each song with how
+    /// many times, then each time, the latest first. Songs, jingles, programmes: whatever has a title.
+    /// Returns how many songs and plays were found (all of them, also those past the lines shown).
+    /// </summary>
+    public static (int Songs, int Plays, List<PlayLine> Lines) SongPlays(LibraryDb db, string search, DateTime from, DateTime to, int maxLines = 2000)
+    {
+        var words = LibraryDb.Normalize(search).Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (words.Length == 0) return (0, 0, new());
+        static string Song(AsRunEntry e) => e.Artist.Trim().Length > 0 ? $"{e.Artist.Trim()} – {e.Title.Trim()}"
+            : e.Title.Trim().Length > 0 ? e.Title.Trim() : Name(e.File);
+        // The file's name, also of a path in the other system's form (D:\Music\x.mp3 read on Linux).
+        static string Name(string file) => Path.GetFileNameWithoutExtension(file.Replace('\\', '/').Split('/')[^1]);
+        bool Matches(AsRunEntry e)
+        {
+            string text = LibraryDb.Normalize($"{e.Artist} {e.Title} {Name(e.File)}");
+            return words.All(text.Contains);
+        }
+        var plays = AsRunDb.Read(db, from.Date, to.Date).Where(e => e.Type is not ("Advert" or "Stream") && Matches(e)).ToList();
+        var songs = plays.GroupBy(e => e.File.Length > 0 ? SharedPaths.ToLibrary(e.File).ToLowerInvariant() : Song(e))
+            .OrderByDescending(g => g.Count()).ThenBy(g => Song(g.Last())).ToList();
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var lines = new List<PlayLine>();
+        foreach (var g in songs)
+        {
+            if (lines.Count >= maxLines) break;
+            lines.Add(new PlayLine($"{g.Count()}×", Song(g.Last()), true));
+            foreach (var e in g.OrderByDescending(e => e.Start))
+            {
+                if (lines.Count >= maxLines) break;
+                lines.Add(new PlayLine(e.Start.ToString("ddd dd'/'MM'/'yyyy HH:mm", culture),
+                    e.Seconds is { } s ? L.F("{0}:{1:00} on air", (int)s / 60, (int)s % 60) : "", false));
+            }
+        }
+        return (songs.Count, plays.Count, lines);
     }
 
     /// <summary>The songs of a category (and the ones under it) not played for <paramref name="days"/> days, or never: the longest first.</summary>

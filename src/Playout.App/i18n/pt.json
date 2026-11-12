@@ -2646,5 +2646,12 @@
  "{0}: where it is saved must be a whole path (Choose…).": "{0}: onde é guardado tem de ser um caminho completo (Escolher…).",
  "{0}: say at which minutes past the hour (0 to 59, e.g. 2, 32).": "{0}: diga a que minutos de cada hora (de 0 a 59, p. ex. 2, 32).",
  "{0}: too old after {1} minutes, but it is fetched only every {2}: give it at least {3}.": "{0}: antigo demais ao fim de {1} minutos, mas só é descarregado a cada {2}: dê-lhe pelo menos {3}.",
- "Two downloads are saved as {0}: one file each.": "Duas transferências são guardadas como {0}: um ficheiro para cada."
+ "Two downloads are saved as {0}: one file each.": "Duas transferências são guardadas como {0}: um ficheiro para cada.",
+ "WHEN A SONG PLAYED": "QUANDO UMA MÚSICA TOCOU",
+ "Artist or title": "Artista ou título",
+ "Type an artist or a title first.": "Escreva primeiro um artista ou um título.",
+ "Nothing matching “{0}” went on air from {1:dd/MM/yyyy} to {2:dd/MM/yyyy}.": "Nada com “{0}” foi para o ar de {1:dd/MM/yyyy} a {2:dd/MM/yyyy}.",
+ "{0:dd/MM/yyyy} to {1:dd/MM/yyyy}: {2} plays of {3} songs, the most played first.": "{0:dd/MM/yyyy} a {1:dd/MM/yyyy}: {2} passagens de {3} músicas, as mais tocadas primeiro.",
+ "{0}:{1:00} on air": "{0}:{1:00} no ar",
+ "Only the first {0} lines are shown: search with more words or fewer days.": "Só são mostradas as primeiras {0} linhas: procure com mais palavras ou menos dias."
 }

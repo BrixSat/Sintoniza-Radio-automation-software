@@ -82,6 +82,7 @@ public partial class DailyPlaylistsView : UserControl
             Tracks.AddRequested += (paths, asNext) => InsertFromLibrary(paths).Report();
             Tracks.ListenRequested += path => Listen(path, System.IO.Path.GetFileNameWithoutExtension(path));
             Tracks.EditTagsRequested += path => EditTags(path).Report();
+            Tracks.EditCuesRequested += path => EditCues(path, System.IO.Path.GetFileNameWithoutExtension(path)).Report();
         }
         if (db == null)
         {
@@ -110,6 +111,7 @@ public partial class DailyPlaylistsView : UserControl
         MixButton.Click += async (_, _) => await EditMix();
         VoiceButton.Click += async (_, _) => await RecordVoiceTrack();
         TagsButton.Click += async (_, _) => { if (SelectedRow() is { Path.Length: > 0 } row) await EditTags(row.Path); };
+        BuildItemMenu();
         Listening.Settings = _settings;
         Listening.Selected = () => SelectedRow() is { Path.Length: > 0 } row ? (row.Path, Display(row)) : null;
         Listening.Problem += problem => StatusText.Text = problem;
@@ -437,6 +439,85 @@ public partial class DailyPlaylistsView : UserControl
         double plays = end - start;
         // As the playout: the crossfade only when it is shorter than half the item (a short sting plays to its end).
         return Math.Max(1, fade > 0 && plays > fade * 2 ? plays - fade : plays);
+    }
+
+    // ───────────────────────── Right-click menu ─────────────────────────
+
+    /// <summary>
+    /// The hour's right-click menu: what the buttons above do, and the cue points. Each item only where its button
+    /// could be pressed (a voice-tracks-only user, an hour that has played).
+    /// </summary>
+    void BuildItemMenu()
+    {
+        var menu = new ContextMenu();
+        menu.Opening += (_, e) =>
+        {
+            menu.Items.Clear();
+            if (SelectedRow() is not { } row) { e.Cancel = true; return; }
+            // A file (not a stream, nor a time or temperature take, put together on air)
+            if (row is { Path.Length: > 0, Kind: not TrackKind.Stream } && !row.Path.StartsWith(Takes.Prefix, StringComparison.Ordinal))
+            {
+                menu.Items.Add(Item(L.T("Listen"), true, () => { ListenTo(row); return Task.CompletedTask; }));
+                menu.Items.Add(new Separator());
+                if (!_voiceOnly) menu.Items.Add(Item(L.T("Edit cue points…"), _db != null, () => EditCues(row.Path, Display(row))));
+            }
+            menu.Items.Add(From(SegueButton, L.T("Segue…"), EditSegue));
+            menu.Items.Add(From(TagsButton, L.T("Edit tags…"), () => EditTags(row.Path)));
+            menu.Items.Add(From(VoiceButton, L.T("Voice track…"), RecordVoiceTrack));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(From(ReplaceButton, L.T("Another song"), Replace));
+            menu.Items.Add(From(UpButton, L.T("Move up"), () => Move(-1)));
+            menu.Items.Add(From(DownButton, L.T("Move down"), () => Move(1)));
+            menu.Items.Add(From(NoteButton, L.T("📝 Note…"), EditNote));
+            menu.Items.Add(From(RemoveButton, L.T("Remove"), RemoveSelected));
+        };
+        ItemList.ContextMenu = menu;
+
+        MenuItem From(Button button, string header, Func<Task> action)
+        {
+            var item = Item(header, button.IsEnabled, action);
+            item.IsVisible = button.IsVisible;
+            return item;
+        }
+        static MenuItem Item(string header, bool enabled, Func<Task> action)
+        {
+            var item = new MenuItem { Header = header, IsEnabled = enabled };
+            item.Click += async (_, _) => await action();
+            return item;
+        }
+    }
+
+    // ───────────────────────── Cue points ─────────────────────────
+
+    /// <summary>
+    /// The cue point editor on the Preview output; saved to the library (every studio has them, the playout takes them
+    /// within a minute) and the planned hours count the new length.
+    /// </summary>
+    async Task EditCues(string path, string title)
+    {
+        if (_db is not { } db || Owner is not { } owner) return;
+        if (!SharedPaths.FileExists(path))
+        {
+            StatusText.Text = L.F("Not found: {0}", path);
+            return;
+        }
+        StopListening();
+        PreviewDeck deck;
+        try { deck = Listening.Deck(); }
+        catch (Exception ex)
+        {
+            StatusText.Text = L.F("Can't listen: {0}", ex.Message);
+            return;
+        }
+        var kind = TrackClassifier.Classify(path);
+        var editor = new CueEditorWindow(Host(db, deck, _ => kind), path, title);
+        await editor.ShowDialog(owner);
+        if (editor.Saved)
+        {
+            StatusText.Text = L.T("Cue points saved. The playout takes them within a minute.");
+            _library?.NotifyChanged();
+            if (_hour is { } hour) await ShowHour(hour);
+        }
     }
 
     // ───────────────────────── Tags ─────────────────────────

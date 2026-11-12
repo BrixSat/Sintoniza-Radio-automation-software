@@ -951,9 +951,55 @@ Console.WriteLine("Hour templates' targets (at least, at most, in a row)");
         Check(report.Plays == 5 && report.Songs.FirstOrDefault()?.Count == "3" && report.Categories.Any(c => c.Text.Contains("Portugal")),
             $"the music report: the songs played most, from the as-run log, and each category's share ({report.Plays} plays; {string.Join(", ", report.Categories.Select(c => c.Text))})");
         Check(report.Targets.Count == 1 && report.Targets[0].Text.Contains("1 of 1"), $"…how many hours kept each target ({string.Join("; ", report.Targets.Select(t => $"{t.Count} {t.Text}"))})");
+        var (songCount, playCount, playLines) = MusicReport.SongPlays(tdb, Path.GetFileNameWithoutExtension(all[0].Path).ToUpperInvariant(), past.Date, past.Date);
+        Check(songCount == 1 && playCount == 3 && playLines.Count == 4 && playLines[0].IsSong && playLines[1].When.Contains(past.AddMinutes(16).ToString("HH:mm")),
+            $"…when a song played, found by its name, the latest first ({songCount} songs, {playCount} plays: {string.Join(" | ", playLines.Select(l => $"{l.When} {l.Text}"))})");
         var (rested, lines) = MusicReport.NotPlayed(tdb, pop, 30, StationTime.Now);
         Check(rested == 18 && lines.All(l => l.Count == L.T("never")), $"…and the songs of a category not played for a while ({rested})");
     }
+}
+
+// ───────────────────────── The ERC quotas and an even rotation ─────────────────────────
+
+Console.WriteLine("The ERC quotas don't wear out the few songs of a category that help them");
+{
+    // A Portuguese category of old songs and 3 foreign ones: the hour has its Portuguese music, the recent share is
+    // short, so a Portuguese song would bring it down. The foreign songs were picked each time they had rested
+    // (6 times as often as the others on a station); now only when their turn comes.
+    var tdb = LibraryDb.Open(new LibrarySettings { File = Path.Combine(work, "quotas.db") });
+    string folder = Path.Combine(work, "quotas");
+    Audio.Make(folder, 60, seconds: 200, rate: 8000, channels: 1);
+    LibraryScanner.Scan(tdb, [folder]);
+    long music = tdb.Categories().First(c => c.ParentId == null && c.Kind == "music").Id;
+    long bailarico = tdb.AddCategory("Bailarico", "music", null, music);
+    var all = tdb.Search(null, CategoryFilter.All).Tracks.OrderBy(t => t.Id).ToList();
+    tdb.SetCategory(all.Select(t => t.Id), bailarico);
+    var foreign = all.Take(3).Select(t => t.Id).ToList();
+    tdb.SetAttributes(all.Skip(3).Select(t => t.Id).ToList(),
+        new TrackAttributes(ErcPortuguese: true, Language: "pt-PT", ErcNationality: "045", ErcRelease: "2000"));
+    tdb.SetAttributes(foreign, new TrackAttributes(ErcPortuguese: false, Language: "en", ErcNationality: "001", ErcRelease: "2000"));
+    var start = DateTime.Today.AddDays(2);
+    var template = new PlaylistTemplate { Name = "Bailarico", Lines = [new TemplateLine { CategoryId = bailarico, CategoryName = "Bailarico", Kind = "music" }],
+        Slots = Enumerable.Range(0, 24).SelectMany(h => new[] { start.DayOfWeek, start.AddDays(1).DayOfWeek }.Select(d => new WeekTime { Day = d, Time = $"{h:00}:00:00" })).ToList() };
+    var data = new ScheduleData { Templates = { template } };
+    data.Normalize();
+    var generator = new PlaylistGenerator(tdb, data, new PlaylistGenerator.Options(0, 0, TimeSpan.FromHours(1), TimeSpan.FromMinutes(30)));
+    var plays = Enumerable.Range(0, 36).SelectMany(h => generator.Generate(start.AddHours(h)).Items).Where(i => i.TrackId != null && !i.Optional).ToList();
+    double average = (double)plays.Count / all.Count;
+    int most = foreign.Max(id => plays.Count(p => p.TrackId == id));
+    Check(plays.Count > 400 && most <= 2 * average, $"a foreign song in a Portuguese category: at most {most} plays, the average {average:0.0} ({plays.Count} songs in 36 hours)");
+
+    // The other way round: one category, a tenth of it Portuguese (recent): the quota still gets help from them, each
+    // played about twice as often as the others, not every time it has rested.
+    var portuguese = all.Take(6).Select(t => t.Id).ToHashSet();
+    tdb.SetAttributes(all.Skip(6).Select(t => t.Id).ToList(), new TrackAttributes(ErcPortuguese: false, Language: "en", ErcNationality: "001", ErcRelease: "2000"));
+    tdb.SetAttributes(portuguese.ToList(), new TrackAttributes(ErcPortuguese: true, Language: "pt-PT", ErcNationality: "045", ErcRelease: DateTime.Today.ToString("yyyy-MM-dd")));
+    generator = new PlaylistGenerator(tdb, data, new PlaylistGenerator.Options(0, 0, TimeSpan.FromHours(1), TimeSpan.FromMinutes(30)));
+    plays = Enumerable.Range(0, 36).SelectMany(h => generator.Generate(start.AddHours(h)).Items).Where(i => i.TrackId != null && !i.Optional).ToList();
+    double share = (double)plays.Count(p => portuguese.Contains(p.TrackId!.Value)) / plays.Count;
+    most = portuguese.Max(id => plays.Count(p => p.TrackId == id));
+    Check(share >= 0.16 && most <= 3 * plays.Count / all.Count,
+        $"a few Portuguese songs in a foreign category: {share:P0} of the music, each at most {most} plays (the average {(double)plays.Count / all.Count:0.0})");
 }
 
 // ───────────────────────── Tomorrow's daily playlists ─────────────────────────

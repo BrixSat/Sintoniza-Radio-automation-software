@@ -546,7 +546,16 @@ public sealed class PlaylistGenerator
                 else _relaxed.Add(L.F("{0}: no song with that tempo or energy", l.CategoryName));
             }
             // The ERC quotas: Portuguese music (and among it in Portuguese, and recent) where the hour has too little.
-            if (music && Quota() is { } quota) pool = Steer(pool, quota, at, SongRested);
+            // Only to songs that have rested at least as long as half the line's songs have: else the few songs of a
+            // category that help a quota (the foreign ones in a Portuguese category, the Portuguese in a foreign one)
+            // would play each time they have rested, many times more than the others. So they play at most about
+            // twice as often as the rest of their category.
+            if (music && Quota() is { } quota)
+            {
+                TimeSpan? half = null;
+                TimeSpan Half() => half ??= pool.Select(SongAway).OrderByDescending(x => x).ElementAt((pool.Count - 1) / 2);
+                pool = Steer(pool, quota, at, t => SongRested(t) && SongAway(t) >= Half());
+            }
             // The template's targets (after the quotas, which the law asks for).
             // Only to songs that keep the song and artist rest (a target never makes an artist come back too soon).
             if (music && template is { Targets.Count: > 0 }) pool = Aim(pool, template, at, t => SongRested(t) && ArtistRested(t));
