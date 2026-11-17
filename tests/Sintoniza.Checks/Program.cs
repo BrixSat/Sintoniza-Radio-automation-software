@@ -885,6 +885,74 @@ Console.WriteLine("A restart (yesterday's playlist saved, a daily playlist for e
     Pump(10);
 }
 
+// ───────────────────────── The library's list: every song ─────────────────────────
+
+Console.WriteLine("The library's list shows every song of a category, not the first 1000");
+{
+    string file = Path.Combine(work, "big.db");
+    var bdb = LibraryDb.Open(new LibrarySettings { File = file });
+    long music = bdb.Categories().First(c => c.ParentId == null && c.Kind == "music").Id;
+    long pop = bdb.AddCategory("Pop", "music", null, music), extra = bdb.AddCategory("Extra", "music", null, music);
+    using (var c = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={file}"))
+    {
+        c.Open();
+        using var tx = c.BeginTransaction();
+        var cmd = c.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "INSERT INTO tracks (path, file_size, file_modified, title, artist, album, genre, duration, category_id, added_at, updated_at, search) "
+                          + "VALUES ($p, 1, '2026-01-01', $t, $a, '', '', 200, $c, '2026-01-01', '2026-01-01', $s)";
+        var p = cmd.Parameters.Add("$p", Microsoft.Data.Sqlite.SqliteType.Text);
+        var t = cmd.Parameters.Add("$t", Microsoft.Data.Sqlite.SqliteType.Text);
+        var a = cmd.Parameters.Add("$a", Microsoft.Data.Sqlite.SqliteType.Text);
+        var cat = cmd.Parameters.Add("$c", Microsoft.Data.Sqlite.SqliteType.Integer);
+        var se = cmd.Parameters.Add("$s", Microsoft.Data.Sqlite.SqliteType.Text);
+        for (int i = 0; i < 40000; i++)
+        {
+            p.Value = $"/music/{i:00000}.mp3"; t.Value = $"Song {i:00000}"; a.Value = $"Artist {i / 10:0000}";
+            cat.Value = i < 35000 ? pop : music; se.Value = $"artist {i / 10:0000} song {i:00000}";
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+    var popIds = bdb.Search(null, new CategoryFilter(pop), null).Tracks.Select(x => x.Id).ToList();
+    bdb.SetAlsoIn(popIds.Where((_, i) => i % 7 == 0), extra, true);
+    var watch = System.Diagnostics.Stopwatch.StartNew();
+    var page = bdb.Search(null, new CategoryFilter(pop), null);
+    watch.Stop();
+    Check(page.Tracks.Count == 35000 && page.Total == 35000, $"a category of 35000 songs shows them all ({page.Tracks.Count} of {page.Total})");
+    Check(page.Tracks.Count(x => x.AlsoIn.Contains(extra)) == 5000, $"the other categories they are in are read for all of them ({page.Tracks.Count(x => x.AlsoIn.Contains(extra))} in Extra too)");
+    Check(watch.Elapsed < TimeSpan.FromSeconds(5), $"in a moment ({watch.ElapsedMilliseconds} ms)");
+    var all = bdb.Search(null, CategoryFilter.All, null);
+    Check(all.Tracks.Count == 40000, $"the whole library shows every song ({all.Tracks.Count})");
+    var few = bdb.Search("song 00126", CategoryFilter.All, null);
+    Check(few.Tracks.Count == 1 && few.Tracks[0].Title == "Song 00126" && few.Tracks[0].AlsoIn.Contains(extra),
+        $"a search shows only what matches, with its other categories ({few.Tracks.Count} found)");
+    var limited = bdb.Search(null, new CategoryFilter(pop), 30);
+    Check(limited.Tracks.Count == 30 && limited.Total == 35000, $"with a limit (the web remote's search): that many, and how many match ({limited.Tracks.Count} of {limited.Total})");
+
+    // The list itself: every song there, Ctrl+A selects them all, and the library read again (an edit, a scan, another
+    // studio's change) keeps them selected without holding up the program.
+    var service = new LibraryService();
+    _ = service.OpenAsync(new LibrarySettings { File = file });
+    var view = new TrackLibraryView();
+    var window = new Window { Content = view, Width = 900, Height = 600 };
+    window.Show();
+    view.Attach(service);
+    var listBox = view.GetLogicalDescendants().OfType<ListBox>().First(l => l.Name == "TrackList");
+    Check(WaitUi(() => listBox.ItemCount == 40000, 30), $"the list shows the whole library ({listBox.ItemCount})");
+    listBox.SelectAll();
+    Pump(2);
+    Check(listBox.SelectedItems?.Count == 40000, $"Ctrl+A selects every song ({listBox.SelectedItems?.Count})");
+    var before = listBox.ItemsSource;
+    var reload = System.Diagnostics.Stopwatch.StartNew();
+    service.NotifyChanged();
+    bool reloaded = WaitUi(() => !ReferenceEquals(listBox.ItemsSource, before) && listBox.ItemCount == 40000 && listBox.SelectedItems?.Count == 40000, 60);
+    reload.Stop();
+    Check(reloaded && reload.Elapsed < TimeSpan.FromSeconds(5), $"read again with all of them selected: still selected, in a moment ({reload.ElapsedMilliseconds} ms)");
+    window.Close();
+    Pump(5);
+}
+
 // ───────────────────────── The hour's targets ─────────────────────────
 
 Console.WriteLine("Hour templates' targets (at least, at most, in a row)");

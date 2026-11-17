@@ -13,8 +13,6 @@ namespace Playout.App;
 /// </summary>
 public partial class TrackLibraryView : UserControl
 {
-    const int PageSize = 1000; // more than anyone scrolls through; search narrows it down
-
     static readonly (string Label, string? Value)[] Voices =
         [(L.T("Male"), "male"), (L.T("Female"), "female"), (L.T("Duo"), "duo"), (L.T("Group"), "group"), (L.T("Instrumental"), "instrumental")];
 
@@ -136,7 +134,7 @@ public partial class TrackLibraryView : UserControl
         string text = SearchBox.Text ?? "";
         int version = ++_queryVersion;
         var all = _categories;
-        Task.Run(() => db.Search(text, filter, PageSize)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
+        Task.Run(() => db.Search(text, filter, null)).ContinueWith(t => Dispatcher.UIThread.Post(() =>
         {
             if (version != _queryVersion) return; // typed on meanwhile
             if (!t.IsCompletedSuccessfully)
@@ -146,10 +144,31 @@ public partial class TrackLibraryView : UserControl
             }
             var page = t.Result;
             var selected = Selected().Select(r => r.Id).ToHashSet();
-            var rows = page.Tracks.Select(x => new LibraryRow(x, all)).ToList();
+            // Every song of the category or search (the list draws only the rows on screen): Ctrl+A selects them all.
+            var byCategory = all.ToDictionary(c => c.Id);
+            var rows = page.Tracks.Select(x => new LibraryRow(x, all, byCategory)).ToList();
+            // The old selection let go of at once: with thousands selected, the list would drop them one by one when
+            // its songs are replaced (many seconds).
+            TrackList.Selection.Clear();
             TrackList.ItemsSource = rows;
-            foreach (var row in rows.Where(r => selected.Contains(r.Id))) TrackList.SelectedItems?.Add(row);
-            CountText.Text = page.Total > rows.Count ? L.F("{0:N0} of {1:N0}", rows.Count, page.Total) : L.F("{0:N0}", page.Total);
+            // The songs selected before stay selected, in runs of neighbours (one by one is slow with thousands).
+            if (selected.Count > 0)
+            {
+                TrackList.Selection.BeginBatchUpdate();
+                try
+                {
+                    for (int i = 0; i < rows.Count; i++)
+                    {
+                        if (!selected.Contains(rows[i].Id)) continue;
+                        int end = i;
+                        while (end + 1 < rows.Count && selected.Contains(rows[end + 1].Id)) end++;
+                        TrackList.Selection.SelectRange(i, end);
+                        i = end;
+                    }
+                }
+                finally { TrackList.Selection.EndBatchUpdate(); }
+            }
+            CountText.Text = L.F("{0:N0}", page.Total);
             if (page.Total == 0)
                 ShowEmpty(string.IsNullOrWhiteSpace(text) && filter == CategoryFilter.All
                     ? L.T("The library is empty.\nAdd your music folders in Settings → Library and click Scan now.")
@@ -369,9 +388,10 @@ public partial class TrackLibraryView : UserControl
 }
 
 /// <summary>A song in the library list.</summary>
-public sealed class LibraryRow(LibraryTrack track, IReadOnlyList<LibraryCategory> categories)
+public sealed class LibraryRow(LibraryTrack track, IReadOnlyList<LibraryCategory> categories, IReadOnlyDictionary<long, LibraryCategory>? byId = null)
 {
-    readonly LibraryCategory? _category = categories.FirstOrDefault(c => c.Id == track.CategoryId);
+    readonly LibraryCategory? _category = track.CategoryId is not { } own ? null
+        : byId != null ? byId.GetValueOrDefault(own) : categories.FirstOrDefault(c => c.Id == own);
 
     public LibraryTrack Track { get; } = track;
     public long Id => Track.Id;

@@ -321,9 +321,10 @@ public sealed partial class LibraryDb
 
     /// <summary>
     /// Tracks whose artist, title, album, genre or file name contain every word of <paramref name="text"/> (case and
-    /// accents ignored), sorted by artist and title; at most <paramref name="limit"/>, plus how many match in all.
+    /// accents ignored), sorted by artist and title; at most <paramref name="limit"/> (null: all of them), plus how many
+    /// match in all.
     /// </summary>
-    public TrackPage Search(string? text, CategoryFilter filter, int limit = 1000)
+    public TrackPage Search(string? text, CategoryFilter filter, int? limit = 1000)
     {
         var where = new List<string>();
         var args = new DynamicParameters();
@@ -342,18 +343,22 @@ public sealed partial class LibraryDb
             else if (filter.Id is { } id) { where.Add(InCategories); args.Add("categories", CategoryTree.WithDescendants(Categories(), [id])); }
         }
         string condition = where.Count > 0 ? "WHERE " + string.Join(" AND ", where) : "";
-        args.Add("limit", limit);
+        if (limit is { } most) args.Add("limit", most);
 
         using var c = Connect();
-        int total = c.ExecuteScalar<int>($"SELECT COUNT(*) FROM tracks {condition}", args);
         var tracks = c.Query<LibraryTrack>(
-            $"SELECT {TrackColumns} FROM tracks {condition} ORDER BY {NoCase("artist")}, {NoCase("title")} LIMIT @limit", args).ToList();
+            $"SELECT {TrackColumns} FROM tracks {condition} ORDER BY {NoCase("artist")}, {NoCase("title")}{(limit != null ? " LIMIT @limit" : "")}", args).ToList();
+        int total = limit is { } max && tracks.Count >= max ? c.ExecuteScalar<int>($"SELECT COUNT(*) FROM tracks {condition}", args) : tracks.Count;
         if (tracks.Count > 0)
         {
             var byId = tracks.ToDictionary(t => t.Id);
-            foreach (var (track, category) in c.Query<(long, long)>(
-                         "SELECT track_id, category_id FROM track_categories WHERE track_id IN @ids", new { ids = byId.Keys.ToArray() }))
-                byId[track].AlsoIn.Add(category);
+            // The other categories they are in: a few songs by their ids; many (a whole category) by the same search,
+            // as a list of ids that long is more than a query may take.
+            var also = byId.Count <= 2000
+                ? byId.Keys.Chunk(400).SelectMany(ids => c.Query<(long, long)>("SELECT track_id, category_id FROM track_categories WHERE track_id IN @ids", new { ids }))
+                : c.Query<(long, long)>($"SELECT track_id, category_id FROM track_categories WHERE track_id IN (SELECT id FROM tracks {condition})", args);
+            foreach (var (track, category) in also)
+                if (byId.TryGetValue(track, out var t)) t.AlsoIn.Add(category);
         }
         return new TrackPage(tracks, total);
     }
