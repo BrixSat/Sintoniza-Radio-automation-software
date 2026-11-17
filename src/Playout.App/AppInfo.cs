@@ -36,6 +36,12 @@ public static class AppInfo
     public const string TempoArg = "--tempo";
     /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
     public const string TempoWmClass = "SintonizaTempo";
+    /// <summary>The stream sender: the station's sound to an Icecast or Shoutcast server, kept there (its own program, SintonizaOnline).</summary>
+    public const string OnlineName = "Sintoniza Online";
+    /// <summary>Starts the app as the stream sender.</summary>
+    public const string OnlineArg = "--online";
+    /// <summary>Its window class on Linux (StartupWMClass in its .desktop file).</summary>
+    public const string OnlineWmClass = "SintonizaOnline";
     /// <summary>Where users can support the project (Settings → About, Pro's Help menu, Rec).</summary>
     public const string SupportUrl = "https://buymeacoffee.com/sintoniza";
     /// <summary>Opens the schedule program on its daily playlists (what was Sintoniza Playlists).</summary>

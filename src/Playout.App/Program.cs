@@ -30,6 +30,7 @@ public static class Program
         else if (args.Contains(AppInfo.ImportArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.ImportWmClass });
         else if (args.Contains(AppInfo.RecArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.RecWmClass });
         else if (args.Contains(AppInfo.TempoArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.TempoWmClass });
+        else if (args.Contains(AppInfo.OnlineArg)) builder.With(new X11PlatformOptions { WmClass = AppInfo.OnlineWmClass });
         else builder.With(new X11PlatformOptions { WmClass = AppInfo.WmClass });
         // A mistake in a window must not take the station off air: the engine runs on, so log it and carry on.
         // A mistake in a click is also said on screen (the window in front), never just nothing.

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Sintoniza Online
+GenericName=Radio stream sender
+Comment=Sends the station's sound to an Icecast or Shoutcast server and keeps it there: reconnects by itself, backup server, fallback file
+Exec=sintoniza-online
+Icon=radio-playout-online
+StartupWMClass=SintonizaOnline
+Terminal=false
+Keywords=radio;stream;streaming;icecast;shoutcast;encoder;
+Categories=AudioVideo;Audio;

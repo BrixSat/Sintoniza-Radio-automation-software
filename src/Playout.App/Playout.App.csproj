@@ -29,6 +29,7 @@
     <AvaloniaResource Include="Assets\import.ico" />
     <AvaloniaResource Include="Assets\rec.ico" />
     <AvaloniaResource Include="Assets\tempo.ico" />
+    <AvaloniaResource Include="Assets\online.ico" />
     <EmbeddedResource Include="Assets\remote.html" LogicalName="remote.html" />
     <EmbeddedResource Include="i18n\*.json" LogicalName="i18n.%(Filename).json" />
   </ItemGroup>

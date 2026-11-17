@@ -420,7 +420,7 @@ Shot(segue, "segue", "Join", "MixText", "OutText", "InText", "PlayButton", "Summ
     mixWindow.Close();
 }
 segue.Close();
-var tags = new TagEditorWindow(engine, song);
+var tags = new TagEditorWindow(engine, [song]);
 tags.Show();
 Pump(30);
 Shot(tags, "tag-editor");
@@ -697,6 +697,93 @@ Pump(20);
 Shot(tempo, "tempo", "StationText", "SignBox", "Clock", "DateText", "TopText");
 tempo.Close();
 StudioSign.Show(null);
+
+// ───────────────────────── Sintoniza Online ─────────────────────────
+
+// Streaming to a stand-in server on this computer (it takes the stream as Icecast does: never a real server), relaying
+// a song it also serves (so the meters move; nothing of this computer's is opened), with a morning's events.
+System.Net.Sockets.TcpListener? cast = null;
+foreach (int port in new[] { 8000, 8008, 8080, 8888, 0 })
+    try
+    {
+        cast = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);
+        cast.Start();
+        break;
+    }
+    catch (System.Net.Sockets.SocketException) { cast = null; } // taken on this computer: the next one
+int castPort = ((System.Net.IPEndPoint)cast!.LocalEndpoint).Port;
+byte[] relayed = File.ReadAllBytes(song);
+_ = Task.Run(async () =>
+{
+    while (true)
+    {
+        var client = await cast.AcceptTcpClientAsync();
+        _ = Task.Run(() =>
+        {
+            var stream = client.GetStream();
+            var head = new System.Text.StringBuilder();
+            var one = new byte[1];
+            while (!head.ToString().EndsWith("\r\n\r\n") && stream.Read(one, 0, 1) > 0) head.Append((char)one[0]);
+            if (head.ToString().StartsWith("GET "))
+            {
+                try { stream.Write("HTTP/1.0 200 OK\r\nContent-Type: audio/mpeg\r\n\r\n"u8); stream.Write(relayed); } catch { /* closed */ }
+                client.Dispose();
+                return;
+            }
+            stream.Write("HTTP/1.0 200 OK\r\n\r\n"u8);
+            var buffer = new byte[65536];
+            try { while (stream.Read(buffer) > 0) { } } catch { /* closed */ }
+        });
+    }
+});
+var onlineSettings = new OnlineSettings
+{
+    StationName = settings.StationName, Source = RecSource.Stream, SourceUrl = $"http://localhost:{castPort}/studio.mp3", StreamName = settings.StationName, Genre = "Pop",
+    Title = T("Live", "Em direto"), RetrySeconds = 5, FallbackFile = songs[0].Path, LockHash = UserStore.Hash("demo"),
+    Server = { Host = "localhost", Port = castPort, Mount = "/live", Password = "demo" },
+    Backup = { Host = "backup.example.com", Port = 8000, Mount = "/live", Password = "demo" }, BackupEnabled = true,
+};
+onlineSettings.Save();
+Directory.CreateDirectory(OnlineService.LogFolder);
+File.WriteAllLines(Path.Combine(OnlineService.LogFolder, StationTime.Today.ToString("yyyy-MM-dd") + ".log"), new[]
+{
+    ("06:00:02", L.F("{0} opened", AppInfo.OnlineName)),
+    ("06:00:02", L.F("Online: {0} ({1})", $"localhost:{castPort}/live", $"MP3 128 kbps, {L.T("stereo")}")),
+    ("07:42:19", L.F("{0}; connecting again", L.T("Connection to the server was lost"))),
+    ("07:42:20", L.F("Could not connect to {0} ({1}); trying the backup server", $"localhost:{castPort}/live", L.T("no answer from the server: check its address and port, and the internet connection"))),
+    ("07:42:21", L.F("Online on the backup server {0} ({1})", "backup.example.com:8000/live", $"MP3 128 kbps, {L.T("stereo")}")),
+    ("07:43:21", L.F("Back on the main server {0}", $"localhost:{castPort}/live")),
+    ("09:15:40", L.F("Silence for {0:0} s: the fallback file goes out instead", 30)),
+    ("09:16:05", L.T("Sound again: the source goes out again")),
+}.Select(e => $"{e.Item1}  {e.Item2}"));
+var online = new OnlineWindow(start: false) { Width = 1040, Height = 720 };
+var onlineService = online.Service;
+online.Show();
+Pump(10);
+onlineService.Start();
+WaitFor(() => onlineService.Streamer?.State == OnlineState.Online, 5);
+foreach (var (name, value) in new (string, object)[] { ("OnlineSeconds", 4 * 3600 + 17 * 60.0), ("OffSeconds", 1.0), ("Drops", 1), ("LongestOff", 1.0), ("Listeners", 214), ("MostListeners", 388) })
+    typeof(OnlineService).GetProperty(name)!.SetValue(onlineService, value);
+online.GetType().GetMethod("Tick", Any)!.Invoke(online, null); // the headless timer fires only now and then
+Pump(10);
+Shot(online, "online", "StateText", "SinceText", "ServerText", "MeterL", "SourceText", "StreamButton", "MonitorButton", "SettingsButton", "LockButton", "DayBox", "EventList", "OnlineFigure", "ListenersFigure");
+var onlineSettingsWindow = new OnlineSettingsWindow(OnlineSettings.Load());
+onlineSettingsWindow.Show();
+Pump(20);
+var onlineTabs = onlineSettingsWindow.GetVisualDescendants().OfType<TabControl>().First();
+onlineTabs.SelectedIndex = 1;
+Pump(20);
+Shot(onlineSettingsWindow, "online-server", "IcecastRadio", "HostBox", "PortBox", "MountBox", "UserBox", "PasswordBox", "BackupBox", "BackupHostBox");
+onlineTabs.SelectedIndex = 2;
+Pump(20);
+Shot(onlineSettingsWindow, "online-reconnect", "RetryBox", "BackupAfterBox", "FallbackBox", "FallbackSecondsBox", "SilenceDbBox");
+onlineTabs.SelectedIndex = 5;
+Pump(20);
+Shot(onlineSettingsWindow, "online-security", "StartOnlineBox", "AutostartBox", "LockBox", "LockPasswordBox", "LockMinutesBox");
+onlineSettingsWindow.Close();
+online.Service.Stop(quiet: true);
+online.Close();
+cast.Stop();
 
 File.WriteAllText(Path.Combine(outDir, "callouts.json"), JsonSerializer.Serialize(callouts, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine("Done.");

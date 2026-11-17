@@ -1,0 +1,122 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:Playout.App.Controls"
+        x:Class="Playout.App.OnlineWindow"
+        Icon="/Assets/online.ico"
+        Title="Sintoniza Online"
+        Width="1040" Height="720" MinWidth="860" MinHeight="580"
+        WindowStartupLocation="CenterScreen">
+    <Window.Styles>
+        <Style Selector="TextBlock.note">
+            <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style Selector="TextBlock.figure">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style Selector="Border.state">
+            <Setter Property="Background" Value="#3A3F4B" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="14,6" />
+        </Style>
+        <Style Selector="Border.state.on">
+            <Setter Property="Background" Value="#2E8B57" />
+        </Style>
+        <Style Selector="Border.state.trouble">
+            <Setter Property="Background" Value="{StaticResource OnAir}" />
+        </Style>
+        <Style Selector="Border.state.warn">
+            <Setter Property="Background" Value="#A8700F" />
+        </Style>
+    </Window.Styles>
+
+    <DockPanel Margin="12">
+        <!-- Status line -->
+        <TextBlock DockPanel.Dock="Bottom" x:Name="LastLog" Classes="muted" FontSize="12" Margin="2,10,2,0" TextTrimming="CharacterEllipsis" />
+
+        <!-- What it is doing -->
+        <Border DockPanel.Dock="Top" Classes="panel" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="Auto,18,*,18,Auto" RowDefinitions="Auto,Auto,Auto">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                    <Image Source="/Assets/online.ico" Width="44" Height="44" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="StationText" FontSize="18" FontWeight="SemiBold" />
+                        <TextBlock Classes="muted" FontSize="12" Text="Sintoniza Online" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+                    <Border x:Name="StateBadge" Classes="state">
+                        <TextBlock x:Name="StateText" Text="OFFLINE" FontSize="15" FontWeight="Bold" LetterSpacing="1.5" Foreground="White" />
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="SinceText" Classes="digits" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock x:Name="ServerText" Classes="muted" FontSize="12" TextTrimming="CharacterEllipsis" MaxWidth="460" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Grid.Column="4" x:Name="ClockText" Classes="digits" FontSize="34" FontWeight="Light" VerticalAlignment="Center" />
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="5" ColumnDefinitions="18,*" RowDefinitions="Auto,Auto" Margin="0,14,0,0">
+                    <TextBlock Classes="caption" Text="L" VerticalAlignment="Center" />
+                    <c:VuMeter Grid.Column="1" x:Name="MeterL" Height="16" />
+                    <TextBlock Grid.Row="1" Classes="caption" Text="R" VerticalAlignment="Center" Margin="0,4,0,0" />
+                    <c:VuMeter Grid.Row="1" Grid.Column="1" x:Name="MeterR" Height="16" Margin="0,4,0,0" />
+                </Grid>
+
+                <Grid Grid.Row="2" Grid.ColumnSpan="5" ColumnDefinitions="*,Auto" Margin="0,14,0,0">
+                    <StackPanel VerticalAlignment="Center" Spacing="2">
+                        <TextBlock x:Name="SourceText" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+                        <TextBlock x:Name="ProblemText" Classes="muted" FontSize="12" TextWrapping="Wrap" Margin="0,0,10,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="StreamButton" Content="▶ Go online" Classes="accent" MinWidth="120" HorizontalContentAlignment="Center" />
+                        <ToggleButton x:Name="MonitorButton" Content="🎧 Listen live" ToolTip.Tip="Hear what is being sent (Settings → Listening)" />
+                        <Button x:Name="SettingsButton" Content="⚙ Settings" />
+                        <Button x:Name="LockButton" Content="🔒 Lock" ToolTip.Tip="Ask for the password again to stop, change the settings or close" />
+                        <Button x:Name="SupportButton" Content="☕" ToolTip.Tip="Support Sintoniza (buy me a coffee)" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- The day -->
+        <Border Classes="panel">
+            <Grid ColumnDefinitions="*,18,300">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+                        <TextBlock Classes="caption" Text="WHAT HAPPENED ON" VerticalAlignment="Center" />
+                        <CalendarDatePicker x:Name="DayBox" Width="160" />
+                        <Button x:Name="TodayButton" Content="Today" />
+                        <TextBlock x:Name="DayInfo" Classes="muted" FontSize="12" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <ListBox x:Name="EventList" Background="#13161C" FontSize="12" />
+                </DockPanel>
+
+                <!-- Today's figures -->
+                <StackPanel Grid.Column="2" Spacing="10">
+                    <TextBlock Classes="caption" Text="TODAY" />
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
+                        <TextBlock Text="Online" />
+                        <TextBlock Grid.Column="1" x:Name="OnlineFigure" Classes="figure digits" />
+                        <TextBlock Grid.Row="1" Text="Off the air" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="OffFigure" Classes="figure digits" />
+                        <TextBlock Grid.Row="2" Text="Connections lost" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="DropsFigure" Classes="figure digits" />
+                        <TextBlock Grid.Row="3" Text="Longest off" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="LongestFigure" Classes="figure digits" />
+                        <TextBlock Grid.Row="4" Text="Listening now" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ListenersFigure" Classes="figure digits" />
+                        <TextBlock Grid.Row="5" Text="Most listening" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" x:Name="MostFigure" Classes="figure digits" />
+                        <TextBlock Grid.Row="6" Text="Sent since it started" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" x:Name="SentFigure" Classes="figure digits" />
+                    </Grid>
+                    <TextBlock Classes="note" Margin="0,8,0,0"
+                               Text="A connection that fails or drops is tried again by itself, every few seconds (Settings → Reconnect). While the source is silent or stopped the server keeps getting silence, or the fallback file, so the listeners stay." />
+                    <TextBlock x:Name="LockNote" Classes="note" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </DockPanel>
+</Window>

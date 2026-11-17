@@ -57,9 +57,20 @@ sealed class StreamKeeper : IDisposable
     /// <summary>The decoding channel the encoder is started on.</summary>
     public int Handle { get; }
 
-    /// <summary>How long after the card stopped the fallback file is sent instead of silence.</summary>
-    public TimeSpan FallbackAfter { get; private set; } = TimeSpan.FromSeconds(10);
+    /// <summary>
+    /// How long after the card stopped the fallback file is sent instead of silence. Sintoniza Online sets it to 0 while
+    /// it holds back a silent source, so the fallback comes as soon as the stream runs dry.
+    /// </summary>
+    public TimeSpan FallbackAfter
+    {
+        get => TimeSpan.FromTicks(Interlocked.Read(ref _fallbackAfter));
+        set => Interlocked.Exchange(ref _fallbackAfter, Math.Max(0, value.Ticks));
+    }
 
+    long _fallbackAfter = TimeSpan.FromSeconds(10).Ticks;
+
+    /// <param name="program">The channel whose sound is streamed (its blocks copied as the card takes them); 0: none,
+    /// the sound is given with <see cref="Feed"/> instead (Sintoniza Online: an input, or a stream it relays).</param>
     /// <param name="streaming">Whether a stream is on air now: only then is a stall said in the log.</param>
     public StreamKeeper(int program, Action<string> log, Func<bool> streaming)
     {
@@ -71,7 +82,7 @@ sealed class StreamKeeper : IDisposable
         Handle = Bass.CreateStream(Rate, 2, BassFlags.Decode | BassFlags.Float, _proc, IntPtr.Zero);
         if (Handle == 0) throw new InvalidOperationException(L.F("Stream: {0}", Bass.LastError));
         // Called with each block the card takes from Program (also when nothing is streamed: the buffer stays current).
-        _dspHandle = Bass.ChannelSetDSP(program, _dsp, IntPtr.Zero, -1000);
+        _dspHandle = program == 0 ? -1 : Bass.ChannelSetDSP(program, _dsp, IntPtr.Zero, -1000);
         if (_dspHandle == 0)
         {
             var error = Bass.LastError;
@@ -102,7 +113,7 @@ sealed class StreamKeeper : IDisposable
     /// </summary>
     public void SetFallback(string? file, TimeSpan after)
     {
-        FallbackAfter = after < TimeSpan.Zero ? TimeSpan.Zero : after;
+        FallbackAfter = after;
         string? wanted = string.IsNullOrWhiteSpace(file) ? null : file;
         lock (_fallbackLock) _wanted = wanted;
         if (wanted == null) Swap(0, 0, null);
@@ -205,6 +216,9 @@ sealed class StreamKeeper : IDisposable
         if (oldMixer != 0) Bass.StreamFree(oldMixer);
         if (oldSource != 0) Bass.StreamFree(oldSource);
     }
+
+    /// <summary>Sound for the stream (stereo float at <see cref="AudioGraph.SampleRate"/>), when it isn't taken from a channel.</summary>
+    public void Feed(IntPtr buffer, int length) => Copy(0, 0, buffer, length, IntPtr.Zero);
 
     /// <summary>The card took a block from Program: kept for the stream.</summary>
     void Copy(int handle, int channel, IntPtr buffer, int length, IntPtr user)
@@ -335,7 +349,7 @@ sealed class StreamKeeper : IDisposable
     {
         lock (_fallbackLock) _stop = true; // a read ending after this frees what it read
         _thread.Join(1000);
-        Bass.ChannelRemoveDSP(_program, _dspHandle);
+        if (_program != 0) Bass.ChannelRemoveDSP(_program, _dspHandle);
         Bass.StreamFree(Handle);
         Swap(0, 0, null);
     }

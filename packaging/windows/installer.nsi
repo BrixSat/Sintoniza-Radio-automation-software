@@ -1,4 +1,4 @@
-; Windows installer for Sintoniza (Emi, Pro, Rec, Tempo and Import). Built by build.sh with:
+; Windows installer for Sintoniza (Emi, Pro, Rec, Tempo, Online and Import). Built by build.sh with:
 ;   makensis -DVERSION=<version> -DSRCDIR=<publish dir> -DOUTFILE=<setup.exe> installer.nsi
 Unicode true
 !include "MUI2.nsh"
@@ -13,6 +13,8 @@ Unicode true
 !define RECEXE "SintonizaRec.exe"
 !define TEMPONAME "Sintoniza Tempo" ; the studio clock: its own exe and icon
 !define TEMPOEXE "SintonizaTempo.exe"
+!define ONLINENAME "Sintoniza Online" ; the stream sender: its own exe and icon
+!define ONLINEEXE "SintonizaOnline.exe"
 !define SCHEDNAME "Sintoniza Pro" ; the production program: its own exe (SintonizaPro.exe) and icon
 !define SCHEDEXE "SintonizaPro.exe"
 !define OLDSCHEDNAME "Sintoniza Schedule" ; its names before
@@ -46,11 +48,12 @@ Section "Install"
   SetShellVarContext all
   ; An in-app update starts this silently and then closes the app: its files come free in a few seconds (the app as
   ; it is now, or under its name before when updating from an older version). SintonizaEmi.dll is loaded by every
-  ; program (Emi, Pro, Rec, Tempo, Import): free only when they are all closed.
+  ; program (Emi, Pro, Rec, Tempo, Online, Import): free only when they are all closed.
   StrCpy $1 0
   StrCpy $3 0 ; Sintoniza Rec was closed here: started again after
   StrCpy $4 0 ; Sintoniza Emi was closed here: started again after
   StrCpy $5 0 ; Sintoniza Tempo was closed here: started again after
+  StrCpy $6 0 ; Sintoniza Online was closed here: started again after (the station back on the internet)
   wait:
     IfFileExists "$INSTDIR\SintonizaEmi.dll" 0 waitexe
     ClearErrors
@@ -72,8 +75,8 @@ Section "Install"
     IntOp $1 $1 + 1
     ; After 5 s, whatever of Sintoniza is still open is closed, and again every half second until its files are free:
     ; Emi with the supervisor that starts it again after a crash (the same program: otherwise it would come straight
-    ; back and the files would never be free), Import (also the same program), Pro, Rec and Tempo. Emi, Rec and Tempo
-    ; are started again after the update.
+    ; back and the files would never be free), Import (also the same program), Pro, Rec, Tempo and Online. Emi, Rec,
+    ; Tempo and Online are started again after the update.
     IntCmp $1 10 close notyet close
   close:
     nsExec::Exec 'taskkill /F /T /IM ${EXENAME}'
@@ -96,6 +99,10 @@ Section "Install"
     Pop $0
     StrCmp $0 "0" 0 +2
     StrCpy $5 1
+    nsExec::Exec 'taskkill /F /IM ${ONLINEEXE}'
+    Pop $0
+    StrCmp $0 "0" 0 +2
+    StrCpy $6 1
   notyet:
     IntCmp $1 120 ready
     Sleep 500
@@ -131,6 +138,8 @@ Section "Install"
   CreateShortcut "$DESKTOP\${RECNAME}.lnk" "$INSTDIR\${RECEXE}"
   CreateShortcut "$SMPROGRAMS\${TEMPONAME}.lnk" "$INSTDIR\${TEMPOEXE}"
   CreateShortcut "$DESKTOP\${TEMPONAME}.lnk" "$INSTDIR\${TEMPOEXE}"
+  CreateShortcut "$SMPROGRAMS\${ONLINENAME}.lnk" "$INSTDIR\${ONLINEEXE}"
+  CreateShortcut "$DESKTOP\${ONLINENAME}.lnk" "$INSTDIR\${ONLINEEXE}"
   CreateShortcut "$SMPROGRAMS\${IMPORTNAME}.lnk" "$INSTDIR\${EXENAME}" "--import" "$INSTDIR\import.ico" 0
   CreateShortcut "$DESKTOP\${IMPORTNAME}.lnk" "$INSTDIR\${EXENAME}" "--import" "$INSTDIR\import.ico" 0
   ; The user manual (PDF), in English and in Portuguese.
@@ -173,11 +182,13 @@ Section "Install"
   Exec '"$INSTDIR\${RECEXE}"'
   StrCmp $5 "1" 0 +2
   Exec '"$INSTDIR\${TEMPOEXE}"'
+  StrCmp $6 "1" 0 +2
+  Exec '"$INSTDIR\${ONLINEEXE}"'
 SectionEnd
 
 Section "Uninstall"
   SetShellVarContext all
-  ; Everything of Sintoniza closed first (Emi with its supervisor, Import, Pro, Rec, Tempo), or its files would stay behind.
+  ; Everything of Sintoniza closed first (Emi with its supervisor, Import, Pro, Rec, Tempo, Online), or its files would stay behind.
   nsExec::Exec 'taskkill /F /T /IM ${EXENAME}'
   Pop $0
   nsExec::Exec 'taskkill /F /IM ${SCHEDEXE}'
@@ -185,6 +196,8 @@ Section "Uninstall"
   nsExec::Exec 'taskkill /F /IM ${RECEXE}'
   Pop $0
   nsExec::Exec 'taskkill /F /IM ${TEMPOEXE}'
+  Pop $0
+  nsExec::Exec 'taskkill /F /IM ${ONLINEEXE}'
   Pop $0
   Sleep 1000
   Delete "$SMPROGRAMS\${APPNAME}.lnk"
@@ -195,6 +208,8 @@ Section "Uninstall"
   Delete "$DESKTOP\${RECNAME}.lnk"
   Delete "$SMPROGRAMS\${TEMPONAME}.lnk"
   Delete "$DESKTOP\${TEMPONAME}.lnk"
+  Delete "$SMPROGRAMS\${ONLINENAME}.lnk"
+  Delete "$DESKTOP\${ONLINENAME}.lnk"
   Delete "$SMPROGRAMS\${OLDAPPNAME}.lnk"
   Delete "$DESKTOP\${OLDAPPNAME}.lnk"
   Delete "$SMPROGRAMS\${IMPORTNAME}.lnk"

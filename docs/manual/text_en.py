@@ -18,7 +18,7 @@ CHAPTERS = [
 ("Sintoniza at a glance", "intro", [
     ("p", "Sintoniza is radio automation for stations that stay on air around the clock. This chapter explains what each "
           "of its programs is for and how a day of radio is planned and played. Read it first, whatever your job at the station."),
-    ("p", "Sintoniza is made of five programs. Three of them share one database, which we call the <b>library</b>. It holds "
+    ("p", "Sintoniza is made of six programs. Three of them share one database, which we call the <b>library</b>. It holds "
           "the music and its categories, the schedule, the daily playlists and the history of everything that went on air."),
     ("icons", [
         ("radio-playout.png", "Sintoniza Emi", "The on-air program, in the studio. The name comes from <i>emissão</i>, Portuguese for broadcast. Presenters use it for the playlist, the cartwall, the microphone and the stream."),
@@ -26,6 +26,7 @@ CHAPTERS = [
         ("radio-playout-import.png", "Sintoniza Import", "Brings folders of music into the library and sorts them into categories."),
         ("radio-playout-rec.png", "Sintoniza Rec", "Records everything the station broadcasts and keeps it for as long as the law asks. It works on its own and doesn't need the library."),
         ("radio-playout-tempo.png", "Sintoniza Tempo", "The studio clock, for a screen in the studio: the seconds in a ring of lights, the date, and the ON AIR sign."),
+        ("radio-playout-online.png", "Sintoniza Online", "Sends the station's sound to the streaming server and keeps it there: it reconnects by itself, with a backup server and a fallback file. It works on its own and doesn't need the library."),
     ]),
     ("p", "Each program has its own entry in the app menu on Linux, in the Start menu and on the desktop on Windows, and in "
           "Applications on a Mac. Only one copy of each can run on a computer at a time."),
@@ -1049,6 +1050,61 @@ CHAPTERS = [
           "to show the ON AIR sign and the time to the top of the hour, and <b>Start with the computer</b>, so a studio clock "
           "comes back by itself after a restart. Tempo doesn't need the library or a user, and keeps the computer's clock "
           "exact only as well as the computer does: keep it set by a time server."),
+]),
+
+("Sintoniza Online", "online", [
+    ("p", "Sintoniza Online sends the station's sound to the streaming server, Icecast or Shoutcast, and keeps it there day "
+          "and night. Use it when the stream should carry the desk's programme output, with the microphones in it, rather "
+          "than the playout's own sound, or when a computer of its own does the streaming. It doesn't need the library or a user."),
+    ("fig", "online", "Sintoniza Online", [
+        ("StateText", "<b>● ONLINE</b> in green while the server gets the stream; amber on the backup server, with the fallback file on, or in silence; red <b>OFF THE AIR</b> while it can't connect."),
+        ("SinceText", "How long it has been online, or how long until it tries again."),
+        ("ServerText", "The server it sends to, and how: the format and quality."),
+        ("MeterL", "The level of what it sends."),
+        ("SourceText", "What it sends: an input of this computer, or a stream it relays. Under it, what is wrong, if anything: why the server refused the connection, or that no sound comes from the source."),
+        ("StreamButton", "<b>Go online</b> and <b>Stop</b>. Stopping and closing always ask first."),
+        ("MonitorButton", "<b>Listen live</b> to what is being sent, on the listening output. Use headphones, never an output that goes on air."),
+        ("SettingsButton", "<b>Settings</b>: the source, the server, reconnecting, listening, alerts and security."),
+        ("LockButton", "<b>Lock</b>: with a lock password set, ask for it again now, instead of a few minutes after it was given."),
+        ("DayBox", "<b>What happened</b> on a day…"),
+        ("EventList", "…every connection made and lost, each attempt and why it failed, the backup server, silence, and who started, stopped or changed what. Kept for 90 days."),
+        ("OnlineFigure", "<b>Today</b>: the time online and off the air, the connections lost and the longest time off…"),
+        ("ListenersFigure", "…and the listeners now and the most today, from the server's statistics."),
+    ]),
+    ("h2", "The server"),
+    ("fig", "online-server", "Settings → Server", [
+        ("IcecastRadio", "Icecast or Shoutcast."),
+        ("HostBox", "The server's name or IP. A whole address pasted, such as http://stream.example.com:8000/live, is split into its parts."),
+        ("PortBox", "Its port."),
+        ("MountBox", "The mount the station goes out on (Icecast)."),
+        ("UserBox", "The source user (Icecast), usually <b>source</b>."),
+        ("PasswordBox", "The source password. It is kept only on this computer, in a settings file that only you can read, and never shows in a log."),
+        ("BackupBox", "<b>A backup server</b>, for when this one doesn't answer…"),
+        ("BackupHostBox", "…its address, port, mount, user and password."),
+    ]),
+    ("h2", "Staying on air"),
+    ("fig", "online-reconnect", "Settings → Reconnect", [
+        ("RetryBox", "When the connection fails or drops, it is tried again every so many seconds, for as long as it takes. A connection that drops is made again at once first."),
+        ("BackupAfterBox", "After this many failed attempts in a row, the backup server is tried. From the backup, the main server is tried every minute, and the stream goes back to it as soon as it answers, with no gap."),
+        ("FallbackBox", "The <b>fallback file</b>, sent in a loop instead of a source that is silent or sends nothing. Empty: silence."),
+        ("FallbackSecondsBox", "After how many seconds of silence…"),
+        ("SilenceDbBox", "…under this level. Either way the server never sees the source stop, so the listeners stay connected."),
+    ]),
+    ("p", "An input chosen by name is never swapped for another one when it isn't there, such as a USB sound card that was "
+          "unplugged: whatever microphone is the computer's default would go out on the internet. The stream goes on with "
+          "silence, or the fallback file, and the input is opened again as soon as it is back. A stream relayed that drops "
+          "is opened again the same way, and a server that stops taking the stream for 20 seconds counts as dropped."),
+    ("h2", "Security"),
+    ("fig", "online-security", "Settings → Security", [
+        ("StartOnlineBox", "<b>Go online by itself</b> when Sintoniza Online opens…"),
+        ("AutostartBox", "…and <b>start it when you log in</b>. Both together bring the station back on the internet after a power cut or a restart, with nobody there."),
+        ("LockBox", "<b>Ask for a password</b> to stop streaming, change the settings or close."),
+        ("LockPasswordBox", "The lock password, twice. Only a hash of it is kept, never the password itself."),
+        ("LockMinutesBox", "Once given, it stays unlocked this many minutes, or until <b>Lock</b> is pressed. Wrong passwords are kept in the day's events."),
+    ]),
+    ("p", "<b>Alerts</b> (Settings → Alerts) go by Telegram, e-mail or a web address when the station is off the internet for "
+          "longer than set, on the backup server, with no sound from the source or in silence, and again when each is over; "
+          "and \"still online\" once a day if you want, so a day without that message means something is wrong."),
 ]),
 
 ("How do I…", "howto", [

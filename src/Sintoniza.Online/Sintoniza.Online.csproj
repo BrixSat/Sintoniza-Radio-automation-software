@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Sintoniza Online: its own program (process, executable, icon): sends the station's sound to the streaming server with Playout.App's sender. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationManifest>..\Playout.App\app.manifest</ApplicationManifest>
+    <AssemblyName>SintonizaOnline</AssemblyName>
+    <RootNamespace>Sintoniza.Online</RootNamespace>
+    <ApplicationIcon>..\Playout.App\Assets\online.ico</ApplicationIcon>
+    <!-- build.sh sets the real version. -->
+    <Version>0.0.0</Version>
+    <Product>Sintoniza</Product>
+    <AssemblyTitle>Sintoniza Online</AssemblyTitle>
+    <Company>César Araújo</Company>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Playout.App\Playout.App.csproj" />
+  </ItemGroup>
+  <Import Project="..\Bass.targets" />
+</Project>

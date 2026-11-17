@@ -34,8 +34,10 @@ public partial class App : Application
             bool rec = !schedule && !import && desktop.Args?.Contains(AppInfo.RecArg) == true;
             // The studio clock (its own program, Sintoniza Tempo): the time, for a screen in the studio.
             bool tempo = !schedule && !import && !rec && desktop.Args?.Contains(AppInfo.TempoArg) == true;
+            // The stream sender (its own program, Sintoniza Online): the station's sound to the streaming server.
+            bool online = !schedule && !import && !rec && !tempo && desktop.Args?.Contains(AppInfo.OnlineArg) == true;
             var (lockName, name) = schedule ? ("schedule", AppInfo.ScheduleName) : import ? ("import", AppInfo.ImportName)
-                : rec ? ("rec", AppInfo.RecName) : tempo ? ("tempo", AppInfo.TempoName) : ("playout", AppInfo.Name);
+                : rec ? ("rec", AppInfo.RecName) : tempo ? ("tempo", AppInfo.TempoName) : online ? ("online", AppInfo.OnlineName) : ("playout", AppInfo.Name);
             // One of each per computer: a second start says so instead of opening another (two playouts would fight
             // over the sound card and the playlist).
             bool locked = SingleInstance.Acquire(lockName);
@@ -64,6 +66,7 @@ public partial class App : Application
                     error => new ImportWindow(null, error))
                 : rec ? RecProgram()
                 : tempo ? TempoProgram()
+                : online ? OnlineProgram()
                 : PlayoutProgram();
         }
         base.OnFrameworkInitializationCompleted();
@@ -74,6 +77,13 @@ public partial class App : Application
     {
         Autostart.Rec.Refresh();
         return new RecWindow(start: true);
+    }
+
+    /// <summary>The stream sender; starting at login follows it if it moved.</summary>
+    static OnlineWindow OnlineProgram()
+    {
+        Autostart.Online.Refresh();
+        return new OnlineWindow(start: true);
     }
 
     /// <summary>The studio clock; starting at login follows it if it moved.</summary>

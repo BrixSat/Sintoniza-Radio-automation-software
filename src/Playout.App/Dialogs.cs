@@ -12,11 +12,15 @@ static class Dialogs
     /// Asks for a line of text; null when cancelled. <paramref name="validate"/> returns an error to show
     /// (the dialog stays open) or null to accept the trimmed text.
     /// </summary>
-    public static Task<string?> AskText(Window owner, string title, string prompt, string initial, Func<string, string?> validate)
+    /// <param name="secret">A password: hidden as it is typed, and taken as typed (not trimmed).</param>
+    /// <param name="action">The button's text (null: Save).</param>
+    public static Task<string?> AskText(Window owner, string title, string prompt, string initial, Func<string, string?> validate,
+        bool secret = false, string? action = null)
     {
         var box = new TextBox { Text = initial };
+        if (secret) box.PasswordChar = '•';
         var error = new TextBlock { Foreground = (IBrush)owner.FindResource("OnAir")!, FontSize = 12, TextWrapping = TextWrapping.Wrap, IsVisible = false };
-        var ok = new Button { Content = L.T("Save"), IsDefault = true };
+        var ok = new Button { Content = action ?? L.T("Save"), IsDefault = true };
         ok.Classes.Add("accent");
         var cancel = new Button { Content = L.T("Cancel"), IsCancel = true };
 
@@ -27,7 +31,7 @@ static class Dialogs
         });
         ok.Click += (_, _) =>
         {
-            string text = box.Text?.Trim() ?? "";
+            string text = secret ? box.Text ?? "" : box.Text?.Trim() ?? "";
             if (validate(text) is { } message)
             {
                 error.Text = message;

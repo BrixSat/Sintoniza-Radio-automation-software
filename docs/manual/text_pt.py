@@ -19,7 +19,7 @@ WORDS = {
 CHAPTERS = [
 ("O Sintoniza num relance", "intro", [
     ("p", "O Sintoniza é um sistema de automação para rádios que estão no ar a toda a hora. Este capítulo apresenta os "
-          "cinco programas que o compõem e mostra, em quatro passos, como um dia de emissão é preparado e vai para o ar."),
+          "seis programas que o compõem e mostra, em quatro passos, como um dia de emissão é preparado e vai para o ar."),
     ("p", "Três dos programas partilham uma base de dados a que chamamos <b>biblioteca</b>. É lá que vivem a música e as "
           "suas categorias, a programação, as playlists diárias e o histórico de tudo o que foi emitido."),
     ("icons", [
@@ -28,6 +28,7 @@ CHAPTERS = [
         ("radio-playout-import.png", "Sintoniza Import", "Traz pastas de música para a biblioteca, já arrumadas em categorias."),
         ("radio-playout-rec.png", "Sintoniza Rec", "Grava tudo o que a estação emite e guarda as gravações durante o tempo que a lei pede. Trabalha sozinho, sem a biblioteca."),
         ("radio-playout-tempo.png", "Sintoniza Tempo", "O relógio de estúdio, para um ecrã no estúdio: os segundos num anel de luzes, a data e o sinal NO AR."),
+        ("radio-playout-online.png", "Sintoniza Online", "Envia o som da estação para o servidor de streaming e mantém-no lá: volta a ligar sozinho, com um servidor de reserva e um ficheiro de recurso. Trabalha sozinho, sem a biblioteca."),
     ]),
     ("p", "Cada programa tem a sua entrada no menu das aplicações em Linux, no menu Iniciar e no ambiente de trabalho em "
           "Windows, e em Aplicações no macOS. Só corre uma cópia de cada programa por computador."),
@@ -967,6 +968,61 @@ CHAPTERS = [
           "não o sinal NO AR e quanto falta para a hora certa, e <b>Arrancar com o computador</b>, para o relógio voltar "
           "sozinho depois de um reinício. O Tempo não precisa da biblioteca nem de utilizador, e só é tão certo como o relógio "
           "do computador: acerte-o por um servidor de hora."),
+]),
+
+("Sintoniza Online", "online", [
+    ("p", "O Sintoniza Online envia o som da estação para o servidor de streaming, Icecast ou Shoutcast, e mantém-no lá dia "
+          "e noite. Use-o quando o stream deve levar a saída de programa da mesa, com os microfones, em vez do som do próprio "
+          "programa de emissão, ou quando é um computador à parte que faz o streaming. Não precisa da biblioteca nem de utilizador."),
+    ("fig", "online", "Sintoniza Online", [
+        ("StateText", "<b>● ONLINE</b> a verde enquanto o servidor recebe o stream; âmbar no servidor de reserva, com o ficheiro de recurso no ar, ou em silêncio; <b>FORA DO AR</b> a vermelho enquanto não consegue ligar."),
+        ("SinceText", "Há quanto tempo está online, ou quanto falta para tentar de novo."),
+        ("ServerText", "O servidor para onde envia, e como: o formato e a qualidade."),
+        ("MeterL", "O nível do que envia."),
+        ("SourceText", "O que envia: uma entrada deste computador, ou um stream que retransmite. Por baixo, o que está mal, se houver: porque é que o servidor recusou a ligação, ou que não vem som da origem."),
+        ("StreamButton", "<b>Ficar online</b> e <b>Parar</b>. Parar e fechar perguntam sempre antes."),
+        ("MonitorButton", "<b>Ouvir em direto</b> o que está a ser enviado, na saída de escuta. Use auscultadores, nunca uma saída que vá para o ar."),
+        ("SettingsButton", "<b>Definições</b>: a origem, o servidor, religar, escuta, alertas e segurança."),
+        ("LockButton", "<b>Bloquear</b>: com uma palavra-passe de bloqueio, voltar a pedi-la já, em vez de só uns minutos depois de dada."),
+        ("DayBox", "<b>O que aconteceu</b> num dia…"),
+        ("EventList", "…cada ligação feita e perdida, cada tentativa e porque falhou, o servidor de reserva, o silêncio, e quem iniciou, parou ou mudou o quê. Guardado 90 dias."),
+        ("OnlineFigure", "<b>Hoje</b>: o tempo online e fora do ar, as ligações perdidas e a maior falha…"),
+        ("ListenersFigure", "…e os ouvintes agora e o máximo de hoje, das estatísticas do servidor."),
+    ]),
+    ("h2", "O servidor"),
+    ("fig", "online-server", "Definições → Servidor", [
+        ("IcecastRadio", "Icecast ou Shoutcast."),
+        ("HostBox", "O nome ou IP do servidor. Um endereço inteiro colado, como http://stream.exemplo.pt:8000/live, é separado nas suas partes."),
+        ("PortBox", "A porta."),
+        ("MountBox", "O ponto de montagem por onde a estação sai (Icecast)."),
+        ("UserBox", "O utilizador de origem (Icecast), normalmente <b>source</b>."),
+        ("PasswordBox", "A palavra-passe de origem. Fica só neste computador, num ficheiro de definições que só você pode ler, e nunca aparece num registo."),
+        ("BackupBox", "<b>Um servidor de reserva</b>, para quando este não responde…"),
+        ("BackupHostBox", "…o endereço, a porta, o ponto de montagem, o utilizador e a palavra-passe."),
+    ]),
+    ("h2", "Ficar no ar"),
+    ("fig", "online-reconnect", "Definições → Religar", [
+        ("RetryBox", "Quando a ligação falha ou cai, é tentada de novo a cada tantos segundos, durante o tempo que for preciso. Uma ligação que cai é refeita logo primeiro."),
+        ("BackupAfterBox", "Depois de tantas tentativas falhadas seguidas, tenta o servidor de reserva. Na reserva, o servidor principal é tentado a cada minuto, e o stream volta para ele assim que responde, sem falhas."),
+        ("FallbackBox", "O <b>ficheiro de recurso</b>, enviado em ciclo em vez de uma origem em silêncio ou que não envia nada. Vazio: silêncio."),
+        ("FallbackSecondsBox", "Depois de quantos segundos de silêncio…"),
+        ("SilenceDbBox", "…abaixo deste nível. Seja como for, o servidor nunca vê a origem parar, e os ouvintes continuam ligados."),
+    ]),
+    ("p", "Uma entrada escolhida pelo nome nunca é trocada por outra quando não está lá, como uma placa de som USB desligada: "
+          "o microfone que fosse o predefinido do computador iria para a internet. O stream continua com silêncio, ou com o "
+          "ficheiro de recurso, e a entrada é reaberta assim que voltar. Um stream retransmitido que cai é reaberto da mesma "
+          "maneira, e um servidor que deixa de receber o stream durante 20 segundos conta como ligação perdida."),
+    ("h2", "Segurança"),
+    ("fig", "online-security", "Definições → Segurança", [
+        ("StartOnlineBox", "<b>Ficar online sozinho</b> quando o Sintoniza Online abre…"),
+        ("AutostartBox", "…e <b>iniciá-lo quando entra no computador</b>. Os dois juntos trazem a estação de volta à internet depois de uma falha de luz ou de um reinício, sem ninguém presente."),
+        ("LockBox", "<b>Pedir uma palavra-passe</b> para parar o streaming, mudar as definições ou fechar."),
+        ("LockPasswordBox", "A palavra-passe de bloqueio, duas vezes. Só se guarda um hash dela, nunca a própria palavra-passe."),
+        ("LockMinutesBox", "Depois de dada, fica desbloqueado estes minutos, ou até carregar em <b>Bloquear</b>. As palavras-passe erradas ficam nos acontecimentos do dia."),
+    ]),
+    ("p", "Os <b>alertas</b> (Definições → Alertas) vão por Telegram, e-mail ou um endereço web quando a estação está fora da "
+          "internet mais tempo do que o definido, no servidor de reserva, sem som da origem ou em silêncio, e outra vez quando "
+          "cada um acaba; e \"ainda online\" uma vez por dia, se quiser, para que um dia sem essa mensagem queira dizer que algo está mal."),
 ]),
 
 ("Como faço…", "howto", [

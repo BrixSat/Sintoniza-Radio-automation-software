@@ -24,3 +24,4 @@ make(os.path.join(ROOT, "packaging", "icon-schedule.svg"), os.path.join(ROOT, "p
 make(os.path.join(ROOT, "packaging", "icon-import.svg"), os.path.join(ROOT, "packaging", "macos", "import.icns"))
 make(os.path.join(ROOT, "packaging", "icon-rec.svg"), os.path.join(ROOT, "packaging", "macos", "rec.icns"))
 make(os.path.join(ROOT, "packaging", "icon-tempo.svg"), os.path.join(ROOT, "packaging", "macos", "tempo.icns"))
+make(os.path.join(ROOT, "packaging", "icon-online.svg"), os.path.join(ROOT, "packaging", "macos", "online.icns"))

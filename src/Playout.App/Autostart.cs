@@ -14,6 +14,8 @@ sealed class Autostart(string Name, string LinuxName, string MacLabel, string Di
     public static readonly Autostart Playout = new("RadioPlayout", "radio-playout.desktop", "net.cesararaujo.radioplayout", AppInfo.Name, "radio-playout");
     /// <summary>The recorder, Sintoniza Rec.</summary>
     public static readonly Autostart Rec = new("SintonizaRec", "sintoniza-rec.desktop", "net.cesararaujo.sintonizarec", AppInfo.RecName, "radio-playout-rec");
+    /// <summary>The stream sender, Sintoniza Online.</summary>
+    public static readonly Autostart Online = new("SintonizaOnline", "sintoniza-online.desktop", "net.cesararaujo.sintonizaonline", AppInfo.OnlineName, "radio-playout-online");
     /// <summary>The studio clock, Sintoniza Tempo.</summary>
     public static readonly Autostart Tempo = new("SintonizaTempo", "sintoniza-tempo.desktop", "net.cesararaujo.sintonizatempo", AppInfo.TempoName, "radio-playout-tempo");
 

@@ -1,7 +1,7 @@
 # Sintoniza
 
 Sintoniza Emi (on air), Sintoniza Pro (production), Sintoniza Rec (the broadcast recorder), Sintoniza Tempo (the
-studio clock) and Sintoniza Import.
+studio clock), Sintoniza Online (the stream sender) and Sintoniza Import.
 A broadcast radio automation / playout app for **Linux, macOS and Windows**, with the same look on all three.
 It is built in C# with [Avalonia](https://avaloniaui.net/) and uses the [BASS](https://www.un4seen.com/) audio
 engine for decoding, mixing and streaming.
@@ -293,6 +293,16 @@ engine for decoding, mixing and streaming.
 - **A risky setup is said**: on Wi-Fi with no network cable, on battery, or (Windows) a Wi-Fi adapter Windows may switch
   off to save power — the STUDIO lamp turns amber with what to do, the log says it, and Pro's Home (and, with a shared library, its studios list) shows it.
 - **Streaming**: MP3 or OGG to Icecast 2 or Shoutcast v1, with "now playing" titles sent to the server.
+- **Sintoniza Online** (the stream sender, a program of its own): an input of the computer (the desk's programme output,
+  with the microphones) or another stream, relayed, to Icecast or Shoutcast, MP3 or Ogg Vorbis. It stays on air by
+  itself: a connection that fails or drops is tried again every N seconds for as long as it takes, a backup server
+  after so many failures (and back to the main one, with no gap, once it answers), a server that stops taking the
+  stream counts as dropped; a silent, unplugged or dropped source is replaced by silence or a fallback file, so the
+  listeners stay, and opened again by itself (an input chosen by name is never swapped for another microphone).
+  Alerts (off the air, backup, no sound, silence, "still online"), the day's events kept 90 days, today's figures
+  (time online and off, drops, listeners). Security: goes online when it opens and with the computer, an optional
+  lock password (its hash only) to stop, change the settings or close, the servers' passwords in a settings file only
+  this computer's user can read and never in the log.
   Click the STREAM button to start and stop (also while it is still connecting), or right-click it for Start / Stop;
   after an error a click retries and right-click → *Turn streaming off* clears it. It can also have a shortcut.
   One click on the **STREAM** badge next to ON AIR starts or stops it. The badge and the stream time show on a web
@@ -517,8 +527,8 @@ Nothing is published if any of it fails. `scripts/check.sh` can be run on its ow
 #### macOS
 
 `./build.sh mac 1.0.0` builds, for Apple Silicon (`arm64`) and Intel (`x64`) Macs, **Sintoniza Emi.app**,
-**Sintoniza Pro.app**, **Sintoniza Rec.app**, **Sintoniza Tempo.app** and **Sintoniza Import.app** (which start the first's production or
-recorder program, or it as the import program; keep them in the same folder, normally Applications; *Sintoniza Radio
+**Sintoniza Pro.app**, **Sintoniza Rec.app**, **Sintoniza Tempo.app**, **Sintoniza Online.app** and **Sintoniza Import.app** (which start the
+first's production, recorder, clock or stream sender program, or it as the import program; keep them in the same folder, normally Applications; *Sintoniza Radio
 Broadcast system.app*, its name before, can be deleted once Sintoniza Emi.app is there), with their icons and the
 microphone permission text.
 
@@ -527,7 +537,7 @@ microphone permission text.
   Mac, `git pull`, then `./release-mac.sh 1.0.0` (needs `brew install gh` and `gh auth login`).
 - **On Linux**: they go in `.zip` files. An Apple Silicon Mac only starts signed apps, so these are signed ad hoc if
   [`rcodesign`](https://github.com/indygreg/apple-platform-rs) is installed; otherwise sign them once on the Mac after
-  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Emi.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Rec.app" "/Applications/Sintoniza Tempo.app" "/Applications/Sintoniza Import.app"`.
+  copying them to Applications: `codesign --force --deep --sign - "/Applications/Sintoniza Emi.app" "/Applications/Sintoniza Pro.app" "/Applications/Sintoniza Rec.app" "/Applications/Sintoniza Tempo.app" "/Applications/Sintoniza Online.app" "/Applications/Sintoniza Import.app"`.
 
 **Signed so macOS opens them without a warning (no "Move to Trash").** macOS only trusts apps downloaded from the
 internet when they are signed with an Apple **Developer ID** and **notarized** by Apple; nothing else avoids the
@@ -598,10 +608,11 @@ or `docs/manual/make-manual.sh en` / `pt`.
 src/Playout.Engine   Audio engine: BASS, main mixer, playlist automation, carts, streaming, waveforms.
                      Runs on its own thread; the UI only calls its public API.
 src/Playout.Library  The database (SQLite / MySQL): music library, schema, backups, and the folder scanner.
-src/Playout.App      Avalonia desktop UI: every window of Sintoniza Emi, Pro, Rec, Tempo and Import.
+src/Playout.App      Avalonia desktop UI: every window of Sintoniza Emi, Pro, Rec, Tempo, Online and Import.
 src/Sintoniza.Pro    Starts Playout.App as Sintoniza Pro (SintonizaPro).
 src/Sintoniza.Rec    Starts Playout.App as Sintoniza Rec (SintonizaRec).
 src/Sintoniza.Tempo  Starts Playout.App as Sintoniza Tempo, the studio clock (SintonizaTempo).
+src/Sintoniza.Online Starts Playout.App as Sintoniza Online, the stream sender (SintonizaOnline).
 src/Sintoniza.Import radio-import: command-line library scanner.
 scripts/             fetch-bass.sh / fetch-bass.ps1: download the BASS native libraries.
 native/<platform>/   BASS libraries (downloaded, not committed).

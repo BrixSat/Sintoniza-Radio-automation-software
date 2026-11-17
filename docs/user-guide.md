@@ -1,6 +1,6 @@
 # User guide
 
-Sintoniza is five programs and a command, sharing one database (the **library**: music, categories, the schedule,
+Sintoniza is six programs and a command, sharing one database (the **library**: music, categories, the schedule,
 the daily playlists and the play history):
 
 | Program | Who uses it | What for |
@@ -10,7 +10,8 @@ the daily playlists and the play history):
 | [**Sintoniza Import**](#3-sintoniza-import) | whoever looks after the music | bringing folders of music into the library, in categories |
 | [**Sintoniza Rec**](#4-sintoniza-rec) | the technician, the station's management | records what the station broadcasts and keeps it (the law asks for 30 days); exports a stretch for the regulator, a client or a complaint |
 | [**Sintoniza Tempo**](#5-sintoniza-tempo) | the host, in the studio | the studio clock on a screen: the seconds in a ring of lights, the date, the ON AIR sign |
-| [**radio-import**](#6-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
+| [**Sintoniza Online**](#6-sintoniza-online) | the technician | sends the station's sound to the streaming server (Icecast, Shoutcast) and keeps it there |
+| [**radio-import**](#7-radio-import-command-line) | the technician | the same scan from the command line, e.g. every night |
 
 Each has its own entry in the app menu (Linux), the Start menu and desktop (Windows) or Applications (macOS). Only one
 copy of each runs on a computer. With a MySQL / MariaDB library, Pro and Import can run on other computers (the
@@ -754,7 +755,50 @@ or off, **Start with the computer**, Close. It needs neither the library nor a u
 
 ---
 
-## 6. radio-import (command line)
+## 6. Sintoniza Online
+
+The stream sender: it sends the station's sound to an Icecast or Shoutcast server and keeps it there, day and night.
+Use it when the stream should carry the desk's programme output (the microphones in it) rather than the playout's own
+sound, or when a separate computer does the streaming. It doesn't need the library or a user.
+
+**What it sends** (⚙ Settings → Source): an **input** of the computer (the desk's programme output into the sound
+card), or **another stream, relayed** (a web address). An input chosen by name is never swapped for another one when it
+isn't there (a USB card unplugged): the stream goes on with silence, or the fallback file, until it is back. MP3 or Ogg
+Vorbis, 32–320 kbps, mono or stereo; the stream's name, genre, website, description and a title for the players; listed
+in the server's public directory only if ticked.
+
+**The server** (Settings → Server): Icecast or Shoutcast, its address, port, mount, user (Icecast's is usually
+`source`) and password. A whole address pasted (`http://host:8000/live`) is split into its parts. The settings file
+that holds the passwords (`online.json`) can be read only by this computer's user. **A backup server**, used when the
+main one fails a set number of times in a row.
+
+**Staying on air** (Settings → Reconnect): a connection that fails or drops is made again at once, then every **N
+seconds** (1–3600), for as long as it takes. A server that stops taking the stream for 20 seconds counts as dropped. On
+the backup server, the main one is tried every minute and the stream goes back to it as soon as it answers, with no
+gap (the new connection is made before the backup's is closed). While the source is silent (under the set level) or
+sends nothing for **N seconds**, the **fallback file** goes out instead (looped; up to 80 MB, kept in memory); without
+one, silence. Either way the server never sees the source stop and the listeners stay connected. An input or a
+relayed stream that stops sending is opened again by itself.
+
+**The window** shows the state (**● ONLINE**, *BACKUP*, *FALLBACK*, *SILENCE*; amber while connecting; red **OFF THE
+AIR** with the time to the next attempt and why it failed: a wrong password or a mount in use, no answer, the server
+too slow), how long it has been online, the server and format, the meters, **🎧 Listen live**, and **what happened
+on** a day (every connection, drop, retry, silence, start and stop, kept 90 days). On the right, **today**: time
+online and off the air, connections lost, the longest time off, listeners now and the most (from the server's
+statistics), and what was sent.
+
+**Alerts** (Settings → Alerts): off the internet for more than a set time, on the backup server, no sound from the
+source, silence, and each one over, plus "still online" once a day if wanted; by Telegram, e-mail or a web address.
+
+**Security** (Settings → Security): *Go online by itself when it opens* and *Start Sintoniza Online when I log in*:
+both together bring the station back on the internet after a power cut or a restart with nobody there. An optional
+**lock password** is asked for to stop streaming, change the settings or close (only its hash is kept); once given,
+it stays unlocked for a set number of minutes, or until **🔒 Lock**. Stopping and closing always ask first, and the
+day's events keep who did what: started, stopped and closed by hand, settings changed, wrong passwords.
+
+---
+
+## 7. radio-import (command line)
 
 ```
 radio-import                          scan the library's folders (Pro → Station settings → Library)

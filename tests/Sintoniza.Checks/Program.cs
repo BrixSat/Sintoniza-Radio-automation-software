@@ -2163,6 +2163,109 @@ Console.WriteLine("Stations");
     CurrentStation.Id = first;
 }
 
+Console.WriteLine("Sintoniza Online (streams to a server and keeps it there)");
+{
+    // A server that answers as Icecast does to a source: 200 with the right password, 401 with another; it counts what it gets.
+    var main = new FakeIcecast("hackme");
+    var backup = new FakeIcecast("backup1");
+    var tone = Audio.Make(Path.Combine(work, "online-fallback"), 1, seconds: 2, rate: 8000, channels: 1)[0];
+    OnlineStreamer Streamer(OnlineServer server, OnlineServer? second = null, string? fallback = null) =>
+        new(new OnlineOptions("No such input here", null, server, second, RetrySeconds: 1, BackupAfter: 1, Fallback: fallback, FallbackSeconds: 2, MainCheckSeconds: 2));
+
+    var wrong = Streamer(new OnlineServer("127.0.0.1", main.Port, "/live", "source", "nope"));
+    wrong.Start();
+    Check(Wait(() => main.Refused >= 2, 6) && wrong.State is OnlineState.Waiting or OnlineState.Connecting && wrong.Error?.Contains("password") == true,
+        $"a wrong password is refused, said so, and tried again every second ({main.Refused} tries: {wrong.Error})");
+    wrong.Dispose();
+
+    var s = Streamer(new OnlineServer("127.0.0.1", main.Port, "live", "source", "hackme"), fallback: tone);
+    s.Start();
+    Check(Wait(() => s.State == OnlineState.Online, 5) && main.LastRequest.StartsWith("SOURCE /live ") && main.LastRequest.Contains("audio/mpeg"),
+        $"online with the right password, on its mount ({main.LastRequest.Split('\n')[0].Trim()})");
+    long before = main.Received;
+    Thread.Sleep(2000);
+    double kbps = (main.Received - before) * 8 / 2000.0;
+    Check(kbps is > 90 and < 170 && s.BytesSent > 0, $"the server gets the stream in real time, with no sound from the input ({kbps:0} kbps at 128)");
+    Check(s.SecondsWithoutData > 1 && Wait(() => s.OnFallback, 5), "an input that isn't there isn't swapped for another one: the fallback file goes out instead");
+
+    main.Stop();
+    Check(Wait(() => s.State != OnlineState.Online, 8), $"the server going away is seen ({s.State}: {s.Error})");
+    main.Start();
+    Check(Wait(() => s.State == OnlineState.Online && s.Connections == 2, 8), $"it is online again by itself once the server is back ({s.Connections} connections)");
+    s.Dispose();
+    Check(Wait(() => main.Connected == 0, 3), "stopping hangs up");
+
+    main.Stop();
+    var b = Streamer(new OnlineServer("127.0.0.1", main.Port, "/live", "source", "hackme"), new OnlineServer("127.0.0.1", backup.Port, "/backup", "source", "backup1"));
+    b.Start();
+    Check(Wait(() => b.State == OnlineState.Online && b.OnBackup, 8) && backup.Connected == 1, $"the main server not answering: online on the backup ({b.Server.Address})");
+    main.Start();
+    Check(Wait(() => b.State == OnlineState.Online && !b.OnBackup, 8) && Wait(() => backup.Connected == 0 && main.Connected == 1, 3),
+        "back on the main server once it answers, and the backup left");
+    b.Dispose();
+
+    // A main server that takes the connection and never answers (each try waits for the network's time-out): the
+    // backup's listeners must not lose sound while it is tried again every 2 s.
+    var mute = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    mute.Start();
+    var held = new List<System.Net.Sockets.TcpClient>();
+    _ = Task.Run(async () => { try { while (true) { var c = await mute.AcceptTcpClientAsync(); lock (held) held.Add(c); } } catch { /* stopped */ } });
+    var gap = Streamer(new OnlineServer("127.0.0.1", ((System.Net.IPEndPoint)mute.LocalEndpoint).Port, "/live", "source", "hackme"),
+        new OnlineServer("127.0.0.1", backup.Port, "/backup", "source", "backup1"));
+    gap.Start();
+    Wait(() => gap.State == OnlineState.Online && gap.OnBackup, 30);
+    long gapBefore = backup.Received;
+    Thread.Sleep(10000);
+    double backupKbps = (backup.Received - gapBefore) * 8 / 10000.0;
+    Check(gap.OnBackup && backupKbps is > 100 and < 160, $"on the backup, trying a main server that doesn't answer doesn't hold up the stream ({backupKbps:0} kbps at 128)");
+    gap.Dispose();
+    mute.Stop();
+    lock (held) foreach (var c in held) c.Dispose();
+
+    // The day's figures and alerts, from the service: a connection lost for a few seconds is the longest time off;
+    // an input that isn't there says so after 10 s (and doesn't stop saying it while it is reopened).
+    var service = new OnlineService(new OnlineSettings { Input = "No such input here", RetrySeconds = 1, Server = { Host = "127.0.0.1", Port = main.Port, Password = "hackme" } });
+    service.Start();
+    for (int i = 0; i < 30 && service.Streamer?.State != OnlineState.Online; i++) { service.Tick(); Thread.Sleep(200); }
+    main.Stop();
+    for (int i = 0; i < 8; i++) { service.Tick(); Thread.Sleep(500); }
+    main.Start();
+    for (int i = 0; i < 40 && service.Streamer?.State != OnlineState.Online; i++) { service.Tick(); Thread.Sleep(200); }
+    service.Tick();
+    Check(service.Drops == 1 && service.LongestOff >= 3, $"a connection lost counts, and its time off is the longest ({service.Drops} lost, {service.LongestOff:0.0} s)");
+    Check(Wait(() => service.Streamer!.SecondsWithoutData > 11, 8), $"no sound from a missing input keeps counting while it is tried again ({service.Streamer.SecondsWithoutData:0} s)");
+    service.Dispose();
+    main.Dispose();
+    backup.Dispose();
+
+    var server = new OnlineServer("example.com", 8000, "/live", "dj", "secret!");
+    Check(!server.ToString().Contains("secret!") && !new OnlineOptions("", null, server, null).ToString().Contains("secret!"), "the server's password never shows in a log line");
+
+    var online = new OnlineSettings { StationName = "Rádio Exemplo", LockHash = UserStore.Hash("1234") };
+    online.Server.Host = "example.com";
+    online.Server.Password = "secret!";
+    online.Save();
+    string file = Path.Combine(AppSettings.DataFolder, "online.json");
+    Check(OperatingSystem.IsWindows() || File.GetUnixFileMode(file) == (UnixFileMode.UserRead | UnixFileMode.UserWrite), "its settings (with the passwords) are readable only by this computer's user");
+    Check(OnlineSettings.Load().Server.Password == "secret!" && UserStore.Verify("1234", OnlineSettings.Load().LockHash) && !UserStore.Verify("12345", online.LockHash),
+        "the lock keeps only the password's hash, and knows the right one");
+
+    // The windows open (with the server set, it isn't started here: start is false).
+    var window = new OnlineWindow(false);
+    window.Show();
+    Pump(5);
+    Check(window.FindControl<TextBlock>("StateText")!.Text == "OFFLINE" && window.FindControl<Button>("LockButton")!.IsVisible,
+        "Sintoniza Online's window opens, offline, with its lock");
+    var settingsWindow = new OnlineSettingsWindow(OnlineSettings.Load());
+    settingsWindow.Show();
+    Pump(3);
+    Check(settingsWindow.FindControl<TextBox>("HostBox")!.Text == "example.com" && settingsWindow.FindControl<CheckBox>("LockBox")!.IsChecked == true,
+        "…and its settings");
+    settingsWindow.Close();
+    window.Close();
+    File.Delete(file);
+}
+
 Console.WriteLine(fails == 0 ? $"All {passes} checks passed." : $"{fails} of {passes + fails} checks FAILED.");
 Environment.Exit(fails == 0 ? 0 : 1);
 
@@ -2176,6 +2279,101 @@ sealed class TestPins : IGpioPins
     public bool Dtr { set => DtrOn = value; }
     public bool Rts { set => RtsOn = value; }
     public void Dispose() { }
+}
+
+/// <summary>
+/// A stand-in for an Icecast server, for Sintoniza Online: a source with the right password gets 200 and is read (its
+/// bytes counted), with another one 401. Stop drops every source and stops answering, as a server that went away.
+/// </summary>
+sealed class FakeIcecast : IDisposable
+{
+    readonly string _password;
+    readonly List<System.Net.Sockets.TcpClient> _clients = new();
+    System.Net.Sockets.TcpListener? _listener;
+    long _received;
+    int _refused, _connected;
+
+    public FakeIcecast(string password)
+    {
+        _password = password;
+        var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        probe.Start();
+        Port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        Start();
+    }
+
+    public int Port { get; }
+    public long Received => Interlocked.Read(ref _received);
+    public int Refused => Volatile.Read(ref _refused);
+    public int Connected => Volatile.Read(ref _connected);
+    public string LastRequest { get; private set; } = "";
+
+    public void Start()
+    {
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, Port);
+        listener.Server.SetSocketOption(System.Net.Sockets.SocketOptionLevel.Socket, System.Net.Sockets.SocketOptionName.ReuseAddress, true);
+        listener.Start();
+        _listener = listener;
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                System.Net.Sockets.TcpClient client;
+                try { client = await listener.AcceptTcpClientAsync(); }
+                catch { return; }
+                lock (_clients) _clients.Add(client);
+                _ = Task.Run(() => Serve(client));
+            }
+        });
+    }
+
+    void Serve(System.Net.Sockets.TcpClient client)
+    {
+        try
+        {
+            var stream = client.GetStream();
+            var head = new System.Text.StringBuilder();
+            var one = new byte[1];
+            while (!head.ToString().EndsWith("\r\n\r\n"))
+            {
+                if (stream.Read(one, 0, 1) <= 0) return;
+                head.Append((char)one[0]);
+            }
+            LastRequest = head.ToString();
+            string auth = "Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes("source:" + _password));
+            if (!LastRequest.Contains("Authorization: " + auth))
+            {
+                Interlocked.Increment(ref _refused);
+                stream.Write("HTTP/1.0 401 Unauthorized\r\n\r\n"u8);
+                return;
+            }
+            stream.Write("HTTP/1.0 200 OK\r\n\r\n"u8);
+            Interlocked.Increment(ref _connected);
+            try
+            {
+                var buffer = new byte[65536];
+                int n;
+                while ((n = stream.Read(buffer)) > 0) Interlocked.Add(ref _received, n);
+            }
+            finally { Interlocked.Decrement(ref _connected); }
+        }
+        catch { /* dropped */ }
+        finally { client.Dispose(); }
+    }
+
+    public void Stop()
+    {
+        _listener?.Stop();
+        _listener = null;
+        lock (_clients)
+        {
+            foreach (var c in _clients) c.Dispose();
+            _clients.Clear();
+        }
+    }
+
+    public void Dispose() => Stop();
 }
 
 /// <summary>Short test tones as WAV files (nothing else needed to make them).</summary>
