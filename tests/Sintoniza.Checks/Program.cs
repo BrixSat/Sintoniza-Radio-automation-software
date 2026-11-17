@@ -2233,7 +2233,7 @@ Console.WriteLine("Sintoniza Online (streams to a server and keeps it there)");
     for (int i = 0; i < 40 && service.Streamer?.State != OnlineState.Online; i++) { service.Tick(); Thread.Sleep(200); }
     service.Tick();
     Check(service.Drops == 1 && service.LongestOff >= 3, $"a connection lost counts, and its time off is the longest ({service.Drops} lost, {service.LongestOff:0.0} s)");
-    Check(Wait(() => service.Streamer!.SecondsWithoutData > 11, 8), $"no sound from a missing input keeps counting while it is tried again ({service.Streamer.SecondsWithoutData:0} s)");
+    Check(Wait(() => service.Streamer!.SecondsWithoutData > 11, 8), $"no sound from a missing input keeps counting while it is tried again ({service.Streamer!.SecondsWithoutData:0} s)");
     service.Dispose();
     main.Dispose();
     backup.Dispose();
